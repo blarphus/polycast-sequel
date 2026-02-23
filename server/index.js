@@ -35,8 +35,7 @@ async function main() {
   try {
     await redisClient.connect();
   } catch (err) {
-    console.error('Failed to connect to Redis. Exiting.', err);
-    process.exit(1);
+    console.error('Failed to connect to Redis (will retry in background):', err.message);
   }
 
   // ------ Express app ------
