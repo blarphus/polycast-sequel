@@ -1,8 +1,15 @@
 import { createClient } from 'redis';
 
-const redisClient = createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379',
-});
+const url = process.env.REDIS_URL || 'redis://localhost:6379';
+
+const opts = { url };
+
+// Render's Redis uses rediss:// (TLS) — allow self-signed certs
+if (url.startsWith('rediss://')) {
+  opts.socket = { tls: true, rejectUnauthorized: false };
+}
+
+const redisClient = createClient(opts);
 
 redisClient.on('error', (err) => {
   console.error('Redis client error:', err);
