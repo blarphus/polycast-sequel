@@ -6,6 +6,15 @@ import { handleCalls } from './calls.js';
 import pool from '../db.js';
 import redisClient from '../redis.js';
 
+let ioInstance = null;
+
+/**
+ * Return the Socket.IO server instance (available after setupSocket is called).
+ */
+export function getIO() {
+  return ioInstance;
+}
+
 /**
  * Parse a raw Cookie header string and return an object of key-value pairs.
  */
@@ -38,6 +47,8 @@ export function setupSocket(server) {
       credentials: true,
     },
   });
+
+  ioInstance = io;
 
   // ------- Authentication middleware -------
   io.use((socket, next) => {

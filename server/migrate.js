@@ -37,6 +37,18 @@ export async function migrate(pool) {
       );
     `);
 
+    // Friendships table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS friendships (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        requester_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        recipient_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(requester_id, recipient_id)
+      );
+    `);
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {

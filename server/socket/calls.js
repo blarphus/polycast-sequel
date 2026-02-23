@@ -27,8 +27,17 @@ export function handleCalls(io, socket, pool, redisClient) {
         return;
       }
 
+      // Look up caller info
+      const callerResult = await pool.query(
+        'SELECT username, display_name FROM users WHERE id = $1',
+        [socket.userId]
+      );
+      const caller = callerResult.rows[0];
+
       io.to(calleeSocketId).emit('call:incoming', {
         callerId: socket.userId,
+        callerUsername: caller?.username || 'Unknown',
+        callerDisplayName: caller?.display_name || caller?.username || 'Unknown',
       });
     } catch (err) {
       console.error('call:initiate error:', err);

@@ -14,6 +14,7 @@ import { setupSocket } from './socket/index.js';
 import authRoutes from './routes/auth.js';
 import usersRoutes from './routes/users.js';
 import callsRoutes from './routes/calls.js';
+import friendsRoutes from './routes/friends.js';
 import whisperRoutes from './whisper.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -57,6 +58,7 @@ async function main() {
   app.use(authRoutes);
   app.use(usersRoutes);
   app.use(callsRoutes);
+  app.use(friendsRoutes);
   app.use(whisperRoutes);
 
   // ------ SPA fallback ------

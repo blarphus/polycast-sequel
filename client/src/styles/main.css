@@ -460,6 +460,105 @@ a:hover {
   background: var(--text-muted);
 }
 
+/* ---- User Search Actions ------------------------------------------------- */
+
+.user-search-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ---- Friend Requests ----------------------------------------------------- */
+
+.friend-requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.friend-request-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+
+.friend-request-item:hover {
+  background: var(--bg-surface-hover);
+}
+
+.friend-request-info {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.friend-request-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.friend-request-username {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.friend-request-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ---- Friends List -------------------------------------------------------- */
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.friends-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+
+.friends-list-item:hover {
+  background: var(--bg-surface-hover);
+}
+
+.friends-list-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.friends-list-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.friends-list-username {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.friends-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* ---- Call History --------------------------------------------------------- */
 
 .call-history-list {

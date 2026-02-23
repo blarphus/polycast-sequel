@@ -2,18 +2,21 @@
 // pages/Home.tsx -- Main dashboard after login
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSocket } from '../hooks/useSocket';
 import { getCallHistory, CallRecord } from '../api';
 import UserSearch from '../components/UserSearch';
+import FriendRequests from '../components/FriendRequests';
+import FriendsList, { FriendsListHandle } from '../components/FriendsList';
 
 export default function Home() {
   const { user, logout } = useAuth();
   const { connected } = useSocket();
   const navigate = useNavigate();
 
+  const friendsRef = useRef<FriendsListHandle>(null);
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [callsLoading, setCallsLoading] = useState(true);
 
@@ -82,6 +85,15 @@ export default function Home() {
         <section className="home-section">
           <h2 className="section-title">Find Users</h2>
           <UserSearch />
+        </section>
+
+        {/* Friend requests (only renders if there are pending requests) */}
+        <FriendRequests onAccepted={() => friendsRef.current?.refresh()} />
+
+        {/* Friends list */}
+        <section className="home-section">
+          <h2 className="section-title">Friends</h2>
+          <FriendsList ref={friendsRef} />
         </section>
 
         {/* Call history */}
