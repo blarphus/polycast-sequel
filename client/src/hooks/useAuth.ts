@@ -1,0 +1,85 @@
+// ---------------------------------------------------------------------------
+// hooks/useAuth.ts -- AuthContext, AuthProvider, useAuth
+// ---------------------------------------------------------------------------
+
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+  createElement,
+} from 'react';
+import * as api from '../api';
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  display_name: string;
+}
+
+interface AuthContextValue {
+  user: AuthUser | null;
+  loading: boolean;
+  login: (username: string, password: string) => Promise<void>;
+  signup: (username: string, password: string, displayName: string) => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Check session on mount
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .getMe()
+      .then((u) => {
+        if (!cancelled) setUser(u);
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const login = useCallback(async (username: string, password: string) => {
+    const u = await api.login(username, password);
+    setUser(u);
+  }, []);
+
+  const signup = useCallback(async (username: string, password: string, displayName: string) => {
+    const u = await api.signup(username, password, displayName);
+    setUser(u);
+  }, []);
+
+  const logout = useCallback(async () => {
+    await api.logout();
+    setUser(null);
+  }, []);
+
+  return createElement(
+    AuthContext.Provider,
+    { value: { user, loading, login, signup, logout } },
+    children,
+  );
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (ctx === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return ctx;
+}
+
+export { AuthContext };

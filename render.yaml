@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: polycast-sequel
+    runtime: node
+    plan: starter
+    buildCommand: cd client && npm install && npm run build && cd ../server && npm install
+    startCommand: cd server && node index.js
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: polycast-sequel-db
+          property: connectionString
+      - key: REDIS_URL
+        fromRedis:
+          name: polycast-sequel-kv
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: polycast-sequel-db
+    plan: starter
+    databaseName: polycast_sequel
+    postgresMajorVersion: "16"
+
+redis:
+  - name: polycast-sequel-kv
+    plan: starter
