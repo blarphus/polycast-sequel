@@ -1,7 +1,3 @@
-// ---------------------------------------------------------------------------
-// components/UserSearch.tsx -- Search users and initiate calls
-// ---------------------------------------------------------------------------
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { searchUsers, UserResult } from '../api';
@@ -16,6 +12,7 @@ export default function UserSearch() {
   const [results, setResults] = useState<UserResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced search
@@ -36,7 +33,6 @@ export default function UserSearch() {
     debounceRef.current = setTimeout(async () => {
       try {
         const data = await searchUsers(trimmed);
-        // Exclude self from results
         setResults(data.filter((u) => u.id !== user?.id));
         setError('');
       } catch (err: unknown) {
@@ -54,9 +50,30 @@ export default function UserSearch() {
     };
   }, [query, user?.id]);
 
+  // Listen for real-time online/offline events to update results
+  useEffect(() => {
+    const onUserOnline = ({ userId }: { userId: string }) => {
+      setResults((prev) =>
+        prev.map((u) => (String(u.id) === userId ? { ...u, online: true } : u)),
+      );
+    };
+    const onUserOffline = ({ userId }: { userId: string }) => {
+      setResults((prev) =>
+        prev.map((u) => (String(u.id) === userId ? { ...u, online: false } : u)),
+      );
+    };
+
+    socket.on('user:online', onUserOnline);
+    socket.on('user:offline', onUserOffline);
+
+    return () => {
+      socket.off('user:online', onUserOnline);
+      socket.off('user:offline', onUserOffline);
+    };
+  }, []);
+
   const handleCall = useCallback(
     (targetUserId: number) => {
-      // Navigate to the call page as the caller
       navigate(`/call/${targetUserId}?role=caller`);
     },
     [navigate],
@@ -68,7 +85,7 @@ export default function UserSearch() {
         <input
           className="form-input user-search-input"
           type="text"
-          placeholder="Search by username or display name..."
+          placeholder="Search by username..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -84,18 +101,18 @@ export default function UserSearch() {
               <div className="user-search-info">
                 <span className={`online-dot ${u.online ? 'online' : 'offline'}`} />
                 <div>
-                  <span className="user-search-display">{u.display_name}</span>
+                  <span className="user-search-display">
+                    {u.display_name || u.username}
+                  </span>
                   <span className="user-search-username">@{u.username}</span>
                 </div>
               </div>
-              {u.online && (
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => handleCall(u.id)}
-                >
-                  Call
-                </button>
-              )}
+              <button
+                className={`btn btn-sm ${u.online ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => handleCall(u.id)}
+              >
+                Call
+              </button>
             </li>
           ))}
         </ul>

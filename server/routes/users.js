@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
+import { userToSocket } from '../socket/presence.js';
 
 const router = Router();
 
 /**
  * GET /api/users/search?q=<query>
  * Search users by username (case-insensitive), excluding the current user.
- * Returns up to 20 results with id, username, and display_name.
+ * Returns up to 20 results with id, username, display_name, and online status.
  */
 router.get('/api/users/search', authMiddleware, async (req, res) => {
   try {
@@ -29,7 +30,13 @@ router.get('/api/users/search', authMiddleware, async (req, res) => {
       [req.userId, searchTerm],
     );
 
-    return res.json(result.rows);
+    // Attach online status from in-memory presence map
+    const rows = result.rows.map((u) => ({
+      ...u,
+      online: userToSocket.has(u.id),
+    }));
+
+    return res.json(rows);
   } catch (err) {
     console.error('User search error:', err);
     return res.status(500).json({ error: 'Internal server error' });
