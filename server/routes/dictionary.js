@@ -25,6 +25,69 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
       throw new Error('GEMINI_API_KEY is not configured');
     }
 
+    const prompt = `Translate "${word}" from "${sentence}"${targetLang ? ` (${targetLang})` : ''} for a ${nativeLang} speaker.
+Reply EXACTLY: TRANSLATION // DEFINITION // PART_OF_SPEECH
+- TRANSLATION: word(s) in ${nativeLang}
+- DEFINITION: brief usage explanation in ${nativeLang}, 12 words max, no markdown
+- PART_OF_SPEECH: one of noun,verb,adjective,adverb,pronoun,preposition,conjunction,interjection,article,particle`;
+
+    const response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            thinkingConfig: { thinkingBudget: 0 },
+            maxOutputTokens: 128,
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error('Gemini API error:', err);
+      throw new Error('Gemini request failed');
+    }
+
+    const data = await response.json();
+    const raw =
+      data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    // Parse: split on "//" into 3 fields (popup only)
+    const parts = raw.split('//').map((s) => s.trim());
+    const translation = parts[0] || '';
+    const definition = parts[1] || '';
+    const part_of_speech = parts[2] || null;
+
+    return res.json({ word, translation, definition, part_of_speech });
+  } catch (err) {
+    console.error('Dictionary lookup error:', err);
+    return res.status(500).json({ error: err.message || 'Lookup failed' });
+  }
+});
+
+/**
+ * POST /api/dictionary/enrich
+ * Full enrichment call (translation, definition, POS, frequency, example).
+ * Called when the user saves a word — quality over speed.
+ */
+router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
+  const { word, sentence, nativeLang, targetLang } = req.body;
+
+  if (!word || !sentence || !nativeLang) {
+    return res.status(400).json({ error: 'word, sentence, and nativeLang are required' });
+  }
+
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
     const prompt = `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
 ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 The user's native language is ${nativeLang}.
@@ -59,15 +122,13 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
 
     if (!response.ok) {
       const err = await response.text();
-      console.error('Gemini API error:', err);
-      throw new Error('Gemini request failed');
+      console.error('Gemini enrich API error:', err);
+      throw new Error('Gemini enrich request failed');
     }
 
     const data = await response.json();
-    const raw =
-      data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // Parse: split on "//" into up to 5 fields
     const parts = raw.split('//').map((s) => s.trim());
     const translation = parts[0] || '';
     const definition = parts[1] || '';
@@ -77,8 +138,8 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
 
     return res.json({ word, translation, definition, part_of_speech, frequency, example_sentence });
   } catch (err) {
-    console.error('Dictionary lookup error:', err);
-    return res.status(500).json({ error: err.message || 'Lookup failed' });
+    console.error('Dictionary enrich error:', err);
+    return res.status(500).json({ error: err.message || 'Enrichment failed' });
   }
 });
 

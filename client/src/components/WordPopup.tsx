@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import React, { useEffect, useRef, useState } from 'react';
-import { lookupWord } from '../api';
+import { lookupWord, enrichWord } from '../api';
 
 interface WordPopupProps {
   word: string;
@@ -30,10 +30,9 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [translation, setTranslation] = useState('');
   const [definition, setDefinition] = useState('');
   const [partOfSpeech, setPartOfSpeech] = useState<string | null>(null);
-  const [frequency, setFrequency] = useState<number | null>(null);
-  const [exampleSentence, setExampleSentence] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(initialSaved ?? false);
+  const [saving, setSaving] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
 
   // Fetch on mount
@@ -45,8 +44,6 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           setTranslation(res.translation);
           setDefinition(res.definition);
           setPartOfSpeech(res.part_of_speech);
-          setFrequency(res.frequency);
-          setExampleSentence(res.example_sentence);
           setLoading(false);
         }
       })
@@ -100,23 +97,41 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
         <div className="word-popup-header-actions">
           {!loading && !error && onSaveWord && (
             <button
-              className={`word-popup-save${saved ? ' saved' : ''}`}
-              onClick={() => {
-                if (saved) return;
-                onSaveWord({
-                  word,
-                  translation,
-                  definition,
-                  target_language: targetLang,
-                  sentence_context: sentence,
-                  frequency,
-                  example_sentence: exampleSentence,
-                  part_of_speech: partOfSpeech,
-                });
-                setSaved(true);
+              className={`word-popup-save${saved ? ' saved' : ''}${saving ? ' saving' : ''}`}
+              disabled={saving}
+              onClick={async () => {
+                if (saved || saving) return;
+                setSaving(true);
+                try {
+                  const enriched = await enrichWord(word, sentence, nativeLang, targetLang);
+                  onSaveWord({
+                    word,
+                    translation: enriched.translation,
+                    definition: enriched.definition,
+                    target_language: targetLang,
+                    sentence_context: sentence,
+                    frequency: enriched.frequency,
+                    example_sentence: enriched.example_sentence,
+                    part_of_speech: enriched.part_of_speech,
+                  });
+                  setSaved(true);
+                } catch {
+                  // Fall back to saving with popup data (no frequency/example)
+                  onSaveWord({
+                    word,
+                    translation,
+                    definition,
+                    target_language: targetLang,
+                    sentence_context: sentence,
+                    part_of_speech: partOfSpeech,
+                  });
+                  setSaved(true);
+                } finally {
+                  setSaving(false);
+                }
               }}
             >
-              {saved ? '\u2713' : '+'}
+              {saved ? '\u2713' : saving ? '...' : '+'}
             </button>
           )}
           <button className="word-popup-close" onClick={onClose}>&times;</button>
