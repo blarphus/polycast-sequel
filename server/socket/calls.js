@@ -10,17 +10,17 @@ export function handleCalls(io, socket, pool, redisClient) {
    * Initiate a call to another user.
    * Payload: { calleeId }
    */
-  socket.on('call:initiate', async ({ calleeId }) => {
+  socket.on('call:initiate', async ({ peerId }) => {
     try {
       // Check if callee is online
-      const isOnline = await redisClient.exists(`online:${calleeId}`);
+      const isOnline = await redisClient.exists(`online:${peerId}`);
 
       if (!isOnline) {
         socket.emit('call:error', { message: 'User is offline' });
         return;
       }
 
-      const calleeSocketId = userToSocket.get(calleeId);
+      const calleeSocketId = userToSocket.get(peerId);
 
       if (!calleeSocketId) {
         socket.emit('call:error', { message: 'User is not available' });

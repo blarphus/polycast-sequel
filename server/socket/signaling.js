@@ -9,8 +9,8 @@ export function handleSignaling(io, socket) {
    * Relay a WebRTC offer to the target user.
    * Payload: { targetUserId, offer }
    */
-  socket.on('signal:offer', ({ targetUserId, offer }) => {
-    const targetSocketId = userToSocket.get(targetUserId);
+  socket.on('signal:offer', ({ peerId, offer }) => {
+    const targetSocketId = userToSocket.get(peerId);
 
     if (targetSocketId) {
       io.to(targetSocketId).emit('signal:offer', {
@@ -22,10 +22,10 @@ export function handleSignaling(io, socket) {
 
   /**
    * Relay a WebRTC answer to the target user.
-   * Payload: { targetUserId, answer }
+   * Payload: { peerId, answer }
    */
-  socket.on('signal:answer', ({ targetUserId, answer }) => {
-    const targetSocketId = userToSocket.get(targetUserId);
+  socket.on('signal:answer', ({ peerId, answer }) => {
+    const targetSocketId = userToSocket.get(peerId);
 
     if (targetSocketId) {
       io.to(targetSocketId).emit('signal:answer', {
@@ -37,10 +37,10 @@ export function handleSignaling(io, socket) {
 
   /**
    * Relay an ICE candidate to the target user.
-   * Payload: { targetUserId, candidate }
+   * Payload: { peerId, candidate }
    */
-  socket.on('signal:ice-candidate', ({ targetUserId, candidate }) => {
-    const targetSocketId = userToSocket.get(targetUserId);
+  socket.on('signal:ice-candidate', ({ peerId, candidate }) => {
+    const targetSocketId = userToSocket.get(peerId);
 
     if (targetSocketId) {
       io.to(targetSocketId).emit('signal:ice-candidate', {
