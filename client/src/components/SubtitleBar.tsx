@@ -10,6 +10,15 @@ interface SubtitleBarProps {
   remoteText: string;
   remoteLang: string;
   nativeLang?: string;
+  savedWords?: Set<string>;
+  isWordSaved?: (word: string) => boolean;
+  onSaveWord?: (data: {
+    word: string;
+    translation: string;
+    definition: string;
+    target_language?: string;
+    sentence_context?: string;
+  }) => void;
 }
 
 function langLabel(lang: string): string {
@@ -71,7 +80,7 @@ function useSubtitleLines(text: string): string[] {
   return linesRef.current;
 }
 
-export default function SubtitleBar({ localText, remoteText, remoteLang, nativeLang }: SubtitleBarProps) {
+export default function SubtitleBar({ localText, remoteText, remoteLang, nativeLang, savedWords, isWordSaved, onSaveWord }: SubtitleBarProps) {
   const [popup, setPopup] = useState<PopupState | null>(null);
 
   const localLines = useSubtitleLines(localText);
@@ -93,7 +102,7 @@ export default function SubtitleBar({ localText, remoteText, remoteLang, nativeL
       <span className="subtitle-text">
         {tokenize(text).map((token, i) =>
           isWordToken(token) ? (
-            <span key={i} className="subtitle-word" onClick={(e) => handleWordClick(e, token, text)}>
+            <span key={i} className={`subtitle-word${savedWords?.has(token.toLowerCase()) ? ' saved' : ''}`} onClick={(e) => handleWordClick(e, token, text)}>
               {token}
             </span>
           ) : (
@@ -137,6 +146,8 @@ export default function SubtitleBar({ localText, remoteText, remoteLang, nativeL
           targetLang={remoteLang || undefined}
           anchorRect={popup.rect}
           onClose={() => setPopup(null)}
+          isWordSaved={isWordSaved ? isWordSaved(popup.word) : undefined}
+          onSaveWord={onSaveWord}
         />
       )}
     </div>

@@ -18,6 +18,7 @@ import {
 import { TranscriptionService } from '../transcription';
 import SubtitleBar from '../components/SubtitleBar';
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
+import { useSavedWords } from '../hooks/useSavedWords';
 
 export default function Call() {
   const { peerId } = useParams<{ peerId: string }>();
@@ -42,6 +43,7 @@ export default function Call() {
 
   const { controlsHidden, showControls } = useAutoHideControls();
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(localStreamRef);
+  const { savedWordsSet, isWordSaved, addWord } = useSavedWords();
 
   // ---- Shared cleanup helper ---------------------------------------------
 
@@ -273,7 +275,7 @@ export default function Call() {
       )}
 
       {/* Subtitle bar */}
-      <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} nativeLang={user?.native_language || undefined} />
+      <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} nativeLang={user?.native_language || undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
 
       {/* Controls */}
       <CallControls

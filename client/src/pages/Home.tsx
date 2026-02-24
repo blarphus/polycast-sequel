@@ -92,6 +92,9 @@ export default function Home() {
           <button className="btn btn-secondary" onClick={() => navigate('/settings')}>
             Settings
           </button>
+          <button className="btn btn-secondary" onClick={() => navigate('/dictionary')}>
+            Dictionary
+          </button>
           <button className="btn btn-secondary" onClick={handleLogout}>
             Logout
           </button>

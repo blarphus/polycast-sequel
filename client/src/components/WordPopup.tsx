@@ -12,13 +12,22 @@ interface WordPopupProps {
   targetLang?: string;
   anchorRect: DOMRect;
   onClose: () => void;
+  isWordSaved?: boolean;
+  onSaveWord?: (data: {
+    word: string;
+    translation: string;
+    definition: string;
+    target_language?: string;
+    sentence_context?: string;
+  }) => void;
 }
 
-export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose }: WordPopupProps) {
+export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved: initialSaved, onSaveWord }: WordPopupProps) {
   const [loading, setLoading] = useState(true);
   const [translation, setTranslation] = useState('');
   const [definition, setDefinition] = useState('');
   const [error, setError] = useState('');
+  const [saved, setSaved] = useState(initialSaved ?? false);
   const popupRef = useRef<HTMLDivElement>(null);
 
   // Fetch on mount
@@ -79,7 +88,27 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
     <div className="word-popup" ref={popupRef} style={style}>
       <div className="word-popup-header">
         <span className="word-popup-word">{word}</span>
-        <button className="word-popup-close" onClick={onClose}>&times;</button>
+        <div className="word-popup-header-actions">
+          {!loading && !error && onSaveWord && (
+            <button
+              className={`word-popup-save${saved ? ' saved' : ''}`}
+              onClick={() => {
+                if (saved) return;
+                onSaveWord({
+                  word,
+                  translation,
+                  definition,
+                  target_language: targetLang,
+                  sentence_context: sentence,
+                });
+                setSaved(true);
+              }}
+            >
+              {saved ? '\u2713' : '+'}
+            </button>
+          )}
+          <button className="word-popup-close" onClick={onClose}>&times;</button>
+        </div>
       </div>
       <div className="word-popup-body">
         {loading && (

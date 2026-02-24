@@ -168,3 +168,33 @@ export function lookupWord(word: string, sentence: string, nativeLang: string, t
   return request<WordLookup>(`/dictionary/lookup?${params}`);
 }
 
+// ---- Saved Words (Personal Dictionary) ------------------------------------
+
+export interface SavedWord {
+  id: string;
+  word: string;
+  translation: string;
+  definition: string;
+  target_language: string | null;
+  sentence_context: string | null;
+  created_at: string;
+}
+
+export function getSavedWords() {
+  return request<SavedWord[]>('/dictionary/words');
+}
+
+export function saveWord(data: {
+  word: string;
+  translation: string;
+  definition: string;
+  target_language?: string;
+  sentence_context?: string;
+}) {
+  return request<SavedWord>('/dictionary/words', { method: 'POST', body: data });
+}
+
+export function deleteSavedWord(id: string) {
+  return request<void>(`/dictionary/words/${id}`, { method: 'DELETE' });
+}
+

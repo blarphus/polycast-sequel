@@ -12,6 +12,7 @@ import Home from './pages/Home';
 import Call from './pages/Call';
 import Test from './pages/Test';
 import Settings from './pages/Settings';
+import Dictionary from './pages/Dictionary';
 import IncomingCall from './components/IncomingCall';
 
 // ---------------------------------------------------------------------------
@@ -91,6 +92,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dictionary"
+          element={
+            <ProtectedRoute>
+              <Dictionary />
             </ProtectedRoute>
           }
         />

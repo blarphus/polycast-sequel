@@ -57,6 +57,25 @@ export async function migrate(pool) {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS target_language VARCHAR(10) DEFAULT NULL;
     `);
 
+    // Saved words table (personal dictionary)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS saved_words (
+        id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id          UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        word             VARCHAR(200) NOT NULL,
+        translation      TEXT NOT NULL DEFAULT '',
+        definition       TEXT NOT NULL DEFAULT '',
+        target_language  VARCHAR(10),
+        sentence_context TEXT,
+        created_at       TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, word, target_language)
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_saved_words_user_id ON saved_words (user_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {

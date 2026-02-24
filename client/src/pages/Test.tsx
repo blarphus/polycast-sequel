@@ -11,6 +11,7 @@ import { useMediaToggles } from '../hooks/useMediaToggles';
 import { TranscriptionService } from '../transcription';
 import SubtitleBar from '../components/SubtitleBar';
 import CallControls, { BackIcon } from '../components/CallControls';
+import { useSavedWords } from '../hooks/useSavedWords';
 
 export default function Test() {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export default function Test() {
 
   const { controlsHidden, showControls } = useAutoHideControls();
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(streamRef);
+  const { savedWordsSet, isWordSaved, addWord } = useSavedWords();
 
   const goBack = useCallback(() => {
     if (transcriptionRef.current) {
@@ -106,7 +108,7 @@ export default function Test() {
 
       <div className="test-label">Test Mode</div>
 
-      <SubtitleBar localText={localText} remoteText="" remoteLang="" nativeLang={user?.native_language || undefined} />
+      <SubtitleBar localText={localText} remoteText="" remoteLang="" nativeLang={user?.native_language || undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
 
       <CallControls
         isMuted={isMuted}
