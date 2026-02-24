@@ -30,7 +30,9 @@ export default function IncomingCall() {
 
   const handleAccept = useCallback(() => {
     if (!incoming) return;
-    socket.emit('call:accept', { callerId: incoming.callerId });
+    // Don't emit call:accept here — let the Call page emit it after
+    // the peer connection is created, so the offer doesn't arrive
+    // before the callee is ready to handle it.
     navigate(`/call/${incoming.callerId}?role=callee`);
     setIncoming(null);
   }, [incoming, navigate]);

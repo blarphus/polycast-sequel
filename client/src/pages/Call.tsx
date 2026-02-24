@@ -122,8 +122,9 @@ export default function Call() {
           // Wait for acceptance before sending offer
           // The offer is sent when we receive `call:accepted`
         } else {
-          // Callee: we already accepted via IncomingCall modal.
-          // Wait for the caller's offer to arrive via signal:offer
+          // Callee: PC is ready, now tell the caller we accepted.
+          // This ensures the offer won't arrive before we can handle it.
+          socket.emit('call:accept', { callerId: peerId });
           setCallStatus('Waiting for connection...');
         }
 

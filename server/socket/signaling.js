@@ -7,9 +7,10 @@ import { userToSocket } from './presence.js';
 export function handleSignaling(io, socket) {
   /**
    * Relay a WebRTC offer to the target user.
-   * Payload: { targetUserId, offer }
+   * Payload: { peerId, offer }
    */
   socket.on('signal:offer', ({ peerId, offer }) => {
+    console.log(`[signal] offer from ${socket.userId} to ${peerId}`);
     const targetSocketId = userToSocket.get(peerId);
 
     if (targetSocketId) {
@@ -17,6 +18,8 @@ export function handleSignaling(io, socket) {
         fromUserId: socket.userId,
         offer,
       });
+    } else {
+      console.log(`[signal] offer target ${peerId} not found in userToSocket`);
     }
   });
 
@@ -25,6 +28,7 @@ export function handleSignaling(io, socket) {
    * Payload: { peerId, answer }
    */
   socket.on('signal:answer', ({ peerId, answer }) => {
+    console.log(`[signal] answer from ${socket.userId} to ${peerId}`);
     const targetSocketId = userToSocket.get(peerId);
 
     if (targetSocketId) {
@@ -32,6 +36,8 @@ export function handleSignaling(io, socket) {
         fromUserId: socket.userId,
         answer,
       });
+    } else {
+      console.log(`[signal] answer target ${peerId} not found in userToSocket`);
     }
   });
 
