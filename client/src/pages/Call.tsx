@@ -149,7 +149,9 @@ export default function Call() {
     };
 
     const onTranscript = (data: { text: string; lang: string; userId: number }) => {
-      if (data.userId !== user?.id) {
+      if (data.userId === user?.id) {
+        setLocalText(data.text);
+      } else {
         setRemoteText(data.text);
         setRemoteLang(data.lang);
       }
@@ -219,18 +221,10 @@ export default function Call() {
           setCallStatus('Waiting for connection...');
         }
 
-        // 4. Start transcription
-        const ts = new TranscriptionService((payload) => {
-          setLocalText(payload.text);
-          socket.emit('transcript', {
-            text: payload.text,
-            lang: payload.lang,
-            userId: user?.id,
-            peerId,
-          });
-        });
+        // 4. Start transcription (Voxtral via server relay)
+        const ts = new TranscriptionService(peerId!);
         transcriptionRef.current = ts;
-        ts.start();
+        ts.start(stream);
       } catch (err) {
         console.error('[call] Setup error:', err);
         setCallStatus('Failed to access camera/microphone');

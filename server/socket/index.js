@@ -3,6 +3,7 @@ import { verifyToken } from '../auth.js';
 import { handleConnect, handleDisconnect, setupHeartbeat } from './presence.js';
 import { handleSignaling } from './signaling.js';
 import { handleCalls } from './calls.js';
+import { handleTranscription } from './transcription.js';
 import pool from '../db.js';
 import redisClient from '../redis.js';
 
@@ -90,6 +91,9 @@ export function setupSocket(server) {
 
     // Register call handlers
     handleCalls(io, socket, pool, redisClient);
+
+    // Register transcription handlers
+    handleTranscription(io, socket);
 
     // Handle disconnection
     socket.on('disconnect', () => {
