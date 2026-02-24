@@ -145,18 +145,3 @@ export function removeFriend(id: string) {
   return request<void>(`/friends/${id}`, { method: 'DELETE' });
 }
 
-// ---- Transcription -------------------------------------------------------
-
-export interface TranscribeResult {
-  text: string;
-  lang: string;
-}
-
-export function transcribe(audioBlob: Blob) {
-  const form = new FormData();
-  form.append('audio', audioBlob, 'recording.webm');
-  return request<TranscribeResult>('/transcribe', {
-    method: 'POST',
-    body: form,
-  });
-}

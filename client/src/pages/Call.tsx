@@ -149,6 +149,7 @@ export default function Call() {
     };
 
     const onTranscript = (data: { text: string; lang: string; userId: number }) => {
+      console.log('[call] transcript event:', data);
       if (data.userId === user?.id) {
         setLocalText(data.text);
       } else {

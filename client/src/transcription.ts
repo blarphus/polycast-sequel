@@ -1,5 +1,6 @@
 // ---------------------------------------------------------------------------
 // transcription.ts -- Voxtral realtime transcription via Socket.IO relay
+// NO FALLBACKS. Voxtral only. If it breaks, it breaks visibly.
 // ---------------------------------------------------------------------------
 
 import { socket } from './socket';
@@ -21,9 +22,11 @@ export class TranscriptionService {
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private processorNode: ScriptProcessorNode | null = null;
   private running = false;
+  private chunkCount = 0;
 
   constructor(peerId: string) {
     this.peerId = peerId;
+    console.log('[transcription] TranscriptionService created, peerId=', peerId);
   }
 
   /**
@@ -31,14 +34,24 @@ export class TranscriptionService {
    * captures raw PCM 16-bit 16 kHz mono, and sends chunks to the server.
    */
   start(stream: MediaStream): void {
-    if (this.running) return;
+    if (this.running) {
+      console.warn('[transcription] Already running, ignoring start()');
+      return;
+    }
     this.running = true;
+    this.chunkCount = 0;
+
+    console.log('[transcription] Starting Voxtral transcription for peerId=', this.peerId);
+    console.log('[transcription] Stream tracks:', stream.getTracks().map(t => `${t.kind}:${t.label}:${t.readyState}`));
 
     // Tell the server to open a Voxtral WebSocket
     socket.emit('transcription:start', { peerId: this.peerId });
+    console.log('[transcription] Emitted transcription:start');
 
     // Create AudioContext at 16 kHz for native PCM capture
     this.audioContext = new AudioContext({ sampleRate: 16000 });
+    console.log('[transcription] AudioContext created, sampleRate=', this.audioContext.sampleRate);
+
     this.sourceNode = this.audioContext.createMediaStreamSource(stream);
 
     // 4096 samples at 16 kHz ≈ 256 ms per chunk
@@ -46,8 +59,14 @@ export class TranscriptionService {
 
     this.processorNode.onaudioprocess = (e: AudioProcessingEvent) => {
       if (!this.running) return;
+      this.chunkCount++;
       const float32 = e.inputBuffer.getChannelData(0);
       const base64 = float32ToPcm16Base64(float32);
+
+      if (this.chunkCount <= 3 || this.chunkCount % 50 === 0) {
+        console.log(`[transcription] Sending audio chunk #${this.chunkCount}, base64 size=${base64.length}`);
+      }
+
       socket.emit('transcription:audio', base64);
     };
 
@@ -59,10 +78,13 @@ export class TranscriptionService {
     muteNode.gain.value = 0;
     this.processorNode.connect(muteNode);
     muteNode.connect(this.audioContext.destination);
+
+    console.log('[transcription] Audio pipeline connected, streaming to server');
   }
 
   /** Stop transcription and release audio resources. */
   stop(): void {
+    console.log(`[transcription] Stopping transcription (sent ${this.chunkCount} chunks)`);
     this.running = false;
     socket.emit('transcription:stop');
 
@@ -78,6 +100,7 @@ export class TranscriptionService {
       this.audioContext.close().catch(() => {});
       this.audioContext = null;
     }
+    console.log('[transcription] Stopped and cleaned up');
   }
 }
 
