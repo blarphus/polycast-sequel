@@ -15,6 +15,7 @@ import {
 } from '../webrtc';
 import { TranscriptionService } from '../transcription';
 import SubtitleBar from '../components/SubtitleBar';
+import CallControls, { PhoneOffIcon } from '../components/CallControls';
 
 export default function Call() {
   const { peerId } = useParams<{ peerId: string }>();
@@ -36,6 +37,8 @@ export default function Call() {
     role === 'caller' ? 'Connecting...' : 'Answering...',
   );
   const [callActive, setCallActive] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
 
   // ---- End call ----------------------------------------------------------
 
@@ -59,6 +62,24 @@ export default function Call() {
 
     navigate('/');
   }, [peerId, navigate]);
+
+  const toggleMute = useCallback(() => {
+    if (!localStreamRef.current) return;
+    const audioTrack = localStreamRef.current.getAudioTracks()[0];
+    if (audioTrack) {
+      audioTrack.enabled = !audioTrack.enabled;
+      setIsMuted(!audioTrack.enabled);
+    }
+  }, []);
+
+  const toggleCamera = useCallback(() => {
+    if (!localStreamRef.current) return;
+    const videoTrack = localStreamRef.current.getVideoTracks()[0];
+    if (videoTrack) {
+      videoTrack.enabled = !videoTrack.enabled;
+      setIsCameraOff(!videoTrack.enabled);
+    }
+  }, []);
 
   // ---- Setup call + socket handlers (single effect) ----------------------
 
@@ -293,11 +314,18 @@ export default function Call() {
       <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} />
 
       {/* Controls */}
-      <div className="call-controls">
-        <button className="btn btn-danger btn-end-call" onClick={endCall}>
-          End Call
-        </button>
-      </div>
+      <CallControls
+        isMuted={isMuted}
+        isCameraOff={isCameraOff}
+        onToggleMute={toggleMute}
+        onToggleCamera={toggleCamera}
+        primaryAction={{
+          label: 'End Call',
+          icon: <PhoneOffIcon />,
+          onClick: endCall,
+          variant: 'danger',
+        }}
+      />
     </div>
   );
 }

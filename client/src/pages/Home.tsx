@@ -86,6 +86,9 @@ export default function Home() {
         </div>
         <div className="home-header-right">
           <span className="home-greeting">Hello, {user?.display_name}</span>
+          <button className="btn btn-secondary" onClick={() => navigate('/test')}>
+            Test Camera
+          </button>
           <button className="btn btn-secondary" onClick={handleLogout}>
             Logout
           </button>

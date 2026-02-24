@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Home from './pages/Home';
 import Call from './pages/Call';
+import Test from './pages/Test';
 import IncomingCall from './components/IncomingCall';
 
 // ---------------------------------------------------------------------------
@@ -73,6 +74,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Call />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test"
+          element={
+            <ProtectedRoute>
+              <Test />
             </ProtectedRoute>
           }
         />

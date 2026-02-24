@@ -667,19 +667,114 @@ a:hover {
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
-/* Controls */
-.call-controls {
+/* Controls bar */
+.call-controls-bar {
   position: absolute;
   bottom: 5rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: rgba(30, 30, 50, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 999px;
 }
 
-.btn-end-call {
-  padding: 0.85rem 2.5rem;
-  font-size: 1rem;
+.call-control-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.call-control-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.call-control-btn:active {
+  transform: scale(0.93);
+}
+
+.call-control-btn.active {
+  color: var(--danger);
+}
+
+.call-control-btn--danger {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--danger);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.call-control-btn--danger:hover {
+  background: var(--danger-hover);
+}
+
+.call-control-btn--danger:active {
+  transform: scale(0.93);
+}
+
+.call-control-btn--secondary {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.call-control-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.call-control-btn--secondary:active {
+  transform: scale(0.93);
+}
+
+/* Test page */
+.test-self-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.test-label {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+  z-index: 10;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.8rem;
   border-radius: 999px;
+  background: rgba(30, 30, 50, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
 }
 
 /* ==========================================================================
@@ -881,5 +976,31 @@ a:hover {
 
   .auth-card {
     padding: 2rem 1.5rem;
+  }
+
+  .call-controls-bar {
+    gap: 0.65rem;
+    padding: 0.6rem 1rem;
+    bottom: 3rem;
+  }
+
+  .call-control-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .call-control-btn--danger {
+    width: 48px;
+    height: 48px;
+  }
+
+  .call-control-btn--secondary {
+    width: 40px;
+    height: 40px;
+  }
+
+  .test-label {
+    top: 0.75rem;
+    left: 0.75rem;
   }
 }
