@@ -5,7 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useSocket } from '../hooks/useSocket';
+import { socket } from '../socket';
 import { getCallHistory, CallRecord } from '../api';
 import UserSearch from '../components/UserSearch';
 import FriendRequests from '../components/FriendRequests';
@@ -13,12 +13,25 @@ import FriendsList, { FriendsListHandle } from '../components/FriendsList';
 
 export default function Home() {
   const { user, logout } = useAuth();
-  const { connected } = useSocket();
+  const [connected, setConnected] = useState(socket.connected);
   const navigate = useNavigate();
 
   const friendsRef = useRef<FriendsListHandle>(null);
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [callsLoading, setCallsLoading] = useState(true);
+
+  // Track socket connection state for the badge
+  useEffect(() => {
+    const onConnect = () => setConnected(true);
+    const onDisconnect = () => setConnected(false);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    setConnected(socket.connected);
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

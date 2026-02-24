@@ -5,6 +5,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { useSocket } from './hooks/useSocket';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Home from './pages/Home';
@@ -41,6 +42,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AuthenticatedShell() {
   const { user } = useAuth();
+  useSocket(); // Keep socket connected for ALL authenticated pages
   if (!user) return null;
   return <IncomingCall />;
 }
