@@ -10,7 +10,7 @@ import { useAutoHideControls } from '../hooks/useAutoHideControls';
 import { useMediaToggles } from '../hooks/useMediaToggles';
 import { TranscriptionService } from '../transcription';
 import SubtitleBar from '../components/SubtitleBar';
-import CallControls, { BackIcon } from '../components/CallControls';
+import CallControls, { PhoneOffIcon } from '../components/CallControls';
 import TranscriptPanel, { TranscriptEntry } from '../components/TranscriptPanel';
 import { useSavedWords } from '../hooks/useSavedWords';
 
@@ -125,10 +125,10 @@ export default function Test() {
           onToggleMute={toggleMute}
           onToggleCamera={toggleCamera}
           primaryAction={{
-            label: 'Back to Home',
-            icon: <BackIcon />,
+            label: 'End Test',
+            icon: <PhoneOffIcon />,
             onClick: goBack,
-            variant: 'secondary',
+            variant: 'danger',
           }}
         />
       </div>
