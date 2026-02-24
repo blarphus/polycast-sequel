@@ -45,7 +45,9 @@ export function useSocket() {
         clearInterval(heartbeatRef.current);
         heartbeatRef.current = null;
       }
-      disconnectSocket();
+      // Do NOT disconnect here -- the socket should stay alive as long as
+      // the user is authenticated.  disconnectSocket is called above when
+      // user becomes null (logout).
     };
   }, [user]);
 
