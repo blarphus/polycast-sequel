@@ -106,7 +106,7 @@ export default function Test() {
 
       <div className="test-label">Test Mode</div>
 
-      <SubtitleBar localText={localText} remoteText="" remoteLang="" />
+      <SubtitleBar localText={localText} remoteText="" remoteLang="" nativeLang={user?.native_language || undefined} />
 
       <CallControls
         isMuted={isMuted}

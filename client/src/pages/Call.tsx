@@ -273,7 +273,7 @@ export default function Call() {
       )}
 
       {/* Subtitle bar */}
-      <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} />
+      <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} nativeLang={user?.native_language || undefined} />
 
       {/* Controls */}
       <CallControls

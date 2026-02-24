@@ -89,6 +89,9 @@ export default function Home() {
           <button className="btn btn-secondary" onClick={() => navigate('/test')}>
             Test Camera
           </button>
+          <button className="btn btn-secondary" onClick={() => navigate('/settings')}>
+            Settings
+          </button>
           <button className="btn btn-secondary" onClick={handleLogout}>
             Logout
           </button>

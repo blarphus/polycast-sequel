@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// components/WordPopup.tsx -- Gemini-powered word explanation popup
+// components/WordPopup.tsx -- Gemini-powered word translation + definition popup
 // ---------------------------------------------------------------------------
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -8,24 +8,27 @@ import { lookupWord } from '../api';
 interface WordPopupProps {
   word: string;
   sentence: string;
+  nativeLang: string;
   targetLang?: string;
   anchorRect: DOMRect;
   onClose: () => void;
 }
 
-export default function WordPopup({ word, sentence, targetLang, anchorRect, onClose }: WordPopupProps) {
+export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose }: WordPopupProps) {
   const [loading, setLoading] = useState(true);
-  const [explanation, setExplanation] = useState('');
+  const [translation, setTranslation] = useState('');
+  const [definition, setDefinition] = useState('');
   const [error, setError] = useState('');
   const popupRef = useRef<HTMLDivElement>(null);
 
-  // Fetch explanation on mount
+  // Fetch on mount
   useEffect(() => {
     let cancelled = false;
-    lookupWord(word, sentence, targetLang)
+    lookupWord(word, sentence, nativeLang, targetLang)
       .then((res) => {
         if (!cancelled) {
-          setExplanation(res.explanation);
+          setTranslation(res.translation);
+          setDefinition(res.definition);
           setLoading(false);
         }
       })
@@ -36,7 +39,7 @@ export default function WordPopup({ word, sentence, targetLang, anchorRect, onCl
         }
       });
     return () => { cancelled = true; };
-  }, [word, sentence, targetLang]);
+  }, [word, sentence, nativeLang, targetLang]);
 
   // Click-outside to dismiss
   useEffect(() => {
@@ -85,7 +88,12 @@ export default function WordPopup({ word, sentence, targetLang, anchorRect, onCl
           </div>
         )}
         {!loading && error && <p className="word-popup-error">{error}</p>}
-        {!loading && !error && <p className="word-popup-text">{explanation}</p>}
+        {!loading && !error && (
+          <>
+            <p className="word-popup-translation">{translation}</p>
+            {definition && <p className="word-popup-definition">{definition}</p>}
+          </>
+        )}
       </div>
     </div>
   );

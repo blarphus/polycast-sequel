@@ -17,6 +17,8 @@ export interface AuthUser {
   id: number;
   username: string;
   display_name: string;
+  native_language: string | null;
+  target_language: string | null;
 }
 
 interface AuthContextValue {
@@ -25,6 +27,7 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>;
   signup: (username: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateSettings: (native_language: string | null, target_language: string | null) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -67,9 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateSettings = useCallback(async (native_language: string | null, target_language: string | null) => {
+    const u = await api.updateSettings(native_language, target_language);
+    setUser(u);
+  }, []);
+
   return createElement(
     AuthContext.Provider,
-    { value: { user, loading, login, signup, logout } },
+    { value: { user, loading, login, signup, logout, updateSettings } },
     children,
   );
 }

@@ -46,6 +46,8 @@ export interface AuthUser {
   id: number;
   username: string;
   display_name: string;
+  native_language: string | null;
+  target_language: string | null;
 }
 
 export function signup(username: string, password: string, displayName: string) {
@@ -68,6 +70,13 @@ export function logout() {
 
 export function getMe() {
   return request<AuthUser>('/me');
+}
+
+export function updateSettings(native_language: string | null, target_language: string | null) {
+  return request<AuthUser>('/me/settings', {
+    method: 'PATCH',
+    body: { native_language, target_language },
+  });
 }
 
 // ---- Users / Calls -------------------------------------------------------
@@ -149,11 +158,12 @@ export function removeFriend(id: string) {
 
 export interface WordLookup {
   word: string;
-  explanation: string;
+  translation: string;
+  definition: string;
 }
 
-export function lookupWord(word: string, sentence: string, targetLang?: string) {
-  const params = new URLSearchParams({ word, sentence });
+export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
+  const params = new URLSearchParams({ word, sentence, nativeLang });
   if (targetLang) params.set('targetLang', targetLang);
   return request<WordLookup>(`/dictionary/lookup?${params}`);
 }

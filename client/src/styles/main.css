@@ -199,6 +199,11 @@ a:hover {
   box-shadow: 0 0 0 3px var(--accent-light);
 }
 
+select.form-input {
+  appearance: auto;
+  cursor: pointer;
+}
+
 /* ---- Loading Screen ------------------------------------------------------ */
 
 .loading-screen {
@@ -278,6 +283,16 @@ a:hover {
   margin-top: 1.25rem;
   font-size: 0.9rem;
   color: var(--text-secondary);
+}
+
+.settings-success {
+  background: var(--success-dim);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  color: var(--success);
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
 }
 
 /* ==========================================================================
@@ -844,6 +859,18 @@ a:hover {
   font-size: 1.5rem;
 }
 
+.subtitle-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  overflow: hidden;
+}
+
+.subtitle-line {
+  text-align: center;
+}
+
 /* ---- Clickable Words ----------------------------------------------------- */
 
 .subtitle-word {
@@ -914,6 +941,19 @@ a:hover {
   font-size: 0.9rem;
   color: var(--text-primary);
   line-height: 1.5;
+}
+
+.word-popup-translation {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--accent);
+  margin-bottom: 0.3rem;
+}
+
+.word-popup-definition {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
 }
 
 .word-popup-error {

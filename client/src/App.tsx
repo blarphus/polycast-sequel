@@ -11,6 +11,7 @@ import Signup from './pages/Signup';
 import Home from './pages/Home';
 import Call from './pages/Call';
 import Test from './pages/Test';
+import Settings from './pages/Settings';
 import IncomingCall from './components/IncomingCall';
 
 // ---------------------------------------------------------------------------
@@ -82,6 +83,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Test />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           }
         />

@@ -49,6 +49,14 @@ export async function migrate(pool) {
       );
     `);
 
+    // Add language preference columns
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS native_language VARCHAR(10) DEFAULT NULL;
+    `);
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS target_language VARCHAR(10) DEFAULT NULL;
+    `);
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {
