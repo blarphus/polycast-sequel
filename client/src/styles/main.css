@@ -793,7 +793,7 @@ a:hover {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 1.25rem 2rem 2.5rem;
+  padding: 1.25rem 2rem 7rem;
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.92));
   z-index: 15;
   display: flex;
@@ -842,6 +842,83 @@ a:hover {
 
 .subtitle-local .subtitle-text {
   font-size: 1.5rem;
+}
+
+/* ---- Clickable Words ----------------------------------------------------- */
+
+.subtitle-word {
+  pointer-events: auto;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.15s ease;
+}
+
+.subtitle-word:hover {
+  background: rgba(108, 99, 255, 0.3);
+}
+
+/* ---- Word Popup ---------------------------------------------------------- */
+
+.word-popup {
+  position: fixed;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  animation: fadeIn 0.15s ease;
+}
+
+.word-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.word-popup-word {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.word-popup-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.3rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 0.2rem;
+}
+
+.word-popup-close:hover {
+  color: var(--text-primary);
+}
+
+.word-popup-body {
+  padding: 0.7rem 0.8rem;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.word-popup-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+
+.word-popup-text {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.word-popup-error {
+  font-size: 0.9rem;
+  color: var(--danger);
 }
 
 /* ==========================================================================
@@ -1009,6 +1086,10 @@ a:hover {
   .call-control-btn--secondary {
     width: 40px;
     height: 40px;
+  }
+
+  .subtitle-bar {
+    padding-bottom: 6rem;
   }
 
   .test-label {

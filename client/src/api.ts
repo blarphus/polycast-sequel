@@ -145,3 +145,16 @@ export function removeFriend(id: string) {
   return request<void>(`/friends/${id}`, { method: 'DELETE' });
 }
 
+// ---- Dictionary / Word Lookup ---------------------------------------------
+
+export interface WordLookup {
+  word: string;
+  explanation: string;
+}
+
+export function lookupWord(word: string, sentence: string, targetLang?: string) {
+  const params = new URLSearchParams({ word, sentence });
+  if (targetLang) params.set('targetLang', targetLang);
+  return request<WordLookup>(`/dictionary/lookup?${params}`);
+}
+
