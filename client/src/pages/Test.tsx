@@ -21,6 +21,21 @@ export default function Test() {
   const [localText, setLocalText] = useState('');
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
+  const [controlsHidden, setControlsHidden] = useState(false);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showControls = useCallback(() => {
+    setControlsHidden(false);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => setControlsHidden(true), 3000);
+  }, []);
+
+  useEffect(() => {
+    hideTimerRef.current = setTimeout(() => setControlsHidden(true), 3000);
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, []);
 
   const goBack = useCallback(() => {
     if (transcriptionRef.current) {
@@ -106,7 +121,11 @@ export default function Test() {
   }, []);
 
   return (
-    <div className="call-page">
+    <div
+      className={`call-page${controlsHidden ? ' controls-hidden' : ''}`}
+      onMouseMove={showControls}
+      onTouchStart={showControls}
+    >
       <video
         ref={videoRef}
         className="test-self-video"
