@@ -88,7 +88,7 @@ router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
       'SELECT * FROM saved_words WHERE user_id = $1 ORDER BY created_at DESC',
-      [req.user.id],
+      [req.userId],
     );
     return res.json(rows);
   } catch (err) {
@@ -113,7 +113,7 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (user_id, word, target_language) DO NOTHING
        RETURNING *`,
-      [req.user.id, word, translation || '', definition || '', target_language || null, sentence_context || null],
+      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null],
     );
 
     if (rows.length > 0) {
@@ -123,7 +123,7 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
     // Already existed — fetch and return it
     const existing = await pool.query(
       'SELECT * FROM saved_words WHERE user_id = $1 AND word = $2 AND target_language IS NOT DISTINCT FROM $3',
-      [req.user.id, word, target_language || null],
+      [req.userId, word, target_language || null],
     );
     return res.status(200).json(existing.rows[0]);
   } catch (err) {
@@ -139,7 +139,7 @@ router.delete('/api/dictionary/words/:id', authMiddleware, async (req, res) => {
   try {
     const { rowCount } = await pool.query(
       'DELETE FROM saved_words WHERE id = $1 AND user_id = $2',
-      [req.params.id, req.user.id],
+      [req.params.id, req.userId],
     );
 
     if (rowCount === 0) {
