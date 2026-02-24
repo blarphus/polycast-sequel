@@ -11,6 +11,7 @@ import { useMediaToggles } from '../hooks/useMediaToggles';
 import { TranscriptionService } from '../transcription';
 import SubtitleBar from '../components/SubtitleBar';
 import CallControls, { BackIcon } from '../components/CallControls';
+import TranscriptPanel, { TranscriptEntry } from '../components/TranscriptPanel';
 import { useSavedWords } from '../hooks/useSavedWords';
 
 export default function Test() {
@@ -22,6 +23,7 @@ export default function Test() {
   const transcriptionRef = useRef<TranscriptionService | null>(null);
 
   const [localText, setLocalText] = useState('');
+  const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
 
   const { controlsHidden, showControls } = useAutoHideControls();
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(streamRef);
@@ -48,7 +50,12 @@ export default function Test() {
       }
     };
 
+    const onTranscriptEntry = (data: { userId: string; displayName: string; text: string }) => {
+      setTranscriptEntries(prev => [...prev, data]);
+    };
+
     socket.on('transcript', onTranscript);
+    socket.on('transcript:entry', onTranscriptEntry);
 
     async function setup() {
       try {
@@ -79,6 +86,7 @@ export default function Test() {
     return () => {
       cleaned = true;
       socket.off('transcript', onTranscript);
+      socket.off('transcript:entry', onTranscriptEntry);
 
       if (transcriptionRef.current) {
         transcriptionRef.current.stop();
@@ -98,30 +106,34 @@ export default function Test() {
       onMouseMove={showControls}
       onTouchStart={showControls}
     >
-      <video
-        ref={videoRef}
-        className="test-self-video"
-        autoPlay
-        playsInline
-        muted
-      />
+      <div className="call-video-area">
+        <video
+          ref={videoRef}
+          className="test-self-video"
+          autoPlay
+          playsInline
+          muted
+        />
 
-      <div className="test-label">Test Mode</div>
+        <div className="test-label">Test Mode</div>
 
-      <SubtitleBar localText={localText} remoteText="" remoteLang="" nativeLang={user?.native_language || undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
+        <SubtitleBar localText={localText} remoteText="" remoteLang="" nativeLang={user?.native_language || undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
 
-      <CallControls
-        isMuted={isMuted}
-        isCameraOff={isCameraOff}
-        onToggleMute={toggleMute}
-        onToggleCamera={toggleCamera}
-        primaryAction={{
-          label: 'Back to Home',
-          icon: <BackIcon />,
-          onClick: goBack,
-          variant: 'secondary',
-        }}
-      />
+        <CallControls
+          isMuted={isMuted}
+          isCameraOff={isCameraOff}
+          onToggleMute={toggleMute}
+          onToggleCamera={toggleCamera}
+          primaryAction={{
+            label: 'Back to Home',
+            icon: <BackIcon />,
+            onClick: goBack,
+            variant: 'secondary',
+          }}
+        />
+      </div>
+
+      <TranscriptPanel entries={transcriptEntries} />
     </div>
   );
 }
