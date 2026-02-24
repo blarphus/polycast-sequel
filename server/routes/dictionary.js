@@ -25,11 +25,16 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
       throw new Error('GEMINI_API_KEY is not configured');
     }
 
-    const prompt = `Translate "${word}" from "${sentence}"${targetLang ? ` (${targetLang})` : ''} for a ${nativeLang} speaker.
-Reply EXACTLY: TRANSLATION // DEFINITION // PART_OF_SPEECH
-- TRANSLATION: word(s) in ${nativeLang}
-- DEFINITION: brief usage explanation in ${nativeLang}, 12 words max, no markdown
-- PART_OF_SPEECH: one of noun,verb,adjective,adverb,pronoun,preposition,conjunction,interjection,article,particle`;
+    const prompt = `A user learning ${targetLang || 'a language'} clicked "${word}" in: "${sentence}". Their native language is ${nativeLang}.
+
+Return a JSON object with exactly these keys:
+{"translation":"...","definition":"...","part_of_speech":"..."}
+
+- "translation": the word translated into ${nativeLang}, just the word(s)
+- "definition": brief usage explanation in ${nativeLang}, 12 words max, no markdown
+- "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
+
+Respond with ONLY the JSON object, no other text.`;
 
     const response = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
@@ -44,6 +49,7 @@ Reply EXACTLY: TRANSLATION // DEFINITION // PART_OF_SPEECH
           generationConfig: {
             thinkingConfig: { thinkingBudget: 0 },
             maxOutputTokens: 128,
+            responseMimeType: 'application/json',
           },
         }),
       },
@@ -57,13 +63,12 @@ Reply EXACTLY: TRANSLATION // DEFINITION // PART_OF_SPEECH
 
     const data = await response.json();
     const raw =
-      data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
 
-    // Parse: split on "//" into 3 fields (popup only)
-    const parts = raw.split('//').map((s) => s.trim());
-    const translation = parts[0] || '';
-    const definition = parts[1] || '';
-    const part_of_speech = parts[2] || null;
+    const parsed = JSON.parse(raw);
+    const translation = parsed.translation || '';
+    const definition = parsed.definition || '';
+    const part_of_speech = parsed.part_of_speech || null;
 
     return res.json({ word, translation, definition, part_of_speech });
   } catch (err) {
