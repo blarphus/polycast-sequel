@@ -81,6 +81,23 @@ export async function migrate(pool) {
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS example_sentence TEXT DEFAULT NULL;`);
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS part_of_speech VARCHAR(50) DEFAULT NULL;`);
 
+    // Transcript entries table (stores completed sentences from calls)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS transcript_entries (
+        id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        call_id    UUID REFERENCES calls(id) ON DELETE CASCADE,
+        user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+        text       TEXT NOT NULL,
+        language   VARCHAR(10),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_transcript_entries_call_id
+        ON transcript_entries (call_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {

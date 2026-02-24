@@ -9,13 +9,17 @@ const VOXTRAL_URL =
  * Maintains a Voxtral WebSocket per active transcription session and relays
  * accumulated text back to the originating client AND to their call peer.
  */
-export function handleTranscription(io, socket) {
+export function handleTranscription(io, socket, pool) {
   let voxtralWs = null;
   let peerId = null;
   let transcriptBuffer = '';
   let detectedLang = 'en';
   let clearTimer = null;
   let audioChunkCount = 0;
+
+  // Cached speaker info (populated on transcription:start)
+  let speakerName = '';
+  let callId = null;
 
   function emitTranscript(text) {
     const transcriptData = {
@@ -42,6 +46,39 @@ export function handleTranscription(io, socket) {
     }, 4000);
   }
 
+  /**
+   * Emit a completed sentence to both users and persist to DB.
+   */
+  function emitTranscriptEntry(text) {
+    if (!text || !text.trim()) return;
+
+    const entry = {
+      userId: socket.userId,
+      displayName: speakerName,
+      text: text.trim(),
+      lang: detectedLang,
+    };
+
+    // Emit to speaker
+    socket.emit('transcript:entry', entry);
+
+    // Emit to peer
+    const peerSocketId = userToSocket.get(peerId);
+    if (peerSocketId) {
+      io.to(peerSocketId).emit('transcript:entry', entry);
+    }
+
+    // Persist to DB (fire and forget)
+    if (callId) {
+      pool.query(
+        `INSERT INTO transcript_entries (call_id, user_id, text, language) VALUES ($1, $2, $3, $4)`,
+        [callId, socket.userId, text.trim(), detectedLang],
+      ).catch((err) => {
+        console.error(`[transcription] Failed to save transcript entry:`, err.message);
+      });
+    }
+  }
+
   function cleanup() {
     if (clearTimer) {
       clearTimeout(clearTimer);
@@ -58,13 +95,15 @@ export function handleTranscription(io, socket) {
     peerId = null;
     transcriptBuffer = '';
     audioChunkCount = 0;
+    speakerName = '';
+    callId = null;
   }
 
   /**
    * transcription:start — open a Voxtral WebSocket session.
    * Payload: { peerId }
    */
-  socket.on('transcription:start', (data) => {
+  socket.on('transcription:start', async (data) => {
     console.log(`[transcription] transcription:start from user ${socket.userId}, peerId=${data.peerId}`);
 
     // Close any existing session first
@@ -80,6 +119,30 @@ export function handleTranscription(io, socket) {
     }
 
     peerId = data.peerId;
+
+    // Cache speaker info from DB
+    try {
+      const userResult = await pool.query(
+        'SELECT display_name, username FROM users WHERE id = $1',
+        [socket.userId],
+      );
+      const row = userResult.rows[0];
+      speakerName = row?.display_name || row?.username || 'Unknown';
+
+      // Find the active call between this user and the peer
+      const callResult = await pool.query(
+        `SELECT id FROM calls
+         WHERE status = 'active'
+           AND ((caller_id = $1 AND callee_id = $2) OR (caller_id = $2 AND callee_id = $1))
+         ORDER BY started_at DESC LIMIT 1`,
+        [socket.userId, peerId],
+      );
+      callId = callResult.rows[0]?.id || null;
+      console.log(`[transcription] Speaker: ${speakerName}, callId: ${callId}`);
+    } catch (err) {
+      console.error(`[transcription] Failed to fetch speaker info:`, err.message);
+    }
+
     console.log(`[transcription] Opening Voxtral WebSocket for user ${socket.userId}...`);
 
     voxtralWs = new WebSocket(VOXTRAL_URL, {
@@ -121,11 +184,13 @@ export function handleTranscription(io, socket) {
             console.log(`[transcription] Language detected for user ${socket.userId}: ${detectedLang}`);
           }
         } else if (msg.type === 'transcription.segment') {
-          // Segment boundary — clear buffer for next sentence
-          console.log(`[transcription] Segment boundary for user ${socket.userId}, clearing buffer`);
+          // Segment boundary — emit completed sentence, then clear buffer
+          console.log(`[transcription] Segment boundary for user ${socket.userId}, saving entry`);
+          emitTranscriptEntry(transcriptBuffer);
           transcriptBuffer = '';
         } else if (msg.type === 'transcription.done') {
           console.log(`[transcription] Transcription done for user ${socket.userId}`);
+          emitTranscriptEntry(transcriptBuffer);
           transcriptBuffer = '';
         } else if (msg.type === 'error') {
           console.error(`[transcription] Voxtral error for user ${socket.userId}:`, JSON.stringify(msg));

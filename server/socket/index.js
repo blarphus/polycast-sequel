@@ -76,7 +76,7 @@ export function setupSocket(server) {
     handleCalls(io, socket, pool, redisClient);
 
     // Register transcription handlers
-    handleTranscription(io, socket);
+    handleTranscription(io, socket, pool);
 
     // Handle disconnection
     socket.on('disconnect', () => {

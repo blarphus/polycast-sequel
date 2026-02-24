@@ -18,6 +18,7 @@ import {
 import { TranscriptionService } from '../transcription';
 import SubtitleBar from '../components/SubtitleBar';
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
+import TranscriptPanel, { TranscriptEntry } from '../components/TranscriptPanel';
 import { useSavedWords } from '../hooks/useSavedWords';
 
 export default function Call() {
@@ -40,6 +41,7 @@ export default function Call() {
     role === 'caller' ? 'Connecting...' : 'Answering...',
   );
   const [callActive, setCallActive] = useState(false);
+  const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
 
   const { controlsHidden, showControls } = useAutoHideControls();
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(localStreamRef);
@@ -150,6 +152,10 @@ export default function Call() {
       }
     };
 
+    const onTranscriptEntry = (data: { userId: string; displayName: string; text: string }) => {
+      setTranscriptEntries(prev => [...prev, data]);
+    };
+
     socket.on('call:accepted', onCallAccepted);
     socket.on('signal:offer', onSignalOffer);
     socket.on('signal:answer', onSignalAnswer);
@@ -157,6 +163,7 @@ export default function Call() {
     socket.on('call:ended', onCallEnded);
     socket.on('call:rejected', onCallRejected);
     socket.on('transcript', onTranscript);
+    socket.on('transcript:entry', onTranscriptEntry);
 
     // --- Async setup (media + peer connection) ---
 
@@ -236,6 +243,7 @@ export default function Call() {
       socket.off('call:ended', onCallEnded);
       socket.off('call:rejected', onCallRejected);
       socket.off('transcript', onTranscript);
+      socket.off('transcript:entry', onTranscriptEntry);
 
       cleanup();
     };
@@ -250,46 +258,50 @@ export default function Call() {
       onMouseMove={showControls}
       onTouchStart={showControls}
     >
-      {/* Remote (large) video */}
-      <video
-        ref={remoteVideoRef}
-        className="call-remote-video"
-        autoPlay
-        playsInline
-      />
+      <div className="call-video-area">
+        {/* Remote (large) video */}
+        <video
+          ref={remoteVideoRef}
+          className="call-remote-video"
+          autoPlay
+          playsInline
+        />
 
-      {/* Local (small) video overlay */}
-      <video
-        ref={localVideoRef}
-        className="call-local-video"
-        autoPlay
-        playsInline
-        muted
-      />
+        {/* Local (small) video overlay */}
+        <video
+          ref={localVideoRef}
+          className="call-local-video"
+          autoPlay
+          playsInline
+          muted
+        />
 
-      {/* Status overlay */}
-      {callStatus && (
-        <div className="call-status-overlay">
-          <p className="call-status-text">{callStatus}</p>
-        </div>
-      )}
+        {/* Status overlay */}
+        {callStatus && (
+          <div className="call-status-overlay">
+            <p className="call-status-text">{callStatus}</p>
+          </div>
+        )}
 
-      {/* Subtitle bar */}
-      <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} nativeLang={user?.native_language || undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
+        {/* Subtitle bar */}
+        <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} nativeLang={user?.native_language || undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
 
-      {/* Controls */}
-      <CallControls
-        isMuted={isMuted}
-        isCameraOff={isCameraOff}
-        onToggleMute={toggleMute}
-        onToggleCamera={toggleCamera}
-        primaryAction={{
-          label: 'End Call',
-          icon: <PhoneOffIcon />,
-          onClick: endCall,
-          variant: 'danger',
-        }}
-      />
+        {/* Controls */}
+        <CallControls
+          isMuted={isMuted}
+          isCameraOff={isCameraOff}
+          onToggleMute={toggleMute}
+          onToggleCamera={toggleCamera}
+          primaryAction={{
+            label: 'End Call',
+            icon: <PhoneOffIcon />,
+            onClick: endCall,
+            variant: 'danger',
+          }}
+        />
+      </div>
+
+      <TranscriptPanel entries={transcriptEntries} />
     </div>
   );
 }
