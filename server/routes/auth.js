@@ -111,11 +111,7 @@ router.post('/api/login', async (req, res) => {
  * Clear the token cookie.
  */
 router.post('/api/logout', (_req, res) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-  });
+  res.clearCookie('token', COOKIE_OPTIONS);
 
   return res.json({ message: 'Logged out' });
 });

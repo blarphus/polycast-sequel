@@ -6,6 +6,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import { useAuth } from '../hooks/useAuth';
+import { useAutoHideControls } from '../hooks/useAutoHideControls';
+import { useMediaToggles } from '../hooks/useMediaToggles';
 import { TranscriptionService } from '../transcription';
 import SubtitleBar from '../components/SubtitleBar';
 import CallControls, { BackIcon } from '../components/CallControls';
@@ -19,23 +21,9 @@ export default function Test() {
   const transcriptionRef = useRef<TranscriptionService | null>(null);
 
   const [localText, setLocalText] = useState('');
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOff, setIsCameraOff] = useState(false);
-  const [controlsHidden, setControlsHidden] = useState(false);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showControls = useCallback(() => {
-    setControlsHidden(false);
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => setControlsHidden(true), 3000);
-  }, []);
-
-  useEffect(() => {
-    hideTimerRef.current = setTimeout(() => setControlsHidden(true), 3000);
-    return () => {
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    };
-  }, []);
+  const { controlsHidden, showControls } = useAutoHideControls();
+  const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(streamRef);
 
   const goBack = useCallback(() => {
     if (transcriptionRef.current) {
@@ -48,24 +36,6 @@ export default function Test() {
     }
     navigate('/');
   }, [navigate]);
-
-  const toggleMute = useCallback(() => {
-    if (!streamRef.current) return;
-    const audioTrack = streamRef.current.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled;
-      setIsMuted(!audioTrack.enabled);
-    }
-  }, []);
-
-  const toggleCamera = useCallback(() => {
-    if (!streamRef.current) return;
-    const videoTrack = streamRef.current.getVideoTracks()[0];
-    if (videoTrack) {
-      videoTrack.enabled = !videoTrack.enabled;
-      setIsCameraOff(!videoTrack.enabled);
-    }
-  }, []);
 
   useEffect(() => {
     let cleaned = false;

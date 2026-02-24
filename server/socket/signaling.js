@@ -6,53 +6,27 @@ import { userToSocket } from './presence.js';
  */
 export function handleSignaling(io, socket) {
   /**
-   * Relay a WebRTC offer to the target user.
-   * Payload: { peerId, offer }
+   * Look up the target user's socket and relay an event to them.
    */
+  function relay(eventName, peerId, payload, log) {
+    if (log) console.log(`[signal] ${log}`);
+    const targetSocketId = userToSocket.get(peerId);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit(eventName, { fromUserId: socket.userId, ...payload });
+    } else if (log) {
+      console.log(`[signal] ${eventName} target ${peerId} not found in userToSocket`);
+    }
+  }
+
   socket.on('signal:offer', ({ peerId, offer }) => {
-    console.log(`[signal] offer from ${socket.userId} to ${peerId}`);
-    const targetSocketId = userToSocket.get(peerId);
-
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('signal:offer', {
-        fromUserId: socket.userId,
-        offer,
-      });
-    } else {
-      console.log(`[signal] offer target ${peerId} not found in userToSocket`);
-    }
+    relay('signal:offer', peerId, { offer }, `offer from ${socket.userId} to ${peerId}`);
   });
 
-  /**
-   * Relay a WebRTC answer to the target user.
-   * Payload: { peerId, answer }
-   */
   socket.on('signal:answer', ({ peerId, answer }) => {
-    console.log(`[signal] answer from ${socket.userId} to ${peerId}`);
-    const targetSocketId = userToSocket.get(peerId);
-
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('signal:answer', {
-        fromUserId: socket.userId,
-        answer,
-      });
-    } else {
-      console.log(`[signal] answer target ${peerId} not found in userToSocket`);
-    }
+    relay('signal:answer', peerId, { answer }, `answer from ${socket.userId} to ${peerId}`);
   });
 
-  /**
-   * Relay an ICE candidate to the target user.
-   * Payload: { peerId, candidate }
-   */
   socket.on('signal:ice-candidate', ({ peerId, candidate }) => {
-    const targetSocketId = userToSocket.get(peerId);
-
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('signal:ice-candidate', {
-        fromUserId: socket.userId,
-        candidate,
-      });
-    }
+    relay('signal:ice-candidate', peerId, { candidate });
   });
 }

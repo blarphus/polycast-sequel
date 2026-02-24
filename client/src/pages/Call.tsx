@@ -6,6 +6,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import { useAuth } from '../hooks/useAuth';
+import { useAutoHideControls } from '../hooks/useAutoHideControls';
+import { useMediaToggles } from '../hooks/useMediaToggles';
 import {
   createPeerConnection,
   createOffer,
@@ -37,32 +39,14 @@ export default function Call() {
     role === 'caller' ? 'Connecting...' : 'Answering...',
   );
   const [callActive, setCallActive] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCameraOff, setIsCameraOff] = useState(false);
-  const [controlsHidden, setControlsHidden] = useState(false);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showControls = useCallback(() => {
-    setControlsHidden(false);
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = setTimeout(() => setControlsHidden(true), 3000);
-  }, []);
+  const { controlsHidden, showControls } = useAutoHideControls();
+  const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(localStreamRef);
 
-  useEffect(() => {
-    hideTimerRef.current = setTimeout(() => setControlsHidden(true), 3000);
-    return () => {
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    };
-  }, []);
+  // ---- Shared cleanup helper ---------------------------------------------
 
-  // ---- End call ----------------------------------------------------------
-
-  const endCall = useCallback(() => {
-    // Notify peer
-    socket.emit('call:end', { peerId });
-
-    // Cleanup
-    if (transcriptionRef.current) {
+  const cleanup = useCallback(({ skipTranscription = false } = {}) => {
+    if (!skipTranscription && transcriptionRef.current) {
       transcriptionRef.current.stop();
       transcriptionRef.current = null;
     }
@@ -74,27 +58,15 @@ export default function Call() {
       localStreamRef.current.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
     }
+  }, []);
 
+  // ---- End call ----------------------------------------------------------
+
+  const endCall = useCallback(() => {
+    socket.emit('call:end', { peerId });
+    cleanup();
     navigate('/');
-  }, [peerId, navigate]);
-
-  const toggleMute = useCallback(() => {
-    if (!localStreamRef.current) return;
-    const audioTrack = localStreamRef.current.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled;
-      setIsMuted(!audioTrack.enabled);
-    }
-  }, []);
-
-  const toggleCamera = useCallback(() => {
-    if (!localStreamRef.current) return;
-    const videoTrack = localStreamRef.current.getVideoTracks()[0];
-    if (videoTrack) {
-      videoTrack.enabled = !videoTrack.enabled;
-      setIsCameraOff(!videoTrack.enabled);
-    }
-  }, []);
+  }, [peerId, navigate, cleanup]);
 
   // ---- Setup call + socket handlers (single effect) ----------------------
 
@@ -156,31 +128,13 @@ export default function Call() {
 
     const onCallEnded = () => {
       setCallStatus('Call ended');
-      if (transcriptionRef.current) {
-        transcriptionRef.current.stop();
-        transcriptionRef.current = null;
-      }
-      if (pcRef.current) {
-        closePeerConnection(pcRef.current);
-        pcRef.current = null;
-      }
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((t) => t.stop());
-        localStreamRef.current = null;
-      }
+      cleanup();
       setTimeout(() => navigate('/'), 1500);
     };
 
     const onCallRejected = () => {
       setCallStatus('Call rejected');
-      if (pcRef.current) {
-        closePeerConnection(pcRef.current);
-        pcRef.current = null;
-      }
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((t) => t.stop());
-        localStreamRef.current = null;
-      }
+      cleanup({ skipTranscription: true });
       setTimeout(() => navigate('/'), 1500);
     };
 
@@ -281,18 +235,7 @@ export default function Call() {
       socket.off('call:rejected', onCallRejected);
       socket.off('transcript', onTranscript);
 
-      if (transcriptionRef.current) {
-        transcriptionRef.current.stop();
-        transcriptionRef.current = null;
-      }
-      if (pcRef.current) {
-        closePeerConnection(pcRef.current);
-        pcRef.current = null;
-      }
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((t) => t.stop());
-        localStreamRef.current = null;
-      }
+      cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [peerId, role]);

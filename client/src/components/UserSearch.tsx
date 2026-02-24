@@ -119,18 +119,10 @@ export default function UserSearch() {
     const uid = String(u.id);
     const status = friendMap[uid];
 
-    if (status === 'friend') {
+    if (status === 'friend' || status === 'pending_sent' || status === 'pending_received') {
       return (
         <span className="btn btn-sm btn-secondary" style={{ opacity: 0.6, cursor: 'default' }}>
-          Friends
-        </span>
-      );
-    }
-
-    if (status === 'pending_sent' || status === 'pending_received') {
-      return (
-        <span className="btn btn-sm btn-secondary" style={{ opacity: 0.6, cursor: 'default' }}>
-          Pending
+          {status === 'friend' ? 'Friends' : 'Pending'}
         </span>
       );
     }

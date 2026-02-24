@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import cookie from 'cookie';
 import { verifyToken } from '../auth.js';
 import { handleConnect, handleDisconnect, setupHeartbeat } from './presence.js';
 import { handleSignaling } from './signaling.js';
@@ -14,24 +15,6 @@ let ioInstance = null;
  */
 export function getIO() {
   return ioInstance;
-}
-
-/**
- * Parse a raw Cookie header string and return an object of key-value pairs.
- */
-function parseCookies(cookieHeader) {
-  const cookies = {};
-
-  if (!cookieHeader) return cookies;
-
-  cookieHeader.split(';').forEach((pair) => {
-    const [name, ...rest] = pair.trim().split('=');
-    if (name) {
-      cookies[name.trim()] = decodeURIComponent(rest.join('=').trim());
-    }
-  });
-
-  return cookies;
 }
 
 /**
@@ -55,7 +38,7 @@ export function setupSocket(server) {
   io.use((socket, next) => {
     try {
       const cookieHeader = socket.handshake.headers.cookie;
-      const cookies = parseCookies(cookieHeader);
+      const cookies = cookie.parse(cookieHeader || '');
       const token = cookies.token;
 
       if (!token) {
