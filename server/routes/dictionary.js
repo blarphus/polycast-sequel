@@ -25,7 +25,7 @@ ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 Provide a concise definition or translation (if non-English) and explain how the word is used in this sentence. 2-3 sentences max. No markdown.`;
 
     const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
       {
         method: 'POST',
         headers: {
