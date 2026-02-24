@@ -19,6 +19,9 @@ interface WordPopupProps {
     definition: string;
     target_language?: string;
     sentence_context?: string;
+    frequency?: number | null;
+    example_sentence?: string | null;
+    part_of_speech?: string | null;
   }) => void;
 }
 
@@ -26,6 +29,9 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [loading, setLoading] = useState(true);
   const [translation, setTranslation] = useState('');
   const [definition, setDefinition] = useState('');
+  const [partOfSpeech, setPartOfSpeech] = useState<string | null>(null);
+  const [frequency, setFrequency] = useState<number | null>(null);
+  const [exampleSentence, setExampleSentence] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(initialSaved ?? false);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -38,6 +44,9 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
         if (!cancelled) {
           setTranslation(res.translation);
           setDefinition(res.definition);
+          setPartOfSpeech(res.part_of_speech);
+          setFrequency(res.frequency);
+          setExampleSentence(res.example_sentence);
           setLoading(false);
         }
       })
@@ -100,6 +109,9 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                   definition,
                   target_language: targetLang,
                   sentence_context: sentence,
+                  frequency,
+                  example_sentence: exampleSentence,
+                  part_of_speech: partOfSpeech,
                 });
                 setSaved(true);
               }}
@@ -120,6 +132,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
         {!loading && !error && (
           <>
             <p className="word-popup-translation">{translation}</p>
+            {partOfSpeech && <span className="word-popup-pos">{partOfSpeech}</span>}
             {definition && <p className="word-popup-definition">{definition}</p>}
           </>
         )}

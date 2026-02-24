@@ -18,6 +18,9 @@ interface SubtitleBarProps {
     definition: string;
     target_language?: string;
     sentence_context?: string;
+    frequency?: number | null;
+    example_sentence?: string | null;
+    part_of_speech?: string | null;
   }) => void;
 }
 

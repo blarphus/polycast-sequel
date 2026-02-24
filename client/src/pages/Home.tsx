@@ -10,6 +10,7 @@ import { getCallHistory, CallRecord } from '../api';
 import UserSearch from '../components/UserSearch';
 import FriendRequests from '../components/FriendRequests';
 import FriendsList, { FriendsListHandle } from '../components/FriendsList';
+import BottomToolbar from '../components/BottomToolbar';
 
 export default function Home() {
   const { user, logout } = useAuth();
@@ -92,9 +93,6 @@ export default function Home() {
           <button className="btn btn-secondary" onClick={() => navigate('/settings')}>
             Settings
           </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/dictionary')}>
-            Dictionary
-          </button>
           <button className="btn btn-secondary" onClick={handleLogout}>
             Logout
           </button>
@@ -160,6 +158,8 @@ export default function Home() {
           )}
         </section>
       </main>
+
+      <BottomToolbar />
     </div>
   );
 }

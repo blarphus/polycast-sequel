@@ -76,6 +76,11 @@ export async function migrate(pool) {
       CREATE INDEX IF NOT EXISTS idx_saved_words_user_id ON saved_words (user_id);
     `);
 
+    // Add enrichment columns to saved_words
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS frequency INTEGER DEFAULT NULL;`);
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS example_sentence TEXT DEFAULT NULL;`);
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS part_of_speech VARCHAR(50) DEFAULT NULL;`);
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {

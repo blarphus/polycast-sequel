@@ -361,6 +361,7 @@ select.form-input {
 .home-main {
   flex: 1;
   padding: 1.5rem;
+  padding-bottom: 100px;
   max-width: 720px;
   width: 100%;
   margin: 0 auto;
@@ -1104,57 +1105,259 @@ select.form-input {
 }
 
 /* ==========================================================================
-   Dictionary Page
+   Bottom Toolbar
    ========================================================================== */
 
-.dictionary-list {
+.bottom-toolbar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  width: clamp(280px, 40vw, 420px);
+  background: rgba(24, 25, 38, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.toolbar-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.65rem 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 25px;
+  transition: background var(--transition), color var(--transition);
+}
+
+.toolbar-tab:hover {
+  color: var(--text-secondary);
+}
+
+.toolbar-tab--red.active {
+  background: rgba(255, 77, 77, 0.15);
+  color: #ff4d4d;
+}
+
+.toolbar-tab--purple.active {
+  background: rgba(108, 99, 255, 0.15);
+  color: #6c63ff;
+}
+
+.toolbar-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
+   Dictionary Page (new .dict-* classes)
+   ========================================================================== */
+
+.dict-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.dict-search {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.dict-sort {
+  width: auto;
+  min-width: 160px;
+  margin-bottom: 0;
+}
+
+.dict-count {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.35rem 0.75rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.dict-list {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.dictionary-item {
-  padding: 0.85rem 1rem;
+.dict-item {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color var(--transition);
+}
+
+.dict-item.open {
+  border-color: var(--border-light);
+}
+
+.dict-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 1rem;
+  cursor: pointer;
+  text-align: left;
   transition: background var(--transition);
 }
 
-.dictionary-item:hover {
+.dict-item-header:hover {
   background: var(--bg-surface-hover);
 }
 
-.dictionary-item-main {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  margin-bottom: 0.3rem;
-}
-
-.dictionary-word {
+.dict-word {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: var(--accent);
 }
 
-.dictionary-translation {
+.dict-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: var(--text-muted);
+}
+
+.dict-item.open .dict-chevron {
+  transform: rotate(180deg);
+}
+
+.freq-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.freq-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dict-item-body {
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.dict-pos-badge {
+  display: inline-block;
+  width: fit-content;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.dict-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.dict-field-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.dict-field-value {
   font-size: 0.95rem;
   color: var(--text-primary);
-}
-
-.dictionary-definition {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
   line-height: 1.4;
-  margin-bottom: 0.4rem;
 }
 
-.dictionary-item-meta {
-  display: flex;
+.dict-example {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.dict-highlight {
+  color: #ffde59;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.dict-remove-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 0.4rem;
+  gap: 0.4rem;
+  width: fit-content;
+  padding: 0.35rem 0.75rem;
+  margin-top: 0.25rem;
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.dict-remove-btn:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.dict-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+/* Word Popup POS badge */
+.word-popup-pos {
+  display: inline-block;
+  width: fit-content;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+  margin-bottom: 0.3rem;
 }
 
 /* ==========================================================================
@@ -1175,6 +1378,7 @@ select.form-input {
 
   .home-main {
     padding: 1rem;
+    padding-bottom: 100px;
   }
 
   .call-local-video {
@@ -1193,11 +1397,6 @@ select.form-input {
   .call-history-meta {
     flex-wrap: wrap;
     gap: 0.5rem;
-  }
-
-  .dictionary-item-main {
-    flex-direction: column;
-    gap: 0.25rem;
   }
 
   .incoming-call-modal {
@@ -1237,5 +1436,22 @@ select.form-input {
   .test-label {
     top: 0.75rem;
     left: 0.75rem;
+  }
+
+  /* Bottom toolbar responsive */
+  .bottom-toolbar {
+    width: calc(100% - 2rem);
+    bottom: 12px;
+  }
+
+  /* Dictionary controls responsive */
+  .dict-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dict-sort {
+    min-width: unset;
+    width: 100%;
   }
 }

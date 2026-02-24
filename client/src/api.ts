@@ -160,6 +160,9 @@ export interface WordLookup {
   word: string;
   translation: string;
   definition: string;
+  part_of_speech: string | null;
+  frequency: number | null;
+  example_sentence: string | null;
 }
 
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
@@ -178,6 +181,9 @@ export interface SavedWord {
   target_language: string | null;
   sentence_context: string | null;
   created_at: string;
+  frequency: number | null;
+  example_sentence: string | null;
+  part_of_speech: string | null;
 }
 
 export function getSavedWords() {
@@ -190,6 +196,9 @@ export function saveWord(data: {
   definition: string;
   target_language?: string;
   sentence_context?: string;
+  frequency?: number | null;
+  example_sentence?: string | null;
+  part_of_speech?: string | null;
 }) {
   return request<SavedWord>('/dictionary/words', { method: 'POST', body: data });
 }

@@ -29,11 +29,19 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
 ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 The user's native language is ${nativeLang}.
 
-Respond in EXACTLY this format (two parts separated by //):
-TRANSLATION // DEFINITION
+Respond in EXACTLY this format (five parts separated by " // "):
+TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
 
 - TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
-- DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.`;
+- DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.
+- PART_OF_SPEECH: One of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle. Lowercase English.
+- FREQUENCY: An integer 1-10 rating how common this word is for a language learner:
+  1-2: Rare/specialized words most learners won't encounter
+  3-4: Uncommon words that appear in specific contexts
+  5-6: Moderately common words useful for intermediate learners
+  7-8: Common everyday words important for conversation
+  9-10: Essential high-frequency words (top 500 most used)
+- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.`;
 
     const response = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
@@ -59,18 +67,15 @@ TRANSLATION // DEFINITION
     const raw =
       data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // Parse: split on first "//"
-    const sepIndex = raw.indexOf('//');
-    let translation, definition;
-    if (sepIndex !== -1) {
-      translation = raw.slice(0, sepIndex).trim();
-      definition = raw.slice(sepIndex + 2).trim();
-    } else {
-      translation = raw.trim();
-      definition = '';
-    }
+    // Parse: split on "//" into up to 5 fields
+    const parts = raw.split('//').map((s) => s.trim());
+    const translation = parts[0] || '';
+    const definition = parts[1] || '';
+    const part_of_speech = parts[2] || null;
+    const frequency = parts[3] ? parseInt(parts[3], 10) || null : null;
+    const example_sentence = parts[4] || null;
 
-    return res.json({ word, translation, definition });
+    return res.json({ word, translation, definition, part_of_speech, frequency, example_sentence });
   } catch (err) {
     console.error('Dictionary lookup error:', err);
     return res.status(500).json({ error: err.message || 'Lookup failed' });
@@ -101,7 +106,7 @@ router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
  * POST /api/dictionary/words -- Save a word to the personal dictionary
  */
 router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
-  const { word, translation, definition, target_language, sentence_context } = req.body;
+  const { word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech } = req.body;
 
   if (!word) {
     return res.status(400).json({ error: 'word is required' });
@@ -109,11 +114,11 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (user_id, word, target_language) DO NOTHING
        RETURNING *`,
-      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null],
+      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null],
     );
 
     if (rows.length > 0) {
