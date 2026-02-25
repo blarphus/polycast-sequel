@@ -43,7 +43,7 @@ async function request<T>(path: string, opts: ApiOptions = {}): Promise<T> {
 // ---- Auth ----------------------------------------------------------------
 
 export interface AuthUser {
-  id: number;
+  id: string;
   username: string;
   display_name: string;
   native_language: string | null;
@@ -82,7 +82,7 @@ export function updateSettings(native_language: string | null, target_language: 
 // ---- Users / Calls -------------------------------------------------------
 
 export interface UserResult {
-  id: number;
+  id: string;
   username: string;
   display_name: string;
   online?: boolean;
@@ -93,9 +93,9 @@ export function searchUsers(query: string) {
 }
 
 export interface CallRecord {
-  id: number;
-  caller_id: number;
-  callee_id: number;
+  id: string;
+  caller_id: string;
+  callee_id: string;
   caller_username: string;
   callee_username: string;
   caller_display_name: string;

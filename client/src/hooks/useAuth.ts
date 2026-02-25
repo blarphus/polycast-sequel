@@ -12,14 +12,7 @@ import {
   createElement,
 } from 'react';
 import * as api from '../api';
-
-export interface AuthUser {
-  id: number;
-  username: string;
-  display_name: string;
-  native_language: string | null;
-  target_language: string | null;
-}
+import type { AuthUser } from '../api';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -90,4 +83,5 @@ export function useAuth(): AuthContextValue {
   return ctx;
 }
 
+export type { AuthUser };
 export { AuthContext };

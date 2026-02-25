@@ -117,7 +117,7 @@ export default function ChatView() {
       if (userId === friendId) {
         setMessages((prev) =>
           prev.map((m) =>
-            m.sender_id === String(user?.id) && !m.read_at
+            m.sender_id === user?.id && !m.read_at
               ? { ...m, read_at: new Date().toISOString() }
               : m,
           ),
@@ -197,8 +197,8 @@ export default function ChatView() {
     const tempId = `temp-${Date.now()}`;
     const optimistic: Message = {
       id: tempId,
-      sender_id: String(user?.id),
-      receiver_id: friendId,
+      sender_id: user?.id ?? '',
+      receiver_id: friendId ?? '',
       body,
       read_at: null,
       created_at: new Date().toISOString(),
@@ -322,7 +322,7 @@ export default function ChatView() {
         )}
 
         {messages.map((msg, idx) => {
-          const isSent = msg.sender_id === String(user?.id);
+          const isSent = msg.sender_id === user?.id;
           return (
             <React.Fragment key={msg.id}>
               {shouldShowDate(idx) && (

@@ -96,18 +96,17 @@ export default function UserSearch() {
   }, []);
 
   const handleCall = useCallback(
-    (targetUserId: number) => {
+    (targetUserId: string) => {
       navigate(`/call/${targetUserId}?role=caller`);
     },
     [navigate],
   );
 
-  const handleAddFriend = async (userId: number) => {
-    const uid = String(userId);
-    setSendingTo(uid);
+  const handleAddFriend = async (userId: string) => {
+    setSendingTo(userId);
     try {
       await sendFriendRequest(userId);
-      setFriendMap((prev) => ({ ...prev, [uid]: 'pending_sent' }));
+      setFriendMap((prev) => ({ ...prev, [userId]: 'pending_sent' }));
     } catch (err) {
       console.error('Failed to send friend request:', err);
     } finally {
@@ -116,7 +115,7 @@ export default function UserSearch() {
   };
 
   const renderFriendButton = (u: UserResult) => {
-    const uid = String(u.id);
+    const uid = u.id;
     const status = friendMap[uid];
 
     if (status === 'friend' || status === 'pending_sent' || status === 'pending_received') {

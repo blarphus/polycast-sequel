@@ -140,7 +140,7 @@ export default function Call() {
       setTimeout(() => navigate('/'), 1500);
     };
 
-    const onTranscript = (data: { text: string; lang: string; userId: number }) => {
+    const onTranscript = (data: { text: string; lang: string; userId: string }) => {
       console.log('[call] transcript event:', data);
       if (data.userId === user?.id) {
         setLocalText(data.text);

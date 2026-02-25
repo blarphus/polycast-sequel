@@ -45,7 +45,7 @@ export default function Test() {
   useEffect(() => {
     let cleaned = false;
 
-    const onTranscript = (data: { text: string; lang: string; userId: number }) => {
+    const onTranscript = (data: { text: string; lang: string; userId: string }) => {
       if (data.userId === user?.id) {
         setLocalText(data.text);
       }

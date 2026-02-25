@@ -50,7 +50,7 @@ export default function ConversationList() {
   useEffect(() => {
     const onNewMessage = (msg: Message) => {
       setConversations((prev) => {
-        const friendId = msg.sender_id === String(user?.id) ? msg.receiver_id : msg.sender_id;
+        const friendId = msg.sender_id === user?.id ? msg.receiver_id : msg.sender_id;
         const idx = prev.findIndex((c) => c.friend_id === friendId);
         if (idx === -1) {
           // New conversation from a new friend — reload to get full data
@@ -62,7 +62,7 @@ export default function ConversationList() {
         conv.last_message_body = msg.body;
         conv.last_message_at = msg.created_at;
         conv.last_message_sender_id = msg.sender_id;
-        if (msg.sender_id !== String(user?.id)) {
+        if (msg.sender_id !== user?.id) {
           conv.unread_count += 1;
         }
         updated.splice(idx, 1);
@@ -206,7 +206,7 @@ export default function ConversationList() {
                 </span>
                 <span className="conversation-preview">
                   {c.last_message_body
-                    ? (c.last_message_sender_id === String(user?.id) ? 'You: ' : '') + c.last_message_body
+                    ? (c.last_message_sender_id === user?.id ? 'You: ' : '') + c.last_message_body
                     : 'Start a conversation'}
                 </span>
               </div>
