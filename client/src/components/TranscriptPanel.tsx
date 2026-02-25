@@ -3,7 +3,7 @@ import WordPopup from './WordPopup';
 import { tokenize, isWordToken, PopupState } from '../textTokens';
 
 export interface TranscriptEntry {
-  id?: number;
+  id: number;
   userId: string;
   displayName: string;
   text: string;
@@ -81,7 +81,7 @@ export default function TranscriptPanel({ entries, nativeLang, targetLang, saved
         <p className="transcript-empty">Transcript will appear here...</p>
       ) : (
         entries.map((entry, i) => (
-          <div className="transcript-entry" key={entry.id ?? i}>
+          <div className="transcript-entry" key={entry.id}>
             <span className="transcript-speaker">{entry.displayName}</span>
             {' \u2014 '}
             <span className="transcript-text">{renderTokenized(entry.text)}</span>

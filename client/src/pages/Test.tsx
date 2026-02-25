@@ -114,7 +114,7 @@ export default function Test() {
 
         <div className="test-label">Test Mode</div>
 
-        <SubtitleBar localText={localText} remoteText="" remoteLang="" nativeLang={user?.native_language || undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
+        <SubtitleBar localText={localText} remoteText="" remoteLang="" nativeLang={user?.native_language ?? undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
 
         <CallControls
           isMuted={isMuted}
@@ -130,7 +130,7 @@ export default function Test() {
         />
       </div>
 
-      <TranscriptPanel entries={transcriptEntries} nativeLang={user?.native_language || undefined} targetLang={user?.target_language || undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
+      <TranscriptPanel entries={transcriptEntries} nativeLang={user?.native_language ?? undefined} targetLang={user?.target_language ?? undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
     </div>
   );
 }

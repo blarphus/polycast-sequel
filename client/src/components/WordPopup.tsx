@@ -49,7 +49,8 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err.message || 'Lookup failed');
+          console.error('WordPopup: lookup failed:', err);
+          setError(err instanceof Error ? err.message : String(err));
           setLoading(false);
         }
       });
@@ -115,17 +116,9 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                     part_of_speech: enriched.part_of_speech,
                   });
                   setSaved(true);
-                } catch {
-                  // Fall back to saving with popup data (no frequency/example)
-                  onSaveWord({
-                    word,
-                    translation,
-                    definition,
-                    target_language: targetLang,
-                    sentence_context: sentence,
-                    part_of_speech: partOfSpeech,
-                  });
-                  setSaved(true);
+                } catch (err) {
+                  console.error('WordPopup: enrichment failed:', err);
+                  setError(err instanceof Error ? err.message : String(err));
                 } finally {
                   setSaving(false);
                 }

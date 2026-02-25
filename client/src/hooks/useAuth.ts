@@ -37,7 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((u) => {
         if (!cancelled) setUser(u);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Auth session check failed:', err);
         if (!cancelled) setUser(null);
       })
       .finally(() => {

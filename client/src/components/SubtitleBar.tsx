@@ -30,8 +30,11 @@ function langLabel(lang: string): string {
   try {
     const display = new Intl.DisplayNames(['en'], { type: 'language' });
     const base = lang.split('-')[0];
-    return display.of(base) ?? lang;
-  } catch {
+    const name = display.of(base);
+    if (!name) console.warn(`SubtitleBar: Intl.DisplayNames returned no name for lang "${lang}"`);
+    return name ?? lang;
+  } catch (err) {
+    console.error(`SubtitleBar: failed to get display name for lang "${lang}":`, err);
     return lang;
   }
 }

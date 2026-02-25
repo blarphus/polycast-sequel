@@ -82,11 +82,16 @@ export default function Dictionary() {
         sorted.sort((a, b) => a.word.localeCompare(b.word));
         break;
       case 'freq-high':
-        sorted.sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0));
+      case 'freq-low': {
+        const hasNull = sorted.some((w) => w.frequency == null);
+        if (hasNull) console.warn('Dictionary sort: some words have null frequency, treating as 0');
+        if (sort === 'freq-high') {
+          sorted.sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0));
+        } else {
+          sorted.sort((a, b) => (a.frequency ?? 0) - (b.frequency ?? 0));
+        }
         break;
-      case 'freq-low':
-        sorted.sort((a, b) => (a.frequency ?? 0) - (b.frequency ?? 0));
-        break;
+      }
       default:
         break; // already sorted by date DESC from API
     }

@@ -16,6 +16,7 @@ export default function ConversationList() {
   const [connected, setConnected] = useState(socket.connected);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const loadConversations = useCallback(async () => {
@@ -24,6 +25,7 @@ export default function ConversationList() {
       setConversations(data);
     } catch (err) {
       console.error('Failed to load conversations:', err);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -178,6 +180,9 @@ export default function ConversationList() {
       </header>
 
       <div className="conversations-list">
+        {error && (
+          <p className="auth-error" style={{ margin: '1rem' }}>Failed to load conversations: {error}</p>
+        )}
         {loading ? (
           <p className="text-muted" style={{ textAlign: 'center', padding: '2rem' }}>
             Loading conversations...

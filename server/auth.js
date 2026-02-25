@@ -24,7 +24,8 @@ export function signToken(userId) {
 export function verifyToken(token) {
   try {
     return jwt.verify(token, JWT_SECRET);
-  } catch {
+  } catch (err) {
+    console.warn('JWT verification failed:', err.name, err.message);
     return null;
   }
 }

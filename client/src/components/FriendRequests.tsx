@@ -9,6 +9,8 @@ interface Props {
 export default function FriendRequests({ onAccepted }: Props) {
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
 
   const loadRequests = useCallback(async () => {
@@ -17,6 +19,7 @@ export default function FriendRequests({ onAccepted }: Props) {
       setRequests(data);
     } catch (err) {
       console.error('Failed to load friend requests:', err);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -47,6 +50,7 @@ export default function FriendRequests({ onAccepted }: Props) {
       onAccepted?.();
     } catch (err) {
       console.error('Failed to accept request:', err);
+      setActionError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
     }
@@ -59,6 +63,7 @@ export default function FriendRequests({ onAccepted }: Props) {
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
       console.error('Failed to reject request:', err);
+      setActionError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(null);
     }
@@ -70,6 +75,8 @@ export default function FriendRequests({ onAccepted }: Props) {
   return (
     <section className="home-section">
       <h2 className="section-title">Friend Requests</h2>
+      {error && <p className="auth-error">Failed to load requests: {error}</p>}
+      {actionError && <p className="auth-error">{actionError}</p>}
       <div className="friend-requests-list">
         {requests.map((r) => (
           <div key={r.id} className="friend-request-item">

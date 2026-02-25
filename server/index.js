@@ -83,8 +83,8 @@ async function main() {
   const shutdown = async () => {
     console.log('\nShutting down...');
     io.close();
-    try { await redisClient.quit(); } catch { /* ignore */ }
-    try { await pool.end(); } catch { /* ignore */ }
+    try { await redisClient.quit(); } catch (err) { console.error('Redis quit error during shutdown:', err); }
+    try { await pool.end(); } catch (err) { console.error('Pool end error during shutdown:', err); }
     server.close(() => {
       console.log('Server closed');
       process.exit(0);

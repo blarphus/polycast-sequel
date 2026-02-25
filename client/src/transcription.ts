@@ -83,7 +83,7 @@ export class TranscriptionService {
       this.sourceNode = null;
     }
     if (this.audioContext) {
-      this.audioContext.close().catch(() => {});
+      this.audioContext.close().catch((err) => console.error('[transcription] AudioContext.close() failed:', err));
       this.audioContext = null;
     }
     console.log('[transcription] Stopped and cleaned up');

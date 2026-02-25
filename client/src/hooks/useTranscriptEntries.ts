@@ -25,7 +25,7 @@ export function useTranscriptEntries(nativeLang: string | null | undefined) {
               );
             }
           })
-          .catch(() => {});
+          .catch((err) => console.error('Failed to translate transcript entry:', err));
       }
     },
     [nativeLang],

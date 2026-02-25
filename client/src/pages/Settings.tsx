@@ -47,7 +47,8 @@ export default function Settings() {
       await updateSettings(nativeLang || null, targetLang || null);
       setSaved(true);
     } catch (err: any) {
-      setError(err.message || 'Failed to save settings');
+      console.error('Settings: save failed:', err);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }

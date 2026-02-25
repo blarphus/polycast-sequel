@@ -66,7 +66,7 @@ export default function ChatView() {
         }
 
         // Mark as read
-        markMessagesRead(friendId!).catch(() => {});
+        markMessagesRead(friendId!).catch((err) => console.error('Failed to mark messages read:', err));
       } catch (err) {
         console.error('Failed to load chat:', err);
       } finally {
@@ -99,7 +99,7 @@ export default function ChatView() {
         });
         // Auto-read incoming messages
         if (msg.sender_id === friendId) {
-          markMessagesRead(friendId).catch(() => {});
+          markMessagesRead(friendId).catch((err) => console.error('Failed to mark messages read:', err));
         }
         setTimeout(() => scrollToBottom(), 50);
       }
@@ -197,8 +197,8 @@ export default function ChatView() {
     const tempId = `temp-${Date.now()}`;
     const optimistic: Message = {
       id: tempId,
-      sender_id: user?.id ?? '',
-      receiver_id: friendId ?? '',
+      sender_id: user!.id,
+      receiver_id: friendId!,
       body,
       read_at: null,
       created_at: new Date().toISOString(),
@@ -270,7 +270,7 @@ export default function ChatView() {
     return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   };
 
-  const friendName = friendInfo?.display_name || friendInfo?.username || 'Chat';
+  const friendName = friendInfo?.display_name || friendInfo?.username;
 
   if (loading) {
     return (

@@ -30,8 +30,14 @@ async function request<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   const res = await fetch(`${BASE}${path}`, fetchOpts);
 
   if (!res.ok) {
-    const payload = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(payload.error ?? payload.message ?? `Request failed (${res.status})`);
+    let payload: any;
+    try {
+      payload = await res.json();
+    } catch (parseErr) {
+      console.error(`${method} ${path} — failed to parse error response (${res.status}):`, parseErr);
+      throw new Error(`${method} ${path} failed (${res.status} ${res.statusText})`);
+    }
+    throw new Error(payload.error ?? payload.message ?? `${method} ${path} failed (${res.status})`);
   }
 
   // 204 No Content – nothing to parse

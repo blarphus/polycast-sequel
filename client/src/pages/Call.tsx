@@ -25,7 +25,8 @@ import { useTranscriptEntries } from '../hooks/useTranscriptEntries';
 export default function Call() {
   const { peerId } = useParams<{ peerId: string }>();
   const [searchParams] = useSearchParams();
-  const role = searchParams.get('role') || 'caller'; // 'caller' | 'callee'
+  const rawRole = searchParams.get('role');
+  const role = rawRole === 'caller' || rawRole === 'callee' ? rawRole : null;
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -245,6 +246,17 @@ export default function Call() {
 
   // ---- Render ------------------------------------------------------------
 
+  if (!role) {
+    return (
+      <div className="call-page">
+        <div className="call-status-overlay">
+          <p className="call-status-text">Invalid call role: "{rawRole}". Must be "caller" or "callee".</p>
+          <button className="btn btn-primary" onClick={() => navigate('/')}>Go Home</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`call-page${controlsHidden ? ' controls-hidden' : ''}`}
@@ -277,7 +289,7 @@ export default function Call() {
         )}
 
         {/* Subtitle bar */}
-        <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} nativeLang={user?.native_language || undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
+        <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} nativeLang={user?.native_language ?? undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
 
         {/* Controls */}
         <CallControls
@@ -294,7 +306,7 @@ export default function Call() {
         />
       </div>
 
-      <TranscriptPanel entries={transcriptEntries} nativeLang={user?.native_language || undefined} targetLang={remoteLang || user?.target_language || undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
+      <TranscriptPanel entries={transcriptEntries} nativeLang={user?.native_language ?? undefined} targetLang={(remoteLang || user?.target_language) ?? undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
     </div>
   );
 }
