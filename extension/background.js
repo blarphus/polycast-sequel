@@ -79,8 +79,11 @@ async function handleMessage(msg) {
       });
 
       if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        throw new Error(payload.error || 'Login failed');
+        const text = await res.text();
+        let payload = {};
+        try { payload = JSON.parse(text); } catch { /* non-JSON response */ }
+        console.error('Login failed:', res.status, text.slice(0, 300));
+        throw new Error(payload.error || `Login failed (${res.status})`);
       }
 
       const data = await res.json();

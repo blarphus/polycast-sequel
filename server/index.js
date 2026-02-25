@@ -49,7 +49,7 @@ async function main() {
 
   app.use(cors({
     origin: (origin, callback) => {
-      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      if (!origin || ALLOWED_ORIGINS.includes(origin) || origin.startsWith('chrome-extension://')) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
