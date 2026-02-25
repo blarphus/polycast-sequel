@@ -126,6 +126,9 @@ export function handleTranscription(io, socket, pool) {
         [socket.userId],
       );
       const row = userResult.rows[0];
+      if (!row) {
+        console.error(`[transcription] Speaker user not found in DB for userId=${socket.userId}`);
+      }
       speakerName = row?.display_name || row?.username || 'Unknown';
 
       // Find the active call between this user and the peer
@@ -137,6 +140,9 @@ export function handleTranscription(io, socket, pool) {
         [socket.userId, peerId],
       );
       callId = callResult.rows[0]?.id || null;
+      if (!callId) {
+        console.warn(`[transcription] No active call found between ${socket.userId} and ${peerId} — transcripts will not be persisted`);
+      }
     } catch (err) {
       console.error(`[transcription] Failed to fetch speaker info:`, err.message);
     }

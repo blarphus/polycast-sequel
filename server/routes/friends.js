@@ -61,6 +61,9 @@ router.post('/api/friends/request', authMiddleware, async (req, res) => {
       [req.userId],
     );
     const requester = requesterResult.rows[0];
+    if (!requester) {
+      console.error(`[friends] Requester user not found in DB for userId=${req.userId}`);
+    }
 
     // Emit socket event to recipient if they are online
     emitToUser(userId, 'friend:request', {
@@ -171,6 +174,9 @@ router.post('/api/friends/:id/accept', authMiddleware, async (req, res) => {
       [req.userId],
     );
     const accepter = accepterResult.rows[0];
+    if (!accepter) {
+      console.error(`[friends] Accepter user not found in DB for userId=${req.userId}`);
+    }
 
     // Emit socket event to the requester if they are online
     emitToUser(friendship.requester_id, 'friend:accepted', {

@@ -1,6 +1,9 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 
+if (!process.env.JWT_SECRET) {
+  console.warn('JWT_SECRET not set — using insecure dev-secret (development only)');
+}
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 const SALT_ROUNDS = 12;
 

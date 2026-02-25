@@ -36,6 +36,9 @@ export function handleCalls(io, socket, pool, redisClient) {
         [socket.userId]
       );
       const caller = callerResult.rows[0];
+      if (!caller) {
+        console.error(`[call] Caller user not found in DB for userId=${socket.userId}`);
+      }
 
       console.log(`[call] Emitting call:incoming to socket ${calleeSocketId}`);
       io.to(calleeSocketId).emit('call:incoming', {

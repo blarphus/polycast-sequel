@@ -27,7 +27,12 @@ async function callGemini(prompt, generationConfig = {}) {
   }
 
   const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    console.error('Gemini API returned no text content:', JSON.stringify(data).slice(0, 500));
+    throw new Error('Gemini returned no text content');
+  }
+  return text;
 }
 
 /**
@@ -61,9 +66,12 @@ Respond with ONLY the JSON object, no other text.`;
       thinkingConfig: { thinkingBudget: 0 },
       maxOutputTokens: 128,
       responseMimeType: 'application/json',
-    }) || '{}';
+    });
 
     const parsed = JSON.parse(raw);
+    if (!parsed.translation || !parsed.definition) {
+      console.error('Gemini lookup returned incomplete JSON:', raw.slice(0, 300));
+    }
     const translation = parsed.translation || '';
     const definition = parsed.definition || '';
     const part_of_speech = parsed.part_of_speech || null;
@@ -111,9 +119,12 @@ router.post('/api/dictionary/translate', authMiddleware, async (req, res) => {
     }
 
     const data = await response.json();
-    const translation = data.data?.translations?.[0]?.translatedText || '';
+    const translation = data.data?.translations?.[0]?.translatedText;
+    if (!translation) {
+      console.error('Google Translate returned unexpected structure:', JSON.stringify(data).slice(0, 500));
+    }
 
-    return res.json({ translation });
+    return res.json({ translation: translation || '' });
   } catch (err) {
     console.error('Sentence translation error:', err);
     return res.status(500).json({ error: err.message || 'Translation failed' });
@@ -154,10 +165,17 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
     const raw = await callGemini(prompt);
 
     const parts = raw.split('//').map((s) => s.trim());
+    if (parts.length < 5) {
+      console.error(`Gemini enrich returned ${parts.length} parts instead of 5:`, raw.slice(0, 300));
+    }
     const translation = parts[0] || '';
     const definition = parts[1] || '';
     const part_of_speech = parts[2] || null;
-    const frequency = parts[3] ? parseInt(parts[3], 10) || null : null;
+    let frequency = parts[3] ? parseInt(parts[3], 10) : null;
+    if (parts[3] && isNaN(frequency)) {
+      console.error('Gemini enrich returned non-numeric frequency:', parts[3]);
+      frequency = null;
+    }
     const example_sentence = parts[4] || null;
 
     return res.json({ word, translation, definition, part_of_speech, frequency, example_sentence });
