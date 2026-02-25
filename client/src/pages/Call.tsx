@@ -159,15 +159,17 @@ export default function Call() {
       const entry: TranscriptEntry = { ...data, id };
       setTranscriptEntries(prev => [...prev, entry]);
 
-      // Auto-translate foreign-language entries
+      // Auto-translate — let Google detect the source language
       const nativeLang = user?.native_language;
-      const langBase = data.lang?.split('-')[0];
-      if (nativeLang && langBase && langBase !== nativeLang) {
-        translateSentence(data.text, langBase, nativeLang)
+      if (nativeLang) {
+        translateSentence(data.text, '', nativeLang)
           .then(({ translation }) => {
-            setTranscriptEntries(prev =>
-              prev.map(e => e.id === id ? { ...e, translation } : e),
-            );
+            // Only show if it actually differs from the original
+            if (translation && translation.toLowerCase() !== data.text.toLowerCase()) {
+              setTranscriptEntries(prev =>
+                prev.map(e => e.id === id ? { ...e, translation } : e),
+              );
+            }
           })
           .catch(() => {});
       }
