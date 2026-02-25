@@ -241,6 +241,11 @@ export interface SavedWord {
   frequency: number | null;
   example_sentence: string | null;
   part_of_speech: string | null;
+  srs_interval: number;
+  due_at: string | null;
+  last_reviewed_at: string | null;
+  correct_count: number;
+  incorrect_count: number;
 }
 
 export function getSavedWords() {
@@ -262,5 +267,18 @@ export function saveWord(data: {
 
 export function deleteSavedWord(id: string) {
   return request<void>(`/dictionary/words/${id}`, { method: 'DELETE' });
+}
+
+// ---- SRS / Learn ----------------------------------------------------------
+
+export function getDueWords() {
+  return request<SavedWord[]>('/dictionary/due');
+}
+
+export function reviewWord(id: string, answer: 'incorrect' | 'correct' | 'easy') {
+  return request<SavedWord>(`/dictionary/words/${id}/review`, {
+    method: 'PATCH',
+    body: { answer },
+  });
 }
 

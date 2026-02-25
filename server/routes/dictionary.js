@@ -168,6 +168,106 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
 });
 
 // ---------------------------------------------------------------------------
+// SRS (Spaced Repetition)
+// ---------------------------------------------------------------------------
+
+const SRS_INTERVALS = {
+  1: 60,              // 1 minute
+  2: 600,             // 10 minutes
+  3: 86400,           // 1 day
+  4: 259200,          // 3 days
+  5: 604800,          // 1 week
+  6: 1209600,         // 2 weeks
+  7: 2592000,         // 1 month
+  8: 5184000,         // 2 months
+  9: 10368000,        // 4 months
+};
+
+/**
+ * GET /api/dictionary/due -- Cards due for review + new cards
+ */
+router.get('/api/dictionary/due', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM saved_words WHERE user_id = $1
+         AND (due_at <= NOW() OR due_at IS NULL)
+       ORDER BY
+         CASE WHEN due_at IS NOT NULL THEN 0 ELSE 1 END,
+         due_at ASC NULLS LAST,
+         frequency DESC NULLS LAST,
+         created_at ASC`,
+      [req.userId],
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error('Error fetching due words:', err);
+    return res.status(500).json({ error: 'Failed to fetch due words' });
+  }
+});
+
+/**
+ * PATCH /api/dictionary/words/:id/review -- Record an SRS review
+ * Body: { answer: 'incorrect' | 'correct' | 'easy' }
+ */
+router.patch('/api/dictionary/words/:id/review', authMiddleware, async (req, res) => {
+  const { answer } = req.body;
+
+  if (!answer || !['incorrect', 'correct', 'easy'].includes(answer)) {
+    return res.status(400).json({ error: 'answer must be incorrect, correct, or easy' });
+  }
+
+  try {
+    // Fetch current card
+    const { rows: existing } = await pool.query(
+      'SELECT * FROM saved_words WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.userId],
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({ error: 'Word not found' });
+    }
+
+    const card = existing[0];
+    let newInterval;
+
+    if (answer === 'incorrect') {
+      newInterval = 1;
+    } else if (answer === 'correct') {
+      newInterval = Math.min((card.srs_interval || 0) + 1, 9);
+    } else {
+      // easy
+      newInterval = Math.min((card.srs_interval || 0) + 2, 9);
+    }
+
+    const seconds = SRS_INTERVALS[newInterval] || 60;
+
+    const { rows: updated } = await pool.query(
+      `UPDATE saved_words
+       SET srs_interval = $1,
+           due_at = NOW() + ($2 || ' seconds')::INTERVAL,
+           last_reviewed_at = NOW(),
+           correct_count = correct_count + $3,
+           incorrect_count = incorrect_count + $4
+       WHERE id = $5 AND user_id = $6
+       RETURNING *`,
+      [
+        newInterval,
+        String(seconds),
+        answer === 'incorrect' ? 0 : 1,
+        answer === 'incorrect' ? 1 : 0,
+        req.params.id,
+        req.userId,
+      ],
+    );
+
+    return res.json(updated[0]);
+  } catch (err) {
+    console.error('Error reviewing word:', err);
+    return res.status(500).json({ error: 'Failed to record review' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Saved Words CRUD
 // ---------------------------------------------------------------------------
 

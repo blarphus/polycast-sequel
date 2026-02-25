@@ -14,6 +14,7 @@ import Call from './pages/Call';
 import Test from './pages/Test';
 import Settings from './pages/Settings';
 import Dictionary from './pages/Dictionary';
+import Learn from './pages/Learn';
 import IncomingCall from './components/IncomingCall';
 import BottomToolbar from './components/BottomToolbar';
 
@@ -119,6 +120,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Dictionary />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/learn"
+          element={
+            <ProtectedRoute>
+              <Learn />
             </ProtectedRoute>
           }
         />

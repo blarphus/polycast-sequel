@@ -81,6 +81,13 @@ export async function migrate(pool) {
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS example_sentence TEXT DEFAULT NULL;`);
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS part_of_speech VARCHAR(50) DEFAULT NULL;`);
 
+    // SRS (spaced repetition) columns on saved_words
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS srs_interval INTEGER DEFAULT 0;`);
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS due_at TIMESTAMPTZ DEFAULT NULL;`);
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS last_reviewed_at TIMESTAMPTZ DEFAULT NULL;`);
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS correct_count INTEGER DEFAULT 0;`);
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS incorrect_count INTEGER DEFAULT 0;`);
+
     // Transcript entries table (stores completed sentences from calls)
     await client.query(`
       CREATE TABLE IF NOT EXISTS transcript_entries (

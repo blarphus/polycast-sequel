@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// components/BottomToolbar.tsx -- Bottom navigation bar (Dictionary + Chats)
+// components/BottomToolbar.tsx -- Bottom navigation bar (Dictionary | Learn | Chats)
 // ---------------------------------------------------------------------------
 
 import React from 'react';
@@ -10,6 +10,7 @@ export default function BottomToolbar() {
   const navigate = useNavigate();
 
   const isDictionary = location.pathname === '/dictionary';
+  const isLearn = location.pathname === '/learn';
   const isChats = location.pathname === '/';
 
   return (
@@ -23,6 +24,15 @@ export default function BottomToolbar() {
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
         </svg>
         <span className="toolbar-label">Dictionary</span>
+      </button>
+      <button
+        className={`toolbar-tab toolbar-tab--green${isLearn ? ' active' : ''}`}
+        onClick={() => navigate('/learn')}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+        <span className="toolbar-label">Learn</span>
       </button>
       <button
         className={`toolbar-tab toolbar-tab--purple${isChats ? ' active' : ''}`}
