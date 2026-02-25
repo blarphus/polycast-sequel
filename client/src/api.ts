@@ -257,17 +257,7 @@ export function getSavedWords() {
   return request<SavedWord[]>('/dictionary/words');
 }
 
-export function saveWord(data: {
-  word: string;
-  translation: string;
-  definition: string;
-  target_language?: string;
-  sentence_context?: string;
-  frequency?: number | null;
-  example_sentence?: string | null;
-  part_of_speech?: string | null;
-  image_url?: string | null;
-}) {
+export function saveWord(data: SaveWordData) {
   return request<SavedWord>('/dictionary/words', { method: 'POST', body: data });
 }
 
