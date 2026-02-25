@@ -98,6 +98,28 @@ export async function migrate(pool) {
         ON transcript_entries (call_id);
     `);
 
+    // Messages table (DM chat)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        sender_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body        TEXT NOT NULL,
+        read_at     TIMESTAMPTZ DEFAULT NULL,
+        created_at  TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_conversation
+        ON messages (LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id), created_at DESC);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_messages_receiver_unread
+        ON messages (receiver_id) WHERE read_at IS NULL;
+    `);
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {

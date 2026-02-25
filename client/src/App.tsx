@@ -8,7 +8,8 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useSocket } from './hooks/useSocket';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Home from './pages/Home';
+import ConversationList from './pages/ConversationList';
+import ChatView from './pages/ChatView';
 import Call from './pages/Call';
 import Test from './pages/Test';
 import Settings from './pages/Settings';
@@ -67,7 +68,15 @@ export default function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Home />
+              <ConversationList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat/:friendId"
+          element={
+            <ProtectedRoute>
+              <ChatView />
             </ProtectedRoute>
           }
         />

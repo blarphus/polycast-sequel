@@ -5,6 +5,7 @@ import { handleConnect, handleDisconnect, setupHeartbeat } from './presence.js';
 import { handleSignaling } from './signaling.js';
 import { handleCalls } from './calls.js';
 import { handleTranscription } from './transcription.js';
+import { handleMessaging } from './messaging.js';
 import pool from '../db.js';
 import redisClient from '../redis.js';
 
@@ -77,6 +78,9 @@ export function setupSocket(server) {
 
     // Register transcription handlers
     handleTranscription(io, socket, pool);
+
+    // Register messaging handlers
+    handleMessaging(io, socket);
 
     // Handle disconnection
     socket.on('disconnect', () => {
