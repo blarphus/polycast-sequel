@@ -41,6 +41,8 @@ export function handleTranscription(io, socket, pool) {
     if (clearTimer) clearTimeout(clearTimer);
     clearTimer = setTimeout(() => {
       console.log(`[transcription] Clearing stale buffer for user ${socket.userId}`);
+      // Save the completed sentence to transcript before clearing
+      emitTranscriptEntry(transcriptBuffer);
       transcriptBuffer = '';
       emitTranscript('');
     }, 4000);
