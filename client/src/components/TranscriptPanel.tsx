@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import WordPopup from './WordPopup';
-import { tokenize, isWordToken, PopupState } from '../textTokens';
+import TokenizedText from './TokenizedText';
+import type { SaveWordData } from '../api';
+import { PopupState } from '../textTokens';
 
 export interface TranscriptEntry {
   id: number;
@@ -17,16 +19,7 @@ interface TranscriptPanelProps {
   targetLang?: string;
   savedWords?: Set<string>;
   isWordSaved?: (word: string) => boolean;
-  onSaveWord?: (data: {
-    word: string;
-    translation: string;
-    definition: string;
-    target_language?: string;
-    sentence_context?: string;
-    frequency?: number | null;
-    example_sentence?: string | null;
-    part_of_speech?: string | null;
-  }) => void;
+  onSaveWord?: (data: SaveWordData) => void;
 }
 
 export default function TranscriptPanel({ entries, nativeLang, targetLang, savedWords, isWordSaved, onSaveWord }: TranscriptPanelProps) {
@@ -55,22 +48,6 @@ export default function TranscriptPanel({ entries, nativeLang, targetLang, saved
     setPopup({ word, sentence, rect });
   }
 
-  function renderTokenized(text: string) {
-    return tokenize(text).map((token, i) =>
-      isWordToken(token) ? (
-        <span
-          key={i}
-          className={`subtitle-word${savedWords?.has(token.toLowerCase()) ? ' saved' : ''}`}
-          onClick={(e) => handleWordClick(e, token, text)}
-        >
-          {token}
-        </span>
-      ) : (
-        <span key={i}>{token}</span>
-      ),
-    );
-  }
-
   return (
     <div
       className="transcript-panel"
@@ -84,7 +61,9 @@ export default function TranscriptPanel({ entries, nativeLang, targetLang, saved
           <div className="transcript-entry" key={entry.id}>
             <span className="transcript-speaker">{entry.displayName}</span>
             {' \u2014 '}
-            <span className="transcript-text">{renderTokenized(entry.text)}</span>
+            <span className="transcript-text">
+              <TokenizedText text={entry.text} savedWords={savedWords} onWordClick={handleWordClick} />
+            </span>
             {entry.translation && (
               <div className="transcript-translation">{entry.translation}</div>
             )}

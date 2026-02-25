@@ -268,41 +268,4 @@ router.delete('/api/dictionary/words/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// Transcript Retrieval
-// ---------------------------------------------------------------------------
-
-/**
- * GET /api/calls/:id/transcript -- Fetch stored transcript entries for a call
- */
-router.get('/api/calls/:id/transcript', authMiddleware, async (req, res) => {
-  const callId = req.params.id;
-
-  try {
-    // Verify the caller is a participant in this call
-    const callCheck = await pool.query(
-      'SELECT id FROM calls WHERE id = $1 AND (caller_id = $2 OR callee_id = $2)',
-      [callId, req.userId],
-    );
-
-    if (callCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Call not found' });
-    }
-
-    const { rows } = await pool.query(
-      `SELECT te.id, te.user_id, u.display_name, u.username, te.text, te.language, te.created_at
-       FROM transcript_entries te
-       JOIN users u ON u.id = te.user_id
-       WHERE te.call_id = $1
-       ORDER BY te.created_at ASC`,
-      [callId],
-    );
-
-    return res.json(rows);
-  } catch (err) {
-    console.error('Error fetching transcript:', err);
-    return res.status(500).json({ error: 'Failed to fetch transcript' });
-  }
-});
-
 export default router;

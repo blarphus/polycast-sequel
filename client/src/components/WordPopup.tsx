@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import React, { useEffect, useRef, useState } from 'react';
-import { lookupWord, enrichWord } from '../api';
+import { lookupWord, enrichWord, type SaveWordData } from '../api';
 
 interface WordPopupProps {
   word: string;
@@ -13,16 +13,7 @@ interface WordPopupProps {
   anchorRect: DOMRect;
   onClose: () => void;
   isWordSaved?: boolean;
-  onSaveWord?: (data: {
-    word: string;
-    translation: string;
-    definition: string;
-    target_language?: string;
-    sentence_context?: string;
-    frequency?: number | null;
-    example_sentence?: string | null;
-    part_of_speech?: string | null;
-  }) => void;
+  onSaveWord?: (data: SaveWordData) => void;
 }
 
 export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved: initialSaved, onSaveWord }: WordPopupProps) {

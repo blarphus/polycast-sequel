@@ -4,7 +4,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import WordPopup from './WordPopup';
-import { tokenize, isWordToken, PopupState } from '../textTokens';
+import TokenizedText from './TokenizedText';
+import type { SaveWordData } from '../api';
+import { PopupState } from '../textTokens';
 
 interface SubtitleBarProps {
   localText: string;
@@ -13,16 +15,7 @@ interface SubtitleBarProps {
   nativeLang?: string;
   savedWords?: Set<string>;
   isWordSaved?: (word: string) => boolean;
-  onSaveWord?: (data: {
-    word: string;
-    translation: string;
-    definition: string;
-    target_language?: string;
-    sentence_context?: string;
-    frequency?: number | null;
-    example_sentence?: string | null;
-    part_of_speech?: string | null;
-  }) => void;
+  onSaveWord?: (data: SaveWordData) => void;
 }
 
 function langLabel(lang: string): string {
@@ -90,22 +83,6 @@ export default function SubtitleBar({ localText, remoteText, remoteLang, nativeL
     setPopup({ word, sentence, rect });
   }
 
-  function renderTokenized(text: string) {
-    return (
-      <span className="subtitle-text">
-        {tokenize(text).map((token, i) =>
-          isWordToken(token) ? (
-            <span key={i} className={`subtitle-word${savedWords?.has(token.toLowerCase()) ? ' saved' : ''}`} onClick={(e) => handleWordClick(e, token, text)}>
-              {token}
-            </span>
-          ) : (
-            <span key={i}>{token}</span>
-          ),
-        )}
-      </span>
-    );
-  }
-
   return (
     <div className="subtitle-bar">
       {visibleRemote.length > 0 && (
@@ -114,7 +91,9 @@ export default function SubtitleBar({ localText, remoteText, remoteLang, nativeL
           <div className="subtitle-lines">
             {visibleRemote.map((line, i) => (
               <div key={remoteLines.length - visibleRemote.length + i} className="subtitle-line">
-                {renderTokenized(line)}
+                <span className="subtitle-text">
+                  <TokenizedText text={line} savedWords={savedWords} onWordClick={handleWordClick} />
+                </span>
               </div>
             ))}
           </div>
@@ -125,7 +104,9 @@ export default function SubtitleBar({ localText, remoteText, remoteLang, nativeL
           <div className="subtitle-lines">
             {visibleLocal.map((line, i) => (
               <div key={localLines.length - visibleLocal.length + i} className="subtitle-line">
-                {renderTokenized(line)}
+                <span className="subtitle-text">
+                  <TokenizedText text={line} savedWords={savedWords} onWordClick={handleWordClick} />
+                </span>
               </div>
             ))}
           </div>

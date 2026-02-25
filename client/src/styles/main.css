@@ -353,11 +353,6 @@ select.form-input {
   gap: 1rem;
 }
 
-.home-greeting {
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-}
-
 .home-main {
   flex: 1;
   padding: 1.5rem;
@@ -1305,12 +1300,6 @@ select.form-input {
   align-items: center;
   justify-content: center;
   padding: 0.5rem 0;
-}
-
-.word-popup-text {
-  font-size: 0.9rem;
-  color: var(--text-primary);
-  line-height: 1.5;
 }
 
 .word-popup-translation {

@@ -98,23 +98,6 @@ export function searchUsers(query: string) {
   return request<UserResult[]>(`/users/search?q=${encodeURIComponent(query)}`);
 }
 
-export interface CallRecord {
-  id: string;
-  caller_id: string;
-  callee_id: string;
-  caller_username: string;
-  callee_username: string;
-  caller_display_name: string;
-  callee_display_name: string;
-  started_at: string;
-  ended_at: string | null;
-  duration_seconds: number | null;
-}
-
-export function getCallHistory() {
-  return request<CallRecord[]>('/calls');
-}
-
 // ---- Friends -------------------------------------------------------------
 
 export interface Friend {
@@ -154,10 +137,6 @@ export function acceptFriendRequest(id: string) {
 
 export function rejectFriendRequest(id: string) {
   return request<void>(`/friends/${id}/reject`, { method: 'POST' });
-}
-
-export function removeFriend(id: string) {
-  return request<void>(`/friends/${id}`, { method: 'DELETE' });
 }
 
 // ---- Conversations / Messages ----------------------------------------------
@@ -209,13 +188,6 @@ export function markMessagesRead(friendId: string) {
 
 // ---- Dictionary / Word Lookup ---------------------------------------------
 
-export interface WordLookup {
-  word: string;
-  translation: string;
-  definition: string;
-  part_of_speech: string | null;
-}
-
 export interface EnrichedWord {
   word: string;
   translation: string;
@@ -228,7 +200,7 @@ export interface EnrichedWord {
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
   const params = new URLSearchParams({ word, sentence, nativeLang });
   if (targetLang) params.set('targetLang', targetLang);
-  return request<WordLookup>(`/dictionary/lookup?${params}`);
+  return request<{ word: string; translation: string; definition: string; part_of_speech: string | null }>(`/dictionary/lookup?${params}`);
 }
 
 export function enrichWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
@@ -246,6 +218,17 @@ export function translateSentence(sentence: string, fromLang: string, toLang: st
 }
 
 // ---- Saved Words (Personal Dictionary) ------------------------------------
+
+export interface SaveWordData {
+  word: string;
+  translation: string;
+  definition: string;
+  target_language?: string;
+  sentence_context?: string;
+  frequency?: number | null;
+  example_sentence?: string | null;
+  part_of_speech?: string | null;
+}
 
 export interface SavedWord {
   id: string;
