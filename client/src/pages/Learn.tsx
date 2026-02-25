@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDueWords, reviewWord, type SavedWord } from '../api';
-import { formatNextReviewTime } from '../utils/srs';
+import { formatNextReviewTime, getNextInterval } from '../utils/srs';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -35,10 +35,9 @@ function renderCloze(text: string) {
   );
 }
 
-/** Extract the raw word from ~word~ in an example sentence. */
-function extractWord(text: string): string | null {
-  const m = text.match(/~([^~]+)~/);
-  return m ? m[1] : null;
+/** Strip ~tildes~ from example sentence for TTS playback. */
+function stripTildes(text: string): string {
+  return text.replace(/~([^~]+)~/g, '$1');
 }
 
 // ---------------------------------------------------------------------------
@@ -107,10 +106,10 @@ export default function Learn() {
     if (audioPlayedRef.current.has(currentIndex)) return;
     audioPlayedRef.current.add(currentIndex);
 
-    const wordToSpeak = currentCard.example_sentence
-      ? extractWord(currentCard.example_sentence) || currentCard.word
+    const textToSpeak = currentCard.example_sentence
+      ? stripTildes(currentCard.example_sentence)
       : currentCard.word;
-    playAudio(wordToSpeak, currentCard.target_language);
+    playAudio(textToSpeak, currentCard.target_language);
   }, [isFlipped, currentIndex, currentCard, playAudio]);
 
   // ---------------------------------------------------------------------------
@@ -132,6 +131,10 @@ export default function Learn() {
       easy: prev.easy + (answer === 'easy' ? 1 : 0),
     }));
 
+    // Check if this card should re-appear this session (1min / 10min intervals)
+    const nextInterval = getNextInterval(currentCard.srs_interval, answer);
+    const requeue = nextInterval <= 2;
+
     // Call API
     reviewWord(currentCard.id, answer).catch((err) => {
       console.error('Review API error:', err);
@@ -145,6 +148,12 @@ export default function Learn() {
         setIsExiting(false);
         setIsFlipped(false);
         setDragState({ isDragging: false, deltaX: 0, startX: 0, startTime: 0 });
+
+        // Re-queue short-interval cards at the end so they come back this session
+        if (requeue) {
+          setCards((prev) => [...prev, { ...currentCard, srs_interval: nextInterval }]);
+        }
+
         setCurrentIndex((i) => i + 1);
         setIsEntering(true);
         setSubmitting(false);
@@ -361,7 +370,7 @@ export default function Learn() {
                 onClick={(e) => {
                   e.stopPropagation();
                   const text = hasExample
-                    ? extractWord(card.example_sentence!) || card.word
+                    ? stripTildes(card.example_sentence!)
                     : card.word;
                   playAudio(text, card.target_language);
                 }}
