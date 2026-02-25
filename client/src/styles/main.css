@@ -827,6 +827,60 @@ select.form-input {
   text-align: right;
 }
 
+.chat-bubble-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.chat-bubble-row.sent {
+  justify-content: flex-end;
+}
+
+.chat-bubble-row.received {
+  justify-content: flex-start;
+}
+
+.chat-translate-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-top: 0.4rem;
+  transition: color var(--transition), background var(--transition);
+}
+
+.chat-translate-btn:hover {
+  color: var(--accent);
+  background: var(--bg-surface-hover);
+}
+
+.chat-translate-btn.translated {
+  color: var(--accent);
+}
+
+.chat-translate-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.chat-bubble-translation {
+  font-size: 0.85rem;
+  line-height: 1.35;
+  margin: 0.35rem 0 0;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
 .chat-typing-indicator {
   font-size: 0.8rem;
   font-style: italic;

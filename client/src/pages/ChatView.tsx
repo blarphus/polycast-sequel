@@ -12,6 +12,7 @@ import {
   getFriends,
   sendMessage,
   markMessagesRead,
+  translateSentence,
   Message,
   Friend,
 } from '../api';
@@ -35,6 +36,8 @@ export default function ChatView() {
   const [typing, setTyping] = useState(false);
   const [friendOnline, setFriendOnline] = useState(false);
   const [popup, setPopup] = useState<PopupState | null>(null);
+  const [translations, setTranslations] = useState<Map<string, string>>(new Map());
+  const [translating, setTranslating] = useState<Set<string>>(new Set());
 
   const { savedWordsSet, isWordSaved, addWord } = useSavedWords();
 
@@ -260,6 +263,19 @@ export default function ChatView() {
     setPopup({ word, sentence, rect });
   }
 
+  async function handleTranslate(msgId: string, body: string) {
+    if (translations.has(msgId) || translating.has(msgId) || !nativeLang) return;
+    setTranslating((prev) => new Set(prev).add(msgId));
+    try {
+      const { translation } = await translateSentence(body, targetLang || '', nativeLang);
+      setTranslations((prev) => new Map(prev).set(msgId, translation));
+    } catch (err) {
+      console.error('Failed to translate message:', err);
+    } finally {
+      setTranslating((prev) => { const next = new Set(prev); next.delete(msgId); return next; });
+    }
+  }
+
   const nativeLang = user?.native_language ?? undefined;
   const targetLang = user?.target_language ?? undefined;
 
@@ -323,14 +339,40 @@ export default function ChatView() {
                   <span>{getDateLabel(msg.created_at)}</span>
                 </div>
               )}
-              <div className={`chat-bubble ${isSent ? 'sent' : 'received'}`}>
-                <p className="chat-bubble-body">
-                  <TokenizedText text={msg.body} savedWords={savedWordsSet} onWordClick={handleWordClick} />
-                </p>
-                <span className="chat-bubble-time">
-                  {formatTime(msg.created_at)}
-                  {isSent && msg.read_at && ' \u2713\u2713'}
-                </span>
+              <div className={`chat-bubble-row ${isSent ? 'sent' : 'received'}`}>
+                {!isSent && nativeLang && (
+                  <button
+                    className={`chat-translate-btn${translations.has(msg.id) ? ' translated' : ''}`}
+                    onClick={() => handleTranslate(msg.id, msg.body)}
+                    disabled={translating.has(msg.id)}
+                    title="Translate"
+                  >
+                    {translating.has(msg.id) ? (
+                      <div className="loading-spinner" style={{ width: 14, height: 14 }} />
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 8l6 6" />
+                        <path d="M4 14l6-6 2-3" />
+                        <path d="M2 5h12" />
+                        <path d="M7 2h1" />
+                        <path d="M22 22l-5-10-5 10" />
+                        <path d="M14 18h6" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+                <div className={`chat-bubble ${isSent ? 'sent' : 'received'}`}>
+                  <p className="chat-bubble-body">
+                    <TokenizedText text={msg.body} savedWords={savedWordsSet} onWordClick={handleWordClick} />
+                  </p>
+                  {translations.has(msg.id) && (
+                    <p className="chat-bubble-translation">{translations.get(msg.id)}</p>
+                  )}
+                  <span className="chat-bubble-time">
+                    {formatTime(msg.created_at)}
+                    {isSent && msg.read_at && ' \u2713\u2713'}
+                  </span>
+                </div>
               </div>
             </React.Fragment>
           );
