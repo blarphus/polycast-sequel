@@ -13,7 +13,6 @@ import { migrate } from './migrate.js';
 import { setupSocket } from './socket/index.js';
 import authRoutes from './routes/auth.js';
 import usersRoutes from './routes/users.js';
-import callsRoutes from './routes/calls.js';
 import friendsRoutes from './routes/friends.js';
 import dictionaryRoutes from './routes/dictionary.js';
 import messagesRoutes from './routes/messages.js';
@@ -58,7 +57,6 @@ async function main() {
   // ------ API routes ------
   app.use(authRoutes);
   app.use(usersRoutes);
-  app.use(callsRoutes);
   app.use(friendsRoutes);
   app.use(dictionaryRoutes);
   app.use(messagesRoutes);

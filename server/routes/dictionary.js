@@ -4,6 +4,32 @@ import pool from '../db.js';
 
 const router = Router();
 
+async function callGemini(prompt, generationConfig = {}) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
+  const response = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const err = await response.text();
+    console.error('Gemini API error:', err);
+    throw new Error('Gemini request failed');
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
 /**
  * GET /api/dictionary/lookup?word=X&sentence=Y&nativeLang=Z&targetLang=W
  * Uses Gemini to provide a structured translation + definition.
@@ -20,11 +46,6 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not configured');
-    }
-
     const prompt = `A user learning ${targetLang || 'a language'} clicked "${word}" in: "${sentence}". Their native language is ${nativeLang}.
 
 Return a JSON object with exactly these keys:
@@ -36,34 +57,11 @@ Return a JSON object with exactly these keys:
 
 Respond with ONLY the JSON object, no other text.`;
 
-    const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            thinkingConfig: { thinkingBudget: 0 },
-            maxOutputTokens: 128,
-            responseMimeType: 'application/json',
-          },
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('Gemini API error:', err);
-      throw new Error('Gemini request failed');
-    }
-
-    const data = await response.json();
-    const raw =
-      data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const raw = await callGemini(prompt, {
+      thinkingConfig: { thinkingBudget: 0 },
+      maxOutputTokens: 128,
+      responseMimeType: 'application/json',
+    }) || '{}';
 
     const parsed = JSON.parse(raw);
     const translation = parsed.translation || '';
@@ -135,9 +133,6 @@ router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
-
     const prompt = `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
 ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 The user's native language is ${nativeLang}.
@@ -156,28 +151,7 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
   9-10: Essential high-frequency words (top 500 most used)
 - EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.`;
 
-    const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('Gemini enrich API error:', err);
-      throw new Error('Gemini enrich request failed');
-    }
-
-    const data = await response.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const raw = await callGemini(prompt);
 
     const parts = raw.split('//').map((s) => s.trim());
     const translation = parts[0] || '';
