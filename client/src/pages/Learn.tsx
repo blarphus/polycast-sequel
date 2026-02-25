@@ -6,39 +6,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDueWords, reviewWord, type SavedWord, type SrsAnswer } from '../api';
 import { getButtonTimeLabel, getNextDueSeconds } from '../utils/srs';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Parse ~word~ markup into JSX with highlighted spans. */
-function renderHighlighted(text: string) {
-  const parts = text.split(/~([^~]+)~/g);
-  return parts.map((part, i) =>
-    i % 2 === 1 ? (
-      <span key={i} className="flashcard-highlighted">{part}</span>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  );
-}
-
-/** Replace ~word~ with _____ for the cloze front. */
-function renderCloze(text: string) {
-  const parts = text.split(/~([^~]+)~/g);
-  return parts.map((part, i) =>
-    i % 2 === 1 ? (
-      <span key={i} className="flashcard-cloze">_____</span>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  );
-}
-
-/** Strip ~tildes~ from example sentence for TTS playback. */
-function stripTildes(text: string): string {
-  return text.replace(/~([^~]+)~/g, '$1');
-}
+import { renderTildeHighlight, renderCloze, stripTildes } from '../utils/tildeMarkup';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -356,7 +324,7 @@ export default function Learn() {
             {/* Back */}
             <div className="flashcard-back">
               {hasExample ? (
-                <p className="flashcard-sentence">{renderHighlighted(card.example_sentence!)}</p>
+                <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
               ) : (
                 <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
               )}

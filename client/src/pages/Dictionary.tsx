@@ -7,6 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
 import { getDueStatus, formatDuration } from '../utils/srs';
+import { formatDate } from '../utils/dateFormat';
+import { renderTildeHighlight } from '../utils/tildeMarkup';
 import type { SavedWord } from '../api';
 
 // -- FrequencyDots: maps Gemini 1-10 → 1-5 display dots --------------------
@@ -83,19 +85,6 @@ function ReviewField({ word }: { word: SavedWord }) {
   );
 }
 
-// -- Example sentence renderer: ~word~ → highlighted span -------------------
-
-function renderExample(text: string) {
-  const parts = text.split(/~([^~]+)~/g);
-  return parts.map((part, i) =>
-    i % 2 === 1 ? (
-      <span key={i} className="dict-highlight">{part}</span>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  );
-}
-
 // -- Sort options -----------------------------------------------------------
 
 type SortMode = 'date' | 'az' | 'freq-high' | 'freq-low' | 'due';
@@ -158,15 +147,6 @@ export default function Dictionary() {
     }
     return sorted;
   }, [words, search, sort]);
-
-  const formatDate = (iso: string): string => {
-    const d = new Date(iso);
-    return d.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
 
   const handleLogout = async () => {
     try {
@@ -261,7 +241,7 @@ export default function Dictionary() {
                           <div className="dict-field">
                             <span className="dict-field-label">Example</span>
                             <span className="dict-field-value dict-example">
-                              {renderExample(w.example_sentence)}
+                              {renderTildeHighlight(w.example_sentence, 'dict-highlight')}
                             </span>
                           </div>
                         )}

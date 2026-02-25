@@ -38,6 +38,16 @@ export function getDateLabel(iso: string): string {
   return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
+/** Short date: "Jan 5, 2025" */
+export function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 /** Whether a date separator should appear between two messages */
 export function shouldShowDateSeparator(prevIso: string, currIso: string): boolean {
   const prev = new Date(prevIso);

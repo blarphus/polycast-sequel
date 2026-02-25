@@ -9,12 +9,10 @@ const LEARNING_STEPS = [60, 600];        // 1 min, 10 min
 const GRADUATING_INTERVAL = 86400;       // 1 day
 const EASY_GRADUATING_INTERVAL = 345600; // 4 days
 const RELEARNING_STEP = 600;             // 10 min
-const MIN_EASE = 1.3;
-const LAPSE_INTERVAL_FACTOR = 0.1;
 const MIN_REVIEW_INTERVAL = 86400;       // 1 day
 
 /** True if the card is in learning or relearning phase. */
-export function isLearning(card: SavedWord): boolean {
+function isLearning(card: SavedWord): boolean {
   return card.learning_step !== null || card.srs_interval === 0;
 }
 
