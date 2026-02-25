@@ -4,6 +4,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import WordPopup from './WordPopup';
+import { tokenize, isWordToken, PopupState } from '../textTokens';
 
 interface SubtitleBarProps {
   localText: string;
@@ -33,20 +34,6 @@ function langLabel(lang: string): string {
   } catch {
     return lang;
   }
-}
-
-function tokenize(text: string): string[] {
-  return text.match(/([\p{L}\p{M}\d']+|[.,!?;:]+|\s+)/gu) || [];
-}
-
-function isWordToken(token: string): boolean {
-  return /^[\p{L}\p{M}\d']+$/u.test(token);
-}
-
-interface PopupState {
-  word: string;
-  sentence: string;
-  rect: DOMRect;
 }
 
 /**

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import WordPopup from './WordPopup';
+import { tokenize, isWordToken, PopupState } from '../textTokens';
 
 export interface TranscriptEntry {
   id?: number;
@@ -26,20 +27,6 @@ interface TranscriptPanelProps {
     example_sentence?: string | null;
     part_of_speech?: string | null;
   }) => void;
-}
-
-function tokenize(text: string): string[] {
-  return text.match(/([\p{L}\p{M}\d']+|[.,!?;:]+|\s+)/gu) || [];
-}
-
-function isWordToken(token: string): boolean {
-  return /^[\p{L}\p{M}\d']+$/u.test(token);
-}
-
-interface PopupState {
-  word: string;
-  sentence: string;
-  rect: DOMRect;
 }
 
 export default function TranscriptPanel({ entries, nativeLang, targetLang, savedWords, isWordSaved, onSaveWord }: TranscriptPanelProps) {
