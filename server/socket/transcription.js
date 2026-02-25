@@ -179,6 +179,21 @@ export function handleTranscription(io, socket, pool) {
           const delta = msg.text || '';
           transcriptBuffer += delta;
           console.log(`[transcription] Buffer for user ${socket.userId}: "${transcriptBuffer}"`);
+
+          // Flush completed sentences on punctuation boundaries
+          const sentenceEnd = /[.!?。？！]\s*/g;
+          let lastIdx = 0;
+          let match;
+          while ((match = sentenceEnd.exec(transcriptBuffer)) !== null) {
+            lastIdx = match.index + match[0].length;
+          }
+          if (lastIdx > 0) {
+            const completed = transcriptBuffer.slice(0, lastIdx);
+            transcriptBuffer = transcriptBuffer.slice(lastIdx);
+            emitTranscriptEntry(completed);
+          }
+
+          // Show whatever is in the buffer as the live subtitle
           emitTranscript(transcriptBuffer);
         } else if (msg.type === 'transcription.language') {
           if (msg.language) {
