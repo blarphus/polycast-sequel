@@ -8,7 +8,6 @@ import { useAuth } from '../hooks/useAuth';
 import { socket } from '../socket';
 import { getConversations, Conversation, Message } from '../api';
 import { formatRelativeTime } from '../utils/dateFormat';
-import BottomToolbar from '../components/BottomToolbar';
 import NewChatDrawer from '../components/NewChatDrawer';
 
 export default function ConversationList() {
@@ -216,7 +215,6 @@ export default function ConversationList() {
         onFriendAccepted={loadConversations}
       />
 
-      <BottomToolbar />
     </div>
   );
 }

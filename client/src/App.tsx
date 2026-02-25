@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { useSocket } from './hooks/useSocket';
 import Login from './pages/Login';
@@ -15,6 +15,7 @@ import Test from './pages/Test';
 import Settings from './pages/Settings';
 import Dictionary from './pages/Dictionary';
 import IncomingCall from './components/IncomingCall';
+import BottomToolbar from './components/BottomToolbar';
 
 // ---------------------------------------------------------------------------
 // ProtectedRoute -- redirects to /login when the user is not authenticated
@@ -46,9 +47,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AuthenticatedShell() {
   const { user } = useAuth();
+  const { pathname } = useLocation();
   useSocket(); // Keep socket connected for ALL authenticated pages
   if (!user) return null;
-  return <IncomingCall />;
+
+  const hideToolbar = pathname.startsWith('/chat/') || pathname.startsWith('/call/');
+
+  return (
+    <>
+      <IncomingCall />
+      {!hideToolbar && <BottomToolbar />}
+    </>
+  );
 }
 
 // ---------------------------------------------------------------------------

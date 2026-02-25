@@ -6,8 +6,6 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
-import BottomToolbar from '../components/BottomToolbar';
-
 // -- FrequencyDots: maps Gemini 1-10 → 1-5 display dots --------------------
 
 const DOT_COLORS = ['#ff4d4d', '#ff944d', '#ffdd4d', '#75d147', '#4ade80'];
@@ -225,7 +223,6 @@ export default function Dictionary() {
         </section>
       </main>
 
-      <BottomToolbar />
     </div>
   );
 }

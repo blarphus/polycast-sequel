@@ -10,7 +10,7 @@ export default function BottomToolbar() {
   const navigate = useNavigate();
 
   const isDictionary = location.pathname === '/dictionary';
-  const isChats = location.pathname === '/' || location.pathname.startsWith('/chat/');
+  const isChats = location.pathname === '/';
 
   return (
     <nav className="bottom-toolbar">

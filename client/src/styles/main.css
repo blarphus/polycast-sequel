@@ -210,7 +210,7 @@ select.form-input {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  height: 100dvh;
   background: var(--bg-primary);
 }
 
@@ -237,7 +237,7 @@ select.form-input {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 1.5rem;
 }
 
@@ -300,7 +300,7 @@ select.form-input {
    ========================================================================== */
 
 .home-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -529,7 +529,7 @@ select.form-input {
    ========================================================================== */
 
 .conversations-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -693,7 +693,7 @@ select.form-input {
    ========================================================================== */
 
 .chat-page {
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--bg-primary);
