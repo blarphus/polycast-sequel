@@ -52,7 +52,10 @@ async function main() {
       if (!origin || ALLOWED_ORIGINS.includes(origin) || origin.startsWith('chrome-extension://')) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        // Don't error — just skip CORS headers. Same-origin requests
+        // still work (Vite's crossorigin attribute on assets sends Origin
+        // but the browser allows same-origin responses without CORS headers).
+        callback(null, false);
       }
     },
     credentials: true,
