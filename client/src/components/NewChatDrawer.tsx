@@ -10,9 +10,10 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onFriendAccepted: () => void;
+  initialQuery?: string;
 }
 
-export default function NewChatDrawer({ open, onClose, onFriendAccepted }: Props) {
+export default function NewChatDrawer({ open, onClose, onFriendAccepted, initialQuery }: Props) {
   if (!open) return null;
 
   const handleAccepted = () => {
@@ -25,7 +26,7 @@ export default function NewChatDrawer({ open, onClose, onFriendAccepted }: Props
         <div className="drawer-handle" />
         <div className="drawer-content">
           <h2 className="section-title">Find Users</h2>
-          <UserSearch />
+          <UserSearch initialQuery={initialQuery} />
           <FriendRequests onAccepted={handleAccepted} />
         </div>
       </div>

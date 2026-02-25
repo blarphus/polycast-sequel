@@ -569,6 +569,47 @@ select.form-input {
   color: var(--text-primary);
 }
 
+.conversations-search-bar {
+  position: relative;
+  padding: 0.5rem 1.5rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.conversations-search-icon {
+  position: absolute;
+  left: 2.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.conversations-search-input {
+  display: block;
+  width: 100%;
+  padding: 0.7rem 1rem 0.7rem 2.5rem;
+  margin: 0;
+  font-size: 0.95rem;
+  font-family: var(--font);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.conversations-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.conversations-search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
 .conversations-list {
   flex: 1;
   overflow-y: auto;

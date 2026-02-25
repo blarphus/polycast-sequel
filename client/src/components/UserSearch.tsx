@@ -4,11 +4,16 @@ import { searchUsers, UserResult, getFriends, getPendingRequests, sendFriendRequ
 import { socket } from '../socket';
 import { useAuth } from '../hooks/useAuth';
 
-export default function UserSearch() {
+interface UserSearchProps {
+  initialQuery?: string;
+}
+
+export default function UserSearch({ initialQuery = '' }: UserSearchProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [results, setResults] = useState<UserResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -18,6 +23,16 @@ export default function UserSearch() {
   const [sendingTo, setSendingTo] = useState<string | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync query when initialQuery changes (drawer re-opens with new text)
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
+
+  // Auto-focus the search input on mount
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   // Load existing friendships to populate status labels
   useEffect(() => {
@@ -141,6 +156,7 @@ export default function UserSearch() {
     <div className="user-search">
       <div className="user-search-input-wrap">
         <input
+          ref={inputRef}
           className="form-input user-search-input"
           type="text"
           placeholder="Search by username..."
