@@ -5,6 +5,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useSavedWords } from '../hooks/useSavedWords';
 import { socket } from '../socket';
 import {
   getMessages,
@@ -15,6 +16,9 @@ import {
   Friend,
 } from '../api';
 import { formatTime, getDateLabel, shouldShowDateSeparator } from '../utils/dateFormat';
+import type { PopupState } from '../textTokens';
+import TokenizedText from '../components/TokenizedText';
+import WordPopup from '../components/WordPopup';
 
 export default function ChatView() {
   const { friendId } = useParams<{ friendId: string }>();
@@ -30,6 +34,9 @@ export default function ChatView() {
   const [sending, setSending] = useState(false);
   const [typing, setTyping] = useState(false);
   const [friendOnline, setFriendOnline] = useState(false);
+  const [popup, setPopup] = useState<PopupState | null>(null);
+
+  const { savedWordsSet, isWordSaved, addWord } = useSavedWords();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -248,6 +255,14 @@ export default function ChatView() {
     }
   };
 
+  function handleWordClick(e: React.MouseEvent<HTMLSpanElement>, word: string, sentence: string) {
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setPopup({ word, sentence, rect });
+  }
+
+  const nativeLang = user?.native_language ?? undefined;
+  const targetLang = user?.target_language ?? undefined;
+
   const friendName = friendInfo?.display_name || friendInfo?.username;
 
   if (loading) {
@@ -309,7 +324,9 @@ export default function ChatView() {
                 </div>
               )}
               <div className={`chat-bubble ${isSent ? 'sent' : 'received'}`}>
-                <p className="chat-bubble-body">{msg.body}</p>
+                <p className="chat-bubble-body">
+                  <TokenizedText text={msg.body} savedWords={savedWordsSet} onWordClick={handleWordClick} />
+                </p>
                 <span className="chat-bubble-time">
                   {formatTime(msg.created_at)}
                   {isSent && msg.read_at && ' \u2713\u2713'}
@@ -347,6 +364,19 @@ export default function ChatView() {
           </svg>
         </button>
       </div>
+
+      {popup && nativeLang && (
+        <WordPopup
+          word={popup.word}
+          sentence={popup.sentence}
+          nativeLang={nativeLang}
+          targetLang={targetLang}
+          anchorRect={popup.rect}
+          onClose={() => setPopup(null)}
+          isWordSaved={isWordSaved(popup.word)}
+          onSaveWord={addWord}
+        />
+      )}
     </div>
   );
 }
