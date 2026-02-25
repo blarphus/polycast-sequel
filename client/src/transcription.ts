@@ -5,12 +5,6 @@
 
 import { socket } from './socket';
 
-export interface TranscriptPayload {
-  text: string;
-  lang: string;
-  userId: number;
-}
-
 /**
  * Captures PCM audio from a MediaStream and streams it to the server
  * via Socket.IO. The server relays audio to the Voxtral realtime API
@@ -22,7 +16,6 @@ export class TranscriptionService {
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private processorNode: ScriptProcessorNode | null = null;
   private running = false;
-  private chunkCount = 0;
 
   constructor(peerId: string) {
     this.peerId = peerId;
@@ -39,7 +32,6 @@ export class TranscriptionService {
       return;
     }
     this.running = true;
-    this.chunkCount = 0;
 
     console.log('[transcription] Starting Voxtral transcription for peerId=', this.peerId);
     console.log('[transcription] Stream tracks:', stream.getTracks().map(t => `${t.kind}:${t.label}:${t.readyState}`));
@@ -59,14 +51,8 @@ export class TranscriptionService {
 
     this.processorNode.onaudioprocess = (e: AudioProcessingEvent) => {
       if (!this.running) return;
-      this.chunkCount++;
       const float32 = e.inputBuffer.getChannelData(0);
       const base64 = float32ToPcm16Base64(float32);
-
-      if (this.chunkCount <= 3 || this.chunkCount % 50 === 0) {
-        console.log(`[transcription] Sending audio chunk #${this.chunkCount}, base64 size=${base64.length}`);
-      }
-
       socket.emit('transcription:audio', base64);
     };
 
@@ -84,7 +70,7 @@ export class TranscriptionService {
 
   /** Stop transcription and release audio resources. */
   stop(): void {
-    console.log(`[transcription] Stopping transcription (sent ${this.chunkCount} chunks)`);
+    console.log('[transcription] Stopping transcription');
     this.running = false;
     socket.emit('transcription:stop');
 

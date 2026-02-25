@@ -41,7 +41,6 @@ export default function Call() {
   const [callStatus, setCallStatus] = useState<string>(
     role === 'caller' ? 'Connecting...' : 'Answering...',
   );
-  const [callActive, setCallActive] = useState(false);
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
   const entryIdRef = useRef(0);
 
@@ -106,7 +105,6 @@ export default function Call() {
       try {
         const answer = await createAnswer(pcRef.current, data.offer, localStreamRef.current);
         socket.emit('signal:answer', { peerId, answer });
-        setCallActive(true);
         setCallStatus('');
       } catch (err) {
         console.error('[call] Error creating answer:', err);
@@ -120,7 +118,6 @@ export default function Call() {
         await pcRef.current.setRemoteDescription(
           new RTCSessionDescription(data.answer),
         );
-        setCallActive(true);
         setCallStatus('');
       } catch (err) {
         console.error('[call] Error setting remote description:', err);
@@ -210,7 +207,6 @@ export default function Call() {
             if (remoteVideoRef.current && event.streams[0]) {
               remoteVideoRef.current.srcObject = event.streams[0];
             }
-            setCallActive(true);
             setCallStatus('');
           },
           // onIceCandidate
