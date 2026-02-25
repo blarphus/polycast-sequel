@@ -88,6 +88,13 @@ export async function migrate(pool) {
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS correct_count INTEGER DEFAULT 0;`);
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS incorrect_count INTEGER DEFAULT 0;`);
 
+    // Anki-style SRS columns
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS ease_factor REAL DEFAULT 2.5;`);
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS learning_step INTEGER DEFAULT NULL;`);
+
+    // Reset legacy srs_interval values (old 1-9 ladder → new seconds-based system)
+    await client.query(`UPDATE saved_words SET srs_interval = 0 WHERE srs_interval BETWEEN 1 AND 9;`);
+
     // Transcript entries table (stores completed sentences from calls)
     await client.query(`
       CREATE TABLE IF NOT EXISTS transcript_entries (

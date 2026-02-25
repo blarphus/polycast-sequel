@@ -6,6 +6,9 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
+import { getDueStatus, formatDuration } from '../utils/srs';
+import type { SavedWord } from '../api';
+
 // -- FrequencyDots: maps Gemini 1-10 → 1-5 display dots --------------------
 
 const LEVEL_COLORS = ['#ff4d4d', '#ff944d', '#ffdd4d', '#75d147', '#4ade80'];
@@ -30,6 +33,56 @@ function FrequencyDots({ frequency }: { frequency: number | null }) {
   );
 }
 
+// -- DueStatusBadge: shows SRS status in collapsed header -------------------
+
+function DueStatusBadge({ word }: { word: SavedWord }) {
+  const status = getDueStatus(word);
+  return (
+    <span className={`dict-due-badge dict-due-badge--${status.urgency}`}>
+      {status.label}
+    </span>
+  );
+}
+
+// -- Review field for expanded view -----------------------------------------
+
+function ReviewField({ word }: { word: SavedWord }) {
+  const isNew = word.srs_interval === 0 && word.learning_step === null && !word.last_reviewed_at;
+  const inLearning = word.learning_step !== null;
+
+  if (isNew) {
+    return (
+      <div className="dict-field">
+        <span className="dict-field-label">Review</span>
+        <span className="dict-field-value text-muted">Not yet reviewed</span>
+      </div>
+    );
+  }
+
+  if (inLearning) {
+    return (
+      <div className="dict-field">
+        <span className="dict-field-label">Review</span>
+        <span className="dict-field-value text-muted">Learning</span>
+      </div>
+    );
+  }
+
+  // Graduated review card
+  const status = getDueStatus(word);
+  const easePercent = Math.round(word.ease_factor * 100);
+  const intervalLabel = formatDuration(word.srs_interval);
+
+  return (
+    <div className="dict-field">
+      <span className="dict-field-label">Review</span>
+      <span className="dict-field-value text-muted">
+        {status.label} &middot; Ease: {easePercent}% &middot; Interval: {intervalLabel}
+      </span>
+    </div>
+  );
+}
+
 // -- Example sentence renderer: ~word~ → highlighted span -------------------
 
 function renderExample(text: string) {
@@ -45,7 +98,7 @@ function renderExample(text: string) {
 
 // -- Sort options -----------------------------------------------------------
 
-type SortMode = 'date' | 'az' | 'freq-high' | 'freq-low';
+type SortMode = 'date' | 'az' | 'freq-high' | 'freq-low' | 'due';
 
 export default function Dictionary() {
   const navigate = useNavigate();
@@ -91,6 +144,15 @@ export default function Dictionary() {
         }
         break;
       }
+      case 'due':
+        sorted.sort((a, b) => {
+          // null due_at (new cards) first
+          if (!a.due_at && !b.due_at) return 0;
+          if (!a.due_at) return -1;
+          if (!b.due_at) return 1;
+          return new Date(a.due_at).getTime() - new Date(b.due_at).getTime();
+        });
+        break;
       default:
         break; // already sorted by date DESC from API
     }
@@ -153,6 +215,7 @@ export default function Dictionary() {
               <option value="az">A-Z</option>
               <option value="freq-high">Frequency high → low</option>
               <option value="freq-low">Frequency low → high</option>
+              <option value="due">Due soonest</option>
             </select>
             <span className="dict-count">{filtered.length} word{filtered.length !== 1 ? 's' : ''}</span>
           </div>
@@ -174,6 +237,7 @@ export default function Dictionary() {
                     <button className="dict-item-header" onClick={() => toggle(w.id)}>
                       <span className="dict-word">{w.word}</span>
                       <FrequencyDots frequency={w.frequency} />
+                      <DueStatusBadge word={w} />
                       <svg className="dict-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="6 9 12 15 18 9" />
                       </svg>
@@ -205,6 +269,7 @@ export default function Dictionary() {
                           <span className="dict-field-label">Saved</span>
                           <span className="dict-field-value text-muted">{formatDate(w.created_at)}</span>
                         </div>
+                        <ReviewField word={w} />
                         <button className="dict-remove-btn" onClick={() => removeWord(w.id)}>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="3 6 5 6 21 6" />

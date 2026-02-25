@@ -168,20 +168,16 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
 });
 
 // ---------------------------------------------------------------------------
-// SRS (Spaced Repetition)
+// SRS (Spaced Repetition) — Anki-style algorithm
 // ---------------------------------------------------------------------------
 
-const SRS_INTERVALS = {
-  1: 60,              // 1 minute
-  2: 600,             // 10 minutes
-  3: 86400,           // 1 day
-  4: 259200,          // 3 days
-  5: 604800,          // 1 week
-  6: 1209600,         // 2 weeks
-  7: 2592000,         // 1 month
-  8: 5184000,         // 2 months
-  9: 10368000,        // 4 months
-};
+const LEARNING_STEPS = [60, 600];        // 1 min, 10 min
+const GRADUATING_INTERVAL = 86400;       // 1 day
+const EASY_GRADUATING_INTERVAL = 345600; // 4 days
+const RELEARNING_STEP = 600;             // 10 min
+const MIN_EASE = 1.3;
+const LAPSE_INTERVAL_FACTOR = 0.1;       // Again in review: new = old × 0.1
+const MIN_REVIEW_INTERVAL = 86400;       // 1 day minimum
 
 /**
  * GET /api/dictionary/due -- Cards due for review + new cards
@@ -192,7 +188,9 @@ router.get('/api/dictionary/due', authMiddleware, async (req, res) => {
       `SELECT * FROM saved_words WHERE user_id = $1
          AND (due_at <= NOW() OR due_at IS NULL)
        ORDER BY
-         CASE WHEN due_at IS NOT NULL THEN 0 ELSE 1 END,
+         CASE WHEN learning_step IS NOT NULL THEN 0
+              WHEN due_at IS NOT NULL THEN 1
+              ELSE 2 END,
          due_at ASC NULLS LAST,
          frequency DESC NULLS LAST,
          created_at ASC`,
@@ -206,18 +204,17 @@ router.get('/api/dictionary/due', authMiddleware, async (req, res) => {
 });
 
 /**
- * PATCH /api/dictionary/words/:id/review -- Record an SRS review
- * Body: { answer: 'incorrect' | 'correct' | 'easy' }
+ * PATCH /api/dictionary/words/:id/review -- Record an Anki-style SRS review
+ * Body: { answer: 'again' | 'hard' | 'good' | 'easy' }
  */
 router.patch('/api/dictionary/words/:id/review', authMiddleware, async (req, res) => {
   const { answer } = req.body;
 
-  if (!answer || !['incorrect', 'correct', 'easy'].includes(answer)) {
-    return res.status(400).json({ error: 'answer must be incorrect, correct, or easy' });
+  if (!answer || !['again', 'hard', 'good', 'easy'].includes(answer)) {
+    return res.status(400).json({ error: 'answer must be again, hard, good, or easy' });
   }
 
   try {
-    // Fetch current card
     const { rows: existing } = await pool.query(
       'SELECT * FROM saved_words WHERE id = $1 AND user_id = $2',
       [req.params.id, req.userId],
@@ -228,33 +225,96 @@ router.patch('/api/dictionary/words/:id/review', authMiddleware, async (req, res
     }
 
     const card = existing[0];
-    let newInterval;
+    const isLearning = card.learning_step !== null || card.srs_interval === 0;
+    const isRelearning = card.learning_step !== null && card.srs_interval > 0;
 
-    if (answer === 'incorrect') {
-      newInterval = 1;
-    } else if (answer === 'correct') {
-      newInterval = Math.min((card.srs_interval || 0) + 1, 9);
+    let newInterval = card.srs_interval;
+    let newEase = card.ease_factor;
+    let newStep = card.learning_step;
+    let dueSeconds;
+
+    if (isLearning) {
+      // ---- Learning / Relearning phase ----
+      const step = card.learning_step ?? 0;
+
+      switch (answer) {
+        case 'again':
+          newStep = 0;
+          dueSeconds = LEARNING_STEPS[0]; // 1 min
+          break;
+        case 'hard':
+          newStep = step;
+          dueSeconds = step === 0 ? 360 : LEARNING_STEPS[1]; // 6 min or 10 min
+          break;
+        case 'good':
+          if (step >= LEARNING_STEPS.length - 1) {
+            // Graduate
+            newStep = null;
+            if (isRelearning) {
+              // Keep existing srs_interval for relearning graduation
+              dueSeconds = card.srs_interval;
+            } else {
+              newInterval = GRADUATING_INTERVAL;
+              dueSeconds = GRADUATING_INTERVAL;
+            }
+          } else {
+            newStep = step + 1;
+            dueSeconds = LEARNING_STEPS[step + 1];
+          }
+          break;
+        case 'easy':
+          newStep = null;
+          newInterval = EASY_GRADUATING_INTERVAL;
+          newEase = Math.max(newEase + 0.15, MIN_EASE);
+          dueSeconds = EASY_GRADUATING_INTERVAL;
+          break;
+      }
     } else {
-      // easy
-      newInterval = Math.min((card.srs_interval || 0) + 2, 9);
-    }
+      // ---- Review phase (graduated cards) ----
+      const oldInterval = card.srs_interval;
 
-    const seconds = SRS_INTERVALS[newInterval] || 60;
+      switch (answer) {
+        case 'again':
+          newEase = Math.max(newEase - 0.20, MIN_EASE);
+          newInterval = Math.max(Math.round(oldInterval * LAPSE_INTERVAL_FACTOR), MIN_REVIEW_INTERVAL);
+          newStep = 0; // Enter relearning
+          dueSeconds = RELEARNING_STEP; // 10 min
+          break;
+        case 'hard':
+          newEase = Math.max(newEase - 0.15, MIN_EASE);
+          newInterval = Math.max(Math.round(oldInterval * 1.2), MIN_REVIEW_INTERVAL);
+          dueSeconds = newInterval;
+          break;
+        case 'good':
+          newInterval = Math.max(Math.round(oldInterval * newEase), MIN_REVIEW_INTERVAL);
+          dueSeconds = newInterval;
+          break;
+        case 'easy':
+          newEase = Math.max(newEase + 0.15, MIN_EASE);
+          newInterval = Math.max(Math.round(oldInterval * newEase * 1.3), MIN_REVIEW_INTERVAL);
+          dueSeconds = newInterval;
+          break;
+      }
+    }
 
     const { rows: updated } = await pool.query(
       `UPDATE saved_words
        SET srs_interval = $1,
-           due_at = NOW() + ($2 || ' seconds')::INTERVAL,
+           ease_factor = $2,
+           learning_step = $3,
+           due_at = NOW() + ($4 || ' seconds')::INTERVAL,
            last_reviewed_at = NOW(),
-           correct_count = correct_count + $3,
-           incorrect_count = incorrect_count + $4
-       WHERE id = $5 AND user_id = $6
+           correct_count = correct_count + $5,
+           incorrect_count = incorrect_count + $6
+       WHERE id = $7 AND user_id = $8
        RETURNING *`,
       [
         newInterval,
-        String(seconds),
-        answer === 'incorrect' ? 0 : 1,
-        answer === 'incorrect' ? 1 : 0,
+        newEase,
+        newStep,
+        String(dueSeconds),
+        answer === 'again' ? 0 : 1,
+        answer === 'again' ? 1 : 0,
         req.params.id,
         req.userId,
       ],

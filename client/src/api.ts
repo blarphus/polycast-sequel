@@ -246,6 +246,8 @@ export interface SavedWord {
   last_reviewed_at: string | null;
   correct_count: number;
   incorrect_count: number;
+  ease_factor: number;
+  learning_step: number | null;
 }
 
 export function getSavedWords() {
@@ -271,11 +273,13 @@ export function deleteSavedWord(id: string) {
 
 // ---- SRS / Learn ----------------------------------------------------------
 
+export type SrsAnswer = 'again' | 'hard' | 'good' | 'easy';
+
 export function getDueWords() {
   return request<SavedWord[]>('/dictionary/due');
 }
 
-export function reviewWord(id: string, answer: 'incorrect' | 'correct' | 'easy') {
+export function reviewWord(id: string, answer: SrsAnswer) {
   return request<SavedWord>(`/dictionary/words/${id}/review`, {
     method: 'PATCH',
     body: { answer },

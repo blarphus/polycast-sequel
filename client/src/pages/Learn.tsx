@@ -1,11 +1,11 @@
 // ---------------------------------------------------------------------------
-// pages/Learn.tsx -- Flashcard-based SRS study page
+// pages/Learn.tsx -- Flashcard-based SRS study page (Anki-style 4 buttons)
 // ---------------------------------------------------------------------------
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDueWords, reviewWord, type SavedWord } from '../api';
-import { formatNextReviewTime, getNextInterval } from '../utils/srs';
+import { getDueWords, reviewWord, type SavedWord, type SrsAnswer } from '../api';
+import { getButtonTimeLabel, getNextDueSeconds } from '../utils/srs';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -60,13 +60,13 @@ export default function Learn() {
   const [submitting, setSubmitting] = useState(false);
 
   // Feedback overlay
-  const [feedback, setFeedback] = useState<{ answer: string; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ answer: SrsAnswer; text: string } | null>(null);
 
   // Drag / swipe
   const [dragState, setDragState] = useState({ isDragging: false, deltaX: 0, startX: 0, startTime: 0 });
 
   // Session stats
-  const [sessionStats, setSessionStats] = useState({ reviewed: 0, correct: 0, incorrect: 0, easy: 0 });
+  const [sessionStats, setSessionStats] = useState({ reviewed: 0, correct: 0, incorrect: 0 });
   const sessionStartRef = useRef(Date.now());
 
   // Audio played tracker (once per card)
@@ -116,24 +116,23 @@ export default function Learn() {
   // Answer handling
   // ---------------------------------------------------------------------------
 
-  const handleAnswer = useCallback(async (answer: 'incorrect' | 'correct' | 'easy') => {
+  const handleAnswer = useCallback(async (answer: SrsAnswer) => {
     if (!currentCard || submitting) return;
     setSubmitting(true);
 
-    const timeLabel = formatNextReviewTime(currentCard.srs_interval, answer);
+    const timeLabel = getButtonTimeLabel(currentCard, answer);
     setFeedback({ answer, text: timeLabel });
 
     // Update stats
     setSessionStats((prev) => ({
       reviewed: prev.reviewed + 1,
-      correct: prev.correct + (answer === 'correct' ? 1 : 0),
-      incorrect: prev.incorrect + (answer === 'incorrect' ? 1 : 0),
-      easy: prev.easy + (answer === 'easy' ? 1 : 0),
+      correct: prev.correct + (answer !== 'again' ? 1 : 0),
+      incorrect: prev.incorrect + (answer === 'again' ? 1 : 0),
     }));
 
-    // Check if this card should re-appear this session (1min / 10min intervals)
-    const nextInterval = getNextInterval(currentCard.srs_interval, answer);
-    const requeue = nextInterval <= 2;
+    // Check if this card should re-appear this session (learning-phase cards ≤ 10min)
+    const nextDueSeconds = getNextDueSeconds(currentCard, answer);
+    const requeue = nextDueSeconds <= 600;
 
     // Call API
     reviewWord(currentCard.id, answer).catch((err) => {
@@ -151,7 +150,7 @@ export default function Learn() {
 
         // Re-queue short-interval cards at the end so they come back this session
         if (requeue) {
-          setCards((prev) => [...prev, { ...currentCard, srs_interval: nextInterval }]);
+          setCards((prev) => [...prev, { ...currentCard }]);
         }
 
         setCurrentIndex((i) => i + 1);
@@ -191,11 +190,11 @@ export default function Learn() {
         // Any swipe when not flipped → flip
         setIsFlipped(true);
       } else {
-        // Flipped: right = correct, left = incorrect
+        // Flipped: right = good, left = again
         if (dragState.deltaX > 0) {
-          handleAnswer('correct');
+          handleAnswer('good');
         } else {
-          handleAnswer('incorrect');
+          handleAnswer('again');
         }
       }
     }
@@ -270,7 +269,7 @@ export default function Learn() {
     const mins = Math.floor(duration / 60);
     const secs = duration % 60;
     const accuracy = sessionStats.reviewed > 0
-      ? Math.round(((sessionStats.correct + sessionStats.easy) / sessionStats.reviewed) * 100)
+      ? Math.round((sessionStats.correct / sessionStats.reviewed) * 100)
       : 0;
 
     return (
@@ -386,30 +385,41 @@ export default function Learn() {
         </div>
       </div>
 
-      {/* Answer buttons */}
+      {/* Answer buttons — 4 Anki-style */}
       <div className="flashcard-answer-buttons">
         <button
           className="flashcard-btn flashcard-btn--again"
           disabled={!isFlipped || submitting}
-          onClick={() => handleAnswer('incorrect')}
+          onClick={() => handleAnswer('again')}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
           <span className="flashcard-btn-label">Again</span>
-          <span className="flashcard-btn-time">{formatNextReviewTime(card.srs_interval, 'incorrect')}</span>
+          <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'again')}</span>
+        </button>
+        <button
+          className="flashcard-btn flashcard-btn--hard"
+          disabled={!isFlipped || submitting}
+          onClick={() => handleAnswer('hard')}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          <span className="flashcard-btn-label">Hard</span>
+          <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'hard')}</span>
         </button>
         <button
           className="flashcard-btn flashcard-btn--good"
           disabled={!isFlipped || submitting}
-          onClick={() => handleAnswer('correct')}
+          onClick={() => handleAnswer('good')}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
           <span className="flashcard-btn-label">Good</span>
-          <span className="flashcard-btn-time">{formatNextReviewTime(card.srs_interval, 'correct')}</span>
+          <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'good')}</span>
         </button>
         <button
           className="flashcard-btn flashcard-btn--easy"
@@ -420,7 +430,7 @@ export default function Learn() {
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>
           <span className="flashcard-btn-label">Easy</span>
-          <span className="flashcard-btn-time">{formatNextReviewTime(card.srs_interval, 'easy')}</span>
+          <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'easy')}</span>
         </button>
       </div>
 
