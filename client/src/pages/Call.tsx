@@ -161,8 +161,9 @@ export default function Call() {
 
       // Auto-translate foreign-language entries
       const nativeLang = user?.native_language;
-      if (nativeLang && data.lang && data.lang !== nativeLang) {
-        translateSentence(data.text, data.lang, nativeLang)
+      const langBase = data.lang?.split('-')[0];
+      if (nativeLang && langBase && langBase !== nativeLang) {
+        translateSentence(data.text, langBase, nativeLang)
           .then(({ translation }) => {
             setTranscriptEntries(prev =>
               prev.map(e => e.id === id ? { ...e, translation } : e),
@@ -317,7 +318,7 @@ export default function Call() {
         />
       </div>
 
-      <TranscriptPanel entries={transcriptEntries} />
+      <TranscriptPanel entries={transcriptEntries} nativeLang={user?.native_language || undefined} targetLang={remoteLang || user?.target_language || undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} onSaveWord={addWord} />
     </div>
   );
 }
