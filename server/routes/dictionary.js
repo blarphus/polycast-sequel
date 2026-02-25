@@ -79,7 +79,8 @@ Respond with ONLY the JSON object, no other text.`;
 
 /**
  * POST /api/dictionary/translate
- * Translate a full sentence. Used for transcript panel translations.
+ * Translate a full sentence via Google Cloud Translation API (v2).
+ * Used for transcript panel translations.
  */
 router.post('/api/dictionary/translate', authMiddleware, async (req, res) => {
   const { sentence, fromLang, toLang } = req.body;
@@ -89,40 +90,30 @@ router.post('/api/dictionary/translate', authMiddleware, async (req, res) => {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+    if (!apiKey) throw new Error('GOOGLE_TRANSLATE_API_KEY is not configured');
 
-    const prompt = `Translate the following${fromLang ? ` ${fromLang}` : ''} sentence into ${toLang}. Return ONLY the translated sentence, nothing else.
-
-"${sentence}"`;
+    const params = new URLSearchParams({
+      q: sentence,
+      target: toLang,
+      key: apiKey,
+      format: 'text',
+    });
+    if (fromLang) params.set('source', fromLang);
 
     const response = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            thinkingConfig: { thinkingBudget: 0 },
-            maxOutputTokens: 256,
-          },
-        }),
-      },
+      `https://translation.googleapis.com/language/translate/v2?${params}`,
+      { method: 'POST' },
     );
 
     if (!response.ok) {
       const err = await response.text();
-      console.error('Gemini translate API error:', err);
+      console.error('Google Translate API error:', err);
       throw new Error('Translation request failed');
     }
 
     const data = await response.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const translation = raw.replace(/^["']|["']$/g, '').trim();
+    const translation = data.data?.translations?.[0]?.translatedText || '';
 
     return res.json({ translation });
   } catch (err) {
