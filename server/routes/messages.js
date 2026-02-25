@@ -71,17 +71,17 @@ router.get('/api/messages/:friendId', authMiddleware, async (req, res) => {
     if (before) {
       query = `
         SELECT * FROM messages
-        WHERE LEAST(sender_id, receiver_id) = LEAST($1, $2)
-          AND GREATEST(sender_id, receiver_id) = GREATEST($1, $2)
-          AND created_at < (SELECT created_at FROM messages WHERE id = $3)
+        WHERE LEAST(sender_id, receiver_id) = LEAST($1::uuid, $2::uuid)
+          AND GREATEST(sender_id, receiver_id) = GREATEST($1::uuid, $2::uuid)
+          AND created_at < (SELECT created_at FROM messages WHERE id = $3::uuid)
         ORDER BY created_at DESC
         LIMIT $4`;
       params = [req.userId, friendId, before, limit + 1];
     } else {
       query = `
         SELECT * FROM messages
-        WHERE LEAST(sender_id, receiver_id) = LEAST($1, $2)
-          AND GREATEST(sender_id, receiver_id) = GREATEST($1, $2)
+        WHERE LEAST(sender_id, receiver_id) = LEAST($1::uuid, $2::uuid)
+          AND GREATEST(sender_id, receiver_id) = GREATEST($1::uuid, $2::uuid)
         ORDER BY created_at DESC
         LIMIT $3`;
       params = [req.userId, friendId, limit + 1];
