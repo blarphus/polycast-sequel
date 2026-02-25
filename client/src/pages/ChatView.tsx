@@ -46,33 +46,40 @@ export default function ChatView() {
   useEffect(() => {
     if (!friendId) return;
 
+    // Reset state so a re-navigation never shows stale data
+    setMessages([]);
+    setHasMore(false);
+    setLoading(true);
+
     let cancelled = false;
 
     async function load() {
-      try {
-        const [msgData, friends] = await Promise.all([
-          getMessages(friendId!),
-          getFriends(),
-        ]);
+      const [msgResult, friendsResult] = await Promise.allSettled([
+        getMessages(friendId!),
+        getFriends(),
+      ]);
 
-        if (cancelled) return;
+      if (cancelled) return;
 
-        setMessages(msgData.messages);
-        setHasMore(msgData.has_more);
+      if (msgResult.status === 'fulfilled') {
+        setMessages(msgResult.value.messages);
+        setHasMore(msgResult.value.has_more);
+        markMessagesRead(friendId!).catch((err) => console.error('Failed to mark messages read:', err));
+      } else {
+        console.error('Failed to load messages:', msgResult.reason);
+      }
 
-        const friend = friends.find((f) => f.id === friendId);
+      if (friendsResult.status === 'fulfilled') {
+        const friend = friendsResult.value.find((f) => f.id === friendId);
         if (friend) {
           setFriendInfo(friend);
           setFriendOnline(friend.online);
         }
-
-        // Mark as read
-        markMessagesRead(friendId!).catch((err) => console.error('Failed to mark messages read:', err));
-      } catch (err) {
-        console.error('Failed to load chat:', err);
-      } finally {
-        if (!cancelled) setLoading(false);
+      } else {
+        console.error('Failed to load friend info:', friendsResult.reason);
       }
+
+      setLoading(false);
     }
 
     load();
