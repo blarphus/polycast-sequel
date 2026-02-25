@@ -9,6 +9,7 @@ import { socket } from '../socket';
 import {
   getMessages,
   getConversations,
+  getFriends,
   sendMessage,
   markMessagesRead,
   Message,
@@ -63,6 +64,25 @@ export default function ChatView() {
         if (friend) {
           setFriendInfo(friend);
           setFriendOnline(friend.online);
+        } else {
+          // Friend not in conversations yet — fetch from friends list
+          try {
+            const friends = await getFriends();
+            const f = friends.find((fr) => fr.id === friendId);
+            if (f) {
+              setFriendInfo({
+                friend_id: f.id,
+                friend_username: f.username,
+                friend_display_name: f.display_name,
+                online: f.online,
+                last_message_body: null,
+                last_message_at: null,
+                last_message_sender_id: null,
+                unread_count: 0,
+              });
+              setFriendOnline(f.online);
+            }
+          } catch { /* ignore */ }
         }
 
         // Mark as read
