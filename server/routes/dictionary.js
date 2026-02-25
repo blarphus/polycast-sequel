@@ -4,6 +4,61 @@ import pool from '../db.js';
 
 const router = Router();
 
+const WIKIDATA_HEADERS = { 'User-Agent': 'Polycast/1.0' };
+const SKIP_PATTERNS = /\b(municipality|commune|city|town|village|district|province|county|region|family name|given name|surname|person|Wikimedia)\b/i;
+
+async function fetchWordImage(word, lang) {
+  try {
+    // Step 1: Search Wikidata for the word
+    const searchParams = new URLSearchParams({
+      action: 'wbsearchentities',
+      search: word,
+      language: lang || 'en',
+      format: 'json',
+      limit: '3',
+    });
+    const searchRes = await fetch(
+      `https://www.wikidata.org/w/api.php?${searchParams}`,
+      { headers: WIKIDATA_HEADERS },
+    );
+    if (!searchRes.ok) {
+      console.error('Wikidata search failed:', searchRes.status);
+      return null;
+    }
+    const searchData = await searchRes.json();
+    const results = searchData.search || [];
+
+    // Step 1b: Filter out geographic/person entities
+    const entity = results.find((r) => !SKIP_PATTERNS.test(r.description || ''));
+    if (!entity) return null;
+
+    // Step 2: Get P18 (image) claim
+    const claimsParams = new URLSearchParams({
+      action: 'wbgetclaims',
+      entity: entity.id,
+      property: 'P18',
+      format: 'json',
+    });
+    const claimsRes = await fetch(
+      `https://www.wikidata.org/w/api.php?${claimsParams}`,
+      { headers: WIKIDATA_HEADERS },
+    );
+    if (!claimsRes.ok) {
+      console.error('Wikidata claims failed:', claimsRes.status);
+      return null;
+    }
+    const claimsData = await claimsRes.json();
+    const filename = claimsData.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
+    if (!filename) return null;
+
+    // Step 3: Construct thumbnail URL
+    return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
+  } catch (err) {
+    console.error('fetchWordImage error:', err);
+    return null;
+  }
+}
+
 async function callGemini(prompt, generationConfig = {}) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
@@ -178,7 +233,11 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
     }
     const example_sentence = parts[4] || null;
 
-    return res.json({ word, translation, definition, part_of_speech, frequency, example_sentence });
+    // Fetch Wikidata image (non-blocking — if it fails, image_url is null)
+    const langCode = (targetLang || '').split('-')[0] || 'en';
+    const image_url = await fetchWordImage(word, langCode);
+
+    return res.json({ word, translation, definition, part_of_speech, frequency, example_sentence, image_url });
   } catch (err) {
     console.error('Dictionary enrich error:', err);
     return res.status(500).json({ error: err.message || 'Enrichment failed' });
@@ -369,7 +428,7 @@ router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
  * POST /api/dictionary/words -- Save a word to the personal dictionary
  */
 router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
-  const { word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech } = req.body;
+  const { word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url } = req.body;
 
   if (!word) {
     return res.status(400).json({ error: 'word is required' });
@@ -377,11 +436,11 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        ON CONFLICT (user_id, word, target_language) DO NOTHING
        RETURNING *`,
-      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null],
+      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null, image_url || null],
     );
 
     if (rows.length > 0) {

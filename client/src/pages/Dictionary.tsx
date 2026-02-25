@@ -224,6 +224,9 @@ export default function Dictionary() {
                     </button>
                     {open && (
                       <div className="dict-item-body">
+                        {w.image_url && (
+                          <img className="dict-word-image" src={w.image_url} alt={w.word} />
+                        )}
                         {w.part_of_speech && (
                           <span className="dict-pos-badge">{w.part_of_speech}</span>
                         )}

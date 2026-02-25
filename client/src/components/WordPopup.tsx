@@ -105,6 +105,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                     frequency: enriched.frequency,
                     example_sentence: enriched.example_sentence,
                     part_of_speech: enriched.part_of_speech,
+                    image_url: enriched.image_url,
                   });
                   setSaved(true);
                 } catch (err) {

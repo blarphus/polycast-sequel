@@ -195,6 +195,7 @@ interface EnrichedWord {
   part_of_speech: string | null;
   frequency: number | null;
   example_sentence: string | null;
+  image_url: string | null;
 }
 
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
@@ -228,6 +229,7 @@ export interface SaveWordData {
   frequency?: number | null;
   example_sentence?: string | null;
   part_of_speech?: string | null;
+  image_url?: string | null;
 }
 
 export interface SavedWord {
@@ -248,6 +250,7 @@ export interface SavedWord {
   incorrect_count: number;
   ease_factor: number;
   learning_step: number | null;
+  image_url: string | null;
 }
 
 export function getSavedWords() {
@@ -263,6 +266,7 @@ export function saveWord(data: {
   frequency?: number | null;
   example_sentence?: string | null;
   part_of_speech?: string | null;
+  image_url?: string | null;
 }) {
   return request<SavedWord>('/dictionary/words', { method: 'POST', body: data });
 }

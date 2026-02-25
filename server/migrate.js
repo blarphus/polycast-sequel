@@ -80,6 +80,7 @@ export async function migrate(pool) {
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS frequency INTEGER DEFAULT NULL;`);
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS example_sentence TEXT DEFAULT NULL;`);
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS part_of_speech VARCHAR(50) DEFAULT NULL;`);
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT NULL;`);
 
     // SRS (spaced repetition) columns on saved_words
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS srs_interval INTEGER DEFAULT 0;`);

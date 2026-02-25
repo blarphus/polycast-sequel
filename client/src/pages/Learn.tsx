@@ -329,6 +329,10 @@ export default function Learn() {
                 <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
               )}
 
+              {card.image_url && (
+                <img className="flashcard-image" src={card.image_url} alt={card.word} />
+              )}
+
               <div className="flashcard-back-details">
                 <p className="flashcard-back-translation">
                   <strong>{card.word}</strong> — {card.translation}
