@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 
 export interface TranscriptEntry {
+  id?: number;
   userId: string;
   displayName: string;
   text: string;
+  lang?: string;
+  translation?: string;
 }
 
 interface TranscriptPanelProps {
@@ -40,10 +43,13 @@ export default function TranscriptPanel({ entries }: TranscriptPanelProps) {
         <p className="transcript-empty">Transcript will appear here...</p>
       ) : (
         entries.map((entry, i) => (
-          <div className="transcript-entry" key={i}>
+          <div className="transcript-entry" key={entry.id ?? i}>
             <span className="transcript-speaker">{entry.displayName}</span>
             {' \u2014 '}
             <span className="transcript-text">{entry.text}</span>
+            {entry.translation && (
+              <div className="transcript-translation">{entry.translation}</div>
+            )}
           </div>
         ))
       )}

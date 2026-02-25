@@ -78,6 +78,60 @@ Respond with ONLY the JSON object, no other text.`;
 });
 
 /**
+ * POST /api/dictionary/translate
+ * Translate a full sentence. Used for transcript panel translations.
+ */
+router.post('/api/dictionary/translate', authMiddleware, async (req, res) => {
+  const { sentence, fromLang, toLang } = req.body;
+
+  if (!sentence || !toLang) {
+    return res.status(400).json({ error: 'sentence and toLang are required' });
+  }
+
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
+    const prompt = `Translate the following${fromLang ? ` ${fromLang}` : ''} sentence into ${toLang}. Return ONLY the translated sentence, nothing else.
+
+"${sentence}"`;
+
+    const response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            thinkingConfig: { thinkingBudget: 0 },
+            maxOutputTokens: 256,
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error('Gemini translate API error:', err);
+      throw new Error('Translation request failed');
+    }
+
+    const data = await response.json();
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const translation = raw.replace(/^["']|["']$/g, '').trim();
+
+    return res.json({ translation });
+  } catch (err) {
+    console.error('Sentence translation error:', err);
+    return res.status(500).json({ error: err.message || 'Translation failed' });
+  }
+});
+
+/**
  * POST /api/dictionary/enrich
  * Full enrichment call (translation, definition, POS, frequency, example).
  * Called when the user saves a word — quality over speed.

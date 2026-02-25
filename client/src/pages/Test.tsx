@@ -13,6 +13,7 @@ import SubtitleBar from '../components/SubtitleBar';
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
 import TranscriptPanel, { TranscriptEntry } from '../components/TranscriptPanel';
 import { useSavedWords } from '../hooks/useSavedWords';
+import { translateSentence } from '../api';
 
 export default function Test() {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ export default function Test() {
 
   const [localText, setLocalText] = useState('');
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
+  const entryIdRef = useRef(0);
 
   const { controlsHidden, showControls } = useAutoHideControls();
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(streamRef);
@@ -50,8 +52,22 @@ export default function Test() {
       }
     };
 
-    const onTranscriptEntry = (data: { userId: string; displayName: string; text: string }) => {
-      setTranscriptEntries(prev => [...prev, data]);
+    const onTranscriptEntry = (data: { userId: string; displayName: string; text: string; lang?: string }) => {
+      const id = ++entryIdRef.current;
+      const entry: TranscriptEntry = { ...data, id };
+      setTranscriptEntries(prev => [...prev, entry]);
+
+      // Auto-translate if speaking in a foreign language
+      const nativeLang = user?.native_language;
+      if (nativeLang && data.lang && data.lang !== nativeLang) {
+        translateSentence(data.text, data.lang, nativeLang)
+          .then(({ translation }) => {
+            setTranscriptEntries(prev =>
+              prev.map(e => e.id === id ? { ...e, translation } : e),
+            );
+          })
+          .catch(() => {});
+      }
     };
 
     socket.on('transcript', onTranscript);

@@ -185,6 +185,13 @@ export function enrichWord(word: string, sentence: string, nativeLang: string, t
   });
 }
 
+export function translateSentence(sentence: string, fromLang: string, toLang: string) {
+  return request<{ translation: string }>('/dictionary/translate', {
+    method: 'POST',
+    body: { sentence, fromLang, toLang },
+  });
+}
+
 // ---- Saved Words (Personal Dictionary) ------------------------------------
 
 export interface SavedWord {
