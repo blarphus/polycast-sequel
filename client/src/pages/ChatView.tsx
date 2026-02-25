@@ -8,12 +8,11 @@ import { useAuth } from '../hooks/useAuth';
 import { socket } from '../socket';
 import {
   getMessages,
-  getConversations,
   getFriends,
   sendMessage,
   markMessagesRead,
   Message,
-  Conversation,
+  Friend,
 } from '../api';
 
 export default function ChatView() {
@@ -25,7 +24,7 @@ export default function ChatView() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [friendInfo, setFriendInfo] = useState<Conversation | null>(null);
+  const [friendInfo, setFriendInfo] = useState<Friend | null>(null);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [typing, setTyping] = useState(false);
@@ -50,9 +49,9 @@ export default function ChatView() {
 
     async function load() {
       try {
-        const [msgData, convos] = await Promise.all([
+        const [msgData, friends] = await Promise.all([
           getMessages(friendId!),
-          getConversations(),
+          getFriends(),
         ]);
 
         if (cancelled) return;
@@ -60,29 +59,10 @@ export default function ChatView() {
         setMessages(msgData.messages);
         setHasMore(msgData.has_more);
 
-        const friend = convos.find((c) => c.friend_id === friendId);
+        const friend = friends.find((f) => f.id === friendId);
         if (friend) {
           setFriendInfo(friend);
           setFriendOnline(friend.online);
-        } else {
-          // Friend not in conversations yet — fetch from friends list
-          try {
-            const friends = await getFriends();
-            const f = friends.find((fr) => fr.id === friendId);
-            if (f) {
-              setFriendInfo({
-                friend_id: f.id,
-                friend_username: f.username,
-                friend_display_name: f.display_name,
-                online: f.online,
-                last_message_body: null,
-                last_message_at: null,
-                last_message_sender_id: null,
-                unread_count: 0,
-              });
-              setFriendOnline(f.online);
-            }
-          } catch { /* ignore */ }
         }
 
         // Mark as read
@@ -290,7 +270,7 @@ export default function ChatView() {
     return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   };
 
-  const friendName = friendInfo?.friend_display_name || friendInfo?.friend_username || 'Chat';
+  const friendName = friendInfo?.display_name || friendInfo?.username || 'Chat';
 
   if (loading) {
     return (
