@@ -15,7 +15,6 @@ export function handleTranscription(io, socket, pool) {
   let transcriptBuffer = '';
   let detectedLang = 'en';
   let clearTimer = null;
-  let audioChunkCount = 0;
 
   // Cached speaker info (populated on transcription:start)
   let speakerName = '';
@@ -40,7 +39,6 @@ export function handleTranscription(io, socket, pool) {
     // Auto-clear after 4s of silence so stale text doesn't linger
     if (clearTimer) clearTimeout(clearTimer);
     clearTimer = setTimeout(() => {
-      console.log(`[transcription] Clearing stale buffer for user ${socket.userId}`);
       // Save the completed sentence to transcript before clearing
       emitTranscriptEntry(transcriptBuffer);
       transcriptBuffer = '';
@@ -96,7 +94,6 @@ export function handleTranscription(io, socket, pool) {
     }
     peerId = null;
     transcriptBuffer = '';
-    audioChunkCount = 0;
     speakerName = '';
     callId = null;
   }
@@ -140,12 +137,9 @@ export function handleTranscription(io, socket, pool) {
         [socket.userId, peerId],
       );
       callId = callResult.rows[0]?.id || null;
-      console.log(`[transcription] Speaker: ${speakerName}, callId: ${callId}`);
     } catch (err) {
       console.error(`[transcription] Failed to fetch speaker info:`, err.message);
     }
-
-    console.log(`[transcription] Opening Voxtral WebSocket for user ${socket.userId}...`);
 
     voxtralWs = new WebSocket(VOXTRAL_URL, {
       headers: {
@@ -157,7 +151,7 @@ export function handleTranscription(io, socket, pool) {
       console.log(`[transcription] Voxtral WS opened for user ${socket.userId}`);
 
       // Configure audio format
-      const config = {
+      voxtralWs.send(JSON.stringify({
         type: 'session.update',
         session: {
           audio_format: {
@@ -165,20 +159,16 @@ export function handleTranscription(io, socket, pool) {
             sample_rate: 16000,
           },
         },
-      };
-      console.log(`[transcription] Sending session.update:`, JSON.stringify(config));
-      voxtralWs.send(JSON.stringify(config));
+      }));
     });
 
     voxtralWs.on('message', (raw) => {
       try {
         const msg = JSON.parse(raw.toString());
-        console.log(`[transcription] Voxtral message for user ${socket.userId}: type=${msg.type}`, msg.type === 'transcription.text.delta' ? `text="${msg.text}"` : '');
 
         if (msg.type === 'transcription.text.delta') {
           const delta = msg.text || '';
           transcriptBuffer += delta;
-          console.log(`[transcription] Buffer for user ${socket.userId}: "${transcriptBuffer}"`);
 
           // Flush completed sentences on punctuation boundaries
           const sentenceEnd = /[.!?。？！]\s*/g;
@@ -198,25 +188,19 @@ export function handleTranscription(io, socket, pool) {
         } else if (msg.type === 'transcription.language') {
           if (msg.language) {
             detectedLang = msg.language;
-            console.log(`[transcription] Language detected for user ${socket.userId}: ${detectedLang}`);
           }
         } else if (msg.type === 'transcription.segment') {
-          // Segment boundary — emit completed sentence, then clear buffer
-          console.log(`[transcription] Segment boundary for user ${socket.userId}, saving entry`);
           emitTranscriptEntry(transcriptBuffer);
           transcriptBuffer = '';
         } else if (msg.type === 'transcription.done') {
-          console.log(`[transcription] Transcription done for user ${socket.userId}`);
           emitTranscriptEntry(transcriptBuffer);
           transcriptBuffer = '';
         } else if (msg.type === 'error') {
           console.error(`[transcription] Voxtral error for user ${socket.userId}:`, JSON.stringify(msg));
-        } else if (msg.type === 'session.created') {
-          console.log(`[transcription] Session created for user ${socket.userId}:`, JSON.stringify(msg));
-        } else if (msg.type === 'session.updated') {
-          console.log(`[transcription] Session updated for user ${socket.userId}:`, JSON.stringify(msg));
+        } else if (msg.type === 'session.created' || msg.type === 'session.updated') {
+          // expected lifecycle events, no action needed
         } else {
-          console.log(`[transcription] Unhandled Voxtral message type for user ${socket.userId}: ${msg.type}`, JSON.stringify(msg));
+          console.warn(`[transcription] Unhandled Voxtral message type for user ${socket.userId}: ${msg.type}`);
         }
       } catch (err) {
         console.error(`[transcription] Error parsing Voxtral message for user ${socket.userId}:`, err, raw.toString());
@@ -238,11 +222,6 @@ export function handleTranscription(io, socket, pool) {
    * forward to Voxtral as an input_audio.append message.
    */
   socket.on('transcription:audio', (base64Chunk) => {
-    audioChunkCount++;
-    if (audioChunkCount <= 3 || audioChunkCount % 50 === 0) {
-      console.log(`[transcription] Audio chunk #${audioChunkCount} from user ${socket.userId}, size=${base64Chunk.length} chars, wsReady=${voxtralWs?.readyState === WebSocket.OPEN}`);
-    }
-
     if (voxtralWs && voxtralWs.readyState === WebSocket.OPEN) {
       voxtralWs.send(
         JSON.stringify({
@@ -250,10 +229,6 @@ export function handleTranscription(io, socket, pool) {
           audio: base64Chunk,
         }),
       );
-    } else {
-      if (audioChunkCount <= 5) {
-        console.warn(`[transcription] Cannot send audio chunk #${audioChunkCount} for user ${socket.userId}: WS not open (state=${voxtralWs?.readyState})`);
-      }
     }
   });
 
@@ -270,7 +245,6 @@ export function handleTranscription(io, socket, pool) {
 
   // Clean up on disconnect
   socket.on('disconnect', () => {
-    console.log(`[transcription] Socket disconnect for user ${socket.userId}, cleaning up Voxtral WS`);
     cleanup();
   });
 }
