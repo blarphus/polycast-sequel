@@ -11,9 +11,9 @@ import { useMediaToggles } from '../hooks/useMediaToggles';
 import { TranscriptionService } from '../transcription';
 import SubtitleBar from '../components/SubtitleBar';
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
-import TranscriptPanel, { TranscriptEntry } from '../components/TranscriptPanel';
+import TranscriptPanel from '../components/TranscriptPanel';
 import { useSavedWords } from '../hooks/useSavedWords';
-import { translateSentence } from '../api';
+import { useTranscriptEntries } from '../hooks/useTranscriptEntries';
 
 export default function Test() {
   const navigate = useNavigate();
@@ -24,8 +24,7 @@ export default function Test() {
   const transcriptionRef = useRef<TranscriptionService | null>(null);
 
   const [localText, setLocalText] = useState('');
-  const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
-  const entryIdRef = useRef(0);
+  const { transcriptEntries, onTranscriptEntry } = useTranscriptEntries(user?.native_language);
 
   const { controlsHidden, showControls } = useAutoHideControls();
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(streamRef);
@@ -49,26 +48,6 @@ export default function Test() {
     const onTranscript = (data: { text: string; lang: string; userId: number }) => {
       if (data.userId === user?.id) {
         setLocalText(data.text);
-      }
-    };
-
-    const onTranscriptEntry = (data: { userId: string; displayName: string; text: string; lang?: string }) => {
-      const id = ++entryIdRef.current;
-      const entry: TranscriptEntry = { ...data, id };
-      setTranscriptEntries(prev => [...prev, entry]);
-
-      // Auto-translate — let Google detect the source language
-      const nativeLang = user?.native_language;
-      if (nativeLang) {
-        translateSentence(data.text, '', nativeLang)
-          .then(({ translation }) => {
-            if (translation && translation.toLowerCase() !== data.text.toLowerCase()) {
-              setTranscriptEntries(prev =>
-                prev.map(e => e.id === id ? { ...e, translation } : e),
-              );
-            }
-          })
-          .catch(() => {});
       }
     };
 
