@@ -45,6 +45,7 @@ router.post('/api/signup', async (req, res) => {
     res.cookie('token', token, COOKIE_OPTIONS);
 
     return res.status(201).json({
+      token,
       id: user.id,
       username: user.username,
       display_name: user.display_name,
@@ -97,6 +98,7 @@ router.post('/api/login', async (req, res) => {
     res.cookie('token', token, COOKIE_OPTIONS);
 
     return res.json({
+      token,
       id: user.id,
       username: user.username,
       display_name: user.display_name,

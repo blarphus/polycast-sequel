@@ -23,6 +23,11 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3001;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 
+const ALLOWED_ORIGINS = [
+  CLIENT_ORIGIN,
+  process.env.EXTENSION_ORIGIN,
+].filter(Boolean);
+
 async function main() {
   // ------ Database migrations ------
   try {
@@ -43,7 +48,13 @@ async function main() {
   const app = express();
 
   app.use(cors({
-    origin: CLIENT_ORIGIN,
+    origin: (origin, callback) => {
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   }));
 

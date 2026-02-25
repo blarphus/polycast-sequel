@@ -38,7 +38,15 @@ export function verifyToken(token) {
  * attaches req.userId, and responds 401 if invalid.
  */
 export function authMiddleware(req, res, next) {
-  const token = req.cookies?.token;
+  let token = req.cookies?.token;
+
+  // Bearer token fallback for Chrome extension
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    }
+  }
 
   if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
