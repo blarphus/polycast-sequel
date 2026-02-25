@@ -1226,11 +1226,15 @@ select.form-input {
 }
 
 .subtitle-word.saved {
-  background: rgba(108, 99, 255, 0.2);
+  color: #5b9cf5;
 }
 
 .subtitle-word.saved:hover {
-  background: rgba(108, 99, 255, 0.4);
+  background: rgba(91, 156, 245, 0.15);
+}
+
+.chat-bubble.sent .subtitle-word.saved {
+  color: #a8d4ff;
 }
 
 /* ==========================================================================
