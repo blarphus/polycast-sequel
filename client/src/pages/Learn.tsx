@@ -72,6 +72,9 @@ export default function Learn() {
   // Audio played tracker (once per card)
   const audioPlayedRef = useRef<Set<number>>(new Set());
 
+  // Holds the API response so the re-queue timeout can use the updated card
+  const reviewedCardRef = useRef<SavedWord | null>(null);
+
   // Fetch due words
   useEffect(() => {
     getDueWords()
@@ -134,10 +137,11 @@ export default function Learn() {
     const nextDueSeconds = getNextDueSeconds(currentCard, answer);
     const requeue = nextDueSeconds <= 600;
 
-    // Call API
-    reviewWord(currentCard.id, answer).catch((err) => {
-      console.error('Review API error:', err);
-    });
+    // Call API — store response for re-queue
+    reviewedCardRef.current = null;
+    reviewWord(currentCard.id, answer)
+      .then((updated) => { reviewedCardRef.current = updated; })
+      .catch((err) => { console.error('Review API error:', err); });
 
     // Animate exit → next card
     setTimeout(() => {
@@ -148,9 +152,11 @@ export default function Learn() {
         setIsFlipped(false);
         setDragState({ isDragging: false, deltaX: 0, startX: 0, startTime: 0 });
 
-        // Re-queue short-interval cards at the end so they come back this session
+        // Re-queue short-interval cards with updated state from API
         if (requeue) {
-          setCards((prev) => [...prev, { ...currentCard }]);
+          const updated = reviewedCardRef.current;
+          reviewedCardRef.current = null;
+          setCards((prev) => [...prev, { ...(updated ?? currentCard) }]);
         }
 
         setCurrentIndex((i) => i + 1);
