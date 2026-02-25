@@ -14,6 +14,7 @@ import {
   Message,
   Friend,
 } from '../api';
+import { formatTime, getDateLabel, shouldShowDateSeparator } from '../utils/dateFormat';
 
 export default function ChatView() {
   const { friendId } = useParams<{ friendId: string }>();
@@ -242,34 +243,6 @@ export default function ChatView() {
     }
   };
 
-  // Date separator logic
-  const getDateLabel = (dateStr: string): string => {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const msgDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const diffDays = Math.floor((today.getTime() - msgDate.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    return d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-  };
-
-  const shouldShowDate = (idx: number): boolean => {
-    if (idx === 0) return true;
-    const prev = new Date(messages[idx - 1].created_at);
-    const curr = new Date(messages[idx].created_at);
-    return (
-      prev.getFullYear() !== curr.getFullYear() ||
-      prev.getMonth() !== curr.getMonth() ||
-      prev.getDate() !== curr.getDate()
-    );
-  };
-
-  const formatTime = (iso: string): string => {
-    return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  };
-
   const friendName = friendInfo?.display_name || friendInfo?.username;
 
   if (loading) {
@@ -325,7 +298,7 @@ export default function ChatView() {
           const isSent = msg.sender_id === user?.id;
           return (
             <React.Fragment key={msg.id}>
-              {shouldShowDate(idx) && (
+              {(idx === 0 || shouldShowDateSeparator(messages[idx - 1].created_at, msg.created_at)) && (
                 <div className="chat-date-separator">
                   <span>{getDateLabel(msg.created_at)}</span>
                 </div>

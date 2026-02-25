@@ -2,7 +2,7 @@ import { Router } from 'express';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
 import { userToSocket } from '../socket/presence.js';
-import { getIO } from '../socket/index.js';
+import { emitToUser } from '../socket/emitToUser.js';
 
 const router = Router();
 
@@ -134,13 +134,7 @@ router.post('/api/messages/:friendId', authMiddleware, async (req, res) => {
     const message = result.rows[0];
 
     // Emit to recipient if online
-    const recipientSocketId = userToSocket.get(friendId);
-    if (recipientSocketId) {
-      const io = getIO();
-      if (io) {
-        io.to(recipientSocketId).emit('message:new', message);
-      }
-    }
+    emitToUser(friendId, 'message:new', message);
 
     return res.status(201).json(message);
   } catch (err) {
@@ -167,13 +161,7 @@ router.post('/api/messages/:friendId/read', authMiddleware, async (req, res) => 
 
     // Emit read receipt to friend if online
     if (updated > 0) {
-      const friendSocketId = userToSocket.get(friendId);
-      if (friendSocketId) {
-        const io = getIO();
-        if (io) {
-          io.to(friendSocketId).emit('message:read', { userId: req.userId });
-        }
-      }
+      emitToUser(friendId, 'message:read', { userId: req.userId });
     }
 
     return res.json({ updated });

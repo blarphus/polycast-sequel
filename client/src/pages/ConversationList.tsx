@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { socket } from '../socket';
 import { getConversations, Conversation, Message } from '../api';
+import { formatRelativeTime } from '../utils/dateFormat';
 import BottomToolbar from '../components/BottomToolbar';
 import NewChatDrawer from '../components/NewChatDrawer';
 
@@ -111,23 +112,6 @@ export default function ConversationList() {
     }
   };
 
-  const formatTime = (iso: string | null): string => {
-    if (!iso) return '';
-    const d = new Date(iso);
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return d.toLocaleDateString(undefined, { weekday: 'short' });
-    }
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  };
-
   const getInitials = (name: string | null, username: string): string => {
     const n = name || username;
     const parts = n.split(/\s+/);
@@ -216,7 +200,7 @@ export default function ConversationList() {
                 </span>
               </div>
               <div className="conversation-meta">
-                <span className="conversation-time">{formatTime(c.last_message_at)}</span>
+                <span className="conversation-time">{formatRelativeTime(c.last_message_at)}</span>
                 {c.unread_count > 0 && (
                   <span className="conversation-unread">{c.unread_count}</span>
                 )}

@@ -1063,28 +1063,6 @@ select.form-input {
   transform: scale(0.93);
 }
 
-.call-control-btn--secondary {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background var(--transition), transform var(--transition);
-}
-
-.call-control-btn--secondary:hover {
-  background: rgba(255, 255, 255, 0.22);
-}
-
-.call-control-btn--secondary:active {
-  transform: scale(0.93);
-}
-
 /* Test page */
 .test-self-video {
   width: 100%;
@@ -1773,11 +1751,6 @@ select.form-input {
   .call-control-btn--danger {
     width: 48px;
     height: 48px;
-  }
-
-  .call-control-btn--secondary {
-    width: 40px;
-    height: 40px;
   }
 
   .subtitle-bar {

@@ -64,34 +64,4 @@ export function setupHeartbeat(io, socket, redisClient) {
   });
 }
 
-/**
- * Scan Redis for all `online:*` keys and return an array of online userIds.
- */
-export async function getOnlineUsers(redisClient) {
-  const userIds = [];
-
-  try {
-    let cursor = 0;
-
-    do {
-      const result = await redisClient.scan(cursor, {
-        MATCH: 'online:*',
-        COUNT: 100,
-      });
-
-      cursor = result.cursor;
-
-      for (const key of result.keys) {
-        // key format: "online:{userId}"
-        const userId = key.slice('online:'.length);
-        userIds.push(userId);
-      }
-    } while (cursor !== 0);
-  } catch (err) {
-    console.error('Redis SCAN error in getOnlineUsers:', err);
-  }
-
-  return userIds;
-}
-
-export { socketToUser, userToSocket };
+export { userToSocket };

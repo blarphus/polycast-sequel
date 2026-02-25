@@ -2,9 +2,18 @@ import { Router } from 'express';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
 import { userToSocket } from '../socket/presence.js';
-import { getIO } from '../socket/index.js';
+import { emitToUser } from '../socket/emitToUser.js';
 
 const router = Router();
+
+/** Find a pending friend request where `recipientId` is the recipient. Returns the row or null. */
+async function findPendingRequest(id, recipientId) {
+  const result = await pool.query(
+    `SELECT * FROM friendships WHERE id = $1 AND recipient_id = $2 AND status = 'pending'`,
+    [id, recipientId],
+  );
+  return result.rows[0] || null;
+}
 
 /**
  * POST /api/friends/request
@@ -54,19 +63,13 @@ router.post('/api/friends/request', authMiddleware, async (req, res) => {
     const requester = requesterResult.rows[0];
 
     // Emit socket event to recipient if they are online
-    const recipientSocketId = userToSocket.get(userId);
-    if (recipientSocketId) {
-      const io = getIO();
-      if (io) {
-        io.to(recipientSocketId).emit('friend:request', {
-          id: friendship.id,
-          requester_id: req.userId,
-          username: requester?.username,
-          display_name: requester?.display_name,
-          created_at: friendship.created_at,
-        });
-      }
-    }
+    emitToUser(userId, 'friend:request', {
+      id: friendship.id,
+      requester_id: req.userId,
+      username: requester?.username,
+      display_name: requester?.display_name,
+      created_at: friendship.created_at,
+    });
 
     return res.status(201).json(friendship);
   } catch (err) {
@@ -149,13 +152,8 @@ router.post('/api/friends/:id/accept', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Find the pending request where current user is the recipient
-    const existing = await pool.query(
-      `SELECT * FROM friendships WHERE id = $1 AND recipient_id = $2 AND status = 'pending'`,
-      [id, req.userId],
-    );
-
-    if (existing.rows.length === 0) {
+    const pending = await findPendingRequest(id, req.userId);
+    if (!pending) {
       return res.status(404).json({ error: 'Friend request not found' });
     }
 
@@ -175,18 +173,12 @@ router.post('/api/friends/:id/accept', authMiddleware, async (req, res) => {
     const accepter = accepterResult.rows[0];
 
     // Emit socket event to the requester if they are online
-    const requesterSocketId = userToSocket.get(friendship.requester_id);
-    if (requesterSocketId) {
-      const io = getIO();
-      if (io) {
-        io.to(requesterSocketId).emit('friend:accepted', {
-          friendship_id: friendship.id,
-          recipient_id: req.userId,
-          username: accepter?.username,
-          display_name: accepter?.display_name,
-        });
-      }
-    }
+    emitToUser(friendship.requester_id, 'friend:accepted', {
+      friendship_id: friendship.id,
+      recipient_id: req.userId,
+      username: accepter?.username,
+      display_name: accepter?.display_name,
+    });
 
     return res.json(friendship);
   } catch (err) {
@@ -203,13 +195,8 @@ router.post('/api/friends/:id/reject', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Find the pending request where current user is the recipient
-    const existing = await pool.query(
-      `SELECT * FROM friendships WHERE id = $1 AND recipient_id = $2 AND status = 'pending'`,
-      [id, req.userId],
-    );
-
-    if (existing.rows.length === 0) {
+    const pending = await findPendingRequest(id, req.userId);
+    if (!pending) {
       return res.status(404).json({ error: 'Friend request not found' });
     }
 
@@ -219,37 +206,6 @@ router.post('/api/friends/:id/reject', authMiddleware, async (req, res) => {
     return res.json({ message: 'Request rejected' });
   } catch (err) {
     console.error('POST /api/friends/:id/reject error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-/**
- * DELETE /api/friends/:id
- * Remove an accepted friendship.
- */
-router.delete('/api/friends/:id', authMiddleware, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Find the accepted friendship where current user is either party
-    const existing = await pool.query(
-      `SELECT * FROM friendships
-       WHERE id = $1
-         AND status = 'accepted'
-         AND (requester_id = $2 OR recipient_id = $2)`,
-      [id, req.userId],
-    );
-
-    if (existing.rows.length === 0) {
-      return res.status(404).json({ error: 'Friendship not found' });
-    }
-
-    // Delete the friendship
-    await pool.query('DELETE FROM friendships WHERE id = $1', [id]);
-
-    return res.json({ message: 'Friend removed' });
-  } catch (err) {
-    console.error('DELETE /api/friends/:id error:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
