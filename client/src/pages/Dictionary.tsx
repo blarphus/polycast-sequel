@@ -97,6 +97,7 @@ export default function Dictionary() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortMode>('date');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const toggle = (id: string) => {
     setExpandedIds((prev) => {
@@ -225,7 +226,12 @@ export default function Dictionary() {
                     {open && (
                       <div className="dict-item-body">
                         {w.image_url && (
-                          <img className="dict-word-image" src={w.image_url} alt={w.word} />
+                          <img
+                            className="dict-word-image dict-word-image--clickable"
+                            src={w.image_url}
+                            alt={w.word}
+                            onClick={() => setLightboxUrl(w.image_url!)}
+                          />
                         )}
                         {w.part_of_speech && (
                           <span className="dict-pos-badge">{w.part_of_speech}</span>
@@ -272,6 +278,11 @@ export default function Dictionary() {
         </section>
       </main>
 
+      {lightboxUrl && (
+        <div className="dict-lightbox" onClick={() => setLightboxUrl(null)}>
+          <img src={lightboxUrl.replace(/\/\d+px-/, '/800px-')} alt="Enlarged" />
+        </div>
+      )}
     </div>
   );
 }

@@ -1712,6 +1712,31 @@ select.form-input {
   border: 1px solid var(--border);
 }
 
+.dict-word-image--clickable {
+  cursor: zoom-in;
+  transition: opacity 0.15s;
+}
+.dict-word-image--clickable:hover {
+  opacity: 0.8;
+}
+
+.dict-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+}
+.dict-lightbox img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: var(--radius);
+  object-fit: contain;
+}
+
 .dict-pos-badge {
   display: inline-block;
   width: fit-content;
