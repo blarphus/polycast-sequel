@@ -1890,6 +1890,163 @@ select.form-input {
 }
 
 /* ==========================================================================
+   Word Lookup Modal
+   ========================================================================== */
+
+.dict-lookup-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.dict-lookup-btn:hover {
+  background: var(--accent-hover);
+  transform: scale(1.08);
+}
+
+.dict-lookup-btn:active {
+  transform: scale(0.95);
+}
+
+.lookup-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.lookup-modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  margin: 1rem;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+.lookup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.lookup-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.lookup-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  flex-shrink: 0;
+}
+
+.lookup-input {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.lookup-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 1.25rem 1rem;
+  min-height: 80px;
+}
+
+.lookup-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 0;
+}
+
+.lookup-error {
+  color: var(--danger);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.lookup-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.lookup-sense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lookup-sense {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+
+.lookup-sense:hover:not(:disabled) {
+  background: var(--bg-surface-hover);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.lookup-sense:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.lookup-sense:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.lookup-gloss {
+  flex: 1;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
    Learn / Flashcard Page
    ========================================================================== */
 
@@ -2603,6 +2760,16 @@ select.form-input {
 [data-theme="dark"] .dict-due-badge--upcoming {
   background: rgba(46, 204, 113, 0.18);
   color: #4ade80;
+}
+
+/* ---- Lookup modal -------------------------------------------------------- */
+
+[data-theme="dark"] .lookup-overlay {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"] .lookup-modal {
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.4);
 }
 
 /* ---- Learn page background ----------------------------------------------- */

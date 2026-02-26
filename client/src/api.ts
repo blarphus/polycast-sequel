@@ -209,6 +209,14 @@ export function translateWord(word: string, targetLang: string, nativeLang: stri
   return request<{ translation: string }>(`/dictionary/translate-word?${params}`);
 }
 
+export interface WiktSense { gloss: string; pos: string; tags: string[]; }
+export interface WiktLookupResult { word: string; senses: WiktSense[]; }
+
+export function wiktLookup(word: string, targetLang: string, nativeLang: string) {
+  const params = new URLSearchParams({ word, targetLang, nativeLang });
+  return request<WiktLookupResult>(`/dictionary/wikt-lookup?${params}`);
+}
+
 export function enrichWord(word: string, sentence: string, nativeLang: string, targetLang?: string, imageTerm?: string) {
   return request<EnrichedWord>('/dictionary/enrich', {
     method: 'POST',

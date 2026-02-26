@@ -9,6 +9,7 @@ import { useSavedWords } from '../hooks/useSavedWords';
 import { getDueStatus, formatDuration } from '../utils/srs';
 import { formatDate } from '../utils/dateFormat';
 import { renderTildeHighlight } from '../utils/tildeMarkup';
+import WordLookupModal from '../components/WordLookupModal';
 import type { SavedWord } from '../api';
 
 // -- FrequencyDots: maps Gemini 1-10 → 1-5 display dots --------------------
@@ -91,13 +92,14 @@ type SortMode = 'date' | 'az' | 'freq-high' | 'freq-low' | 'due';
 
 export default function Dictionary() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
-  const { words, loading, removeWord } = useSavedWords();
+  const { user, logout } = useAuth();
+  const { words, loading, removeWord, addWord } = useSavedWords();
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortMode>('date');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lookupOpen, setLookupOpen] = useState(false);
 
   const toggle = (id: string) => {
     setExpandedIds((prev) => {
@@ -205,6 +207,9 @@ export default function Dictionary() {
               <option value="due">Due soonest</option>
             </select>
             <span className="dict-count">{filtered.length} word{filtered.length !== 1 ? 's' : ''}</span>
+            {user?.native_language && user?.target_language && (
+              <button className="dict-lookup-btn" onClick={() => setLookupOpen(true)} title="Look up a word">+</button>
+            )}
           </div>
 
           {loading ? (
@@ -313,6 +318,15 @@ export default function Dictionary() {
         <div className="dict-lightbox" onClick={() => setLightboxUrl(null)}>
           <img src={lightboxUrl.replace(/\/\d+px-/, '/800px-')} alt="Enlarged" />
         </div>
+      )}
+
+      {lookupOpen && user?.native_language && user?.target_language && (
+        <WordLookupModal
+          targetLang={user.target_language}
+          nativeLang={user.native_language}
+          onSave={addWord}
+          onClose={() => setLookupOpen(false)}
+        />
       )}
     </div>
   );

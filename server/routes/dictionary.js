@@ -195,6 +195,59 @@ Respond with ONLY the JSON object, no other text.`;
 });
 
 /**
+ * GET /api/dictionary/wikt-lookup?word=X&targetLang=Y&nativeLang=Z
+ * Proxies to WiktApi for structured Wiktionary definitions.
+ */
+const WIKT_EDITIONS = new Set([
+  'cs','de','el','en','es','fr','id','it','ja','ko',
+  'ku','ms','nl','pl','pt','ru','th','tr','vi','zh',
+]);
+
+router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
+  const { word, targetLang, nativeLang } = req.query;
+
+  if (!word || !targetLang || !nativeLang) {
+    return res.status(400).json({ error: 'word, targetLang, and nativeLang are required' });
+  }
+
+  const edition = WIKT_EDITIONS.has(nativeLang) ? nativeLang : 'en';
+
+  try {
+    const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word)}/definitions?lang=${targetLang}`;
+    const response = await fetch(url, { headers: API_HEADERS });
+
+    if (response.status === 404) {
+      return res.json({ word, senses: [] });
+    }
+
+    if (!response.ok) {
+      console.error('WiktApi error:', response.status, await response.text().catch(() => ''));
+      return res.status(502).json({ error: 'WiktApi request failed' });
+    }
+
+    const data = await response.json();
+
+    // Flatten all senses from all POS groups, filtering out form-of entries
+    const senses = [];
+    for (const entry of data) {
+      const pos = entry.pos || '';
+      for (const def of entry.definitions || []) {
+        const gloss = def.definition || '';
+        const tags = def.tags || [];
+        if (!gloss) continue;
+        if (tags.includes('form-of')) continue;
+        senses.push({ gloss, pos, tags });
+      }
+    }
+
+    return res.json({ word, senses });
+  } catch (err) {
+    console.error('WiktApi network error:', err);
+    return res.status(502).json({ error: 'WiktApi request failed' });
+  }
+});
+
+/**
  * GET /api/dictionary/translate-word
  * Translate a single word via Google Cloud Translation API (v2).
  * Used by WordPopup for fast translation while Gemini handles definition/POS.
