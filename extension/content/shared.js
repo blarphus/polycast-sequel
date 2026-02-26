@@ -7,9 +7,13 @@
 let savedWordsSet = new Set();
 
 (async function initSavedWords() {
-  const res = await chrome.runtime.sendMessage({ type: 'GET_SAVED_WORDS' });
-  if (res && res.savedWords) {
-    savedWordsSet = new Set(res.savedWords);
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'GET_SAVED_WORDS' });
+    if (res && res.savedWords) {
+      savedWordsSet = new Set(res.savedWords);
+    }
+  } catch {
+    // Extension context invalidated — will work after page refresh
   }
 })();
 
@@ -143,29 +147,43 @@ function handleWordClick(word, sentence, anchorEl) {
   });
 
   // Lookup
-  chrome.runtime.sendMessage(
-    { type: 'LOOKUP_WORD', word, sentence },
-    (res) => {
-      if (!activePopup || activePopup !== popup) return;
+  try {
+    chrome.runtime.sendMessage(
+      { type: 'LOOKUP_WORD', word, sentence },
+      (res) => {
+        if (chrome.runtime.lastError) {
+          console.error('Polycast lookup error:', chrome.runtime.lastError.message);
+          if (!activePopup || activePopup !== popup) return;
+          const body = popup.querySelector('.pc-popup-body');
+          body.innerHTML = `<div class="pc-popup-error">Extension reloaded — refresh this page</div>`;
+          return;
+        }
 
-      const body = popup.querySelector('.pc-popup-body');
-      if (res && res.error) {
-        body.innerHTML = `<div class="pc-popup-error">${escapeHtml(res.error)}</div>`;
-        return;
-      }
+        if (!activePopup || activePopup !== popup) return;
 
-      if (!res || !res.translation) {
-        body.innerHTML = `<div class="pc-popup-error">No translation found</div>`;
-        return;
-      }
+        const body = popup.querySelector('.pc-popup-body');
+        if (res && res.error) {
+          body.innerHTML = `<div class="pc-popup-error">${escapeHtml(res.error)}</div>`;
+          return;
+        }
 
-      body.innerHTML = `
-        <div class="pc-popup-translation">${escapeHtml(res.translation)}</div>
-        ${res.part_of_speech ? `<div class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</div>` : ''}
-        <div class="pc-popup-definition">${escapeHtml(res.definition)}</div>
-      `;
-    },
-  );
+        if (!res || !res.translation) {
+          body.innerHTML = `<div class="pc-popup-error">No translation found</div>`;
+          return;
+        }
+
+        body.innerHTML = `
+          <div class="pc-popup-translation">${escapeHtml(res.translation)}</div>
+          ${res.part_of_speech ? `<div class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</div>` : ''}
+          <div class="pc-popup-definition">${escapeHtml(res.definition)}</div>
+        `;
+      },
+    );
+  } catch (err) {
+    // Extension context invalidated (extension was reloaded)
+    const body = popup.querySelector('.pc-popup-body');
+    body.innerHTML = `<div class="pc-popup-error">Extension reloaded — refresh this page</div>`;
+  }
 
   // Save button
   const saveBtn = popup.querySelector('.pc-popup-save');
@@ -175,21 +193,33 @@ function handleWordClick(word, sentence, anchorEl) {
       saveBtn.disabled = true;
       saveBtn.textContent = '...';
 
-      chrome.runtime.sendMessage(
-        { type: 'SAVE_WORD', word, sentence },
-        (res) => {
-          if (res && res.error) {
-            saveBtn.disabled = false;
-            saveBtn.textContent = '!';
-            saveBtn.title = res.error;
-            console.error('Polycast save error:', res.error);
-            return;
-          }
-          saveBtn.innerHTML = '&#10003;';
-          saveBtn.title = 'Saved';
-          saveBtn.classList.add('pc-popup-save--saved');
-        },
-      );
+      try {
+        chrome.runtime.sendMessage(
+          { type: 'SAVE_WORD', word, sentence },
+          (res) => {
+            if (chrome.runtime.lastError) {
+              saveBtn.disabled = false;
+              saveBtn.textContent = '!';
+              saveBtn.title = 'Extension reloaded — refresh this page';
+              return;
+            }
+            if (res && res.error) {
+              saveBtn.disabled = false;
+              saveBtn.textContent = '!';
+              saveBtn.title = res.error;
+              console.error('Polycast save error:', res.error);
+              return;
+            }
+            saveBtn.innerHTML = '&#10003;';
+            saveBtn.title = 'Saved';
+            saveBtn.classList.add('pc-popup-save--saved');
+          },
+        );
+      } catch {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '!';
+        saveBtn.title = 'Extension reloaded — refresh this page';
+      }
     });
   }
 }
