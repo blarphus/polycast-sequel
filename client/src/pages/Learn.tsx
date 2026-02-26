@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// pages/Learn.tsx -- Flashcard-based SRS study page (Anki-style 4 buttons)
+// pages/Learn.tsx -- Flashcard-based SRS study page (Correct / Incorrect)
 // ---------------------------------------------------------------------------
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -24,6 +24,7 @@ export default function Learn() {
   // Card state
   const [isFlipped, setIsFlipped] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
+  const [exitDirection, setExitDirection] = useState<'left' | 'right'>('right');
   const [isEntering, setIsEntering] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -111,7 +112,8 @@ export default function Learn() {
       .then((updated) => { reviewedCardRef.current = updated; })
       .catch((err) => { console.error('Review API error:', err); });
 
-    // Animate exit → next card
+    // Animate exit → next card (wrong = left, right = correct)
+    setExitDirection(answer === 'again' ? 'left' : 'right');
     setTimeout(() => {
       setIsExiting(true);
       setTimeout(() => {
@@ -295,7 +297,7 @@ export default function Learn() {
       {/* Card container */}
       <div className="flashcard-container">
         <div
-          className={`flashcard${isExiting ? ' card-exit' : ''}${isEntering ? ' card-enter' : ''}`}
+          className={`flashcard${isExiting ? ` card-exit-${exitDirection}` : ''}${isEntering ? ' card-enter' : ''}`}
           style={{
             transform: `translateX(${dragTranslateX}px) rotate(${dragRotation}deg)`,
             borderColor: leftSwipeIntensity > 0
@@ -363,7 +365,7 @@ export default function Learn() {
         </div>
       </div>
 
-      {/* Answer buttons — 4 Anki-style */}
+      {/* Answer buttons — Incorrect / Correct */}
       <div className="flashcard-answer-buttons">
         <button
           className="flashcard-btn flashcard-btn--again"
@@ -374,19 +376,8 @@ export default function Learn() {
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
-          <span className="flashcard-btn-label">Again</span>
+          <span className="flashcard-btn-label">Incorrect</span>
           <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'again')}</span>
-        </button>
-        <button
-          className="flashcard-btn flashcard-btn--hard"
-          disabled={!isFlipped || submitting}
-          onClick={() => handleAnswer('hard')}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          <span className="flashcard-btn-label">Hard</span>
-          <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'hard')}</span>
         </button>
         <button
           className="flashcard-btn flashcard-btn--good"
@@ -396,19 +387,8 @@ export default function Learn() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
-          <span className="flashcard-btn-label">Good</span>
+          <span className="flashcard-btn-label">Correct</span>
           <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'good')}</span>
-        </button>
-        <button
-          className="flashcard-btn flashcard-btn--easy"
-          disabled={!isFlipped || submitting}
-          onClick={() => handleAnswer('easy')}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-          </svg>
-          <span className="flashcard-btn-label">Easy</span>
-          <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'easy')}</span>
         </button>
       </div>
 
