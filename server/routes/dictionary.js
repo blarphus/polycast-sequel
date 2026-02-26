@@ -146,7 +146,7 @@ async function callGemini(prompt, generationConfig = {}) {
 
 /**
  * GET /api/dictionary/lookup?word=X&sentence=Y&nativeLang=Z&targetLang=W
- * Uses Gemini to provide definition, POS, and image_term (translation handled by translate-word).
+ * Uses Gemini to provide translation, definition, POS, and image_term.
  */
 router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
   const { word, sentence, nativeLang, targetLang } = req.query;
@@ -163,8 +163,9 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
     const prompt = `A user learning ${targetLang || 'a language'} clicked "${word}" in: "${sentence}". Their native language is ${nativeLang}.
 
 Return a JSON object with exactly these keys:
-{"definition":"...","part_of_speech":"...","image_term":"..."}
+{"translation":"...","definition":"...","part_of_speech":"...","image_term":"..."}
 
+- "translation": the word translated into ${nativeLang}. Just the word(s), nothing else.
 - "definition": brief usage explanation in ${nativeLang}, 12 words max, no markdown
 - "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
 - "image_term": a 1-4 word English phrase for finding a photo of this concept. For concrete nouns, repeat the word (e.g. "cat" → "cat"). For verbs, describe the action (e.g. "run" → "person running"). For adjectives, give a visual example (e.g. "beautiful" → "beautiful flower"). For abstract nouns, name a concrete symbol (e.g. "music" → "musical instrument").
@@ -173,19 +174,20 @@ Respond with ONLY the JSON object, no other text.`;
 
     const raw = await callGemini(prompt, {
       thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 160,
+      maxOutputTokens: 200,
       responseMimeType: 'application/json',
     });
 
     const parsed = JSON.parse(raw);
-    if (!parsed.definition) {
+    if (!parsed.definition || !parsed.translation) {
       console.error('Gemini lookup returned incomplete JSON:', raw.slice(0, 300));
     }
+    const translation = parsed.translation || '';
     const definition = parsed.definition || '';
     const part_of_speech = parsed.part_of_speech || null;
     const image_term = parsed.image_term || word;
 
-    return res.json({ word, definition, part_of_speech, image_term });
+    return res.json({ word, translation, definition, part_of_speech, image_term });
   } catch (err) {
     console.error('Dictionary lookup error:', err);
     return res.status(500).json({ error: err.message || 'Lookup failed' });

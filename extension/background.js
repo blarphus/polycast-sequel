@@ -127,25 +127,14 @@ async function handleMessage(msg) {
       const nativeLang = user.native_language || 'en';
       const targetLang = user.target_language;
 
-      const lookupParams = new URLSearchParams({
+      const params = new URLSearchParams({
         word: msg.word,
         sentence: msg.sentence,
         nativeLang,
       });
-      if (targetLang) lookupParams.set('targetLang', targetLang);
+      if (targetLang) params.set('targetLang', targetLang);
 
-      const translateParams = new URLSearchParams({
-        word: msg.word,
-        nativeLang,
-      });
-      if (targetLang) translateParams.set('targetLang', targetLang);
-
-      const [lookup, translate] = await Promise.all([
-        apiFetch(`/api/dictionary/lookup?${lookupParams}`),
-        apiFetch(`/api/dictionary/translate-word?${translateParams}`),
-      ]);
-
-      return { ...lookup, translation: translate.translation };
+      return apiFetch(`/api/dictionary/lookup?${params}`);
     }
 
     case 'SAVE_WORD': {
