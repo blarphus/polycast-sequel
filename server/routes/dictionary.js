@@ -146,7 +146,7 @@ async function callGemini(prompt, generationConfig = {}) {
 
 /**
  * GET /api/dictionary/lookup?word=X&sentence=Y&nativeLang=Z&targetLang=W
- * Uses Gemini to provide a structured translation + definition.
+ * Uses Gemini to provide definition, POS, and image_term (translation handled by translate-word).
  */
 router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
   const { word, sentence, nativeLang, targetLang } = req.query;
@@ -163,9 +163,8 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
     const prompt = `A user learning ${targetLang || 'a language'} clicked "${word}" in: "${sentence}". Their native language is ${nativeLang}.
 
 Return a JSON object with exactly these keys:
-{"translation":"...","definition":"...","part_of_speech":"...","image_term":"..."}
+{"definition":"...","part_of_speech":"...","image_term":"..."}
 
-- "translation": the word translated into ${nativeLang}, just the word(s)
 - "definition": brief usage explanation in ${nativeLang}, 12 words max, no markdown
 - "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
 - "image_term": a 1-4 word English phrase for finding a photo of this concept. For concrete nouns, repeat the word (e.g. "cat" → "cat"). For verbs, describe the action (e.g. "run" → "person running"). For adjectives, give a visual example (e.g. "beautiful" → "beautiful flower"). For abstract nouns, name a concrete symbol (e.g. "music" → "musical instrument").
@@ -179,18 +178,65 @@ Respond with ONLY the JSON object, no other text.`;
     });
 
     const parsed = JSON.parse(raw);
-    if (!parsed.translation || !parsed.definition) {
+    if (!parsed.definition) {
       console.error('Gemini lookup returned incomplete JSON:', raw.slice(0, 300));
     }
-    const translation = parsed.translation || '';
     const definition = parsed.definition || '';
     const part_of_speech = parsed.part_of_speech || null;
     const image_term = parsed.image_term || word;
 
-    return res.json({ word, translation, definition, part_of_speech, image_term });
+    return res.json({ word, definition, part_of_speech, image_term });
   } catch (err) {
     console.error('Dictionary lookup error:', err);
     return res.status(500).json({ error: err.message || 'Lookup failed' });
+  }
+});
+
+/**
+ * GET /api/dictionary/translate-word
+ * Translate a single word via Google Cloud Translation API (v2).
+ * Used by WordPopup for fast translation while Gemini handles definition/POS.
+ */
+router.get('/api/dictionary/translate-word', authMiddleware, async (req, res) => {
+  const { word, targetLang, nativeLang } = req.query;
+
+  if (!word || !nativeLang) {
+    return res.status(400).json({ error: 'word and nativeLang are required' });
+  }
+
+  try {
+    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+    if (!apiKey) throw new Error('GOOGLE_TRANSLATE_API_KEY is not configured');
+
+    const params = new URLSearchParams({
+      q: word,
+      target: nativeLang,
+      key: apiKey,
+      format: 'text',
+    });
+    if (targetLang) params.set('source', targetLang);
+
+    const response = await fetch(
+      `https://translation.googleapis.com/language/translate/v2?${params}`,
+      { method: 'POST' },
+    );
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error('Google Translate word API error:', err);
+      throw new Error('Word translation request failed');
+    }
+
+    const data = await response.json();
+    const translation = data.data?.translations?.[0]?.translatedText;
+    if (!translation) {
+      console.error('Google Translate word returned unexpected structure:', JSON.stringify(data).slice(0, 500));
+    }
+
+    return res.json({ translation: translation || '' });
+  } catch (err) {
+    console.error('Word translation error:', err);
+    return res.status(500).json({ error: err.message || 'Word translation failed' });
   }
 });
 

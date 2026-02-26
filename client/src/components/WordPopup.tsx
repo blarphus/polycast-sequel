@@ -1,9 +1,10 @@
 // ---------------------------------------------------------------------------
-// components/WordPopup.tsx -- Gemini-powered word translation + definition popup
+// components/WordPopup.tsx -- Word translation + definition popup
+// Google Translate for fast translation, Gemini for definition/POS/image_term
 // ---------------------------------------------------------------------------
 
 import React, { useEffect, useRef, useState } from 'react';
-import { lookupWord, enrichWord, type SaveWordData } from '../api';
+import { translateWord, lookupWord, enrichWord, type SaveWordData } from '../api';
 
 interface WordPopupProps {
   word: string;
@@ -17,36 +18,56 @@ interface WordPopupProps {
 }
 
 export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved: initialSaved, onSaveWord }: WordPopupProps) {
-  const [loading, setLoading] = useState(true);
+  const [translationLoading, setTranslationLoading] = useState(true);
+  const [detailsLoading, setDetailsLoading] = useState(true);
   const [translation, setTranslation] = useState('');
   const [definition, setDefinition] = useState('');
   const [partOfSpeech, setPartOfSpeech] = useState<string | null>(null);
   const [imageTerm, setImageTerm] = useState('');
-  const [error, setError] = useState('');
+  const [translationError, setTranslationError] = useState('');
+  const [detailsError, setDetailsError] = useState('');
   const [saved, setSaved] = useState(initialSaved ?? false);
   const [saving, setSaving] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
 
-  // Fetch on mount
+  // Two parallel fetches on mount
   useEffect(() => {
     let cancelled = false;
-    lookupWord(word, sentence, nativeLang, targetLang)
+
+    // Fast: Google Translate for the translation
+    translateWord(word, targetLang || '', nativeLang)
       .then((res) => {
         if (!cancelled) {
           setTranslation(res.translation);
+          setTranslationLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('WordPopup: translation failed:', err);
+          setTranslationError(err instanceof Error ? err.message : String(err));
+          setTranslationLoading(false);
+        }
+      });
+
+    // Slower: Gemini for definition, POS, image_term
+    lookupWord(word, sentence, nativeLang, targetLang)
+      .then((res) => {
+        if (!cancelled) {
           setDefinition(res.definition);
           setPartOfSpeech(res.part_of_speech);
           setImageTerm(res.image_term);
-          setLoading(false);
+          setDetailsLoading(false);
         }
       })
       .catch((err) => {
         if (!cancelled) {
           console.error('WordPopup: lookup failed:', err);
-          setError(err instanceof Error ? err.message : String(err));
-          setLoading(false);
+          setDetailsError(err instanceof Error ? err.message : String(err));
+          setDetailsLoading(false);
         }
       });
+
     return () => { cancelled = true; };
   }, [word, sentence, nativeLang, targetLang]);
 
@@ -84,12 +105,15 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
     transformOrigin,
   };
 
+  const bothDone = !translationLoading && !detailsLoading;
+  const hasAnyError = translationError && detailsError;
+
   return (
     <div className="word-popup" ref={popupRef} style={style}>
       <div className="word-popup-header">
         <span className="word-popup-word">{word}</span>
         <div className="word-popup-header-actions">
-          {!loading && !error && onSaveWord && (
+          {bothDone && !hasAnyError && onSaveWord && (
             <button
               className={`word-popup-save${saved ? ' saved' : ''}${saving ? ' saving' : ''}`}
               disabled={saving}
@@ -112,7 +136,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                   setSaved(true);
                 } catch (err) {
                   console.error('WordPopup: enrichment failed:', err);
-                  setError(err instanceof Error ? err.message : String(err));
+                  setDetailsError(err instanceof Error ? err.message : String(err));
                 } finally {
                   setSaving(false);
                 }
@@ -125,15 +149,28 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
         </div>
       </div>
       <div className="word-popup-body">
-        {loading && (
+        {/* Translation section (Google Translate — fast) */}
+        {translationLoading ? (
           <div className="word-popup-loading">
             <div className="loading-spinner" style={{ width: 24, height: 24 }} />
           </div>
+        ) : translationError ? (
+          <p className="word-popup-error">{translationError}</p>
+        ) : (
+          <p className="word-popup-translation">{translation}</p>
         )}
-        {!loading && error && <p className="word-popup-error">{error}</p>}
-        {!loading && !error && (
+
+        {/* Details section (Gemini — slower) */}
+        {detailsLoading ? (
+          !translationLoading && (
+            <div className="word-popup-loading" style={{ padding: '0.4rem 0' }}>
+              <div className="loading-spinner" style={{ width: 16, height: 16 }} />
+            </div>
+          )
+        ) : detailsError ? (
+          <p className="word-popup-error">{detailsError}</p>
+        ) : (
           <>
-            <p className="word-popup-translation">{translation}</p>
             {partOfSpeech && <span className="word-popup-pos">{partOfSpeech}</span>}
             {definition && <p className="word-popup-definition">{definition}</p>}
           </>
