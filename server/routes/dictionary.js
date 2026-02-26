@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
+import { getEnglishFrequency } from '../lib/englishFrequency.js';
 
 const router = Router();
 
@@ -335,6 +336,12 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
       frequency = null;
     }
     const example_sentence = parts[4] || null;
+
+    // For English target words, override Gemini frequency with SUBTLEX-US corpus data
+    if (targetLang === 'en' || targetLang?.startsWith('en-')) {
+      const corpusFreq = getEnglishFrequency(word);
+      if (corpusFreq !== null) frequency = corpusFreq;
+    }
 
     // Fetch image: Commons search (using lookup's image_term), then Wikipedia, then Wikidata
     const imageSearchTerm = imageTerm || word;
