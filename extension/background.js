@@ -124,14 +124,28 @@ async function handleMessage(msg) {
       const { user } = await chrome.storage.local.get('user');
       if (!user) throw new Error('Not logged in');
 
-      const params = new URLSearchParams({
+      const nativeLang = user.native_language || 'en';
+      const targetLang = user.target_language;
+
+      const lookupParams = new URLSearchParams({
         word: msg.word,
         sentence: msg.sentence,
-        nativeLang: user.native_language || 'en',
+        nativeLang,
       });
-      if (user.target_language) params.set('targetLang', user.target_language);
+      if (targetLang) lookupParams.set('targetLang', targetLang);
 
-      return apiFetch(`/api/dictionary/lookup?${params}`);
+      const translateParams = new URLSearchParams({
+        word: msg.word,
+        nativeLang,
+      });
+      if (targetLang) translateParams.set('targetLang', targetLang);
+
+      const [lookup, translate] = await Promise.all([
+        apiFetch(`/api/dictionary/lookup?${lookupParams}`),
+        apiFetch(`/api/dictionary/translate-word?${translateParams}`),
+      ]);
+
+      return { ...lookup, translation: translate.translation };
     }
 
     case 'SAVE_WORD': {
