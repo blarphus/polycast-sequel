@@ -4,22 +4,77 @@ import pool from '../db.js';
 
 const router = Router();
 
-const WIKIDATA_HEADERS = { 'User-Agent': 'Polycast/1.0' };
-const SKIP_PATTERNS = /\b(municipality|commune|city|town|village|district|province|county|region|family name|given name|surname|person|Wikimedia)\b/i;
+const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
+const SKIP_PATTERNS = /\b(municipality|commune|city|town|village|district|province|county|region|department|prefecture|borough|family name|given name|surname|first name|person|people|human|Wikimedia|disambiguation|album|song|film|novel|band|magazine|journal|newspaper|TV series|television series)\b/i;
 
-async function fetchWordImage(word, lang) {
+async function fetchWordImage(searchTerm, word, lang) {
   try {
-    // Step 1: Search Wikidata for the word
+    // Phase 1: Wikimedia Commons search using Gemini's targeted term
+    const commonsParams = new URLSearchParams({
+      action: 'query',
+      generator: 'search',
+      gsrsearch: searchTerm,
+      gsrnamespace: '6',
+      prop: 'imageinfo',
+      iiprop: 'url|mime',
+      iiurlwidth: '400',
+      format: 'json',
+      gsrlimit: '10',
+    });
+    const commonsRes = await fetch(
+      `https://commons.wikimedia.org/w/api.php?${commonsParams}`,
+      { headers: API_HEADERS },
+    );
+    if (!commonsRes.ok) {
+      console.error('Commons search failed:', commonsRes.status);
+    } else {
+      const commonsData = await commonsRes.json();
+      const pages = Object.values(commonsData.query?.pages || {});
+      const jpeg = pages.find(
+        (p) => p.imageinfo?.[0]?.mime === 'image/jpeg',
+      );
+      if (jpeg) return jpeg.imageinfo[0].thumburl;
+    }
+
+    // Phase 2: Wikipedia pageimages using the raw word
+    const wikiLang = lang || 'en';
+    const wikiParams = new URLSearchParams({
+      action: 'query',
+      titles: word,
+      prop: 'pageimages',
+      format: 'json',
+      pithumbsize: '400',
+      redirects: '1',
+    });
+    const wikiRes = await fetch(
+      `https://${wikiLang}.wikipedia.org/w/api.php?${wikiParams}`,
+      { headers: API_HEADERS },
+    );
+    if (!wikiRes.ok) {
+      console.error('Wikipedia pageimages failed:', wikiRes.status);
+    } else {
+      const wikiData = await wikiRes.json();
+      const pages = wikiData.query?.pages;
+      if (pages) {
+        const pageId = Object.keys(pages)[0];
+        if (pageId !== '-1') {
+          const thumbnail = pages[pageId]?.thumbnail?.source;
+          if (thumbnail) return thumbnail;
+        }
+      }
+    }
+
+    // Phase 3: Wikidata entity search with iteration
     const searchParams = new URLSearchParams({
       action: 'wbsearchentities',
       search: word,
       language: lang || 'en',
       format: 'json',
-      limit: '3',
+      limit: '10',
     });
     const searchRes = await fetch(
       `https://www.wikidata.org/w/api.php?${searchParams}`,
-      { headers: WIKIDATA_HEADERS },
+      { headers: API_HEADERS },
     );
     if (!searchRes.ok) {
       console.error('Wikidata search failed:', searchRes.status);
@@ -28,31 +83,30 @@ async function fetchWordImage(word, lang) {
     const searchData = await searchRes.json();
     const results = searchData.search || [];
 
-    // Step 1b: Filter out geographic/person entities
-    const entity = results.find((r) => !SKIP_PATTERNS.test(r.description || ''));
-    if (!entity) return null;
-
-    // Step 2: Get P18 (image) claim
-    const claimsParams = new URLSearchParams({
-      action: 'wbgetclaims',
-      entity: entity.id,
-      property: 'P18',
-      format: 'json',
-    });
-    const claimsRes = await fetch(
-      `https://www.wikidata.org/w/api.php?${claimsParams}`,
-      { headers: WIKIDATA_HEADERS },
-    );
-    if (!claimsRes.ok) {
-      console.error('Wikidata claims failed:', claimsRes.status);
-      return null;
+    const candidates = results.filter((r) => !SKIP_PATTERNS.test(r.description || ''));
+    for (const entity of candidates) {
+      const claimsParams = new URLSearchParams({
+        action: 'wbgetclaims',
+        entity: entity.id,
+        property: 'P18',
+        format: 'json',
+      });
+      const claimsRes = await fetch(
+        `https://www.wikidata.org/w/api.php?${claimsParams}`,
+        { headers: API_HEADERS },
+      );
+      if (!claimsRes.ok) {
+        console.error('Wikidata claims failed for', entity.id, ':', claimsRes.status);
+        continue;
+      }
+      const claimsData = await claimsRes.json();
+      const filename = claimsData.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
+      if (filename) {
+        return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
+      }
     }
-    const claimsData = await claimsRes.json();
-    const filename = claimsData.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
-    if (!filename) return null;
 
-    // Step 3: Construct thumbnail URL
-    return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
+    return null;
   } catch (err) {
     console.error('fetchWordImage error:', err);
     return null;
@@ -203,8 +257,8 @@ router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
 ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 The user's native language is ${nativeLang}.
 
-Respond in EXACTLY this format (five parts separated by " // "):
-TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
+Respond in EXACTLY this format (six parts separated by " // "):
+TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TERM
 
 - TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
 - DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.
@@ -215,7 +269,8 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
   5-6: Moderately common words useful for intermediate learners
   7-8: Common everyday words important for conversation
   9-10: Essential high-frequency words (top 500 most used)
-- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.`;
+- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
+- IMAGE_TERM: A 1-4 word English phrase for finding a photo of this concept. For concrete nouns, repeat the word (e.g. "cat" → "cat"). For verbs, describe the action (e.g. "run" → "person running"). For adjectives, give a visual example (e.g. "beautiful" → "beautiful flower"). For abstract nouns, name a concrete symbol (e.g. "music" → "musical instrument").`;
 
     const raw = await callGemini(prompt);
 
@@ -232,10 +287,11 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
       frequency = null;
     }
     const example_sentence = parts[4] || null;
+    const imageSearchTerm = parts[5]?.trim() || word;
 
-    // Fetch Wikidata image (non-blocking — if it fails, image_url is null)
+    // Fetch image: Commons search (Gemini-guided), then Wikipedia, then Wikidata
     const langCode = (targetLang || '').split('-')[0] || 'en';
-    const image_url = await fetchWordImage(word, langCode);
+    const image_url = await fetchWordImage(imageSearchTerm, word, langCode);
 
     return res.json({ word, translation, definition, part_of_speech, frequency, example_sentence, image_url });
   } catch (err) {
