@@ -120,6 +120,16 @@ async function handleMessage(msg) {
       }
     }
 
+    case 'TRANSLATE_WORD': {
+      const { user } = await chrome.storage.local.get('user');
+      if (!user) throw new Error('Not logged in');
+      const nativeLang = user.native_language || 'en';
+      const targetLang = user.target_language;
+      const params = new URLSearchParams({ word: msg.word, nativeLang });
+      if (targetLang) params.set('targetLang', targetLang);
+      return apiFetch(`/api/dictionary/translate-word?${params}`);
+    }
+
     case 'LOOKUP_WORD': {
       const { user } = await chrome.storage.local.get('user');
       if (!user) throw new Error('Not logged in');
