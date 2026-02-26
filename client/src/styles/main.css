@@ -1583,8 +1583,8 @@ select.form-input {
 }
 
 .toolbar-tab--red.active {
-  background: rgba(220, 53, 69, 0.1);
-  color: #dc3545;
+  background: rgba(108, 99, 255, 0.1);
+  color: #6c63ff;
 }
 
 .toolbar-tab--green.active {
@@ -1613,9 +1613,24 @@ select.form-input {
   margin-bottom: 1rem;
 }
 
-.dict-search {
+.dict-search-wrapper {
   flex: 1;
+  position: relative;
+}
+
+.dict-search-icon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.dict-search {
   margin-bottom: 0;
+  border-radius: 999px;
+  padding-left: 2.5rem;
 }
 
 .dict-sort {
@@ -1644,13 +1659,21 @@ select.form-input {
 .dict-item {
   background: var(--bg-surface);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  transition: border-color var(--transition);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+
+.dict-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  transform: translateY(-1px);
 }
 
 .dict-item.open {
   border-color: var(--border-light);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .dict-item-header {
@@ -1658,7 +1681,7 @@ select.form-input {
   align-items: center;
   gap: 0.75rem;
   width: 100%;
-  padding: 0.85rem 1rem;
+  padding: 0.6rem 1rem;
   background: transparent;
   border: none;
   color: var(--text-primary);
@@ -1674,13 +1697,13 @@ select.form-input {
 }
 
 .dict-word {
-  font-weight: 700;
-  font-size: 1.1rem;
+  font-weight: 800;
+  font-size: 1.15rem;
   color: var(--accent);
 }
 
 .dict-chevron {
-  margin-left: auto;
+  margin-left: 0.5rem;
   flex-shrink: 0;
   transition: transform 0.2s ease;
   color: var(--text-muted);
@@ -1813,20 +1836,30 @@ select.form-input {
 }
 
 .dict-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
   color: var(--text-muted);
   font-size: 0.9rem;
   text-align: center;
-  padding: 2rem 0;
+  padding: 3rem 1rem;
+}
+
+.dict-empty-icon {
+  color: var(--text-muted);
+  opacity: 0.4;
 }
 
 /* Due status badges */
 .dict-due-badge {
   flex-shrink: 0;
+  margin-left: auto;
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 0.15rem 0.5rem;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.6rem;
   border-radius: 999px;
 }
 
@@ -1862,7 +1895,7 @@ select.form-input {
   justify-content: center;
   padding: 1rem;
   padding-bottom: 100px;
-  background: var(--bg-primary);
+  background: linear-gradient(160deg, #ede9fe 0%, #f5f5f7 40%, #f0f0f5 100%);
   overflow: hidden;
 }
 
@@ -1873,12 +1906,12 @@ select.form-input {
   left: 50%;
   transform: translateX(-50%);
   font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-weight: 700;
+  color: var(--accent);
   background: var(--bg-surface);
   padding: 0.3rem 1rem;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(108,99,255,0.2);
 }
 
 /* Card container with perspective */
@@ -1932,13 +1965,13 @@ select.form-input {
   padding: 1.5rem;
   text-align: center;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
 }
 
 /* Front face */
 .flashcard-front {
-  background: linear-gradient(135deg, #f0eeff, #ddd6ff);
-  border: 1.5px solid rgba(108, 99, 255, 0.3);
+  background: linear-gradient(135deg, #ede9fe, #d4ccff);
+  border: 1.5px solid rgba(108, 99, 255, 0.35);
 }
 
 /* Back face */
@@ -1951,7 +1984,8 @@ select.form-input {
 
 /* Card text elements */
 .flashcard-sentence {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
+  font-weight: 500;
   line-height: 1.6;
   color: var(--text-primary);
 }
@@ -1964,8 +1998,8 @@ select.form-input {
 
 .flashcard-translation-hint {
   margin-top: 0.75rem;
-  font-size: 1rem;
-  color: var(--text-secondary);
+  font-size: 0.9rem;
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -1988,10 +2022,13 @@ select.form-input {
 .flashcard-hint {
   position: absolute;
   bottom: 1rem;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-style: italic;
   color: var(--text-muted);
-  opacity: 0.7;
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .flashcard-image {
@@ -2062,10 +2099,10 @@ select.form-input {
   align-items: center;
   gap: 0.25rem;
   flex: 1;
-  max-width: 180px;
-  padding: 0.65rem 0.75rem;
+  max-width: 200px;
+  padding: 0.7rem 1.25rem;
   border: none;
-  border-radius: var(--radius);
+  border-radius: 999px;
   cursor: pointer;
   font-family: var(--font);
   transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
@@ -2081,31 +2118,34 @@ select.form-input {
 }
 
 .flashcard-btn-label {
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 800;
 }
 
 .flashcard-btn-time {
-  font-size: 0.7rem;
-  opacity: 0.8;
+  font-size: 0.65rem;
+  font-weight: 500;
+  opacity: 0.6;
 }
 
 .flashcard-btn--again {
-  background: rgba(220, 53, 69, 0.1);
-  color: #dc3545;
+  background: #f87171;
+  color: #fff;
 }
 
 .flashcard-btn--again:hover:not(:disabled) {
-  box-shadow: 0 0 12px rgba(220, 53, 69, 0.15);
+  background: #ef4444;
+  box-shadow: 0 4px 14px rgba(248,113,113,0.35);
 }
 
 .flashcard-btn--good {
-  background: rgba(34, 165, 94, 0.1);
-  color: #22a55e;
+  background: #34d399;
+  color: #fff;
 }
 
 .flashcard-btn--good:hover:not(:disabled) {
-  box-shadow: 0 0 12px rgba(34, 165, 94, 0.15);
+  background: #22c55e;
+  box-shadow: 0 4px 14px rgba(52,211,153,0.35);
 }
 
 /* Feedback overlay */
@@ -2433,8 +2473,8 @@ select.form-input {
 /* ---- Toolbar tab colors -------------------------------------------------- */
 
 [data-theme="dark"] .toolbar-tab--red.active {
-  background: rgba(255, 77, 77, 0.15);
-  color: #ff4d4d;
+  background: rgba(108, 99, 255, 0.15);
+  color: #6c63ff;
 }
 
 [data-theme="dark"] .toolbar-tab--green.active {
@@ -2445,6 +2485,17 @@ select.form-input {
 [data-theme="dark"] .toolbar-tab--purple.active {
   background: rgba(108, 99, 255, 0.15);
   color: #6c63ff;
+}
+
+/* ---- Dictionary shadows -------------------------------------------------- */
+
+[data-theme="dark"] .dict-item {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1);
+}
+
+[data-theme="dark"] .dict-item:hover,
+[data-theme="dark"] .dict-item.open {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.15);
 }
 
 /* ---- Dictionary highlight ------------------------------------------------ */
@@ -2475,6 +2526,16 @@ select.form-input {
   color: #4ade80;
 }
 
+/* ---- Learn page background ----------------------------------------------- */
+
+[data-theme="dark"] .learn-page {
+  background: linear-gradient(160deg, #1a1a2e 0%, #0f0f0f 40%, #131320 100%);
+}
+
+[data-theme="dark"] .flashcard-progress {
+  border-color: rgba(108,99,255,0.3);
+}
+
 /* ---- Flashcard gradients ------------------------------------------------- */
 
 [data-theme="dark"] .flashcard-front {
@@ -2497,21 +2558,23 @@ select.form-input {
 }
 
 [data-theme="dark"] .flashcard-btn--again {
-  background: rgba(231, 76, 94, 0.15);
-  color: #f87171;
+  background: #dc2626;
+  color: #fff;
 }
 
 [data-theme="dark"] .flashcard-btn--again:hover:not(:disabled) {
-  box-shadow: 0 0 12px rgba(231, 76, 94, 0.25);
+  background: #b91c1c;
+  box-shadow: 0 4px 14px rgba(220,38,38,0.4);
 }
 
 [data-theme="dark"] .flashcard-btn--good {
-  background: rgba(46, 204, 113, 0.15);
-  color: #4ade80;
+  background: #16a34a;
+  color: #fff;
 }
 
 [data-theme="dark"] .flashcard-btn--good:hover:not(:disabled) {
-  box-shadow: 0 0 12px rgba(46, 204, 113, 0.25);
+  background: #15803d;
+  box-shadow: 0 4px 14px rgba(22,163,74,0.4);
 }
 
 [data-theme="dark"] .flashcard-feedback--again {
@@ -2650,7 +2713,8 @@ select.form-input {
   }
 
   .flashcard-btn {
-    padding: 0.55rem 0.5rem;
+    padding: 0.6rem 1rem;
+    max-width: 170px;
   }
 
   .flashcard-complete-stats {

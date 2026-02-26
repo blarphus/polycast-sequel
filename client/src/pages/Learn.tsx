@@ -320,7 +320,13 @@ export default function Learn() {
               ) : (
                 <p className="flashcard-word-large">{card.word}</p>
               )}
-              <p className="flashcard-hint">Tap to reveal</p>
+              <p className="flashcard-hint">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 7.5V3a1.5 1.5 0 0 0-3 0v9l-2.56-2.56a1.5 1.5 0 0 0-2.12 2.12L12 16.5a5 5 0 0 0 5 5h1a5 5 0 0 0 5-5V9a1.5 1.5 0 0 0-3 0" />
+                  <path d="M18 7.5a1.5 1.5 0 0 0-3 0" />
+                </svg>
+                Tap to reveal
+              </p>
             </div>
 
             {/* Back */}
