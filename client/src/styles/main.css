@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Polycast Sequel -- Main Stylesheet (Dark Theme)
+   Polycast Sequel -- Main Stylesheet (Light Theme)
    ========================================================================== */
 
 /* ---- Reset & Base -------------------------------------------------------- */
@@ -13,26 +13,26 @@
 }
 
 :root {
-  --bg-primary: #0f0f0f;
-  --bg-surface: #1a1a2e;
-  --bg-surface-hover: #222240;
-  --bg-elevated: #252545;
+  --bg-primary: #f5f5f7;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f0f0f5;
+  --bg-elevated: #eeeef4;
   --accent: #6c63ff;
   --accent-hover: #5a52e0;
-  --accent-light: rgba(108, 99, 255, 0.15);
-  --text-primary: #f0f0f0;
-  --text-secondary: #a0a0b8;
-  --text-muted: #6b6b80;
-  --border: #2a2a45;
-  --border-light: #3a3a55;
-  --danger: #e74c5e;
-  --danger-hover: #d43a4c;
-  --success: #2ecc71;
-  --success-dim: rgba(46, 204, 113, 0.25);
+  --accent-light: rgba(108, 99, 255, 0.10);
+  --text-primary: #1a1a2e;
+  --text-secondary: #5c5c72;
+  --text-muted: #9494a8;
+  --border: #e2e2ea;
+  --border-light: #d0d0dc;
+  --danger: #dc3545;
+  --danger-hover: #c82333;
+  --success: #22a55e;
+  --success-dim: rgba(34, 165, 94, 0.12);
   --radius: 10px;
   --radius-sm: 6px;
   --radius-lg: 16px;
-  --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
   --transition: 0.2s ease;
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
     Ubuntu, Cantarell, 'Helvetica Neue', Arial, sans-serif;
@@ -45,8 +45,8 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
 }
 
 #root {
@@ -64,6 +64,10 @@ a {
 a:hover {
   color: var(--accent-hover);
   text-decoration: underline;
+}
+
+::selection {
+  background: rgba(108, 99, 255, 0.2);
 }
 
 /* ---- Typography ---------------------------------------------------------- */
@@ -108,7 +112,7 @@ a:hover {
 
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
-  box-shadow: 0 0 20px rgba(108, 99, 255, 0.35);
+  box-shadow: 0 0 20px rgba(108, 99, 255, 0.2);
 }
 
 .btn-secondary {
@@ -128,7 +132,7 @@ a:hover {
 
 .btn-danger:hover:not(:disabled) {
   background: var(--danger-hover);
-  box-shadow: 0 0 20px rgba(231, 76, 94, 0.35);
+  box-shadow: 0 0 20px rgba(220, 53, 69, 0.2);
 }
 
 .btn-block {
@@ -150,7 +154,7 @@ a:hover {
 }
 
 .btn-accept:hover:not(:disabled) {
-  box-shadow: 0 0 24px rgba(46, 204, 113, 0.4);
+  box-shadow: 0 0 24px rgba(34, 165, 94, 0.25);
 }
 
 .btn-reject {
@@ -162,7 +166,7 @@ a:hover {
 }
 
 .btn-reject:hover:not(:disabled) {
-  box-shadow: 0 0 24px rgba(231, 76, 94, 0.4);
+  box-shadow: 0 0 24px rgba(220, 53, 69, 0.25);
 }
 
 /* ---- Form Controls ------------------------------------------------------- */
@@ -269,9 +273,9 @@ select.form-input {
 }
 
 .auth-error {
-  background: rgba(231, 76, 94, 0.12);
-  border: 1px solid rgba(231, 76, 94, 0.3);
-  color: #f87171;
+  background: rgba(220, 53, 69, 0.08);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  color: #dc3545;
   padding: 0.6rem 1rem;
   border-radius: var(--radius-sm);
   margin-bottom: 1rem;
@@ -287,7 +291,7 @@ select.form-input {
 
 .settings-success {
   background: var(--success-dim);
-  border: 1px solid rgba(46, 204, 113, 0.3);
+  border: 1px solid rgba(34, 165, 94, 0.2);
   color: var(--success);
   padding: 0.6rem 1rem;
   border-radius: var(--radius-sm);
@@ -343,7 +347,7 @@ select.form-input {
 }
 
 .connection-badge.offline {
-  background: rgba(231, 76, 94, 0.15);
+  background: rgba(220, 53, 69, 0.1);
   color: var(--danger);
 }
 
@@ -917,9 +921,13 @@ select.form-input {
   line-height: 1.35;
   margin: 0.35rem 0 0;
   padding-top: 0.35rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
   color: var(--text-secondary);
   font-style: italic;
+}
+
+.chat-bubble.sent .chat-bubble-translation {
+  border-top-color: rgba(255, 255, 255, 0.15);
 }
 
 .chat-typing-indicator {
@@ -996,7 +1004,7 @@ select.form-input {
 .drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   z-index: 100;
@@ -1082,7 +1090,7 @@ select.form-input {
 .call-status-text {
   font-size: 1.3rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #fff;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
@@ -1097,7 +1105,7 @@ select.form-input {
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1.25rem;
-  background: rgba(30, 30, 50, 0.7);
+  background: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 999px;
@@ -1283,7 +1291,7 @@ select.form-input {
    ========================================================================== */
 
 .transcript-panel {
-  background: rgba(15, 15, 15, 0.95);
+  background: rgba(255, 255, 255, 0.95);
   border-top: 1px solid var(--border);
   height: clamp(150px, 30vh, 280px);
   overflow-y: auto;
@@ -1293,7 +1301,7 @@ select.form-input {
 
 .transcript-entry {
   padding: 0.4rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -1333,7 +1341,7 @@ select.form-input {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.06);
   pointer-events: auto;
   animation: fadeIn 0.15s ease;
 }
@@ -1423,7 +1431,7 @@ select.form-input {
 .word-popup-save.saved {
   border-color: var(--success);
   color: var(--success);
-  background: rgba(46, 204, 113, 0.1);
+  background: rgba(34, 165, 94, 0.1);
   cursor: default;
 }
 
@@ -1442,7 +1450,7 @@ select.form-input {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   z-index: 1000;
@@ -1454,7 +1462,7 @@ select.form-input {
   background: var(--bg-surface);
   padding: 2.5rem 2.5rem 2rem;
   border-radius: var(--radius-lg);
-  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.15);
   min-width: 320px;
   animation: slideUp 0.3s ease;
 }
@@ -1543,11 +1551,11 @@ select.form-input {
   z-index: 50;
   display: flex;
   width: clamp(280px, 40vw, 420px);
-  background: rgba(24, 25, 38, 0.92);
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-radius: 25px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   overflow: hidden;
 }
 
@@ -1575,17 +1583,17 @@ select.form-input {
 }
 
 .toolbar-tab--red.active {
-  background: rgba(255, 77, 77, 0.15);
-  color: #ff4d4d;
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
 }
 
 .toolbar-tab--green.active {
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
+  background: rgba(34, 165, 94, 0.1);
+  color: #22a55e;
 }
 
 .toolbar-tab--purple.active {
-  background: rgba(108, 99, 255, 0.15);
+  background: rgba(108, 99, 255, 0.1);
   color: #6c63ff;
 }
 
@@ -1776,7 +1784,7 @@ select.form-input {
 }
 
 .dict-highlight {
-  color: #ffde59;
+  color: #b8860b;
   font-weight: 700;
   font-style: normal;
 }
@@ -1823,23 +1831,23 @@ select.form-input {
 }
 
 .dict-due-badge--new {
-  background: rgba(168, 85, 247, 0.15);
-  color: #a855f7;
+  background: rgba(168, 85, 247, 0.08);
+  color: #9333ea;
 }
 
 .dict-due-badge--learning {
-  background: rgba(96, 165, 250, 0.15);
-  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.08);
+  color: #3b82f6;
 }
 
 .dict-due-badge--due {
-  background: rgba(231, 76, 94, 0.15);
-  color: #e74c5e;
+  background: rgba(220, 53, 69, 0.08);
+  color: #dc3545;
 }
 
 .dict-due-badge--upcoming {
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
+  background: rgba(34, 165, 94, 0.08);
+  color: #22a55e;
 }
 
 /* ==========================================================================
@@ -1924,19 +1932,19 @@ select.form-input {
   padding: 1.5rem;
   text-align: center;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 /* Front face */
 .flashcard-front {
-  background: linear-gradient(135deg, #1e1e2e, #3f3969);
+  background: linear-gradient(135deg, #f0eeff, #ddd6ff);
   border: 1.5px solid rgba(108, 99, 255, 0.3);
 }
 
 /* Back face */
 .flashcard-back {
-  background: linear-gradient(135deg, #1a1a2e, #2d2d44);
-  border: 1.5px solid rgba(74, 222, 128, 0.3);
+  background: linear-gradient(135deg, #edfff4, #d4f5e0);
+  border: 1.5px solid rgba(34, 165, 94, 0.3);
   transform: rotateY(180deg);
   gap: 0.75rem;
 }
@@ -1970,9 +1978,9 @@ select.form-input {
 }
 
 .flashcard-highlighted {
-  color: #4ade80;
+  color: #16a34a;
   font-weight: 700;
-  background: rgba(74, 222, 128, 0.1);
+  background: rgba(22, 163, 74, 0.1);
   padding: 0.1rem 0.25rem;
   border-radius: 3px;
 }
@@ -2083,21 +2091,21 @@ select.form-input {
 }
 
 .flashcard-btn--again {
-  background: rgba(231, 76, 94, 0.15);
-  color: #e74c5e;
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
 }
 
 .flashcard-btn--again:hover:not(:disabled) {
-  box-shadow: 0 0 12px rgba(231, 76, 94, 0.3);
+  box-shadow: 0 0 12px rgba(220, 53, 69, 0.15);
 }
 
 .flashcard-btn--good {
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
+  background: rgba(34, 165, 94, 0.1);
+  color: #22a55e;
 }
 
 .flashcard-btn--good:hover:not(:disabled) {
-  box-shadow: 0 0 12px rgba(74, 222, 128, 0.3);
+  box-shadow: 0 0 12px rgba(34, 165, 94, 0.15);
 }
 
 /* Feedback overlay */
@@ -2116,15 +2124,15 @@ select.form-input {
 }
 
 .flashcard-feedback--again {
-  background: rgba(231, 76, 94, 0.2);
-  color: #e74c5e;
-  border: 1px solid rgba(231, 76, 94, 0.4);
+  background: rgba(220, 53, 69, 0.1);
+  color: #dc3545;
+  border: 1px solid rgba(220, 53, 69, 0.25);
 }
 
 .flashcard-feedback--good {
-  background: rgba(74, 222, 128, 0.2);
-  color: #4ade80;
-  border: 1px solid rgba(74, 222, 128, 0.4);
+  background: rgba(34, 165, 94, 0.1);
+  color: #22a55e;
+  border: 1px solid rgba(34, 165, 94, 0.25);
 }
 
 @keyframes feedbackPop {
@@ -2226,7 +2234,7 @@ select.form-input {
 .flashcard-stat-value {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #4ade80;
+  color: #22a55e;
 }
 
 .flashcard-stat-label {
