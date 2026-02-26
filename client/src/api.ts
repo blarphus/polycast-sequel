@@ -209,7 +209,7 @@ export function translateWord(word: string, targetLang: string, nativeLang: stri
   return request<{ translation: string }>(`/dictionary/translate-word?${params}`);
 }
 
-export interface WiktSense { gloss: string; pos: string; tags: string[]; }
+export interface WiktSense { gloss: string; pos: string; tags: string[]; example?: string | null; }
 export interface WiktLookupResult { word: string; senses: WiktSense[]; }
 
 export function wiktLookup(word: string, targetLang: string, nativeLang: string) {

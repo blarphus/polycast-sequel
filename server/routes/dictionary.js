@@ -234,9 +234,11 @@ router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
       for (const sense of entry.senses || []) {
         const tags = sense.tags || [];
         if (tags.includes('form-of')) continue;
+        const examples = sense.examples || [];
+        const example = examples[0]?.text || null;
         for (const gloss of sense.glosses || []) {
           if (!gloss) continue;
-          senses.push({ gloss, pos, tags });
+          senses.push({ gloss, pos, tags, example });
         }
       }
     }
