@@ -21,6 +21,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [translation, setTranslation] = useState('');
   const [definition, setDefinition] = useState('');
   const [partOfSpeech, setPartOfSpeech] = useState<string | null>(null);
+  const [imageTerm, setImageTerm] = useState('');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(initialSaved ?? false);
   const [saving, setSaving] = useState(false);
@@ -35,6 +36,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           setTranslation(res.translation);
           setDefinition(res.definition);
           setPartOfSpeech(res.part_of_speech);
+          setImageTerm(res.image_term);
           setLoading(false);
         }
       })
@@ -95,7 +97,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                 if (saved || saving) return;
                 setSaving(true);
                 try {
-                  const enriched = await enrichWord(word, sentence, nativeLang, targetLang);
+                  const enriched = await enrichWord(word, sentence, nativeLang, targetLang, imageTerm);
                   onSaveWord({
                     word,
                     translation: enriched.translation,

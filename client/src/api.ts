@@ -201,13 +201,13 @@ interface EnrichedWord {
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
   const params = new URLSearchParams({ word, sentence, nativeLang });
   if (targetLang) params.set('targetLang', targetLang);
-  return request<{ word: string; translation: string; definition: string; part_of_speech: string | null }>(`/dictionary/lookup?${params}`);
+  return request<{ word: string; translation: string; definition: string; part_of_speech: string | null; image_term: string }>(`/dictionary/lookup?${params}`);
 }
 
-export function enrichWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
+export function enrichWord(word: string, sentence: string, nativeLang: string, targetLang?: string, imageTerm?: string) {
   return request<EnrichedWord>('/dictionary/enrich', {
     method: 'POST',
-    body: { word, sentence, nativeLang, targetLang },
+    body: { word, sentence, nativeLang, targetLang, imageTerm },
   });
 }
 

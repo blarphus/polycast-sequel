@@ -163,17 +163,18 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
     const prompt = `A user learning ${targetLang || 'a language'} clicked "${word}" in: "${sentence}". Their native language is ${nativeLang}.
 
 Return a JSON object with exactly these keys:
-{"translation":"...","definition":"...","part_of_speech":"..."}
+{"translation":"...","definition":"...","part_of_speech":"...","image_term":"..."}
 
 - "translation": the word translated into ${nativeLang}, just the word(s)
 - "definition": brief usage explanation in ${nativeLang}, 12 words max, no markdown
 - "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
+- "image_term": a 1-4 word English phrase for finding a photo of this concept. For concrete nouns, repeat the word (e.g. "cat" → "cat"). For verbs, describe the action (e.g. "run" → "person running"). For adjectives, give a visual example (e.g. "beautiful" → "beautiful flower"). For abstract nouns, name a concrete symbol (e.g. "music" → "musical instrument").
 
 Respond with ONLY the JSON object, no other text.`;
 
     const raw = await callGemini(prompt, {
       thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 128,
+      maxOutputTokens: 160,
       responseMimeType: 'application/json',
     });
 
@@ -184,8 +185,9 @@ Respond with ONLY the JSON object, no other text.`;
     const translation = parsed.translation || '';
     const definition = parsed.definition || '';
     const part_of_speech = parsed.part_of_speech || null;
+    const image_term = parsed.image_term || word;
 
-    return res.json({ word, translation, definition, part_of_speech });
+    return res.json({ word, translation, definition, part_of_speech, image_term });
   } catch (err) {
     console.error('Dictionary lookup error:', err);
     return res.status(500).json({ error: err.message || 'Lookup failed' });
@@ -246,7 +248,7 @@ router.post('/api/dictionary/translate', authMiddleware, async (req, res) => {
  * Called when the user saves a word — quality over speed.
  */
 router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
-  const { word, sentence, nativeLang, targetLang } = req.body;
+  const { word, sentence, nativeLang, targetLang, imageTerm } = req.body;
 
   if (!word || !sentence || !nativeLang) {
     return res.status(400).json({ error: 'word, sentence, and nativeLang are required' });
@@ -257,8 +259,8 @@ router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
 ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 The user's native language is ${nativeLang}.
 
-Respond in EXACTLY this format (six parts separated by " // "):
-TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TERM
+Respond in EXACTLY this format (five parts separated by " // "):
+TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
 
 - TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
 - DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.
@@ -269,8 +271,7 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
   5-6: Moderately common words useful for intermediate learners
   7-8: Common everyday words important for conversation
   9-10: Essential high-frequency words (top 500 most used)
-- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
-- IMAGE_TERM: A 1-4 word English phrase for finding a photo of this concept. For concrete nouns, repeat the word (e.g. "cat" → "cat"). For verbs, describe the action (e.g. "run" → "person running"). For adjectives, give a visual example (e.g. "beautiful" → "beautiful flower"). For abstract nouns, name a concrete symbol (e.g. "music" → "musical instrument").`;
+- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.`;
 
     const raw = await callGemini(prompt);
 
@@ -287,9 +288,9 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
       frequency = null;
     }
     const example_sentence = parts[4] || null;
-    const imageSearchTerm = parts[5]?.trim() || word;
 
-    // Fetch image: Commons search (Gemini-guided), then Wikipedia, then Wikidata
+    // Fetch image: Commons search (using lookup's image_term), then Wikipedia, then Wikidata
+    const imageSearchTerm = imageTerm || word;
     const langCode = (targetLang || '').split('-')[0] || 'en';
     const image_url = await fetchWordImage(imageSearchTerm, word, langCode);
 
