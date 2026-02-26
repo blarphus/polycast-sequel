@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 
 const LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -31,6 +32,7 @@ const LANGUAGES = [
 
 export default function Settings() {
   const { user, updateSettings } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const [nativeLang, setNativeLang] = useState(user?.native_language || '');
@@ -59,6 +61,24 @@ export default function Settings() {
       <div className="auth-card">
         <h1 className="auth-title">Settings</h1>
         <p className="auth-subtitle">Set your language preferences</p>
+
+        <div className="theme-toggle-row">
+          <span className="form-label" style={{ marginBottom: 0 }}>Theme</span>
+          <div className="theme-toggle">
+            <button
+              className={`theme-toggle-option${theme === 'light' ? ' active' : ''}`}
+              onClick={() => theme !== 'light' && toggleTheme()}
+            >
+              Light
+            </button>
+            <button
+              className={`theme-toggle-option${theme === 'dark' ? ' active' : ''}`}
+              onClick={() => theme !== 'dark' && toggleTheme()}
+            >
+              Dark
+            </button>
+          </div>
+        </div>
 
         {error && <div className="auth-error">{error}</div>}
         {saved && <div className="settings-success">Settings saved!</div>}

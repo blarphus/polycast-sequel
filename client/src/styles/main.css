@@ -2289,6 +2289,262 @@ select.form-input {
 }
 
 /* ==========================================================================
+   Theme Toggle (Settings page)
+   ========================================================================== */
+
+.theme-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.theme-toggle {
+  display: flex;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.theme-toggle-option {
+  padding: 0.4rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  border-radius: 999px;
+}
+
+.theme-toggle-option.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ==========================================================================
+   Dark Theme Overrides
+   ========================================================================== */
+
+/* ---- Variable overrides -------------------------------------------------- */
+
+[data-theme="dark"] {
+  --bg-primary: #0f0f0f;
+  --bg-surface: #1a1a2e;
+  --bg-surface-hover: #222240;
+  --bg-elevated: #252545;
+  --accent-light: rgba(108, 99, 255, 0.15);
+  --text-primary: #f0f0f0;
+  --text-secondary: #a0a0b8;
+  --text-muted: #6b6b80;
+  --border: #2a2a45;
+  --border-light: #3a3a55;
+  --danger: #e74c5e;
+  --danger-hover: #d43a4c;
+  --success: #2ecc71;
+  --success-dim: rgba(46, 204, 113, 0.25);
+  --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- Button hover glows -------------------------------------------------- */
+
+[data-theme="dark"] .btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 20px rgba(108, 99, 255, 0.4);
+}
+
+[data-theme="dark"] .btn-danger:hover:not(:disabled) {
+  box-shadow: 0 0 20px rgba(231, 76, 94, 0.35);
+}
+
+[data-theme="dark"] .btn-accept:hover:not(:disabled) {
+  box-shadow: 0 0 24px rgba(46, 204, 113, 0.35);
+}
+
+[data-theme="dark"] .btn-reject:hover:not(:disabled) {
+  box-shadow: 0 0 24px rgba(231, 76, 94, 0.35);
+}
+
+/* ---- Auth error ---------------------------------------------------------- */
+
+[data-theme="dark"] .auth-error {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.25);
+  color: #f87171;
+}
+
+/* ---- Chat translation border --------------------------------------------- */
+
+[data-theme="dark"] .chat-bubble-translation {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .chat-bubble.sent .chat-bubble-translation {
+  border-top-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ---- Drawer overlay ------------------------------------------------------ */
+
+[data-theme="dark"] .drawer-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Call controls bar --------------------------------------------------- */
+
+[data-theme="dark"] .call-controls-bar {
+  background: rgba(30, 30, 50, 0.7);
+}
+
+/* ---- Transcript panel ---------------------------------------------------- */
+
+[data-theme="dark"] .transcript-panel {
+  background: rgba(15, 15, 15, 0.95);
+}
+
+[data-theme="dark"] .transcript-entry {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ---- Word popup shadow --------------------------------------------------- */
+
+[data-theme="dark"] .word-popup {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 1px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ---- Incoming call overlay/modal ----------------------------------------- */
+
+[data-theme="dark"] .incoming-call-overlay {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"] .incoming-call-modal {
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- Bottom toolbar ------------------------------------------------------ */
+
+[data-theme="dark"] .bottom-toolbar {
+  background: rgba(26, 26, 46, 0.88);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ---- Toolbar tab colors -------------------------------------------------- */
+
+[data-theme="dark"] .toolbar-tab--red.active {
+  background: rgba(255, 77, 77, 0.15);
+  color: #ff4d4d;
+}
+
+[data-theme="dark"] .toolbar-tab--green.active {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+
+[data-theme="dark"] .toolbar-tab--purple.active {
+  background: rgba(108, 99, 255, 0.15);
+  color: #6c63ff;
+}
+
+/* ---- Dictionary highlight ------------------------------------------------ */
+
+[data-theme="dark"] .dict-highlight {
+  color: #ffde59;
+}
+
+/* ---- Due badges ---------------------------------------------------------- */
+
+[data-theme="dark"] .dict-due-badge--new {
+  background: rgba(168, 85, 247, 0.18);
+  color: #c084fc;
+}
+
+[data-theme="dark"] .dict-due-badge--learning {
+  background: rgba(96, 165, 250, 0.18);
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .dict-due-badge--due {
+  background: rgba(231, 76, 94, 0.18);
+  color: #f87171;
+}
+
+[data-theme="dark"] .dict-due-badge--upcoming {
+  background: rgba(46, 204, 113, 0.18);
+  color: #4ade80;
+}
+
+/* ---- Flashcard gradients ------------------------------------------------- */
+
+[data-theme="dark"] .flashcard-front {
+  background: linear-gradient(135deg, #1e1e2e, #3f3969);
+  border-color: rgba(108, 99, 255, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .flashcard-back {
+  background: linear-gradient(135deg, #1a1a2e, #2d2d44);
+  border-color: rgba(46, 204, 113, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ---- Flashcard highlighted/buttons/feedback ------------------------------ */
+
+[data-theme="dark"] .flashcard-highlighted {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.15);
+}
+
+[data-theme="dark"] .flashcard-btn--again {
+  background: rgba(231, 76, 94, 0.15);
+  color: #f87171;
+}
+
+[data-theme="dark"] .flashcard-btn--again:hover:not(:disabled) {
+  box-shadow: 0 0 12px rgba(231, 76, 94, 0.25);
+}
+
+[data-theme="dark"] .flashcard-btn--good {
+  background: rgba(46, 204, 113, 0.15);
+  color: #4ade80;
+}
+
+[data-theme="dark"] .flashcard-btn--good:hover:not(:disabled) {
+  box-shadow: 0 0 12px rgba(46, 204, 113, 0.25);
+}
+
+[data-theme="dark"] .flashcard-feedback--again {
+  background: rgba(231, 76, 94, 0.15);
+  color: #f87171;
+  border-color: rgba(231, 76, 94, 0.3);
+}
+
+[data-theme="dark"] .flashcard-feedback--good {
+  background: rgba(46, 204, 113, 0.15);
+  color: #4ade80;
+  border-color: rgba(46, 204, 113, 0.3);
+}
+
+/* ---- Stat value ---------------------------------------------------------- */
+
+[data-theme="dark"] .flashcard-stat-value {
+  color: #4ade80;
+}
+
+/* ---- Call status text ----------------------------------------------------- */
+
+[data-theme="dark"] .call-status-text {
+  color: var(--text-primary);
+}
+
+/* ---- Selection color ----------------------------------------------------- */
+
+[data-theme="dark"] ::selection {
+  background: rgba(108, 99, 255, 0.35);
+}
+
+/* ==========================================================================
    Responsive
    ========================================================================== */
 
