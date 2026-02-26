@@ -139,6 +139,10 @@ export default function WordLookupModal({ targetLang, nativeLang, onSave, onClos
           )}
 
           {senses.length > 0 && (
+            <>
+            <p className="lookup-count">
+              There {senses.length === 1 ? 'is 1 definition' : `are ${senses.length} definitions`} for the word <strong>{query.trim()}</strong>
+            </p>
             <div className="lookup-sense-list">
               {senses.map((s, i) => (
                 <button
@@ -158,6 +162,7 @@ export default function WordLookupModal({ targetLang, nativeLang, onSave, onClos
                 </button>
               ))}
             </div>
+            </>
           )}
         </div>
       </div>
