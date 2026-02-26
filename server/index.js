@@ -83,6 +83,12 @@ async function main() {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 
+  // ------ Global error handler (always return JSON, never HTML) ------
+  app.use((err, _req, res, _next) => {
+    console.error('Unhandled server error:', err);
+    res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+  });
+
   // ------ HTTP + Socket.IO server ------
   const server = http.createServer(app);
   const io = setupSocket(server);
