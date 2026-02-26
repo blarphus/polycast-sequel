@@ -26,7 +26,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [imageTerm, setImageTerm] = useState('');
   const [translationError, setTranslationError] = useState('');
   const [detailsError, setDetailsError] = useState('');
-  const [saved, setSaved] = useState(initialSaved ?? false);
+  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
 

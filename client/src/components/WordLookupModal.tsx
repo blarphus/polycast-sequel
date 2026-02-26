@@ -29,6 +29,7 @@ export default function WordLookupModal({ targetLang, nativeLang, onSave, onClos
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
+  const [savedIdxs, setSavedIdxs] = useState<Set<number>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function WordLookupModal({ targetLang, nativeLang, onSave, onClos
     setSearchError('');
     setSenses([]);
     setSearched(false);
+    setSavedIdxs(new Set());
 
     try {
       const result = await wiktLookup(trimmed, targetLang, nativeLang);
@@ -67,7 +69,7 @@ export default function WordLookupModal({ targetLang, nativeLang, onSave, onClos
   };
 
   const handleSenseClick = async (sense: WiktSense, idx: number) => {
-    if (savingIdx !== null) return;
+    if (savingIdx !== null || savedIdxs.has(idx)) return;
     setSavingIdx(idx);
 
     const word = query.trim();
@@ -91,7 +93,8 @@ export default function WordLookupModal({ targetLang, nativeLang, onSave, onClos
         target_language: targetLang,
       });
 
-      onClose();
+      setSavedIdxs((prev) => new Set(prev).add(idx));
+      setSavingIdx(null);
     } catch (err: unknown) {
       console.error('Enrich/save error:', err);
       setSavingIdx(null);
@@ -147,14 +150,15 @@ export default function WordLookupModal({ targetLang, nativeLang, onSave, onClos
               {senses.map((s, i) => (
                 <button
                   key={i}
-                  className="lookup-sense"
+                  className={`lookup-sense${savedIdxs.has(i) ? ' lookup-sense--saved' : ''}`}
                   onClick={() => handleSenseClick(s, i)}
-                  disabled={savingIdx !== null}
+                  disabled={savingIdx !== null || savedIdxs.has(i)}
                 >
                   {savingIdx === i ? (
                     <div className="loading-spinner" style={{ width: 20, height: 20 }} />
                   ) : (
                     <>
+                      {savedIdxs.has(i) && <span className="lookup-saved-check">{'\u2713'}</span>}
                       {s.pos && <span className="dict-pos-badge">{s.pos}</span>}
                       <span className="lookup-gloss">{s.gloss}</span>
                     </>

@@ -361,8 +361,8 @@ router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
 ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 The user's native language is ${nativeLang}.
 
-Respond in EXACTLY this format (five parts separated by " // "):
-TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
+Respond in EXACTLY this format (six parts separated by " // "):
+TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TERM
 
 - TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
 - DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.
@@ -373,13 +373,14 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
   5-6: Moderately common words useful for intermediate learners
   7-8: Common everyday words important for conversation
   9-10: Essential high-frequency words (top 500 most used)
-- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.`;
+- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
+- IMAGE_TERM: A 1-4 word English phrase for finding a photo of this specific meaning. For "charge" meaning electricity → "phone charging cable". For "charge" meaning attack → "cavalry charge battle".`;
 
     const raw = await callGemini(prompt);
 
     const parts = raw.split('//').map((s) => s.trim());
-    if (parts.length < 5) {
-      console.error(`Gemini enrich returned ${parts.length} parts instead of 5:`, raw.slice(0, 300));
+    if (parts.length < 6) {
+      console.error(`Gemini enrich returned ${parts.length} parts instead of 6:`, raw.slice(0, 300));
     }
     const translation = parts[0] || '';
     const definition = parts[1] || '';
@@ -390,6 +391,7 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
       frequency = null;
     }
     const example_sentence = parts[4] || null;
+    const geminiImageTerm = parts[5]?.trim() || null;
 
     // For English target words, override Gemini frequency with SUBTLEX-US corpus data
     if (targetLang === 'en' || targetLang?.startsWith('en-')) {
@@ -397,8 +399,8 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE
       if (corpusFreq !== null) frequency = corpusFreq;
     }
 
-    // Fetch image: Commons search (using lookup's image_term), then Wikipedia, then Wikidata
-    const imageSearchTerm = imageTerm || word;
+    // Fetch image: use caller's imageTerm (from /lookup), Gemini's IMAGE_TERM, or raw word
+    const imageSearchTerm = imageTerm || geminiImageTerm || word;
     const langCode = (targetLang || '').split('-')[0] || 'en';
     const image_url = await fetchWordImage(imageSearchTerm, word, langCode);
 
@@ -600,24 +602,24 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
   }
 
   try {
+    // Check if this exact definition already exists
+    const { rows: existing } = await pool.query(
+      `SELECT * FROM saved_words
+       WHERE user_id = $1 AND word = $2
+         AND target_language IS NOT DISTINCT FROM $3
+         AND definition = $4`,
+      [req.userId, word, target_language || null, definition || ''],
+    );
+    if (existing.length > 0) return res.status(200).json(existing[0]);
+
+    // Insert new definition
     const { rows } = await pool.query(
       `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       ON CONFLICT (user_id, word, target_language) DO NOTHING
        RETURNING *`,
       [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null, image_url || null],
     );
-
-    if (rows.length > 0) {
-      return res.status(201).json(rows[0]);
-    }
-
-    // Already existed — fetch and return it
-    const existing = await pool.query(
-      'SELECT * FROM saved_words WHERE user_id = $1 AND word = $2 AND target_language IS NOT DISTINCT FROM $3',
-      [req.userId, word, target_language || null],
-    );
-    return res.status(200).json(existing.rows[0]);
+    return res.status(201).json(rows[0]);
   } catch (err) {
     console.error('Error saving word:', err);
     return res.status(500).json({ error: 'Failed to save word' });

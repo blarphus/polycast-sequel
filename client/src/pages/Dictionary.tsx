@@ -90,6 +90,13 @@ function ReviewField({ word }: { word: SavedWord }) {
 
 type SortMode = 'date' | 'az' | 'freq-high' | 'freq-low' | 'due';
 
+interface WordGroup {
+  key: string;
+  word: string;
+  target_language: string | null;
+  entries: SavedWord[];
+}
+
 export default function Dictionary() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -97,20 +104,20 @@ export default function Dictionary() {
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortMode>('date');
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lookupOpen, setLookupOpen] = useState(false);
 
-  const toggle = (id: string) => {
-    setExpandedIds((prev) => {
+  const toggle = (key: string) => {
+    setExpandedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
 
-  const filtered = useMemo(() => {
+  const wordGroups = useMemo(() => {
     const q = search.toLowerCase().trim();
     let list = words;
     if (q) {
@@ -120,35 +127,55 @@ export default function Dictionary() {
           w.translation.toLowerCase().includes(q),
       );
     }
-    const sorted = [...list];
+
+    // Group by (word, target_language)
+    const groupMap = new Map<string, WordGroup>();
+    for (const w of list) {
+      const key = w.word + '|' + (w.target_language || '');
+      let group = groupMap.get(key);
+      if (!group) {
+        group = { key, word: w.word, target_language: w.target_language, entries: [] };
+        groupMap.set(key, group);
+      }
+      group.entries.push(w);
+    }
+
+    const groups = Array.from(groupMap.values());
+
     switch (sort) {
       case 'az':
-        sorted.sort((a, b) => a.word.localeCompare(b.word));
+        groups.sort((a, b) => a.word.localeCompare(b.word));
         break;
       case 'freq-high':
       case 'freq-low': {
-        const hasNull = sorted.some((w) => w.frequency == null);
-        if (hasNull) console.warn('Dictionary sort: some words have null frequency, treating as 0');
+        const maxFreq = (g: WordGroup) => Math.max(...g.entries.map((e) => e.frequency ?? 0));
         if (sort === 'freq-high') {
-          sorted.sort((a, b) => (b.frequency ?? 0) - (a.frequency ?? 0));
+          groups.sort((a, b) => maxFreq(b) - maxFreq(a));
         } else {
-          sorted.sort((a, b) => (a.frequency ?? 0) - (b.frequency ?? 0));
+          groups.sort((a, b) => maxFreq(a) - maxFreq(b));
         }
         break;
       }
       case 'due':
-        sorted.sort((a, b) => {
-          // null due_at (new cards) first
-          if (!a.due_at && !b.due_at) return 0;
-          if (!a.due_at) return -1;
-          if (!b.due_at) return 1;
-          return new Date(a.due_at).getTime() - new Date(b.due_at).getTime();
+        groups.sort((a, b) => {
+          const earliest = (g: WordGroup) => {
+            const dues = g.entries.map((e) => e.due_at);
+            const nonNull = dues.filter(Boolean) as string[];
+            if (nonNull.length === 0) return -Infinity; // new cards first
+            return Math.min(...nonNull.map((d) => new Date(d).getTime()));
+          };
+          return earliest(a) - earliest(b);
         });
         break;
-      default:
-        break; // already sorted by date DESC from API
+      default: {
+        // date: most recent entry in group
+        const mostRecent = (g: WordGroup) =>
+          Math.max(...g.entries.map((e) => new Date(e.created_at).getTime()));
+        groups.sort((a, b) => mostRecent(b) - mostRecent(a));
+        break;
+      }
     }
-    return sorted;
+    return groups;
   }, [words, search, sort]);
 
   const handleLogout = async () => {
@@ -206,7 +233,7 @@ export default function Dictionary() {
               <option value="freq-low">Frequency low → high</option>
               <option value="due">Due soonest</option>
             </select>
-            <span className="dict-count">{filtered.length} word{filtered.length !== 1 ? 's' : ''}</span>
+            <span className="dict-count">{wordGroups.length} word{wordGroups.length !== 1 ? 's' : ''}</span>
             {user?.native_language && user?.target_language && (
               <button className="dict-lookup-btn" onClick={() => setLookupOpen(true)} title="Look up a word">+</button>
             )}
@@ -214,7 +241,7 @@ export default function Dictionary() {
 
           {loading ? (
             <p className="text-muted">Loading saved words...</p>
-          ) : filtered.length === 0 ? (
+          ) : wordGroups.length === 0 ? (
             <div className="dict-empty">
               {search ? (
                 <>
@@ -243,67 +270,76 @@ export default function Dictionary() {
             </div>
           ) : (
             <div className="dict-list">
-              {filtered.map((w) => {
-                const open = expandedIds.has(w.id);
+              {wordGroups.map((group) => {
+                const open = expandedKeys.has(group.key);
+                const maxFreq = Math.max(...group.entries.map((e) => e.frequency ?? 0)) || null;
+                const freqColor = maxFreq != null ? LEVEL_COLORS[Math.ceil(maxFreq / 2) - 1] || LEVEL_COLORS[0] : undefined;
                 return (
                   <div
-                    key={w.id}
+                    key={group.key}
                     className={`dict-item${open ? ' open' : ''}`}
-                    style={w.frequency != null ? { borderLeftColor: LEVEL_COLORS[Math.ceil(w.frequency / 2) - 1] || LEVEL_COLORS[0] } : undefined}
+                    style={freqColor ? { borderLeftColor: freqColor } : undefined}
                   >
-                    <button className="dict-item-header" onClick={() => toggle(w.id)}>
-                      <span className="dict-word">{w.word}</span>
-                      <FrequencyDots frequency={w.frequency} />
-                      <DueStatusBadge word={w} />
+                    <button className="dict-item-header" onClick={() => toggle(group.key)}>
+                      <span className="dict-word">{group.word}</span>
+                      <FrequencyDots frequency={maxFreq} />
+                      {group.entries.length > 1 && (
+                        <span className="dict-def-count">{group.entries.length}</span>
+                      )}
+                      <DueStatusBadge word={group.entries[0]} />
                       <svg className="dict-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="6 9 12 15 18 9" />
                       </svg>
                     </button>
                     {open && (
                       <div className="dict-item-body">
-                        {w.image_url && (
-                          <img
-                            className="dict-word-image dict-word-image--clickable"
-                            src={w.image_url}
-                            alt={w.word}
-                            onClick={() => setLightboxUrl(w.image_url!)}
-                          />
-                        )}
-                        {w.part_of_speech && (
-                          <span className="dict-pos-badge">{w.part_of_speech}</span>
-                        )}
-                        <div className="dict-field">
-                          <span className="dict-field-label">Translation</span>
-                          <span className="dict-field-value">{w.translation}</span>
-                        </div>
-                        {w.definition && (
-                          <div className="dict-field">
-                            <span className="dict-field-label">Definition</span>
-                            <span className="dict-field-value">{w.definition}</span>
+                        {group.entries.map((w) => (
+                          <div key={w.id} className="dict-definition-card">
+                            {w.image_url && (
+                              <img
+                                className="dict-word-image dict-word-image--clickable"
+                                src={w.image_url}
+                                alt={w.word}
+                                onClick={() => setLightboxUrl(w.image_url!)}
+                              />
+                            )}
+                            {w.part_of_speech && (
+                              <span className="dict-pos-badge">{w.part_of_speech}</span>
+                            )}
+                            <div className="dict-field">
+                              <span className="dict-field-label">Translation</span>
+                              <span className="dict-field-value">{w.translation}</span>
+                            </div>
+                            {w.definition && (
+                              <div className="dict-field">
+                                <span className="dict-field-label">Definition</span>
+                                <span className="dict-field-value">{w.definition}</span>
+                              </div>
+                            )}
+                            {w.example_sentence && (
+                              <div className="dict-field">
+                                <span className="dict-field-label">Example</span>
+                                <span className="dict-field-value dict-example">
+                                  {renderTildeHighlight(w.example_sentence, 'dict-highlight')}
+                                </span>
+                              </div>
+                            )}
+                            <div className="dict-field">
+                              <span className="dict-field-label">Saved</span>
+                              <span className="dict-field-value text-muted">{formatDate(w.created_at)}</span>
+                            </div>
+                            <ReviewField word={w} />
+                            <button className="dict-remove-btn" onClick={() => removeWord(w.id)}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                <path d="M10 11v6" />
+                                <path d="M14 11v6" />
+                              </svg>
+                              Remove
+                            </button>
                           </div>
-                        )}
-                        {w.example_sentence && (
-                          <div className="dict-field">
-                            <span className="dict-field-label">Example</span>
-                            <span className="dict-field-value dict-example">
-                              {renderTildeHighlight(w.example_sentence, 'dict-highlight')}
-                            </span>
-                          </div>
-                        )}
-                        <div className="dict-field">
-                          <span className="dict-field-label">Saved</span>
-                          <span className="dict-field-value text-muted">{formatDate(w.created_at)}</span>
-                        </div>
-                        <ReviewField word={w} />
-                        <button className="dict-remove-btn" onClick={() => removeWord(w.id)}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                            <path d="M10 11v6" />
-                            <path d="M14 11v6" />
-                          </svg>
-                          Remove
-                        </button>
+                        ))}
                       </div>
                     )}
                   </div>

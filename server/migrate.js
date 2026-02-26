@@ -76,6 +76,11 @@ export async function migrate(pool) {
       CREATE INDEX IF NOT EXISTS idx_saved_words_user_id ON saved_words (user_id);
     `);
 
+    // Allow multiple definitions per word (drop old unique constraint)
+    await client.query(`
+      ALTER TABLE saved_words DROP CONSTRAINT IF EXISTS saved_words_user_id_word_target_language_key;
+    `);
+
     // Add enrichment columns to saved_words
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS frequency INTEGER DEFAULT NULL;`);
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS example_sentence TEXT DEFAULT NULL;`);

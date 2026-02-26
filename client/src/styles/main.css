@@ -1737,7 +1737,36 @@ select.form-input {
   border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dict-definition-card {
+  display: flex;
+  flex-direction: column;
   gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.dict-definition-card + .dict-definition-card {
+  margin-top: 0;
+}
+
+.dict-def-count {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .dict-word-image {
@@ -2051,6 +2080,23 @@ select.form-input {
 .lookup-gloss {
   flex: 1;
   line-height: 1.4;
+}
+
+.lookup-sense--saved {
+  border-color: var(--success);
+  background: var(--success-dim);
+  cursor: default;
+}
+
+.lookup-sense--saved:hover:not(:disabled) {
+  transform: none;
+}
+
+.lookup-saved-check {
+  flex-shrink: 0;
+  color: var(--success);
+  font-weight: 700;
+  font-size: 1rem;
 }
 
 /* ==========================================================================
