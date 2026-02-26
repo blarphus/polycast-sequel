@@ -32,7 +32,7 @@ const LANGUAGES = [
 
 export default function Settings() {
   const { user, updateSettings } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, bgTexture, setBgTexture } = useTheme();
   const navigate = useNavigate();
 
   const [nativeLang, setNativeLang] = useState(user?.native_language || '');
@@ -77,6 +77,21 @@ export default function Settings() {
             >
               Dark
             </button>
+          </div>
+        </div>
+
+        <div className="texture-toggle-row">
+          <span className="form-label" style={{ marginBottom: 0 }}>Background</span>
+          <div className="texture-toggle">
+            {(['none', 'dots', 'lines', 'noise', 'grid'] as const).map((t) => (
+              <button
+                key={t}
+                className={`texture-toggle-option${bgTexture === t ? ' active' : ''}`}
+                onClick={() => setBgTexture(t)}
+              >
+                {t === 'none' ? 'None' : t.charAt(0).toUpperCase() + t.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
 
