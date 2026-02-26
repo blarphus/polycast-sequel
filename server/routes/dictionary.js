@@ -229,14 +229,15 @@ router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
 
     // Flatten all senses from all POS groups, filtering out form-of entries
     const senses = [];
-    for (const entry of data) {
+    for (const entry of data.definitions || []) {
       const pos = entry.pos || '';
-      for (const def of entry.definitions || []) {
-        const gloss = def.definition || '';
-        const tags = def.tags || [];
-        if (!gloss) continue;
+      for (const sense of entry.senses || []) {
+        const tags = sense.tags || [];
         if (tags.includes('form-of')) continue;
-        senses.push({ gloss, pos, tags });
+        for (const gloss of sense.glosses || []) {
+          if (!gloss) continue;
+          senses.push({ gloss, pos, tags });
+        }
       }
     }
 
