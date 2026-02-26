@@ -295,49 +295,53 @@ export default function Dictionary() {
                       <div className="dict-item-body">
                         {group.entries.map((w) => (
                           <div key={w.id} className="dict-definition-card">
-                            {w.image_url && (
-                              <img
-                                className="dict-word-image dict-word-image--clickable"
-                                src={w.image_url}
-                                alt={w.word}
-                                onClick={() => setLightboxUrl(w.image_url!)}
-                              />
-                            )}
-                            {w.part_of_speech && (
-                              <span className="dict-pos-badge">{w.part_of_speech}</span>
-                            )}
-                            <div className="dict-field">
-                              <span className="dict-field-label">Translation</span>
-                              <span className="dict-field-value">{w.translation}</span>
-                            </div>
-                            {w.definition && (
-                              <div className="dict-field">
-                                <span className="dict-field-label">Definition</span>
-                                <span className="dict-field-value">{w.definition}</span>
+                            <div className="dict-def-layout">
+                              <div className="dict-def-info">
+                                {w.part_of_speech && (
+                                  <span className="dict-pos-badge">{w.part_of_speech}</span>
+                                )}
+                                <div className="dict-field">
+                                  <span className="dict-field-label">Translation</span>
+                                  <span className="dict-field-value">{w.translation}</span>
+                                </div>
+                                {w.definition && (
+                                  <div className="dict-field">
+                                    <span className="dict-field-label">Definition</span>
+                                    <span className="dict-field-value">{w.definition}</span>
+                                  </div>
+                                )}
+                                {w.example_sentence && (
+                                  <div className="dict-field">
+                                    <span className="dict-field-label">Example</span>
+                                    <span className="dict-field-value dict-example">
+                                      {renderTildeHighlight(w.example_sentence, 'dict-highlight')}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="dict-field">
+                                  <span className="dict-field-label">Saved</span>
+                                  <span className="dict-field-value text-muted">{formatDate(w.created_at)}</span>
+                                </div>
+                                <ReviewField word={w} />
+                                <button className="dict-remove-btn" onClick={() => removeWord(w.id)}>
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                    <path d="M10 11v6" />
+                                    <path d="M14 11v6" />
+                                  </svg>
+                                  Remove
+                                </button>
                               </div>
-                            )}
-                            {w.example_sentence && (
-                              <div className="dict-field">
-                                <span className="dict-field-label">Example</span>
-                                <span className="dict-field-value dict-example">
-                                  {renderTildeHighlight(w.example_sentence, 'dict-highlight')}
-                                </span>
-                              </div>
-                            )}
-                            <div className="dict-field">
-                              <span className="dict-field-label">Saved</span>
-                              <span className="dict-field-value text-muted">{formatDate(w.created_at)}</span>
+                              {w.image_url && (
+                                <img
+                                  className="dict-def-image dict-word-image--clickable"
+                                  src={w.image_url}
+                                  alt={w.word}
+                                  onClick={() => setLightboxUrl(w.image_url!)}
+                                />
+                              )}
                             </div>
-                            <ReviewField word={w} />
-                            <button className="dict-remove-btn" onClick={() => removeWord(w.id)}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="3 6 5 6 21 6" />
-                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                <path d="M10 11v6" />
-                                <path d="M14 11v6" />
-                              </svg>
-                              Remove
-                            </button>
                           </div>
                         ))}
                       </div>
