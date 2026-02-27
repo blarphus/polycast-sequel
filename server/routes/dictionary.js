@@ -161,13 +161,13 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
   }
 
   try {
-    const prompt = `A user learning ${targetLang || 'a language'} clicked "${word}" in: "${sentence}". Their native language is ${nativeLang}.
+    const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". Use the surrounding sentence to determine the correct sense: "${sentence}". The user's native language is ${nativeLang}.
 
 Return a JSON object with exactly these keys:
 {"translation":"...","definition":"...","part_of_speech":"...","image_term":"..."}
 
-- "translation": the contextual translation of "${word}" as used in the sentence, in ${nativeLang}, 1-3 words max
-- "definition": brief usage explanation in ${nativeLang}, 12 words max, no markdown
+- "translation": the standard ${nativeLang} translation of "${word}" in this sense — give the general-purpose dictionary translation, not a sentence-specific paraphrase, 1-3 words max
+- "definition": what this word means in ${nativeLang}, 12 words max, no markdown — define the word itself, not its role in the sentence
 - "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
 - "image_term": a 1-4 word English phrase for finding a photo of this concept. For concrete nouns, repeat the word (e.g. "cat" → "cat"). For verbs, describe the action (e.g. "run" → "person running"). For adjectives, give a visual example (e.g. "beautiful" → "beautiful flower"). For abstract nouns, name a concrete symbol (e.g. "music" → "musical instrument").
 
