@@ -99,10 +99,41 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
     transformOrigin,
   };
 
+  const handleSave = () => {
+    if (saved) return;
+    setSaved(true);
+    queueSave(lemma || word, async () => {
+      const enriched = await enrichWord(word, sentence, nativeLang, targetLang, senseIndex);
+      const savedWord = enriched.lemma || lemma || word;
+      await onSaveWord!({
+        word: savedWord,
+        translation: enriched.translation,
+        definition: enriched.definition,
+        target_language: targetLang,
+        sentence_context: sentence,
+        frequency: enriched.frequency,
+        example_sentence: enriched.example_sentence,
+        part_of_speech: enriched.part_of_speech,
+        image_url: enriched.image_url,
+        lemma: enriched.lemma || lemma || null,
+        forms: enriched.forms || null,
+      });
+    });
+  };
+
   return (
     <div className="word-popup" ref={popupRef} style={style}>
       <div className="word-popup-header">
         <span className="word-popup-word">{word}</span>
+        {onSaveWord && (
+          <button
+            className={`word-popup-save${saved ? ' saved' : ''}`}
+            disabled={saved || loading}
+            onClick={handleSave}
+          >
+            {saved ? (duplicate ? '✓ Already saved' : '✓ Added') : 'Add'}
+          </button>
+        )}
         <button className="word-popup-close" onClick={onClose}>&times;</button>
       </div>
       <div className="word-popup-body">
@@ -116,39 +147,12 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           <p className="word-popup-invalid">Not a word</p>
         ) : (
           <>
-            {newDefinition && !saved && <span className="word-popup-new-def-pill">New definition!</span>}
-            <p className="word-popup-translation">{translation}</p>
+            <div className="word-popup-translation-row">
+              <p className="word-popup-translation">{translation}</p>
+              {newDefinition && !saved && <span className="word-popup-new-def-pill">New definition!</span>}
+            </div>
             {partOfSpeech && <span className="word-popup-pos">{partOfSpeech}</span>}
             {definition && <p className="word-popup-definition">{definition}</p>}
-            {onSaveWord && (
-              <button
-                className={`word-popup-save${saved ? ' saved' : ''}`}
-                disabled={saved}
-                onClick={() => {
-                  if (saved) return;
-                  setSaved(true);
-                  queueSave(lemma || word, async () => {
-                    const enriched = await enrichWord(word, sentence, nativeLang, targetLang, senseIndex);
-                    const savedWord = enriched.lemma || lemma || word;
-                    await onSaveWord({
-                      word: savedWord,
-                      translation: enriched.translation,
-                      definition: enriched.definition,
-                      target_language: targetLang,
-                      sentence_context: sentence,
-                      frequency: enriched.frequency,
-                      example_sentence: enriched.example_sentence,
-                      part_of_speech: enriched.part_of_speech,
-                      image_url: enriched.image_url,
-                      lemma: enriched.lemma || lemma || null,
-                      forms: enriched.forms || null,
-                    });
-                  });
-                }}
-              >
-                {saved ? (duplicate ? '✓ Already in dictionary' : '✓ Added to dictionary') : 'Add to dictionary'}
-              </button>
-            )}
           </>
         )}
       </div>

@@ -1407,17 +1407,18 @@ select.form-input {
 }
 
 .word-popup-save {
-  width: 100%;
-  margin-top: 0.6rem;
-  padding: 0.45rem 0;
+  width: auto;
+  margin: 0 0.4rem 0 auto;
+  padding: 0.25rem 0.65rem;
   border-radius: var(--radius);
   border: 1.5px solid var(--border-light);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
   transition: border-color var(--transition), color var(--transition), background var(--transition);
+  white-space: nowrap;
 }
 
 .word-popup-save:hover:not(:disabled) {
@@ -1432,10 +1433,21 @@ select.form-input {
   cursor: default;
 }
 
+.word-popup-translation-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.1rem;
+}
+
+.word-popup-translation-row .word-popup-translation {
+  margin-bottom: 0;
+}
+
 .word-popup-new-def-pill {
   display: inline-block;
   padding: 0.15rem 0.55rem;
-  margin-bottom: 0.35rem;
   border-radius: 999px;
   font-size: 0.7rem;
   font-weight: 700;
