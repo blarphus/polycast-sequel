@@ -105,15 +105,17 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
     queueSave(lemma || word, async () => {
       const enriched = await enrichWord(word, sentence, nativeLang, targetLang, senseIndex);
       const savedWord = enriched.lemma || lemma || word;
+      // Use the definition/translation/POS already shown in the popup — enrichWord
+      // may generate slightly different text, but the user saw and chose this one.
       await onSaveWord!({
         word: savedWord,
-        translation: enriched.translation,
-        definition: enriched.definition,
+        translation: translation,
+        definition: matchedGloss ?? definition,
         target_language: targetLang,
         sentence_context: sentence,
         frequency: enriched.frequency,
         example_sentence: enriched.example_sentence,
-        part_of_speech: enriched.part_of_speech,
+        part_of_speech: partOfSpeech,
         image_url: enriched.image_url,
         lemma: enriched.lemma || lemma || null,
         forms: enriched.forms || null,
