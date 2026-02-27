@@ -1444,11 +1444,6 @@ select.form-input {
   background: linear-gradient(135deg, var(--accent), #a855f7);
 }
 
-.word-popup-save.saving {
-  color: var(--text-muted);
-  cursor: default;
-}
-
 .word-popup-invalid {
   font-size: 0.9rem;
   color: var(--text-muted);
@@ -1459,6 +1454,58 @@ select.form-input {
 .word-popup-error {
   font-size: 0.9rem;
   color: var(--danger);
+}
+
+/* -- Dictionary Toast Pill ------------------------------------------------ */
+
+.dict-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--accent);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--accent);
+  animation: dict-toast-in 0.25s ease;
+}
+
+.dict-toast--done {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.dict-toast--error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.dict-toast--hiding {
+  animation: dict-toast-out 0.3s ease forwards;
+}
+
+.dict-toast .loading-spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+@keyframes dict-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes dict-toast-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(-12px); }
 }
 
 /* ==========================================================================

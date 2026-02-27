@@ -5,6 +5,7 @@
 import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { DictionaryToastProvider } from './hooks/useDictionaryToast';
 import { useSocket } from './hooks/useSocket';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -69,6 +70,7 @@ function AuthenticatedShell() {
 export default function App() {
   return (
     <AuthProvider>
+      <DictionaryToastProvider>
       {/* Global incoming-call modal (only when authenticated) */}
       <AuthenticatedShell />
 
@@ -134,6 +136,7 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </DictionaryToastProvider>
     </AuthProvider>
   );
 }

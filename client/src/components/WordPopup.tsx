@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { lookupWord, enrichWord, type SaveWordData } from '../api';
+import { useDictionaryToast } from '../hooks/useDictionaryToast';
 
 interface WordPopupProps {
   word: string;
@@ -23,10 +24,10 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [saved, setSaved] = useState(false);
   const [duplicate, setDuplicate] = useState(false);
   const [newDefinition, setNewDefinition] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [senseIndex, setSenseIndex] = useState<number | null>(null);
   const [matchedGloss, setMatchedGloss] = useState<string | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  const { queueSave } = useDictionaryToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -118,14 +119,14 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
             {definition && <p className="word-popup-definition">{definition}</p>}
             {onSaveWord && (
               <button
-                className={`word-popup-save${saved ? ' saved' : ''}${saving ? ' saving' : ''}`}
-                disabled={saved || saving}
-                onClick={async () => {
-                  if (saved || saving) return;
-                  setSaving(true);
-                  try {
+                className={`word-popup-save${saved ? ' saved' : ''}`}
+                disabled={saved}
+                onClick={() => {
+                  if (saved) return;
+                  setSaved(true);
+                  queueSave(word, async () => {
                     const enriched = await enrichWord(word, sentence, nativeLang, targetLang, senseIndex);
-                    const result = await onSaveWord({
+                    await onSaveWord({
                       word,
                       translation: enriched.translation,
                       definition: enriched.definition,
@@ -136,19 +137,10 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                       part_of_speech: enriched.part_of_speech,
                       image_url: enriched.image_url,
                     });
-                    setSaved(true);
-                    if (!result._created) {
-                      setDuplicate(true);
-                    }
-                  } catch (err) {
-                    console.error('WordPopup: enrichment failed:', err);
-                    setError(err instanceof Error ? err.message : String(err));
-                  } finally {
-                    setSaving(false);
-                  }
+                  });
                 }}
               >
-                {saved ? (duplicate ? '✓ Already in dictionary' : '✓ Added to dictionary') : saving ? 'Adding...' : 'Add to dictionary'}
+                {saved ? (duplicate ? '✓ Already in dictionary' : '✓ Added to dictionary') : 'Add to dictionary'}
               </button>
             )}
           </>

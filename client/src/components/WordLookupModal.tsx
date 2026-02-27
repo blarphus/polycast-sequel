@@ -5,6 +5,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { wiktLookup, enrichWord } from '../api';
 import type { WiktSense } from '../api';
+import { useDictionaryToast } from '../hooks/useDictionaryToast';
 
 interface Props {
   targetLang: string;
@@ -29,9 +30,9 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
   const [searched, setSearched] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
-  const [savingIdx, setSavingIdx] = useState<number | null>(null);
   const [savedIdxs, setSavedIdxs] = useState<Set<number>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
+  const { queueSave } = useDictionaryToast();
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -72,13 +73,12 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
     }
   };
 
-  const handleSenseClick = async (sense: WiktSense, idx: number) => {
-    if (savingIdx !== null || savedIdxs.has(idx)) return;
-    setSavingIdx(idx);
+  const handleSenseClick = (sense: WiktSense, idx: number) => {
+    if (savedIdxs.has(idx)) return;
+    setSavedIdxs(prev => new Set(prev).add(idx));
 
     const word = query.trim();
-
-    try {
+    queueSave(word, async () => {
       const enriched = await enrichWord(
         word,
         `${word}: ${sense.gloss}`,
@@ -96,13 +96,7 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
         image_url: enriched.image_url,
         target_language: targetLang,
       });
-
-      setSavedIdxs((prev) => new Set(prev).add(idx));
-      setSavingIdx(null);
-    } catch (err: unknown) {
-      console.error('Enrich/save error:', err);
-      setSavingIdx(null);
-    }
+    });
   };
 
   return (
@@ -156,17 +150,11 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
                   key={i}
                   className={`lookup-sense${savedIdxs.has(i) ? ' lookup-sense--saved' : ''}`}
                   onClick={() => handleSenseClick(s, i)}
-                  disabled={savingIdx !== null || savedIdxs.has(i)}
+                  disabled={savedIdxs.has(i)}
                 >
-                  {savingIdx === i ? (
-                    <div className="loading-spinner" style={{ width: 20, height: 20 }} />
-                  ) : (
-                    <>
-                      {savedIdxs.has(i) && <span className="lookup-saved-check">{'\u2713'}</span>}
-                      {s.pos && <span className="dict-pos-badge">{s.pos}</span>}
-                      <span className="lookup-gloss">{s.gloss}</span>
-                    </>
-                  )}
+                  {savedIdxs.has(i) && <span className="lookup-saved-check">{'\u2713'}</span>}
+                  {s.pos && <span className="dict-pos-badge">{s.pos}</span>}
+                  <span className="lookup-gloss">{s.gloss}</span>
                 </button>
               ))}
             </div>
