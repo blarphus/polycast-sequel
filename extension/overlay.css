@@ -51,6 +51,33 @@
   color: #6c63ff;
 }
 
+.pc-popup-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pc-popup-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #808098;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  line-height: 1;
+  padding: 0;
+}
+
+.pc-popup-close:hover {
+  color: #e0e0e0;
+}
+
 .pc-popup-save {
   width: 30px;
   height: 30px;

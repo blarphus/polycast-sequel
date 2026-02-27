@@ -149,10 +149,13 @@ function handleWordClick(word, sentence, anchorEl) {
   popup.innerHTML = `
     <div class="pc-popup-header">
       <span class="pc-popup-word">${escapeHtml(word)}</span>
-      <button class="pc-popup-save" title="${isSaved ? 'Already saved' : 'Save word'}"
-        ${isSaved ? 'disabled' : ''}>
-        ${isSaved ? '&#10003;' : '+'}
-      </button>
+      <div class="pc-popup-actions">
+        <button class="pc-popup-save" title="${isSaved ? 'Already saved' : 'Save word'}"
+          ${isSaved ? 'disabled' : ''}>
+          ${isSaved ? '&#10003;' : '+'}
+        </button>
+        <button class="pc-popup-close" title="Close">&times;</button>
+      </div>
     </div>
     <div class="pc-popup-body">
       <div class="pc-spinner"></div>
@@ -202,6 +205,13 @@ function handleWordClick(word, sentence, anchorEl) {
   } catch {
     body.innerHTML = `<div class="pc-popup-error">Extension reloaded — refresh this page</div>`;
   }
+
+  // Close button
+  popup.querySelector('.pc-popup-close').addEventListener('click', (e) => {
+    e.stopPropagation();
+    removePopup();
+    resumeIfWePaused();
+  });
 
   // Save button
   const saveBtn = popup.querySelector('.pc-popup-save');
