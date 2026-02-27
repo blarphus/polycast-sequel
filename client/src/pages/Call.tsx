@@ -19,6 +19,7 @@ import {
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
 import TranscriptPanel from '../components/TranscriptPanel';
 import { useSavedWords } from '../hooks/useSavedWords';
+import { getIceServers } from '../api';
 
 export default function Call() {
   const { peerId } = useParams<{ peerId: string }>();
@@ -196,52 +197,64 @@ export default function Call() {
     socket.on('signal:answer', onSignalAnswer);
     socket.on('signal:ice-candidate', onIceCandidate);
 
-    // --- Create peer connection ---
+    // --- Fetch ICE servers (including TURN) then create peer connection ---
 
-    const pc = createPeerConnection(
-      // onTrack -- remote media
-      (event) => {
-        if (remoteVideoRef.current && event.streams[0]) {
-          remoteVideoRef.current.srcObject = event.streams[0];
-        }
-        setCallStatus('');
-      },
-      // onIceCandidate
-      (candidate) => {
-        if (candidate) {
-          socket.emit('signal:ice-candidate', {
-            peerId,
-            candidate: candidate.toJSON(),
-          });
-        }
-      },
-      // onIceFailure
-      () => {
-        setCallStatus('Connection failed — try again');
-        cleanupTranscription();
-        cleanupPeer();
-        setTimeout(() => navigate('/chats'), 2500);
-      },
-    );
+    (async () => {
+      let iceServers: RTCIceServer[] | undefined;
+      try {
+        const config = await getIceServers();
+        iceServers = config.iceServers;
+      } catch (err) {
+        console.warn('[call] Failed to fetch ICE servers, using STUN only:', err);
+      }
 
-    if (cleaned) {
-      closePeerConnection(pc);
-      return;
-    }
-    pcRef.current = pc;
+      if (cleaned) return;
 
-    // --- Role-based signaling ---
-    if (role === 'caller') {
-      socket.emit('call:initiate', { peerId });
-      setCallStatus('Ringing...');
-    } else {
-      // Callee: call:accept was already emitted by IncomingCall on click.
-      // If the offer arrived before our PC was ready, process it now.
-      setCallStatus('Waiting for connection...');
-      if (pendingOfferRef.current) {
-        const buffered = pendingOfferRef.current;
-        pendingOfferRef.current = null;
-        (async () => {
+      const pc = createPeerConnection(
+        // onTrack -- remote media
+        (event) => {
+          if (remoteVideoRef.current && event.streams[0]) {
+            remoteVideoRef.current.srcObject = event.streams[0];
+          }
+          setCallStatus('');
+        },
+        // onIceCandidate
+        (candidate) => {
+          if (candidate) {
+            socket.emit('signal:ice-candidate', {
+              peerId,
+              candidate: candidate.toJSON(),
+            });
+          }
+        },
+        // onIceFailure
+        () => {
+          setCallStatus('Connection failed — try again');
+          cleanupTranscription();
+          cleanupPeer();
+          setTimeout(() => navigate('/chats'), 2500);
+        },
+        // iceServers (with TURN if configured)
+        iceServers,
+      );
+
+      if (cleaned) {
+        closePeerConnection(pc);
+        return;
+      }
+      pcRef.current = pc;
+
+      // --- Role-based signaling ---
+      if (role === 'caller') {
+        socket.emit('call:initiate', { peerId });
+        setCallStatus('Ringing...');
+      } else {
+        // Callee: call:accept was already emitted by IncomingCall on click.
+        // If the offer arrived before our PC was ready, process it now.
+        setCallStatus('Waiting for connection...');
+        if (pendingOfferRef.current) {
+          const buffered = pendingOfferRef.current;
+          pendingOfferRef.current = null;
           try {
             const answer = await createAnswer(pc, buffered, streamRef.current!);
             socket.emit('signal:answer', { peerId, answer });
@@ -249,9 +262,9 @@ export default function Call() {
           } catch (err) {
             console.error('[call] Error processing buffered offer:', err);
           }
-        })();
+        }
       }
-    }
+    })();
 
     return () => {
       cleaned = true;

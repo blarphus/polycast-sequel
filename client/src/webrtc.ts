@@ -2,36 +2,24 @@
 // webrtc.ts -- WebRTC peer connection management
 // ---------------------------------------------------------------------------
 
-const ICE_SERVERS: RTCIceServer[] = [
+const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  // Free TURN relay for NAT traversal across networks
-  {
-    urls: 'turn:openrelay.metered.ca:80',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-  {
-    urls: 'turn:openrelay.metered.ca:443',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-  {
-    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
 ];
 
 /**
  * Create a new RTCPeerConnection wired to the given callbacks.
+ * Pass iceServers from the /api/ice-servers endpoint for TURN support.
  */
 export function createPeerConnection(
   onTrack: (event: RTCTrackEvent) => void,
   onIceCandidate: (candidate: RTCIceCandidate | null) => void,
   onIceFailure?: () => void,
+  iceServers?: RTCIceServer[],
 ): RTCPeerConnection {
-  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  const pc = new RTCPeerConnection({
+    iceServers: iceServers ?? DEFAULT_ICE_SERVERS,
+  });
 
   pc.ontrack = onTrack;
 
@@ -41,7 +29,9 @@ export function createPeerConnection(
 
   pc.oniceconnectionstatechange = () => {
     console.log('[webrtc] ICE connection state:', pc.iceConnectionState);
-    if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+    // Only treat 'failed' as fatal — 'disconnected' is transient and
+    // the ICE agent may recover on its own.
+    if (pc.iceConnectionState === 'failed') {
       onIceFailure?.();
     }
   };

@@ -94,6 +94,12 @@ export function getNewToday() {
   return request<SavedWord[]>('/dictionary/new-today');
 }
 
+// ---- ICE Servers (WebRTC) ------------------------------------------------
+
+export function getIceServers() {
+  return request<{ iceServers: RTCIceServer[] }>('/ice-servers');
+}
+
 // ---- Users / Calls -------------------------------------------------------
 
 export interface UserResult {
