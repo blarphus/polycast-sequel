@@ -201,7 +201,7 @@ interface EnrichedWord {
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
   const params = new URLSearchParams({ word, sentence, nativeLang });
   if (targetLang) params.set('targetLang', targetLang);
-  return request<{ word: string; valid: boolean; translation: string; definition: string; part_of_speech: string | null; image_term: string }>(`/dictionary/lookup?${params}`);
+  return request<{ word: string; valid: boolean; translation: string; definition: string; part_of_speech: string | null }>(`/dictionary/lookup?${params}`);
 }
 
 export interface WiktSense { gloss: string; pos: string; tags: string[]; }
@@ -212,10 +212,10 @@ export function wiktLookup(word: string, targetLang: string, nativeLang: string)
   return request<WiktLookupResult>(`/dictionary/wikt-lookup?${params}`);
 }
 
-export function enrichWord(word: string, sentence: string, nativeLang: string, targetLang?: string, imageTerm?: string) {
+export function enrichWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
   return request<EnrichedWord>('/dictionary/enrich', {
     method: 'POST',
-    body: { word, sentence, nativeLang, targetLang, imageTerm },
+    body: { word, sentence, nativeLang, targetLang },
   });
 }
 

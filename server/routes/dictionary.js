@@ -82,7 +82,7 @@ async function callGemini(prompt, generationConfig = {}) {
 
 /**
  * GET /api/dictionary/lookup?word=X&sentence=Y&nativeLang=Z&targetLang=W
- * Uses Gemini to provide translation, definition, POS, and image_term.
+ * Uses Gemini to provide translation, definition, and POS.
  */
 router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
   const { word, sentence, nativeLang, targetLang } = req.query;
@@ -101,13 +101,12 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
 If this word is not a recognized word in ${targetLang || 'the target language'}, set valid to false and leave other fields empty.
 
 Return a JSON object with exactly these keys:
-{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","image_term":"..."}
+{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"..."}
 
 - "valid": true if this is a real word in ${targetLang || 'the target language'}, false otherwise (numbers, gibberish, fragments, etc.)
 - "translation": the standard ${nativeLang} translation of "${word}" in this sense — give the general-purpose dictionary translation, not a sentence-specific paraphrase, 1-3 words max
 - "definition": what this word means in ${nativeLang}, 12 words max, no markdown — define the word itself, not its role in the sentence
 - "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
-- "image_term": a 1-4 word English phrase for finding a photo of this concept. For concrete nouns, repeat the word (e.g. "cat" → "cat"). For verbs, describe the action (e.g. "run" → "person running"). For adjectives, give a visual example (e.g. "beautiful" → "beautiful flower"). For abstract nouns, name a concrete symbol (e.g. "music" → "musical instrument").
 
 Respond with ONLY the JSON object, no other text.`;
 
@@ -125,9 +124,8 @@ Respond with ONLY the JSON object, no other text.`;
     const translation = parsed.translation || '';
     const definition = parsed.definition || '';
     const part_of_speech = parsed.part_of_speech || null;
-    const image_term = parsed.image_term || word;
 
-    return res.json({ word, valid, translation, definition, part_of_speech, image_term });
+    return res.json({ word, valid, translation, definition, part_of_speech });
   } catch (err) {
     console.error('Dictionary lookup error:', err);
     return res.status(500).json({ error: err.message || 'Lookup failed' });
@@ -239,7 +237,7 @@ router.post('/api/dictionary/translate', authMiddleware, async (req, res) => {
  * Called when the user saves a word — quality over speed.
  */
 router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
-  const { word, sentence, nativeLang, targetLang, imageTerm } = req.body;
+  const { word, sentence, nativeLang, targetLang } = req.body;
 
   if (!word || !sentence || !nativeLang) {
     return res.status(400).json({ error: 'word, sentence, and nativeLang are required' });
@@ -281,7 +279,12 @@ TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEF
   7-8: Common everyday words important for conversation
   9-10: Essential high-frequency words (top 500 most used)
 - EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
-- IMAGE_TERM: A 1-4 word English phrase for finding a photo of this specific meaning. For "charge" meaning electricity → "phone charging cable". For "charge" meaning attack → "cavalry charge battle".
+- IMAGE_TERM: A 1-4 word English phrase describing a concrete, photographable subject that captures THIS SPECIFIC meaning of the word. The term must work as a stock-photo search query.
+  Concrete nouns → the object itself: "cat" → "cat", "bridge" → "bridge"
+  Abstract adjectives → a vivid scene embodying the quality: "stupendous" → "mountain landscape", "fragile" → "cracked glass"
+  Verbs → a snapshot of the action in context: "screwing" (fastening) → "screwdriver", "screwing" (slang) → "couple in bed"
+  Abstract nouns → a tangible symbol: "freedom" → "open bird cage", "justice" → "courthouse"
+  Do NOT repeat the word itself unless it is already a concrete, photographable noun.
 - FALLBACK_DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown. Only used if SENSE_INDEX is invalid.`;
 
       const raw = await callGemini(prompt);
@@ -326,7 +329,12 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
   7-8: Common everyday words important for conversation
   9-10: Essential high-frequency words (top 500 most used)
 - EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
-- IMAGE_TERM: A 1-4 word English phrase for finding a photo of this specific meaning. For "charge" meaning electricity → "phone charging cable". For "charge" meaning attack → "cavalry charge battle".`;
+- IMAGE_TERM: A 1-4 word English phrase describing a concrete, photographable subject that captures THIS SPECIFIC meaning of the word. The term must work as a stock-photo search query.
+  Concrete nouns → the object itself: "cat" → "cat", "bridge" → "bridge"
+  Abstract adjectives → a vivid scene embodying the quality: "stupendous" → "mountain landscape", "fragile" → "cracked glass"
+  Verbs → a snapshot of the action in context: "screwing" (fastening) → "screwdriver", "screwing" (slang) → "couple in bed"
+  Abstract nouns → a tangible symbol: "freedom" → "open bird cage", "justice" → "courthouse"
+  Do NOT repeat the word itself unless it is already a concrete, photographable noun.`;
 
       const raw = await callGemini(prompt);
 
@@ -348,8 +356,8 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
       if (corpusFreq !== null) frequency = corpusFreq;
     }
 
-    // Fetch image: use caller's imageTerm (from /lookup), Gemini's IMAGE_TERM, or raw word
-    const imageSearchTerm = imageTerm || geminiImageTerm || word;
+    // Fetch image: use Gemini's IMAGE_TERM from enrichment, or raw word as last resort
+    const imageSearchTerm = geminiImageTerm || word;
     const image_url = await fetchWordImage(imageSearchTerm);
 
     return res.json({ word, translation, definition, part_of_speech, frequency, example_sentence, image_url });
