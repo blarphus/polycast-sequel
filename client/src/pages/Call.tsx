@@ -30,6 +30,7 @@ export default function Call() {
 
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const pendingOfferRef = useRef<RTCSessionDescriptionInit | null>(null);
 
   const [callStatus, setCallStatus] = useState<string>(
     role === 'caller' ? 'Connecting...' : 'Answering...',
@@ -68,8 +69,8 @@ export default function Call() {
   }, [peerId, navigate, cleanupTranscription, cleanupPeer]);
 
   // ---- Early listeners (NOT gated on streamReady) -------------------------
-  // These must register immediately so call:ended / call:error events that
-  // arrive while getUserMedia is still running are not lost.
+  // These register immediately so events that arrive while getUserMedia is
+  // still running are not lost. signal:offer is buffered until the PC exists.
 
   useEffect(() => {
     if (!peerId) return;
@@ -94,16 +95,26 @@ export default function Call() {
       setTimeout(() => navigate('/chats'), 2500);
     };
 
+    // Buffer the offer if it arrives before our PC is ready (callee flow).
+    // The gated effect will process pendingOfferRef once the PC is created.
+    const onSignalOfferEarly = (data: { offer: RTCSessionDescriptionInit; fromUserId: string }) => {
+      if (role !== 'callee') return;
+      if (pcRef.current && streamRef.current) return; // will be handled by gated listener
+      pendingOfferRef.current = data.offer;
+    };
+
     socket.on('call:ended', onCallEnded);
     socket.on('call:rejected', onCallRejected);
     socket.on('call:error', onCallError);
+    socket.on('signal:offer', onSignalOfferEarly);
 
     return () => {
       socket.off('call:ended', onCallEnded);
       socket.off('call:rejected', onCallRejected);
       socket.off('call:error', onCallError);
+      socket.off('signal:offer', onSignalOfferEarly);
     };
-  }, [peerId, navigate, cleanupTranscription, cleanupPeer]);
+  }, [peerId, role, navigate, cleanupTranscription, cleanupPeer]);
 
   // ---- Timeout for stuck states ------------------------------------------
 
@@ -208,6 +219,7 @@ export default function Call() {
       () => {
         setCallStatus('Connection failed — try again');
         cleanupTranscription();
+        cleanupPeer();
         setTimeout(() => navigate('/chats'), 2500);
       },
     );
@@ -223,9 +235,22 @@ export default function Call() {
       socket.emit('call:initiate', { peerId });
       setCallStatus('Ringing...');
     } else {
-      // Callee: PC is ready, now tell the caller we accepted.
-      socket.emit('call:accept', { callerId: peerId });
+      // Callee: call:accept was already emitted by IncomingCall on click.
+      // If the offer arrived before our PC was ready, process it now.
       setCallStatus('Waiting for connection...');
+      if (pendingOfferRef.current) {
+        const buffered = pendingOfferRef.current;
+        pendingOfferRef.current = null;
+        (async () => {
+          try {
+            const answer = await createAnswer(pc, buffered, streamRef.current!);
+            socket.emit('signal:answer', { peerId, answer });
+            setCallStatus('');
+          } catch (err) {
+            console.error('[call] Error processing buffered offer:', err);
+          }
+        })();
+      }
     }
 
     return () => {

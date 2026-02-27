@@ -37,9 +37,10 @@ export default function IncomingCall() {
 
   const handleAccept = useCallback(() => {
     if (!incoming) return;
-    // Don't emit call:accept here — let the Call page emit it after
-    // the peer connection is created, so the offer doesn't arrive
-    // before the callee is ready to handle it.
+    // Emit call:accept immediately so the caller knows we accepted
+    // (don't wait for getUserMedia/PC setup on the Call page).
+    // The Call page will buffer the incoming offer until its PC is ready.
+    socket.emit('call:accept', { callerId: incoming.callerId });
     navigate(`/call/${incoming.callerId}?role=callee`);
     setIncoming(null);
   }, [incoming, navigate]);
