@@ -223,37 +223,6 @@ async function fetchWiktSenses(word, targetLang, nativeLang) {
   return senses;
 }
 
-async function fetchWiktForms(word, targetLang, nativeLang) {
-  const edition = WIKT_EDITIONS.has(nativeLang) ? nativeLang : 'en';
-  const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word)}/definitions?lang=${targetLang}`;
-  console.log('[fetchWiktForms] fetching:', url);
-  const res = await fetch(url, { headers: API_HEADERS });
-  if (!res.ok) {
-    console.log('[fetchWiktForms] non-OK status:', res.status, 'for', url);
-    return [];
-  }
-  const data = await res.json();
-  console.log('[fetchWiktForms] top-level keys:', Object.keys(data));
-  console.log('[fetchWiktForms] top-level forms count:', (data.forms || []).length);
-  console.log('[fetchWiktForms] definitions count:', (data.definitions || []).length);
-  if (data.definitions?.length > 0) {
-    console.log('[fetchWiktForms] def[0] keys:', Object.keys(data.definitions[0]));
-  }
-  const forms = new Set();
-  forms.add(word.toLowerCase());
-  // Try top-level forms (wiktextract format)
-  for (const f of data.forms || []) {
-    if (f.form) forms.add(f.form.toLowerCase());
-  }
-  // Also try per-definition forms
-  for (const entry of data.definitions || []) {
-    for (const f of entry.forms || []) {
-      if (f.form) forms.add(f.form.toLowerCase());
-    }
-  }
-  console.log('[fetchWiktForms] result for', word, ':', [...forms]);
-  return [...forms];
-}
 
 router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
   const { word, targetLang, nativeLang } = req.query;
@@ -342,7 +311,7 @@ router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
       }
     }
 
-    let translation, definition, part_of_speech, frequency, example_sentence, geminiImageTerm, lemma;
+    let translation, definition, part_of_speech, frequency, example_sentence, geminiImageTerm, lemma, geminiFormsRaw;
 
     // Path C: senseIndex pre-identified by /lookup — use directly, skip sense-picking
     const hasSenseIndex = typeof reqSenseIndex === 'number' && reqSenseIndex >= 0;
@@ -355,8 +324,8 @@ ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 The user's native language is ${nativeLang}.
 The word means: "${definition}" (${part_of_speech || 'unknown POS'}).
 
-Respond in EXACTLY this format (five parts separated by " // "):
-TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA
+Respond in EXACTLY this format (six parts separated by " // "):
+TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA // FORMS
 
 - TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
 - FREQUENCY: An integer 1-10 rating how common this word is for a language learner:
@@ -377,12 +346,17 @@ TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA
   For nouns: the singular (e.g. "cat" not "cats").
   For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
   If the word is already its base form, return it unchanged. Leave empty for
-  particles, prepositions, conjunctions, and other uninflected words.`;
+  particles, prepositions, conjunctions, and other uninflected words.
+- FORMS: Comma-separated list of all inflected forms of the LEMMA.
+  Verbs: all conjugations (e.g. "run, runs, ran, running").
+  Nouns: singular and plural (e.g. "cat, cats").
+  Adjectives/adverbs: all degrees (e.g. "big, bigger, biggest").
+  Leave empty for particles, prepositions, conjunctions, and other uninflected words.`;
 
       const raw = await callGemini(prompt);
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 5) {
-        console.error(`Gemini enrich (Path C) returned ${parts.length} parts instead of 5:`, raw.slice(0, 300));
+      if (parts.length < 6) {
+        console.error(`Gemini enrich (Path C) returned ${parts.length} parts instead of 6:`, raw.slice(0, 300));
       }
 
       translation = parts[0] || '';
@@ -390,6 +364,7 @@ TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA
       example_sentence = parts[2] || null;
       geminiImageTerm = parts[3]?.trim() || null;
       lemma = parts[4]?.trim() || null;
+      geminiFormsRaw = parts[5]?.trim() || null;
     } else if (hasSenseIndex && (wiktSenses.length === 0 || reqSenseIndex >= wiktSenses.length)) {
       // senseIndex provided but invalid (senses changed between lookup and enrich) — fall through
       console.error('enrich: senseIndex', reqSenseIndex, 'out of range for', wiktSenses.length, 'senses — falling through to Path A/B');
@@ -408,8 +383,8 @@ The user's native language is ${nativeLang}.
 Here are the dictionary senses for "${word}":
 ${senseList}
 
-Respond in EXACTLY this format (seven parts separated by " // "):
-TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA
+Respond in EXACTLY this format (eight parts separated by " // "):
+TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA // FORMS
 
 - TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
 - SENSE_INDEX: The integer index (0-${wiktSenses.length - 1}) of the sense that best matches how "${word}" is used in the sentence.
@@ -432,13 +407,18 @@ TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEF
   For nouns: the singular (e.g. "cat" not "cats").
   For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
   If the word is already its base form, return it unchanged. Leave empty for
-  particles, prepositions, conjunctions, and other uninflected words.`;
+  particles, prepositions, conjunctions, and other uninflected words.
+- FORMS: Comma-separated list of all inflected forms of the LEMMA.
+  Verbs: all conjugations (e.g. "run, runs, ran, running").
+  Nouns: singular and plural (e.g. "cat, cats").
+  Adjectives/adverbs: all degrees (e.g. "big, bigger, biggest").
+  Leave empty for particles, prepositions, conjunctions, and other uninflected words.`;
 
       const raw = await callGemini(prompt);
 
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 7) {
-        console.error(`Gemini enrich (wikt) returned ${parts.length} parts instead of 7:`, raw.slice(0, 300));
+      if (parts.length < 8) {
+        console.error(`Gemini enrich (wikt) returned ${parts.length} parts instead of 8:`, raw.slice(0, 300));
       }
 
       translation = parts[0] || '';
@@ -458,14 +438,15 @@ TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEF
       example_sentence = parts[3] || null;
       geminiImageTerm = parts[4]?.trim() || null;
       lemma = parts[6]?.trim() || null;
+      geminiFormsRaw = parts[7]?.trim() || null;
     } else {
       // Path B: No Wiktionary senses — full Gemini generation (unchanged)
       const prompt = `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
 ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 The user's native language is ${nativeLang}.
 
-Respond in EXACTLY this format (seven parts separated by " // "):
-TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA
+Respond in EXACTLY this format (eight parts separated by " // "):
+TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA // FORMS
 
 - TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
 - DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.
@@ -488,13 +469,18 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
   For nouns: the singular (e.g. "cat" not "cats").
   For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
   If the word is already its base form, return it unchanged. Leave empty for
-  particles, prepositions, conjunctions, and other uninflected words.`;
+  particles, prepositions, conjunctions, and other uninflected words.
+- FORMS: Comma-separated list of all inflected forms of the LEMMA.
+  Verbs: all conjugations (e.g. "run, runs, ran, running").
+  Nouns: singular and plural (e.g. "cat, cats").
+  Adjectives/adverbs: all degrees (e.g. "big, bigger, biggest").
+  Leave empty for particles, prepositions, conjunctions, and other uninflected words.`;
 
       const raw = await callGemini(prompt);
 
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 7) {
-        console.error(`Gemini enrich returned ${parts.length} parts instead of 7:`, raw.slice(0, 300));
+      if (parts.length < 8) {
+        console.error(`Gemini enrich returned ${parts.length} parts instead of 8:`, raw.slice(0, 300));
       }
       translation = parts[0] || '';
       definition = parts[1] || '';
@@ -503,6 +489,7 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
       example_sentence = parts[4] || null;
       geminiImageTerm = parts[5]?.trim() || null;
       lemma = parts[6]?.trim() || null;
+      geminiFormsRaw = parts[7]?.trim() || null;
     }
     } // end if (translation === undefined) — Path A/B
 
@@ -512,17 +499,12 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
       if (corpusFreq !== null) frequency = corpusFreq;
     }
 
-    // Fetch forms from WiktApi for the lemma — no fallback, NULL if unavailable
+    // Parse forms from Gemini's comma-separated FORMS field
     let forms = null;
-    if (lemma) {
-      const bareWord = lemma.replace(/^to\s+/i, '');  // strip "to " for English
-      try {
-        const wiktForms = await fetchWiktForms(bareWord, targetLang, nativeLang);
-        if (wiktForms.length > 1) {  // >1 because we always add the word itself
-          forms = JSON.stringify(wiktForms);
-        }
-      } catch (err) {
-        console.error('fetchWiktForms error:', err);
+    if (geminiFormsRaw) {
+      const formsList = geminiFormsRaw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      if (formsList.length > 1) {
+        forms = JSON.stringify(formsList);
       }
     }
 
