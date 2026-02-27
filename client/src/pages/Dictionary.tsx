@@ -102,7 +102,7 @@ interface WordGroup {
 export default function Dictionary() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { words, loading, removeWord, addWord, updateImage } = useSavedWords();
+  const { words, loading, removeWord, addWord, updateImage, isDefinitionSaved } = useSavedWords();
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortMode>('date');
@@ -387,6 +387,7 @@ export default function Dictionary() {
         <WordLookupModal
           targetLang={user.target_language}
           nativeLang={user.native_language}
+          isDefinitionSaved={isDefinitionSaved}
           onSave={addWord}
           onClose={() => setLookupOpen(false)}
         />

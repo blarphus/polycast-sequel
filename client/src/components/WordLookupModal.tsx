@@ -9,6 +9,7 @@ import type { WiktSense } from '../api';
 interface Props {
   targetLang: string;
   nativeLang: string;
+  isDefinitionSaved: (word: string, definition: string) => boolean;
   onSave: (data: {
     word: string;
     translation: string;
@@ -22,7 +23,7 @@ interface Props {
   onClose: () => void;
 }
 
-export default function WordLookupModal({ targetLang, nativeLang, onSave, onClose }: Props) {
+export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSaved, onSave, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [senses, setSenses] = useState<WiktSense[]>([]);
   const [searched, setSearched] = useState(false);
@@ -59,6 +60,9 @@ export default function WordLookupModal({ targetLang, nativeLang, onSave, onClos
       const result = await wiktLookup(trimmed, targetLang, nativeLang);
       setSenses(result.senses);
       setSearched(true);
+      setSavedIdxs(new Set(
+        result.senses.flatMap((s, i) => isDefinitionSaved(trimmed, s.gloss) ? [i] : []),
+      ));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Lookup failed';
       console.error('WiktApi lookup error:', err);
