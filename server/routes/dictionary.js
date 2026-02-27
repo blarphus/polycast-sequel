@@ -508,6 +508,11 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
       }
     }
 
+    // Normalize English verb lemmas to "to [verb]"
+    if (lemma && part_of_speech === 'verb' && (targetLang === 'en' || targetLang?.startsWith('en-'))) {
+      if (!lemma.startsWith('to ')) lemma = 'to ' + lemma;
+    }
+
     if (!lemma) lemma = null;
 
     // Fetch image: use Gemini's IMAGE_TERM from enrichment, or raw word as last resort
