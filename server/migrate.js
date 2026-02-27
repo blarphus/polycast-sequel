@@ -152,6 +152,7 @@ export async function migrate(pool) {
 
     // Account type column (student or teacher)
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type VARCHAR(10) DEFAULT 'student';`);
+    await client.query(`UPDATE users SET account_type = 'teacher' WHERE account_type IS NULL;`);
 
     // Classroom students table (teacher → student relationship)
     await client.query(`
