@@ -16,7 +16,6 @@ import {
   addIceCandidate,
   closePeerConnection,
 } from '../webrtc';
-import SubtitleBar from '../components/SubtitleBar';
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
 import TranscriptPanel from '../components/TranscriptPanel';
 import { useSavedWords } from '../hooks/useSavedWords';
@@ -40,8 +39,6 @@ export default function Call() {
   const {
     streamRef,
     videoRef: localVideoRef,
-    localText,
-    remoteText,
     remoteLang,
     transcriptEntries,
     cleanupTranscription,
@@ -242,9 +239,6 @@ export default function Call() {
             <p className="call-status-text">{callStatus}</p>
           </div>
         )}
-
-        {/* Subtitle bar */}
-        <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} nativeLang={user?.native_language ?? undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} isDefinitionSaved={isDefinitionSaved} onSaveWord={addWord} />
 
         {/* Controls */}
         <CallControls
