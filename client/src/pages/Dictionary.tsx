@@ -286,6 +286,7 @@ export default function Dictionary() {
                     <button className="dict-item-header" onClick={() => toggle(group.key)}>
                       <span className="dict-word">{group.word}</span>
                       <FrequencyDots frequency={maxFreq} />
+                      {maxFreq != null && <span className="dict-freq-number">{maxFreq}/10</span>}
                       {group.entries[0].part_of_speech && (
                         <span className="dict-pos-badge">{group.entries[0].part_of_speech}</span>
                       )}
