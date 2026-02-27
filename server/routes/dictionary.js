@@ -226,9 +226,19 @@ async function fetchWiktSenses(word, targetLang, nativeLang) {
 async function fetchWiktForms(word, targetLang, nativeLang) {
   const edition = WIKT_EDITIONS.has(nativeLang) ? nativeLang : 'en';
   const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word)}/definitions?lang=${targetLang}`;
+  console.log('[fetchWiktForms] fetching:', url);
   const res = await fetch(url, { headers: API_HEADERS });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.log('[fetchWiktForms] non-OK status:', res.status, 'for', url);
+    return [];
+  }
   const data = await res.json();
+  console.log('[fetchWiktForms] top-level keys:', Object.keys(data));
+  console.log('[fetchWiktForms] top-level forms count:', (data.forms || []).length);
+  console.log('[fetchWiktForms] definitions count:', (data.definitions || []).length);
+  if (data.definitions?.length > 0) {
+    console.log('[fetchWiktForms] def[0] keys:', Object.keys(data.definitions[0]));
+  }
   const forms = new Set();
   forms.add(word.toLowerCase());
   // Try top-level forms (wiktextract format)
@@ -241,6 +251,7 @@ async function fetchWiktForms(word, targetLang, nativeLang) {
       if (f.form) forms.add(f.form.toLowerCase());
     }
   }
+  console.log('[fetchWiktForms] result for', word, ':', [...forms]);
   return [...forms];
 }
 
