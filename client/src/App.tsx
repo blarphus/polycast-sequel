@@ -2,7 +2,7 @@
 // App.tsx -- Root component with auth, routing, and global incoming-call modal
 // ---------------------------------------------------------------------------
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { DictionaryToastProvider } from './hooks/useDictionaryToast';
@@ -52,9 +52,16 @@ function AuthenticatedShell() {
   const { user } = useAuth();
   const { pathname } = useLocation();
   useSocket(); // Keep socket connected for ALL authenticated pages
-  if (!user) return null;
 
   const hideToolbar = pathname.startsWith('/chat/') || pathname.startsWith('/call/');
+
+  useEffect(() => {
+    if (!user) return;
+    document.documentElement.classList.toggle('sidebar-visible', !hideToolbar);
+    return () => document.documentElement.classList.remove('sidebar-visible');
+  }, [user, hideToolbar]);
+
+  if (!user) return null;
 
   return (
     <>

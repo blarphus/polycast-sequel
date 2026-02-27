@@ -16,6 +16,9 @@ export default function BottomToolbar() {
 
   return (
     <nav className="bottom-toolbar">
+      <div className="sidebar-brand">
+        <span className="sidebar-logo">Polycast</span>
+      </div>
       <button
         className={`toolbar-tab toolbar-tab--blue${isHome ? ' active' : ''}`}
         onClick={() => navigate('/')}
