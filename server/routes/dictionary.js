@@ -6,108 +6,47 @@ import { getEnglishFrequency } from '../lib/englishFrequency.js';
 const router = Router();
 
 const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
-const SKIP_PATTERNS = /\b(municipality|commune|city|town|village|district|province|county|region|department|prefecture|borough|family name|given name|surname|first name|person|people|human|Wikimedia|disambiguation|album|song|film|novel|band|magazine|journal|newspaper|TV series|television series)\b/i;
 
-async function fetchWordImage(searchTerm, word, lang) {
+async function searchPixabay(query, perPage = 3) {
+  const pixabayKey = process.env.PIXABAY_API_KEY;
+  if (!pixabayKey) {
+    console.error('PIXABAY_API_KEY is not set — skipping Pixabay search');
+    return [];
+  }
+  const params = new URLSearchParams({
+    key: pixabayKey,
+    q: query,
+    image_type: 'photo',
+    per_page: String(perPage),
+    safesearch: 'true',
+  });
+  const res = await fetch(`https://pixabay.com/api/?${params}`);
+  if (!res.ok) {
+    console.error('Pixabay search failed:', res.status);
+    return [];
+  }
+  const data = await res.json();
+  return (data.hits || []).map(h => h.webformatURL);
+}
+
+async function fetchWordImage(searchTerm) {
   try {
-    // Phase 1: Pixabay photo search using Gemini's targeted term
-    const pixabayKey = process.env.PIXABAY_API_KEY;
-    if (!pixabayKey) {
-      console.error('PIXABAY_API_KEY is not set — skipping Pixabay image search');
-    } else {
-      const pixabayParams = new URLSearchParams({
-        key: pixabayKey,
-        q: searchTerm,
-        image_type: 'photo',
-        per_page: '3',
-        safesearch: 'true',
-      });
-      const pixabayRes = await fetch(
-        `https://pixabay.com/api/?${pixabayParams}`,
-      );
-      if (!pixabayRes.ok) {
-        console.error('Pixabay search failed:', pixabayRes.status);
-      } else {
-        const pixabayData = await pixabayRes.json();
-        if (pixabayData.hits?.length > 0) return pixabayData.hits[0].webformatURL;
-      }
-    }
-
-    // Phase 2: Wikipedia pageimages using the raw word
-    const wikiLang = lang || 'en';
-    const wikiParams = new URLSearchParams({
-      action: 'query',
-      titles: word,
-      prop: 'pageimages',
-      format: 'json',
-      pithumbsize: '400',
-      redirects: '1',
-    });
-    const wikiRes = await fetch(
-      `https://${wikiLang}.wikipedia.org/w/api.php?${wikiParams}`,
-      { headers: API_HEADERS },
-    );
-    if (!wikiRes.ok) {
-      console.error('Wikipedia pageimages failed:', wikiRes.status);
-    } else {
-      const wikiData = await wikiRes.json();
-      const pages = wikiData.query?.pages;
-      if (pages) {
-        const pageId = Object.keys(pages)[0];
-        if (pageId !== '-1') {
-          const thumbnail = pages[pageId]?.thumbnail?.source;
-          if (thumbnail) return thumbnail;
-        }
-      }
-    }
-
-    // Phase 3: Wikidata entity search with iteration
-    const searchParams = new URLSearchParams({
-      action: 'wbsearchentities',
-      search: word,
-      language: lang || 'en',
-      format: 'json',
-      limit: '10',
-    });
-    const searchRes = await fetch(
-      `https://www.wikidata.org/w/api.php?${searchParams}`,
-      { headers: API_HEADERS },
-    );
-    if (!searchRes.ok) {
-      console.error('Wikidata search failed:', searchRes.status);
-      return null;
-    }
-    const searchData = await searchRes.json();
-    const results = searchData.search || [];
-
-    const candidates = results.filter((r) => !SKIP_PATTERNS.test(r.description || ''));
-    for (const entity of candidates) {
-      const claimsParams = new URLSearchParams({
-        action: 'wbgetclaims',
-        entity: entity.id,
-        property: 'P18',
-        format: 'json',
-      });
-      const claimsRes = await fetch(
-        `https://www.wikidata.org/w/api.php?${claimsParams}`,
-        { headers: API_HEADERS },
-      );
-      if (!claimsRes.ok) {
-        console.error('Wikidata claims failed for', entity.id, ':', claimsRes.status);
-        continue;
-      }
-      const claimsData = await claimsRes.json();
-      const filename = claimsData.claims?.P18?.[0]?.mainsnak?.datavalue?.value;
-      if (filename) {
-        return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=400`;
-      }
-    }
-
-    return null;
+    const urls = await searchPixabay(searchTerm);
+    return urls[0] || null;
   } catch (err) {
     console.error('fetchWordImage error:', err);
     return null;
   }
+}
+
+function parseFrequency(str) {
+  if (!str) return null;
+  const n = parseInt(str, 10);
+  if (isNaN(n)) {
+    console.error('Gemini enrich returned non-numeric frequency:', str);
+    return null;
+  }
+  return n;
 }
 
 async function callGemini(prompt, generationConfig = {}) {
@@ -365,11 +304,7 @@ TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEF
         part_of_speech = null;
       }
 
-      frequency = parts[2] ? parseInt(parts[2], 10) : null;
-      if (parts[2] && isNaN(frequency)) {
-        console.error('Gemini enrich returned non-numeric frequency:', parts[2]);
-        frequency = null;
-      }
+      frequency = parseFrequency(parts[2]);
       example_sentence = parts[3] || null;
       geminiImageTerm = parts[4]?.trim() || null;
     } else {
@@ -402,11 +337,7 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
       translation = parts[0] || '';
       definition = parts[1] || '';
       part_of_speech = parts[2] || null;
-      frequency = parts[3] ? parseInt(parts[3], 10) : null;
-      if (parts[3] && isNaN(frequency)) {
-        console.error('Gemini enrich returned non-numeric frequency:', parts[3]);
-        frequency = null;
-      }
+      frequency = parseFrequency(parts[3]);
       example_sentence = parts[4] || null;
       geminiImageTerm = parts[5]?.trim() || null;
     }
@@ -419,8 +350,7 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
 
     // Fetch image: use caller's imageTerm (from /lookup), Gemini's IMAGE_TERM, or raw word
     const imageSearchTerm = imageTerm || geminiImageTerm || word;
-    const langCode = (targetLang || '').split('-')[0] || 'en';
-    const image_url = await fetchWordImage(imageSearchTerm, word, langCode);
+    const image_url = await fetchWordImage(imageSearchTerm);
 
     return res.json({ word, translation, definition, part_of_speech, frequency, example_sentence, image_url });
   } catch (err) {
@@ -442,25 +372,7 @@ router.get('/api/dictionary/image-search', authMiddleware, async (req, res) => {
   if (!q) return res.status(400).json({ error: 'q is required' });
 
   try {
-    const pixabayKey = process.env.PIXABAY_API_KEY;
-    if (!pixabayKey) {
-      console.error('PIXABAY_API_KEY is not set — image search unavailable');
-      return res.json({ images: [] });
-    }
-    const params = new URLSearchParams({
-      key: pixabayKey,
-      q: q,
-      image_type: 'photo',
-      per_page: '20',
-      safesearch: 'true',
-    });
-    const pixabayRes = await fetch(`https://pixabay.com/api/?${params}`);
-    if (!pixabayRes.ok) {
-      console.error('Pixabay image-search failed:', pixabayRes.status);
-      return res.json({ images: [] });
-    }
-    const data = await pixabayRes.json();
-    const images = (data.hits || []).map((h) => h.webformatURL);
+    const images = await searchPixabay(q, 20);
     return res.json({ images });
   } catch (err) {
     console.error('Image search error:', err);
