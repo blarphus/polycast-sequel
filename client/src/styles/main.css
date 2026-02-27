@@ -1432,6 +1432,11 @@ select.form-input {
   cursor: default;
 }
 
+.word-popup-save.new-definition {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .word-popup-save.saving {
   color: var(--text-tertiary);
   cursor: default;

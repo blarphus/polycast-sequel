@@ -27,7 +27,7 @@ export default function Test() {
 
   const { controlsHidden, showControls } = useAutoHideControls();
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(streamRef);
-  const { savedWordsSet, isDefinitionSaved, addWord } = useSavedWords();
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
 
   const goBack = useCallback(() => {
     cleanupTranscription();
@@ -51,7 +51,7 @@ export default function Test() {
 
         <div className="test-label">Test Mode</div>
 
-        <SubtitleBar localText={localText} remoteText="" remoteLang="" nativeLang={user?.native_language ?? undefined} savedWords={savedWordsSet} isDefinitionSaved={isDefinitionSaved} onSaveWord={addWord} />
+        <SubtitleBar localText={localText} remoteText="" remoteLang="" nativeLang={user?.native_language ?? undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} isDefinitionSaved={isDefinitionSaved} onSaveWord={addWord} />
 
         <CallControls
           isMuted={isMuted}
@@ -67,7 +67,7 @@ export default function Test() {
         />
       </div>
 
-      <TranscriptPanel entries={transcriptEntries} nativeLang={user?.native_language ?? undefined} targetLang={user?.target_language ?? undefined} savedWords={savedWordsSet} isDefinitionSaved={isDefinitionSaved} onSaveWord={addWord} />
+      <TranscriptPanel entries={transcriptEntries} nativeLang={user?.native_language ?? undefined} targetLang={user?.target_language ?? undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} isDefinitionSaved={isDefinitionSaved} onSaveWord={addWord} />
     </div>
   );
 }

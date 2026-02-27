@@ -8,11 +8,12 @@ interface WordPopupProps {
   targetLang?: string;
   anchorRect: DOMRect;
   onClose: () => void;
+  isWordSaved?: (word: string) => boolean;
   isDefinitionSaved?: (word: string, definition: string) => boolean;
   onSaveWord?: (data: SaveWordData) => void;
 }
 
-export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isDefinitionSaved, onSaveWord }: WordPopupProps) {
+export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved, isDefinitionSaved, onSaveWord }: WordPopupProps) {
   const [loading, setLoading] = useState(true);
   const [valid, setValid] = useState(true);
   const [translation, setTranslation] = useState('');
@@ -21,6 +22,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [imageTerm, setImageTerm] = useState('');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [newDefinition, setNewDefinition] = useState(false);
   const [saving, setSaving] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +37,11 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           setDefinition(res.definition);
           setPartOfSpeech(res.part_of_speech);
           setImageTerm(res.image_term);
-          if (isDefinitionSaved?.(word, res.definition)) setSaved(true);
+          if (isDefinitionSaved?.(word, res.definition)) {
+            setSaved(true);
+          } else if (isWordSaved?.(word)) {
+            setNewDefinition(true);
+          }
           setLoading(false);
         }
       })
@@ -106,7 +112,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
             {definition && <p className="word-popup-definition">{definition}</p>}
             {onSaveWord && (
               <button
-                className={`word-popup-save${saved ? ' saved' : ''}${saving ? ' saving' : ''}`}
+                className={`word-popup-save${saved ? ' saved' : ''}${saving ? ' saving' : ''}${newDefinition && !saved ? ' new-definition' : ''}`}
                 disabled={saved || saving}
                 onClick={async () => {
                   if (saved || saving) return;
@@ -133,7 +139,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                   }
                 }}
               >
-                {saved ? '✓ Added to dictionary' : saving ? 'Adding...' : 'Add to dictionary'}
+                {saved ? '✓ Added to dictionary' : saving ? 'Adding...' : newDefinition ? 'New definition — add to dictionary' : 'Add to dictionary'}
               </button>
             )}
           </>

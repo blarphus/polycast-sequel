@@ -50,7 +50,7 @@ export default function Call() {
 
   const { controlsHidden, showControls } = useAutoHideControls();
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(streamRef);
-  const { savedWordsSet, isDefinitionSaved, addWord } = useSavedWords();
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
 
   // ---- Shared cleanup helper (WebRTC only — transcription handled by hook) --
 
@@ -244,7 +244,7 @@ export default function Call() {
         )}
 
         {/* Subtitle bar */}
-        <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} nativeLang={user?.native_language ?? undefined} savedWords={savedWordsSet} isDefinitionSaved={isDefinitionSaved} onSaveWord={addWord} />
+        <SubtitleBar localText={localText} remoteText={remoteText} remoteLang={remoteLang} nativeLang={user?.native_language ?? undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} isDefinitionSaved={isDefinitionSaved} onSaveWord={addWord} />
 
         {/* Controls */}
         <CallControls
@@ -261,7 +261,7 @@ export default function Call() {
         />
       </div>
 
-      <TranscriptPanel entries={transcriptEntries} nativeLang={user?.native_language ?? undefined} targetLang={(remoteLang || user?.target_language) ?? undefined} savedWords={savedWordsSet} isDefinitionSaved={isDefinitionSaved} onSaveWord={addWord} />
+      <TranscriptPanel entries={transcriptEntries} nativeLang={user?.native_language ?? undefined} targetLang={(remoteLang || user?.target_language) ?? undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} isDefinitionSaved={isDefinitionSaved} onSaveWord={addWord} />
     </div>
   );
 }
