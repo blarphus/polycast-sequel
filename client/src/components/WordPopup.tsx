@@ -105,12 +105,13 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           <p className="word-popup-invalid">Not a word</p>
         ) : (
           <>
+            {newDefinition && !saved && <span className="word-popup-new-def-pill">New definition!</span>}
             <p className="word-popup-translation">{translation}</p>
             {partOfSpeech && <span className="word-popup-pos">{partOfSpeech}</span>}
             {definition && <p className="word-popup-definition">{definition}</p>}
             {onSaveWord && (
               <button
-                className={`word-popup-save${saved ? ' saved' : ''}${saving ? ' saving' : ''}${newDefinition && !saved ? ' new-definition' : ''}`}
+                className={`word-popup-save${saved ? ' saved' : ''}${saving ? ' saving' : ''}`}
                 disabled={saved || saving}
                 onClick={async () => {
                   if (saved || saving) return;
@@ -137,7 +138,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                   }
                 }}
               >
-                {saved ? '✓ Added to dictionary' : saving ? 'Adding...' : newDefinition ? 'New definition — add to dictionary' : 'Add to dictionary'}
+                {saved ? '✓ Added to dictionary' : saving ? 'Adding...' : 'Add to dictionary'}
               </button>
             )}
           </>

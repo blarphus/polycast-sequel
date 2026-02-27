@@ -1432,9 +1432,16 @@ select.form-input {
   cursor: default;
 }
 
-.word-popup-save.new-definition {
-  border-color: var(--accent);
-  color: var(--accent);
+.word-popup-new-def-pill {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  margin-bottom: 0.35rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #a855f7);
 }
 
 .word-popup-save.saving {
