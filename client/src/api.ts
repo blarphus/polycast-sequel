@@ -196,12 +196,14 @@ export interface EnrichedWord {
   frequency: number | null;
   example_sentence: string | null;
   image_url: string | null;
+  lemma: string | null;
+  forms: string | null;
 }
 
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
   const params = new URLSearchParams({ word, sentence, nativeLang });
   if (targetLang) params.set('targetLang', targetLang);
-  return request<{ word: string; valid: boolean; translation: string; definition: string; part_of_speech: string | null; sense_index: number | null; matched_gloss: string | null }>(`/dictionary/lookup?${params}`);
+  return request<{ word: string; valid: boolean; translation: string; definition: string; part_of_speech: string | null; sense_index: number | null; matched_gloss: string | null; lemma: string | null }>(`/dictionary/lookup?${params}`);
 }
 
 export interface WiktSense { gloss: string; pos: string; tags: string[]; }
@@ -247,6 +249,8 @@ export interface SaveWordData {
   example_sentence?: string | null;
   part_of_speech?: string | null;
   image_url?: string | null;
+  lemma?: string | null;
+  forms?: string | null;
 }
 
 export interface SavedWord {
@@ -268,6 +272,8 @@ export interface SavedWord {
   ease_factor: number;
   learning_step: number | null;
   image_url: string | null;
+  lemma: string | null;
+  forms: string | null;
 }
 
 export function getSavedWords() {

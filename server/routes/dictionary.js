@@ -119,13 +119,18 @@ Here are the dictionary senses for "${word}":
 ${senseList}
 
 Return a JSON object with exactly these keys:
-{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","sense_index":N}
+{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","sense_index":N,"lemma":"..."}
 
 - "valid": true if this is a real word in ${targetLang || 'the target language'}, false otherwise (numbers, gibberish, fragments, etc.)
 - "translation": the standard ${nativeLang} translation of "${word}" in this sense — give the general-purpose dictionary translation, not a sentence-specific paraphrase, 1-3 words max
 - "definition": what this word means in ${nativeLang}, 12 words max, no markdown — define the word itself, not its role in the sentence
 - "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
 - "sense_index": the integer index (0-${wiktSenses.length - 1}) of the sense above that best matches how "${word}" is used in the sentence. Use -1 if none match.
+- "lemma": The dictionary/base form of this word in the target language.
+  For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
+  For nouns: the singular form (e.g. "cat" not "cats").
+  For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
+  If the word is already in its base form, return it unchanged.
 
 Respond with ONLY the JSON object, no other text.`;
     } else {
@@ -134,12 +139,17 @@ Respond with ONLY the JSON object, no other text.`;
 If this word is not a recognized word in ${targetLang || 'the target language'}, set valid to false and leave other fields empty.
 
 Return a JSON object with exactly these keys:
-{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"..."}
+{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","lemma":"..."}
 
 - "valid": true if this is a real word in ${targetLang || 'the target language'}, false otherwise (numbers, gibberish, fragments, etc.)
 - "translation": the standard ${nativeLang} translation of "${word}" in this sense — give the general-purpose dictionary translation, not a sentence-specific paraphrase, 1-3 words max
 - "definition": what this word means in ${nativeLang}, 12 words max, no markdown — define the word itself, not its role in the sentence
 - "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
+- "lemma": The dictionary/base form of this word in the target language.
+  For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
+  For nouns: the singular form (e.g. "cat" not "cats").
+  For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
+  If the word is already in its base form, return it unchanged.
 
 Respond with ONLY the JSON object, no other text.`;
     }
@@ -158,6 +168,7 @@ Respond with ONLY the JSON object, no other text.`;
     const translation = parsed.translation || '';
     const definition = parsed.definition || '';
     const part_of_speech = parsed.part_of_speech || null;
+    const lemma = parsed.lemma || null;
 
     // Resolve sense_index + matched_gloss from Wiktionary senses
     let sense_index = null;
@@ -170,7 +181,7 @@ Respond with ONLY the JSON object, no other text.`;
       }
     }
 
-    return res.json({ word, valid, translation, definition, part_of_speech, sense_index, matched_gloss });
+    return res.json({ word, valid, translation, definition, part_of_speech, sense_index, matched_gloss, lemma });
   } catch (err) {
     console.error('Dictionary lookup error:', err);
     return res.status(500).json({ error: err.message || 'Lookup failed' });
@@ -210,6 +221,27 @@ async function fetchWiktSenses(word, targetLang, nativeLang) {
     }
   }
   return senses;
+}
+
+async function fetchWiktForms(word, targetLang, nativeLang) {
+  const edition = WIKT_EDITIONS.has(nativeLang) ? nativeLang : 'en';
+  const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word)}/definitions?lang=${targetLang}`;
+  const res = await fetch(url, { headers: API_HEADERS });
+  if (!res.ok) return [];
+  const data = await res.json();
+  const forms = new Set();
+  forms.add(word.toLowerCase());
+  // Try top-level forms (wiktextract format)
+  for (const f of data.forms || []) {
+    if (f.form) forms.add(f.form.toLowerCase());
+  }
+  // Also try per-definition forms
+  for (const entry of data.definitions || []) {
+    for (const f of entry.forms || []) {
+      if (f.form) forms.add(f.form.toLowerCase());
+    }
+  }
+  return [...forms];
 }
 
 router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
@@ -299,7 +331,7 @@ router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
       }
     }
 
-    let translation, definition, part_of_speech, frequency, example_sentence, geminiImageTerm;
+    let translation, definition, part_of_speech, frequency, example_sentence, geminiImageTerm, lemma;
 
     // Path C: senseIndex pre-identified by /lookup — use directly, skip sense-picking
     const hasSenseIndex = typeof reqSenseIndex === 'number' && reqSenseIndex >= 0;
@@ -312,8 +344,8 @@ ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 The user's native language is ${nativeLang}.
 The word means: "${definition}" (${part_of_speech || 'unknown POS'}).
 
-Respond in EXACTLY this format (four parts separated by " // "):
-TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM
+Respond in EXACTLY this format (five parts separated by " // "):
+TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA
 
 - TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
 - FREQUENCY: An integer 1-10 rating how common this word is for a language learner:
@@ -328,18 +360,25 @@ TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM
   Abstract adjectives → a vivid scene embodying the quality: "stupendous" → "mountain landscape", "fragile" → "cracked glass"
   Verbs → a snapshot of the action in context: "screwing" (fastening) → "screwdriver", "screwing" (slang) → "couple in bed"
   Abstract nouns → a tangible symbol: "freedom" → "open bird cage", "justice" → "courthouse"
-  Do NOT repeat the word itself unless it is already a concrete, photographable noun.`;
+  Do NOT repeat the word itself unless it is already a concrete, photographable noun.
+- LEMMA: The dictionary/base form of this word in the target language.
+  For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
+  For nouns: the singular (e.g. "cat" not "cats").
+  For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
+  If the word is already its base form, return it unchanged. Leave empty for
+  particles, prepositions, conjunctions, and other uninflected words.`;
 
       const raw = await callGemini(prompt);
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 4) {
-        console.error(`Gemini enrich (Path C) returned ${parts.length} parts instead of 4:`, raw.slice(0, 300));
+      if (parts.length < 5) {
+        console.error(`Gemini enrich (Path C) returned ${parts.length} parts instead of 5:`, raw.slice(0, 300));
       }
 
       translation = parts[0] || '';
       frequency = parseFrequency(parts[1]);
       example_sentence = parts[2] || null;
       geminiImageTerm = parts[3]?.trim() || null;
+      lemma = parts[4]?.trim() || null;
     } else if (hasSenseIndex && (wiktSenses.length === 0 || reqSenseIndex >= wiktSenses.length)) {
       // senseIndex provided but invalid (senses changed between lookup and enrich) — fall through
       console.error('enrich: senseIndex', reqSenseIndex, 'out of range for', wiktSenses.length, 'senses — falling through to Path A/B');
@@ -358,8 +397,8 @@ The user's native language is ${nativeLang}.
 Here are the dictionary senses for "${word}":
 ${senseList}
 
-Respond in EXACTLY this format (six parts separated by " // "):
-TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEFINITION
+Respond in EXACTLY this format (seven parts separated by " // "):
+TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA
 
 - TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
 - SENSE_INDEX: The integer index (0-${wiktSenses.length - 1}) of the sense that best matches how "${word}" is used in the sentence.
@@ -376,13 +415,19 @@ TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEF
   Verbs → a snapshot of the action in context: "screwing" (fastening) → "screwdriver", "screwing" (slang) → "couple in bed"
   Abstract nouns → a tangible symbol: "freedom" → "open bird cage", "justice" → "courthouse"
   Do NOT repeat the word itself unless it is already a concrete, photographable noun.
-- FALLBACK_DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown. Only used if SENSE_INDEX is invalid.`;
+- FALLBACK_DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown. Only used if SENSE_INDEX is invalid.
+- LEMMA: The dictionary/base form of this word in the target language.
+  For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
+  For nouns: the singular (e.g. "cat" not "cats").
+  For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
+  If the word is already its base form, return it unchanged. Leave empty for
+  particles, prepositions, conjunctions, and other uninflected words.`;
 
       const raw = await callGemini(prompt);
 
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 6) {
-        console.error(`Gemini enrich (wikt) returned ${parts.length} parts instead of 6:`, raw.slice(0, 300));
+      if (parts.length < 7) {
+        console.error(`Gemini enrich (wikt) returned ${parts.length} parts instead of 7:`, raw.slice(0, 300));
       }
 
       translation = parts[0] || '';
@@ -401,14 +446,15 @@ TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEF
       frequency = parseFrequency(parts[2]);
       example_sentence = parts[3] || null;
       geminiImageTerm = parts[4]?.trim() || null;
+      lemma = parts[6]?.trim() || null;
     } else {
       // Path B: No Wiktionary senses — full Gemini generation (unchanged)
       const prompt = `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
 ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 The user's native language is ${nativeLang}.
 
-Respond in EXACTLY this format (six parts separated by " // "):
-TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TERM
+Respond in EXACTLY this format (seven parts separated by " // "):
+TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA
 
 - TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
 - DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.
@@ -425,13 +471,19 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
   Abstract adjectives → a vivid scene embodying the quality: "stupendous" → "mountain landscape", "fragile" → "cracked glass"
   Verbs → a snapshot of the action in context: "screwing" (fastening) → "screwdriver", "screwing" (slang) → "couple in bed"
   Abstract nouns → a tangible symbol: "freedom" → "open bird cage", "justice" → "courthouse"
-  Do NOT repeat the word itself unless it is already a concrete, photographable noun.`;
+  Do NOT repeat the word itself unless it is already a concrete, photographable noun.
+- LEMMA: The dictionary/base form of this word in the target language.
+  For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
+  For nouns: the singular (e.g. "cat" not "cats").
+  For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
+  If the word is already its base form, return it unchanged. Leave empty for
+  particles, prepositions, conjunctions, and other uninflected words.`;
 
       const raw = await callGemini(prompt);
 
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 6) {
-        console.error(`Gemini enrich returned ${parts.length} parts instead of 6:`, raw.slice(0, 300));
+      if (parts.length < 7) {
+        console.error(`Gemini enrich returned ${parts.length} parts instead of 7:`, raw.slice(0, 300));
       }
       translation = parts[0] || '';
       definition = parts[1] || '';
@@ -439,6 +491,7 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
       frequency = parseFrequency(parts[3]);
       example_sentence = parts[4] || null;
       geminiImageTerm = parts[5]?.trim() || null;
+      lemma = parts[6]?.trim() || null;
     }
     } // end if (translation === undefined) — Path A/B
 
@@ -448,11 +501,27 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
       if (corpusFreq !== null) frequency = corpusFreq;
     }
 
+    // Fetch forms from WiktApi for the lemma — no fallback, NULL if unavailable
+    let forms = null;
+    if (lemma) {
+      const bareWord = lemma.replace(/^to\s+/i, '');  // strip "to " for English
+      try {
+        const wiktForms = await fetchWiktForms(bareWord, targetLang, nativeLang);
+        if (wiktForms.length > 1) {  // >1 because we always add the word itself
+          forms = JSON.stringify(wiktForms);
+        }
+      } catch (err) {
+        console.error('fetchWiktForms error:', err);
+      }
+    }
+
+    if (!lemma) lemma = null;
+
     // Fetch image: use Gemini's IMAGE_TERM from enrichment, or raw word as last resort
     const imageSearchTerm = geminiImageTerm || word;
     const image_url = await fetchWordImage(imageSearchTerm);
 
-    return res.json({ word, translation, definition, part_of_speech, frequency, example_sentence, image_url });
+    return res.json({ word, translation, definition, part_of_speech, frequency, example_sentence, image_url, lemma, forms });
   } catch (err) {
     console.error('Dictionary enrich error:', err);
     return res.status(500).json({ error: err.message || 'Enrichment failed' });
@@ -718,7 +787,7 @@ router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
  * POST /api/dictionary/words -- Save a word to the personal dictionary
  */
 router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
-  const { word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url } = req.body;
+  const { word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url, lemma, forms } = req.body;
 
   if (!word) {
     return res.status(400).json({ error: 'word is required' });
@@ -737,10 +806,10 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
 
     // Insert new definition
     const { rows } = await pool.query(
-      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url, lemma, forms)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
-      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null, image_url || null],
+      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null, image_url || null, lemma || null, forms || null],
     );
     return res.status(201).json({ ...rows[0], _created: true });
   } catch (err) {

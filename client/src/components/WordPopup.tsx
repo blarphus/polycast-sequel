@@ -26,6 +26,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [newDefinition, setNewDefinition] = useState(false);
   const [senseIndex, setSenseIndex] = useState<number | null>(null);
   const [matchedGloss, setMatchedGloss] = useState<string | null>(null);
+  const [lemma, setLemma] = useState<string | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const { queueSave } = useDictionaryToast();
 
@@ -41,11 +42,13 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           setPartOfSpeech(res.part_of_speech);
           setSenseIndex(res.sense_index);
           setMatchedGloss(res.matched_gloss);
+          setLemma(res.lemma);
           // Use matched_gloss (Wikt gloss) for dedup when available — it matches saved definitions reliably
           const defForDedup = res.matched_gloss ?? res.definition;
-          if (isDefinitionSaved?.(word, defForDedup)) {
+          const dedupWord = res.lemma || word;
+          if (isDefinitionSaved?.(dedupWord, defForDedup)) {
             setSaved(true);
-          } else if (isWordSaved?.(word)) {
+          } else if (isWordSaved?.(dedupWord)) {
             setNewDefinition(true);
           }
           setLoading(false);
@@ -124,10 +127,11 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                 onClick={() => {
                   if (saved) return;
                   setSaved(true);
-                  queueSave(word, async () => {
+                  queueSave(lemma || word, async () => {
                     const enriched = await enrichWord(word, sentence, nativeLang, targetLang, senseIndex);
+                    const savedWord = enriched.lemma || lemma || word;
                     await onSaveWord({
-                      word,
+                      word: savedWord,
                       translation: enriched.translation,
                       definition: enriched.definition,
                       target_language: targetLang,
@@ -136,6 +140,8 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                       example_sentence: enriched.example_sentence,
                       part_of_speech: enriched.part_of_speech,
                       image_url: enriched.image_url,
+                      lemma: enriched.lemma || lemma || null,
+                      forms: enriched.forms || null,
                     });
                   });
                 }}

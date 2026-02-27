@@ -20,6 +20,8 @@ interface Props {
     example_sentence?: string | null;
     part_of_speech?: string | null;
     image_url?: string | null;
+    lemma?: string | null;
+    forms?: string | null;
   }) => Promise<unknown>;
   onClose: () => void;
 }
@@ -86,8 +88,9 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
         targetLang,
       );
 
+      const savedWord = enriched.lemma || word;
       await onSave({
-        word,
+        word: savedWord,
         definition: sense.gloss,
         part_of_speech: sense.pos || enriched.part_of_speech,
         translation: enriched.translation,
@@ -95,6 +98,8 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
         example_sentence: enriched.example_sentence,
         image_url: enriched.image_url,
         target_language: targetLang,
+        lemma: enriched.lemma || null,
+        forms: enriched.forms || null,
       });
     });
   };
