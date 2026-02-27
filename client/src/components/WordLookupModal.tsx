@@ -160,10 +160,7 @@ export default function WordLookupModal({ targetLang, nativeLang, onSave, onClos
                     <>
                       {savedIdxs.has(i) && <span className="lookup-saved-check">{'\u2713'}</span>}
                       {s.pos && <span className="dict-pos-badge">{s.pos}</span>}
-                      <span className="lookup-sense-text">
-                        <span className="lookup-gloss">{s.gloss}</span>
-                        {s.example && <span className="lookup-example">{s.example}</span>}
-                      </span>
+                      <span className="lookup-gloss">{s.gloss}</span>
                     </>
                   )}
                 </button>
