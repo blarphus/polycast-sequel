@@ -14,6 +14,7 @@ interface WordPopupProps {
 
 export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved: initialSaved, onSaveWord }: WordPopupProps) {
   const [loading, setLoading] = useState(true);
+  const [valid, setValid] = useState(true);
   const [translation, setTranslation] = useState('');
   const [definition, setDefinition] = useState('');
   const [partOfSpeech, setPartOfSpeech] = useState<string | null>(null);
@@ -29,6 +30,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
     lookupWord(word, sentence, nativeLang, targetLang)
       .then((res) => {
         if (!cancelled) {
+          setValid(res.valid);
           setTranslation(res.translation);
           setDefinition(res.definition);
           setPartOfSpeech(res.part_of_speech);
@@ -94,6 +96,8 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           </div>
         ) : error ? (
           <p className="word-popup-error">{error}</p>
+        ) : !valid ? (
+          <p className="word-popup-invalid">Not a word</p>
         ) : (
           <>
             <p className="word-popup-translation">{translation}</p>

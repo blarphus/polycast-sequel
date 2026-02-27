@@ -163,9 +163,12 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
   try {
     const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". Use the surrounding sentence to determine the correct sense: "${sentence}". The user's native language is ${nativeLang}.
 
-Return a JSON object with exactly these keys:
-{"translation":"...","definition":"...","part_of_speech":"...","image_term":"..."}
+If this word is not a recognized word in ${targetLang || 'the target language'}, set valid to false and leave other fields empty.
 
+Return a JSON object with exactly these keys:
+{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","image_term":"..."}
+
+- "valid": true if this is a real word in ${targetLang || 'the target language'}, false otherwise (numbers, gibberish, fragments, etc.)
 - "translation": the standard ${nativeLang} translation of "${word}" in this sense — give the general-purpose dictionary translation, not a sentence-specific paraphrase, 1-3 words max
 - "definition": what this word means in ${nativeLang}, 12 words max, no markdown — define the word itself, not its role in the sentence
 - "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
@@ -180,7 +183,8 @@ Respond with ONLY the JSON object, no other text.`;
     });
 
     const parsed = JSON.parse(raw);
-    if (!parsed.definition) {
+    const valid = parsed.valid ?? true;
+    if (valid && !parsed.definition) {
       console.error('Gemini lookup returned incomplete JSON:', raw.slice(0, 300));
     }
     const translation = parsed.translation || '';
@@ -188,7 +192,7 @@ Respond with ONLY the JSON object, no other text.`;
     const part_of_speech = parsed.part_of_speech || null;
     const image_term = parsed.image_term || word;
 
-    return res.json({ word, translation, definition, part_of_speech, image_term });
+    return res.json({ word, valid, translation, definition, part_of_speech, image_term });
   } catch (err) {
     console.error('Dictionary lookup error:', err);
     return res.status(500).json({ error: err.message || 'Lookup failed' });
