@@ -69,51 +69,61 @@ export default function Home() {
     return () => { cancelled = true; };
   }, []);
 
+  const displayName = user?.display_name || user?.username || '';
+  const firstName = displayName.split(/\s+/)[0];
+
   return (
     <div className="home-page">
-      {/* Section 1: New words for today */}
-      <section className="home-section">
-        <h2 className="home-section-title">Your new words for today</h2>
-        <p className="home-section-subtitle">
-          {newWords.length > 0
-            ? `${newWords.length} new word${newWords.length === 1 ? '' : 's'} to learn`
-            : 'Words you haven\u2019t reviewed yet'}
-        </p>
+      {/* Hero: greeting left, new-words card right */}
+      <div className="home-hero">
+        <div className="home-hero-left">
+          <h1 className="home-greeting">Welcome back, {firstName}</h1>
+          <p className="home-greeting-sub">Ready to learn something new?</p>
+          <button className="home-start-learning-btn" onClick={() => navigate('/learn')}>
+            Start learning
+          </button>
+        </div>
 
-        {error && <p className="auth-error" style={{ margin: '0.5rem 0' }}>{error}</p>}
-
-        {loading ? (
-          <div className="home-words-grid">
-            {Array.from({ length: 3 }, (_, i) => (
-              <div key={i} className="home-word-card home-word-card--skeleton" />
-            ))}
-          </div>
-        ) : newWords.length === 0 ? (
-          <div className="home-empty-state">
-            <p>No new words — add some from a call or the dictionary!</p>
-          </div>
-        ) : (
-          <>
-            <div className="home-words-grid">
-              {newWords.map((w) => (
-                <div key={w.id} className="home-word-card">
-                  <div className="home-word-card-top">
-                    <span className="home-word-card-word">{w.word}</span>
-                    {w.part_of_speech && (
-                      <span className="home-word-card-pos">{w.part_of_speech}</span>
-                    )}
-                  </div>
-                  <span className="home-word-card-translation">{w.translation}</span>
-                  <FrequencyDots frequency={w.frequency} />
-                </div>
-              ))}
+        <div className="home-hero-right">
+          <div className="home-words-card">
+            <div className="home-words-card-header">
+              <h2 className="home-words-card-title">New words for today</h2>
+              <span className="home-words-card-count">
+                {loading ? '...' : newWords.length}
+              </span>
             </div>
-            <button className="home-start-learning-btn" onClick={() => navigate('/learn')}>
-              Start learning
-            </button>
-          </>
-        )}
-      </section>
+
+            {error && <p className="auth-error" style={{ margin: '0.5rem 0' }}>{error}</p>}
+
+            {loading ? (
+              <div className="home-words-list">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="home-word-row home-word-row--skeleton" />
+                ))}
+              </div>
+            ) : newWords.length === 0 ? (
+              <div className="home-empty-state">
+                <p>No new words — add some from a call or the dictionary!</p>
+              </div>
+            ) : (
+              <div className="home-words-list">
+                {newWords.map((w) => (
+                  <div key={w.id} className="home-word-row">
+                    <div className="home-word-row-left">
+                      <span className="home-word-row-word">{w.word}</span>
+                      {w.part_of_speech && (
+                        <span className="home-word-row-pos">{w.part_of_speech}</span>
+                      )}
+                    </div>
+                    <span className="home-word-row-translation">{w.translation}</span>
+                    <FrequencyDots frequency={w.frequency} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Section 2: Videos for you (placeholder) */}
       <section className="home-section">

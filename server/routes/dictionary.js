@@ -622,7 +622,7 @@ router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
        WHERE sw.user_id = $1
          AND sw.due_at IS NULL
          AND sw.last_reviewed_at IS NULL
-       ORDER BY sw.created_at ASC
+       ORDER BY sw.frequency DESC NULLS LAST, sw.created_at ASC
        LIMIT (SELECT daily_new_limit FROM users WHERE id = $1)`,
       [req.userId],
     );
