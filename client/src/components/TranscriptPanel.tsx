@@ -18,11 +18,11 @@ interface TranscriptPanelProps {
   nativeLang?: string;
   targetLang?: string;
   savedWords?: Set<string>;
-  isWordSaved?: (word: string) => boolean;
+  isDefinitionSaved?: (word: string, definition: string) => boolean;
   onSaveWord?: (data: SaveWordData) => void;
 }
 
-export default function TranscriptPanel({ entries, nativeLang, targetLang, savedWords, isWordSaved, onSaveWord }: TranscriptPanelProps) {
+export default function TranscriptPanel({ entries, nativeLang, targetLang, savedWords, isDefinitionSaved, onSaveWord }: TranscriptPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScroll = useRef(true);
   const [popup, setPopup] = useState<PopupState | null>(null);
@@ -78,7 +78,7 @@ export default function TranscriptPanel({ entries, nativeLang, targetLang, saved
           targetLang={targetLang}
           anchorRect={popup.rect}
           onClose={() => setPopup(null)}
-          isWordSaved={isWordSaved ? isWordSaved(popup.word) : undefined}
+          isDefinitionSaved={isDefinitionSaved}
           onSaveWord={onSaveWord}
         />
       )}

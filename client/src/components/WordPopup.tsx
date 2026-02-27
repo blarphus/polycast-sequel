@@ -8,11 +8,11 @@ interface WordPopupProps {
   targetLang?: string;
   anchorRect: DOMRect;
   onClose: () => void;
-  isWordSaved?: boolean;
+  isDefinitionSaved?: (word: string, definition: string) => boolean;
   onSaveWord?: (data: SaveWordData) => void;
 }
 
-export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved: initialSaved, onSaveWord }: WordPopupProps) {
+export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isDefinitionSaved, onSaveWord }: WordPopupProps) {
   const [loading, setLoading] = useState(true);
   const [valid, setValid] = useState(true);
   const [translation, setTranslation] = useState('');
@@ -20,7 +20,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [partOfSpeech, setPartOfSpeech] = useState<string | null>(null);
   const [imageTerm, setImageTerm] = useState('');
   const [error, setError] = useState('');
-  const [saved, setSaved] = useState(initialSaved ?? false);
+  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +35,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           setDefinition(res.definition);
           setPartOfSpeech(res.part_of_speech);
           setImageTerm(res.image_term);
+          if (isDefinitionSaved?.(word, res.definition)) setSaved(true);
           setLoading(false);
         }
       })

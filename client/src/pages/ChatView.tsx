@@ -39,7 +39,7 @@ export default function ChatView() {
   const [translations, setTranslations] = useState<Map<string, string>>(new Map());
   const [translating, setTranslating] = useState<Set<string>>(new Set());
 
-  const { savedWordsSet, isWordSaved, addWord } = useSavedWords();
+  const { savedWordsSet, isDefinitionSaved, addWord } = useSavedWords();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -415,7 +415,7 @@ export default function ChatView() {
           targetLang={targetLang}
           anchorRect={popup.rect}
           onClose={() => setPopup(null)}
-          isWordSaved={isWordSaved(popup.word)}
+          isDefinitionSaved={isDefinitionSaved}
           onSaveWord={addWord}
         />
       )}

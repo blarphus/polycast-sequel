@@ -33,6 +33,12 @@ export function useSavedWords() {
     [savedWordsSet],
   );
 
+  const isDefinitionSaved = useCallback(
+    (word: string, definition: string) =>
+      words.some((w) => w.word.toLowerCase() === word.toLowerCase() && w.definition === definition),
+    [words],
+  );
+
   const addWord = useCallback(
     async (data: {
       word: string;
@@ -60,5 +66,5 @@ export function useSavedWords() {
     setWords((prev) => prev.filter((w) => w.id !== id));
   }, []);
 
-  return { words, loading, savedWordsSet, isWordSaved, addWord, removeWord };
+  return { words, loading, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, removeWord };
 }
