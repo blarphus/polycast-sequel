@@ -201,7 +201,7 @@ interface EnrichedWord {
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
   const params = new URLSearchParams({ word, sentence, nativeLang });
   if (targetLang) params.set('targetLang', targetLang);
-  return request<{ word: string; valid: boolean; translation: string; definition: string; part_of_speech: string | null }>(`/dictionary/lookup?${params}`);
+  return request<{ word: string; valid: boolean; translation: string; definition: string; part_of_speech: string | null; sense_index: number | null; matched_gloss: string | null }>(`/dictionary/lookup?${params}`);
 }
 
 export interface WiktSense { gloss: string; pos: string; tags: string[]; }
@@ -212,10 +212,12 @@ export function wiktLookup(word: string, targetLang: string, nativeLang: string)
   return request<WiktLookupResult>(`/dictionary/wikt-lookup?${params}`);
 }
 
-export function enrichWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
+export function enrichWord(word: string, sentence: string, nativeLang: string, targetLang?: string, senseIndex?: number | null) {
+  const body: Record<string, unknown> = { word, sentence, nativeLang, targetLang };
+  if (senseIndex != null) body.senseIndex = senseIndex;
   return request<EnrichedWord>('/dictionary/enrich', {
     method: 'POST',
-    body: { word, sentence, nativeLang, targetLang },
+    body,
   });
 }
 
@@ -266,7 +268,7 @@ export function getSavedWords() {
 }
 
 export function saveWord(data: SaveWordData) {
-  return request<SavedWord>('/dictionary/words', { method: 'POST', body: data });
+  return request<SavedWord & { _created: boolean }>('/dictionary/words', { method: 'POST', body: data });
 }
 
 export function deleteSavedWord(id: string) {

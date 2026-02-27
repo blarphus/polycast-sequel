@@ -10,7 +10,7 @@ interface WordPopupProps {
   onClose: () => void;
   isWordSaved?: (word: string) => boolean;
   isDefinitionSaved?: (word: string, definition: string) => boolean;
-  onSaveWord?: (data: SaveWordData) => void;
+  onSaveWord?: (data: SaveWordData) => Promise<{ _created: boolean }>;
 }
 
 export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved, isDefinitionSaved, onSaveWord }: WordPopupProps) {
@@ -21,8 +21,11 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [partOfSpeech, setPartOfSpeech] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [duplicate, setDuplicate] = useState(false);
   const [newDefinition, setNewDefinition] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [senseIndex, setSenseIndex] = useState<number | null>(null);
+  const [matchedGloss, setMatchedGloss] = useState<string | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,7 +38,11 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           setTranslation(res.translation);
           setDefinition(res.definition);
           setPartOfSpeech(res.part_of_speech);
-          if (isDefinitionSaved?.(word, res.definition)) {
+          setSenseIndex(res.sense_index);
+          setMatchedGloss(res.matched_gloss);
+          // Use matched_gloss (Wikt gloss) for dedup when available — it matches saved definitions reliably
+          const defForDedup = res.matched_gloss ?? res.definition;
+          if (isDefinitionSaved?.(word, defForDedup)) {
             setSaved(true);
           } else if (isWordSaved?.(word)) {
             setNewDefinition(true);
@@ -117,8 +124,8 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                   if (saved || saving) return;
                   setSaving(true);
                   try {
-                    const enriched = await enrichWord(word, sentence, nativeLang, targetLang);
-                    onSaveWord({
+                    const enriched = await enrichWord(word, sentence, nativeLang, targetLang, senseIndex);
+                    const result = await onSaveWord({
                       word,
                       translation: enriched.translation,
                       definition: enriched.definition,
@@ -130,6 +137,9 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                       image_url: enriched.image_url,
                     });
                     setSaved(true);
+                    if (!result._created) {
+                      setDuplicate(true);
+                    }
                   } catch (err) {
                     console.error('WordPopup: enrichment failed:', err);
                     setError(err instanceof Error ? err.message : String(err));
@@ -138,7 +148,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                   }
                 }}
               >
-                {saved ? '✓ Added to dictionary' : saving ? 'Adding...' : 'Add to dictionary'}
+                {saved ? (duplicate ? '✓ Already in dictionary' : '✓ Added to dictionary') : saving ? 'Adding...' : 'Add to dictionary'}
               </button>
             )}
           </>

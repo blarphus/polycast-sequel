@@ -49,13 +49,15 @@ export function useSavedWords() {
       frequency?: number | null;
       example_sentence?: string | null;
       part_of_speech?: string | null;
+      image_url?: string | null;
     }) => {
       const saved = await saveWord(data);
-      setWords((prev) => {
-        // Avoid duplicates
-        if (prev.some((w) => w.id === saved.id)) return prev;
-        return [saved, ...prev];
-      });
+      if (saved._created) {
+        setWords((prev) => {
+          if (prev.some((w) => w.id === saved.id)) return prev;
+          return [saved, ...prev];
+        });
+      }
       return saved;
     },
     [],

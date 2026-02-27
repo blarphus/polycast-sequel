@@ -16,7 +16,7 @@ interface SubtitleBarProps {
   savedWords?: Set<string>;
   isWordSaved?: (word: string) => boolean;
   isDefinitionSaved?: (word: string, definition: string) => boolean;
-  onSaveWord?: (data: SaveWordData) => void;
+  onSaveWord?: (data: SaveWordData) => Promise<{ _created: boolean }>;
 }
 
 function langLabel(lang: string): string {

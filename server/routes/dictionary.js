@@ -96,7 +96,40 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
   }
 
   try {
-    const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". Use the surrounding sentence to determine the correct sense: "${sentence}". The user's native language is ${nativeLang}.
+    // Fetch Wiktionary senses when targetLang is available (for sense-aware picking)
+    let wiktSenses = [];
+    if (targetLang) {
+      try {
+        wiktSenses = await fetchWiktSenses(word, targetLang, nativeLang);
+      } catch (err) {
+        console.error('fetchWiktSenses error in lookup:', err);
+      }
+    }
+
+    let prompt;
+
+    if (wiktSenses.length > 0) {
+      const senseList = wiktSenses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n');
+
+      prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". Use the surrounding sentence to determine the correct sense: "${sentence}". The user's native language is ${nativeLang}.
+
+If this word is not a recognized word in ${targetLang || 'the target language'}, set valid to false and leave other fields empty.
+
+Here are the dictionary senses for "${word}":
+${senseList}
+
+Return a JSON object with exactly these keys:
+{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","sense_index":N}
+
+- "valid": true if this is a real word in ${targetLang || 'the target language'}, false otherwise (numbers, gibberish, fragments, etc.)
+- "translation": the standard ${nativeLang} translation of "${word}" in this sense — give the general-purpose dictionary translation, not a sentence-specific paraphrase, 1-3 words max
+- "definition": what this word means in ${nativeLang}, 12 words max, no markdown — define the word itself, not its role in the sentence
+- "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
+- "sense_index": the integer index (0-${wiktSenses.length - 1}) of the sense above that best matches how "${word}" is used in the sentence. Use -1 if none match.
+
+Respond with ONLY the JSON object, no other text.`;
+    } else {
+      prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". Use the surrounding sentence to determine the correct sense: "${sentence}". The user's native language is ${nativeLang}.
 
 If this word is not a recognized word in ${targetLang || 'the target language'}, set valid to false and leave other fields empty.
 
@@ -109,6 +142,7 @@ Return a JSON object with exactly these keys:
 - "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
 
 Respond with ONLY the JSON object, no other text.`;
+    }
 
     const raw = await callGemini(prompt, {
       thinkingConfig: { thinkingBudget: 0 },
@@ -125,7 +159,18 @@ Respond with ONLY the JSON object, no other text.`;
     const definition = parsed.definition || '';
     const part_of_speech = parsed.part_of_speech || null;
 
-    return res.json({ word, valid, translation, definition, part_of_speech });
+    // Resolve sense_index + matched_gloss from Wiktionary senses
+    let sense_index = null;
+    let matched_gloss = null;
+    if (wiktSenses.length > 0) {
+      const idx = parsed.sense_index;
+      if (typeof idx === 'number' && idx >= 0 && idx < wiktSenses.length) {
+        sense_index = idx;
+        matched_gloss = wiktSenses[idx].gloss;
+      }
+    }
+
+    return res.json({ word, valid, translation, definition, part_of_speech, sense_index, matched_gloss });
   } catch (err) {
     console.error('Dictionary lookup error:', err);
     return res.status(500).json({ error: err.message || 'Lookup failed' });
@@ -237,7 +282,7 @@ router.post('/api/dictionary/translate', authMiddleware, async (req, res) => {
  * Called when the user saves a word — quality over speed.
  */
 router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
-  const { word, sentence, nativeLang, targetLang } = req.body;
+  const { word, sentence, nativeLang, targetLang, senseIndex: reqSenseIndex } = req.body;
 
   if (!word || !sentence || !nativeLang) {
     return res.status(400).json({ error: 'word, sentence, and nativeLang are required' });
@@ -256,6 +301,52 @@ router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
 
     let translation, definition, part_of_speech, frequency, example_sentence, geminiImageTerm;
 
+    // Path C: senseIndex pre-identified by /lookup — use directly, skip sense-picking
+    const hasSenseIndex = typeof reqSenseIndex === 'number' && reqSenseIndex >= 0;
+    if (hasSenseIndex && wiktSenses.length > 0 && reqSenseIndex < wiktSenses.length) {
+      definition = wiktSenses[reqSenseIndex].gloss;
+      part_of_speech = wiktSenses[reqSenseIndex].pos || null;
+
+      const prompt = `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
+${targetLang ? `The sentence is in ${targetLang}.` : ''}
+The user's native language is ${nativeLang}.
+The word means: "${definition}" (${part_of_speech || 'unknown POS'}).
+
+Respond in EXACTLY this format (four parts separated by " // "):
+TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM
+
+- TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
+- FREQUENCY: An integer 1-10 rating how common this word is for a language learner:
+  1-2: Rare/specialized words most learners won't encounter
+  3-4: Uncommon words that appear in specific contexts
+  5-6: Moderately common words useful for intermediate learners
+  7-8: Common everyday words important for conversation
+  9-10: Essential high-frequency words (top 500 most used)
+- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
+- IMAGE_TERM: A 1-4 word English phrase describing a concrete, photographable subject that captures THIS SPECIFIC meaning of the word. The term must work as a stock-photo search query.
+  Concrete nouns → the object itself: "cat" → "cat", "bridge" → "bridge"
+  Abstract adjectives → a vivid scene embodying the quality: "stupendous" → "mountain landscape", "fragile" → "cracked glass"
+  Verbs → a snapshot of the action in context: "screwing" (fastening) → "screwdriver", "screwing" (slang) → "couple in bed"
+  Abstract nouns → a tangible symbol: "freedom" → "open bird cage", "justice" → "courthouse"
+  Do NOT repeat the word itself unless it is already a concrete, photographable noun.`;
+
+      const raw = await callGemini(prompt);
+      const parts = raw.split('//').map((s) => s.trim());
+      if (parts.length < 4) {
+        console.error(`Gemini enrich (Path C) returned ${parts.length} parts instead of 4:`, raw.slice(0, 300));
+      }
+
+      translation = parts[0] || '';
+      frequency = parseFrequency(parts[1]);
+      example_sentence = parts[2] || null;
+      geminiImageTerm = parts[3]?.trim() || null;
+    } else if (hasSenseIndex && (wiktSenses.length === 0 || reqSenseIndex >= wiktSenses.length)) {
+      // senseIndex provided but invalid (senses changed between lookup and enrich) — fall through
+      console.error('enrich: senseIndex', reqSenseIndex, 'out of range for', wiktSenses.length, 'senses — falling through to Path A/B');
+    }
+
+    // Path A/B: only run if Path C didn't set translation (i.e. it was skipped)
+    if (translation === undefined) {
     if (wiktSenses.length > 0) {
       // Path A: Wiktionary senses available — ask Gemini to pick the best one
       const senseList = wiktSenses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n');
@@ -349,6 +440,7 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
       example_sentence = parts[4] || null;
       geminiImageTerm = parts[5]?.trim() || null;
     }
+    } // end if (translation === undefined) — Path A/B
 
     // For English target words, override Gemini frequency with SUBTLEX-US corpus data
     if (targetLang === 'en' || targetLang?.startsWith('en-')) {
@@ -610,7 +702,7 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
          AND definition = $4`,
       [req.userId, word, target_language || null, definition || ''],
     );
-    if (existing.length > 0) return res.status(200).json(existing[0]);
+    if (existing.length > 0) return res.status(200).json({ ...existing[0], _created: false });
 
     // Insert new definition
     const { rows } = await pool.query(
@@ -619,7 +711,7 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
        RETURNING *`,
       [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null, image_url || null],
     );
-    return res.status(201).json(rows[0]);
+    return res.status(201).json({ ...rows[0], _created: true });
   } catch (err) {
     console.error('Error saving word:', err);
     return res.status(500).json({ error: 'Failed to save word' });

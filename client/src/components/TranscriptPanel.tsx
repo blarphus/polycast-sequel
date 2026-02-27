@@ -20,7 +20,7 @@ interface TranscriptPanelProps {
   savedWords?: Set<string>;
   isWordSaved?: (word: string) => boolean;
   isDefinitionSaved?: (word: string, definition: string) => boolean;
-  onSaveWord?: (data: SaveWordData) => void;
+  onSaveWord?: (data: SaveWordData) => Promise<{ _created: boolean }>;
 }
 
 export default function TranscriptPanel({ entries, nativeLang, targetLang, savedWords, isWordSaved, isDefinitionSaved, onSaveWord }: TranscriptPanelProps) {
