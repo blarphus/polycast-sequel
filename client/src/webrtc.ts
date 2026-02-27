@@ -5,9 +5,22 @@
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun3.l.google.com:19302' },
-  { urls: 'stun:stun4.l.google.com:19302' },
+  // Free TURN relay for NAT traversal across networks
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
 ];
 
 /**
@@ -16,6 +29,7 @@ const ICE_SERVERS: RTCIceServer[] = [
 export function createPeerConnection(
   onTrack: (event: RTCTrackEvent) => void,
   onIceCandidate: (candidate: RTCIceCandidate | null) => void,
+  onIceFailure?: () => void,
 ): RTCPeerConnection {
   const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
@@ -27,10 +41,16 @@ export function createPeerConnection(
 
   pc.oniceconnectionstatechange = () => {
     console.log('[webrtc] ICE connection state:', pc.iceConnectionState);
+    if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+      onIceFailure?.();
+    }
   };
 
   pc.onconnectionstatechange = () => {
     console.log('[webrtc] Connection state:', pc.connectionState);
+    if (pc.connectionState === 'failed') {
+      onIceFailure?.();
+    }
   };
 
   return pc;

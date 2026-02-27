@@ -67,6 +67,62 @@ export default function Call() {
     navigate('/chats');
   }, [peerId, navigate, cleanupTranscription, cleanupPeer]);
 
+  // ---- Early listeners (NOT gated on streamReady) -------------------------
+  // These must register immediately so call:ended / call:error events that
+  // arrive while getUserMedia is still running are not lost.
+
+  useEffect(() => {
+    if (!peerId) return;
+
+    const onCallEnded = () => {
+      setCallStatus('Call ended');
+      cleanupTranscription();
+      cleanupPeer();
+      setTimeout(() => navigate('/chats'), 1500);
+    };
+
+    const onCallRejected = () => {
+      setCallStatus('Call rejected');
+      cleanupPeer();
+      setTimeout(() => navigate('/chats'), 1500);
+    };
+
+    const onCallError = (data: { message: string }) => {
+      console.error('[call] call:error:', data.message);
+      setCallStatus(data.message);
+      cleanupPeer();
+      setTimeout(() => navigate('/chats'), 2500);
+    };
+
+    socket.on('call:ended', onCallEnded);
+    socket.on('call:rejected', onCallRejected);
+    socket.on('call:error', onCallError);
+
+    return () => {
+      socket.off('call:ended', onCallEnded);
+      socket.off('call:rejected', onCallRejected);
+      socket.off('call:error', onCallError);
+    };
+  }, [peerId, navigate, cleanupTranscription, cleanupPeer]);
+
+  // ---- Timeout for stuck states ------------------------------------------
+
+  useEffect(() => {
+    if (!callStatus) return;
+    if (callStatus === 'Call ended' || callStatus === 'Call rejected') return;
+
+    const timeout = setTimeout(() => {
+      if (callStatus === 'Ringing...' || callStatus === 'Waiting for connection...' || callStatus === 'Answering...' || callStatus === 'Connecting...') {
+        setCallStatus('Connection timed out');
+        cleanupTranscription();
+        cleanupPeer();
+        setTimeout(() => navigate('/chats'), 2000);
+      }
+    }, 30_000);
+
+    return () => clearTimeout(timeout);
+  }, [callStatus, navigate, cleanupTranscription, cleanupPeer]);
+
   // ---- WebRTC peer connection + signaling (gated on streamReady) ----------
 
   useEffect(() => {
@@ -124,25 +180,10 @@ export default function Call() {
       addIceCandidate(pcRef.current, data.candidate);
     };
 
-    const onCallEnded = () => {
-      setCallStatus('Call ended');
-      cleanupTranscription();
-      cleanupPeer();
-      setTimeout(() => navigate('/chats'), 1500);
-    };
-
-    const onCallRejected = () => {
-      setCallStatus('Call rejected');
-      cleanupPeer();
-      setTimeout(() => navigate('/chats'), 1500);
-    };
-
     socket.on('call:accepted', onCallAccepted);
     socket.on('signal:offer', onSignalOffer);
     socket.on('signal:answer', onSignalAnswer);
     socket.on('signal:ice-candidate', onIceCandidate);
-    socket.on('call:ended', onCallEnded);
-    socket.on('call:rejected', onCallRejected);
 
     // --- Create peer connection ---
 
@@ -162,6 +203,12 @@ export default function Call() {
             candidate: candidate.toJSON(),
           });
         }
+      },
+      // onIceFailure
+      () => {
+        setCallStatus('Connection failed — try again');
+        cleanupTranscription();
+        setTimeout(() => navigate('/chats'), 2500);
       },
     );
 
@@ -188,8 +235,6 @@ export default function Call() {
       socket.off('signal:offer', onSignalOffer);
       socket.off('signal:answer', onSignalAnswer);
       socket.off('signal:ice-candidate', onIceCandidate);
-      socket.off('call:ended', onCallEnded);
-      socket.off('call:rejected', onCallRejected);
 
       cleanupPeer();
     };

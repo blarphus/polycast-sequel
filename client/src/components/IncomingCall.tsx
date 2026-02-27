@@ -21,10 +21,17 @@ export default function IncomingCall() {
       setIncoming(data);
     };
 
+    // Dismiss modal if the caller hangs up before we accept
+    const onCallEnded = ({ userId }: { userId: string }) => {
+      setIncoming((prev) => (prev && prev.callerId === userId ? null : prev));
+    };
+
     socket.on('call:incoming', onCallIncoming);
+    socket.on('call:ended', onCallEnded);
 
     return () => {
       socket.off('call:incoming', onCallIncoming);
+      socket.off('call:ended', onCallEnded);
     };
   }, []);
 

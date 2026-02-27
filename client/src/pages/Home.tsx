@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getNewToday, SavedWord } from '../api';
+import FriendRequests from '../components/FriendRequests';
 
 const LEVEL_COLORS = ['#ff4d4d', '#ff944d', '#ffdd4d', '#75d147', '#4ade80'];
 
@@ -74,6 +75,9 @@ export default function Home() {
 
   return (
     <div className="home-page">
+      {/* Pending friend requests */}
+      <FriendRequests />
+
       {/* Hero: greeting left, new-words card right */}
       <div className="home-hero">
         <div className="home-hero-left">
