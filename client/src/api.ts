@@ -201,12 +201,7 @@ interface EnrichedWord {
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
   const params = new URLSearchParams({ word, sentence, nativeLang });
   if (targetLang) params.set('targetLang', targetLang);
-  return request<{ word: string; definition: string; part_of_speech: string | null; image_term: string }>(`/dictionary/lookup?${params}`);
-}
-
-export function translateWord(word: string, targetLang: string, nativeLang: string) {
-  const params = new URLSearchParams({ word, targetLang, nativeLang });
-  return request<{ translation: string }>(`/dictionary/translate-word?${params}`);
+  return request<{ word: string; translation: string; definition: string; part_of_speech: string | null; image_term: string }>(`/dictionary/lookup?${params}`);
 }
 
 export interface WiktSense { gloss: string; pos: string; tags: string[]; }

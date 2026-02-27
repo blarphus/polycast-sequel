@@ -247,54 +247,6 @@ router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
 });
 
 /**
- * GET /api/dictionary/translate-word
- * Translate a single word via Google Cloud Translation API (v2).
- * Used by WordPopup for fast translation while Gemini handles definition/POS.
- */
-router.get('/api/dictionary/translate-word', authMiddleware, async (req, res) => {
-  const { word, targetLang, nativeLang } = req.query;
-
-  if (!word || !nativeLang) {
-    return res.status(400).json({ error: 'word and nativeLang are required' });
-  }
-
-  try {
-    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
-    if (!apiKey) throw new Error('GOOGLE_TRANSLATE_API_KEY is not configured');
-
-    const params = new URLSearchParams({
-      q: word,
-      target: nativeLang,
-      key: apiKey,
-      format: 'text',
-    });
-    if (targetLang) params.set('source', targetLang);
-
-    const response = await fetch(
-      `https://translation.googleapis.com/language/translate/v2?${params}`,
-      { method: 'POST' },
-    );
-
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('Google Translate word API error:', err);
-      throw new Error('Word translation request failed');
-    }
-
-    const data = await response.json();
-    const translation = data.data?.translations?.[0]?.translatedText;
-    if (!translation) {
-      console.error('Google Translate word returned unexpected structure:', JSON.stringify(data).slice(0, 500));
-    }
-
-    return res.json({ translation: translation || '' });
-  } catch (err) {
-    console.error('Word translation error:', err);
-    return res.status(500).json({ error: err.message || 'Word translation failed' });
-  }
-});
-
-/**
  * POST /api/dictionary/translate
  * Translate a full sentence via Google Cloud Translation API (v2).
  * Used for transcript panel translations.
