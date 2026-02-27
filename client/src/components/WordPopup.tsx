@@ -19,7 +19,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [partOfSpeech, setPartOfSpeech] = useState<string | null>(null);
   const [imageTerm, setImageTerm] = useState('');
   const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(initialSaved ?? false);
   const [saving, setSaving] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -85,41 +85,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
     <div className="word-popup" ref={popupRef} style={style}>
       <div className="word-popup-header">
         <span className="word-popup-word">{word}</span>
-        <div className="word-popup-header-actions">
-          {!loading && !error && onSaveWord && (
-            <button
-              className={`word-popup-save${saved ? ' saved' : ''}${saving ? ' saving' : ''}`}
-              disabled={saving}
-              onClick={async () => {
-                if (saved || saving) return;
-                setSaving(true);
-                try {
-                  const enriched = await enrichWord(word, sentence, nativeLang, targetLang, imageTerm);
-                  onSaveWord({
-                    word,
-                    translation: enriched.translation,
-                    definition: enriched.definition,
-                    target_language: targetLang,
-                    sentence_context: sentence,
-                    frequency: enriched.frequency,
-                    example_sentence: enriched.example_sentence,
-                    part_of_speech: enriched.part_of_speech,
-                    image_url: enriched.image_url,
-                  });
-                  setSaved(true);
-                } catch (err) {
-                  console.error('WordPopup: enrichment failed:', err);
-                  setError(err instanceof Error ? err.message : String(err));
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              {saved ? '\u2713' : saving ? '...' : '+'}
-            </button>
-          )}
-          <button className="word-popup-close" onClick={onClose}>&times;</button>
-        </div>
+        <button className="word-popup-close" onClick={onClose}>&times;</button>
       </div>
       <div className="word-popup-body">
         {loading ? (
@@ -133,6 +99,38 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
             <p className="word-popup-translation">{translation}</p>
             {partOfSpeech && <span className="word-popup-pos">{partOfSpeech}</span>}
             {definition && <p className="word-popup-definition">{definition}</p>}
+            {onSaveWord && (
+              <button
+                className={`word-popup-save${saved ? ' saved' : ''}${saving ? ' saving' : ''}`}
+                disabled={saved || saving}
+                onClick={async () => {
+                  if (saved || saving) return;
+                  setSaving(true);
+                  try {
+                    const enriched = await enrichWord(word, sentence, nativeLang, targetLang, imageTerm);
+                    onSaveWord({
+                      word,
+                      translation: enriched.translation,
+                      definition: enriched.definition,
+                      target_language: targetLang,
+                      sentence_context: sentence,
+                      frequency: enriched.frequency,
+                      example_sentence: enriched.example_sentence,
+                      part_of_speech: enriched.part_of_speech,
+                      image_url: enriched.image_url,
+                    });
+                    setSaved(true);
+                  } catch (err) {
+                    console.error('WordPopup: enrichment failed:', err);
+                    setError(err instanceof Error ? err.message : String(err));
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                {saved ? '✓ Added to dictionary' : saving ? 'Adding...' : 'Add to dictionary'}
+              </button>
+            )}
           </>
         )}
       </div>

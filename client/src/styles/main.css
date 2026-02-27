@@ -1406,30 +1406,21 @@ select.form-input {
   line-height: 1.4;
 }
 
-.word-popup-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
 .word-popup-save {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0;
+  border-radius: var(--radius);
   border: 1.5px solid var(--border-light);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 1.1rem;
-  font-weight: 700;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
   transition: border-color var(--transition), color var(--transition), background var(--transition);
 }
 
-.word-popup-save:hover {
+.word-popup-save:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -1438,6 +1429,11 @@ select.form-input {
   border-color: var(--success);
   color: var(--success);
   background: rgba(34, 165, 94, 0.1);
+  cursor: default;
+}
+
+.word-popup-save.saving {
+  color: var(--text-tertiary);
   cursor: default;
 }
 
