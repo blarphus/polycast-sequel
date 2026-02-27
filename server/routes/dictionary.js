@@ -10,31 +10,27 @@ const SKIP_PATTERNS = /\b(municipality|commune|city|town|village|district|provin
 
 async function fetchWordImage(searchTerm, word, lang) {
   try {
-    // Phase 1: Wikimedia Commons search using Gemini's targeted term
-    const commonsParams = new URLSearchParams({
-      action: 'query',
-      generator: 'search',
-      gsrsearch: searchTerm,
-      gsrnamespace: '6',
-      prop: 'imageinfo',
-      iiprop: 'url|mime',
-      iiurlwidth: '400',
-      format: 'json',
-      gsrlimit: '10',
-    });
-    const commonsRes = await fetch(
-      `https://commons.wikimedia.org/w/api.php?${commonsParams}`,
-      { headers: API_HEADERS },
-    );
-    if (!commonsRes.ok) {
-      console.error('Commons search failed:', commonsRes.status);
+    // Phase 1: Pixabay photo search using Gemini's targeted term
+    const pixabayKey = process.env.PIXABAY_API_KEY;
+    if (!pixabayKey) {
+      console.error('PIXABAY_API_KEY is not set — skipping Pixabay image search');
     } else {
-      const commonsData = await commonsRes.json();
-      const pages = Object.values(commonsData.query?.pages || {});
-      const jpeg = pages.find(
-        (p) => p.imageinfo?.[0]?.mime === 'image/jpeg',
+      const pixabayParams = new URLSearchParams({
+        key: pixabayKey,
+        q: searchTerm,
+        image_type: 'photo',
+        per_page: '3',
+        safesearch: 'true',
+      });
+      const pixabayRes = await fetch(
+        `https://pixabay.com/api/?${pixabayParams}`,
       );
-      if (jpeg) return jpeg.imageinfo[0].thumburl;
+      if (!pixabayRes.ok) {
+        console.error('Pixabay search failed:', pixabayRes.status);
+      } else {
+        const pixabayData = await pixabayRes.json();
+        if (pixabayData.hits?.length > 0) return pixabayData.hits[0].webformatURL;
+      }
     }
 
     // Phase 2: Wikipedia pageimages using the raw word
@@ -439,37 +435,32 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
 
 /**
  * GET /api/dictionary/image-search?q=TERM
- * Search Wikimedia Commons for JPEG thumbnails.
+ * Search Pixabay for stock photos.
  */
 router.get('/api/dictionary/image-search', authMiddleware, async (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ error: 'q is required' });
 
   try {
-    const params = new URLSearchParams({
-      action: 'query',
-      generator: 'search',
-      gsrsearch: q,
-      gsrnamespace: '6',
-      prop: 'imageinfo',
-      iiprop: 'url|mime',
-      iiurlwidth: '400',
-      format: 'json',
-      gsrlimit: '20',
-    });
-    const commonsRes = await fetch(
-      `https://commons.wikimedia.org/w/api.php?${params}`,
-      { headers: API_HEADERS },
-    );
-    if (!commonsRes.ok) {
-      console.error('Commons image-search failed:', commonsRes.status);
+    const pixabayKey = process.env.PIXABAY_API_KEY;
+    if (!pixabayKey) {
+      console.error('PIXABAY_API_KEY is not set — image search unavailable');
       return res.json({ images: [] });
     }
-    const data = await commonsRes.json();
-    const pages = Object.values(data.query?.pages || {});
-    const images = pages
-      .filter((p) => p.imageinfo?.[0]?.mime === 'image/jpeg')
-      .map((p) => p.imageinfo[0].thumburl);
+    const params = new URLSearchParams({
+      key: pixabayKey,
+      q: q,
+      image_type: 'photo',
+      per_page: '20',
+      safesearch: 'true',
+    });
+    const pixabayRes = await fetch(`https://pixabay.com/api/?${params}`);
+    if (!pixabayRes.ok) {
+      console.error('Pixabay image-search failed:', pixabayRes.status);
+      return res.json({ images: [] });
+    }
+    const data = await pixabayRes.json();
+    const images = (data.hits || []).map((h) => h.webformatURL);
     return res.json({ images });
   } catch (err) {
     console.error('Image search error:', err);
