@@ -1,4 +1,5 @@
 import { userToSocket } from './presence.js';
+import { getUserDisplayInfo } from '../lib/getUserDisplayInfo.js';
 
 /**
  * Register call lifecycle event handlers on a socket.
@@ -31,11 +32,7 @@ export function handleCalls(io, socket, pool, redisClient) {
       }
 
       // Look up caller info
-      const callerResult = await pool.query(
-        'SELECT username, display_name FROM users WHERE id = $1',
-        [socket.userId]
-      );
-      const caller = callerResult.rows[0];
+      const caller = await getUserDisplayInfo(socket.userId);
       if (!caller) {
         console.error(`[call] Caller user not found in DB for userId=${socket.userId}`);
       }

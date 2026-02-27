@@ -1445,7 +1445,7 @@ select.form-input {
 }
 
 .word-popup-save.saving {
-  color: var(--text-tertiary);
+  color: var(--text-muted);
   cursor: default;
 }
 

@@ -16,10 +16,6 @@ interface Props {
 export default function NewChatDrawer({ open, onClose, onFriendAccepted, initialQuery }: Props) {
   if (!open) return null;
 
-  const handleAccepted = () => {
-    onFriendAccepted();
-  };
-
   return (
     <div className="drawer-overlay" onClick={onClose}>
       <div className="drawer-panel" onClick={(e) => e.stopPropagation()}>
@@ -27,7 +23,7 @@ export default function NewChatDrawer({ open, onClose, onFriendAccepted, initial
         <div className="drawer-content">
           <h2 className="section-title">Find Users</h2>
           <UserSearch initialQuery={initialQuery} />
-          <FriendRequests onAccepted={handleAccepted} />
+          <FriendRequests onAccepted={onFriendAccepted} />
         </div>
       </div>
     </div>

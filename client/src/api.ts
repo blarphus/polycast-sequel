@@ -188,7 +188,7 @@ export function markMessagesRead(friendId: string) {
 
 // ---- Dictionary / Word Lookup ---------------------------------------------
 
-interface EnrichedWord {
+export interface EnrichedWord {
   word: string;
   translation: string;
   definition: string;

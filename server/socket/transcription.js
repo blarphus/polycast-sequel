@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import { userToSocket } from './presence.js';
+import { getUserDisplayInfo } from '../lib/getUserDisplayInfo.js';
 
 const VOXTRAL_URL =
   'wss://api.mistral.ai/v1/audio/transcriptions/realtime?model=voxtral-mini-transcribe-realtime-2602';
@@ -121,11 +122,7 @@ export function handleTranscription(io, socket, pool) {
 
     // Cache speaker info from DB
     try {
-      const userResult = await pool.query(
-        'SELECT display_name, username FROM users WHERE id = $1',
-        [socket.userId],
-      );
-      const row = userResult.rows[0];
+      const row = await getUserDisplayInfo(socket.userId);
       if (!row) {
         console.error(`[transcription] Speaker user not found in DB for userId=${socket.userId}`);
       }
@@ -136,6 +133,7 @@ export function handleTranscription(io, socket, pool) {
         `SELECT id FROM calls
          WHERE status = 'active'
            AND ((caller_id = $1 AND callee_id = $2) OR (caller_id = $2 AND callee_id = $1))
+           AND ended_at IS NULL
          ORDER BY started_at DESC LIMIT 1`,
         [socket.userId, peerId],
       );

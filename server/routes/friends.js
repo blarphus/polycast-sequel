@@ -3,6 +3,7 @@ import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
 import { userToSocket } from '../socket/presence.js';
 import { emitToUser } from '../socket/emitToUser.js';
+import { getUserDisplayInfo } from '../lib/getUserDisplayInfo.js';
 
 const router = Router();
 
@@ -56,11 +57,7 @@ router.post('/api/friends/request', authMiddleware, async (req, res) => {
     const friendship = result.rows[0];
 
     // Look up requester info for the socket event
-    const requesterResult = await pool.query(
-      'SELECT username, display_name FROM users WHERE id = $1',
-      [req.userId],
-    );
-    const requester = requesterResult.rows[0];
+    const requester = await getUserDisplayInfo(req.userId);
     if (!requester) {
       console.error(`[friends] Requester user not found in DB for userId=${req.userId}`);
     }
@@ -169,11 +166,7 @@ router.post('/api/friends/:id/accept', authMiddleware, async (req, res) => {
     const friendship = result.rows[0];
 
     // Look up accepter info for the socket event
-    const accepterResult = await pool.query(
-      'SELECT username, display_name FROM users WHERE id = $1',
-      [req.userId],
-    );
-    const accepter = accepterResult.rows[0];
+    const accepter = await getUserDisplayInfo(req.userId);
     if (!accepter) {
       console.error(`[friends] Accepter user not found in DB for userId=${req.userId}`);
     }
