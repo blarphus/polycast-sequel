@@ -204,6 +204,32 @@ const WIKT_EDITIONS = new Set([
   'ku','ms','nl','pl','pt','ru','th','tr','vi','zh',
 ]);
 
+async function fetchWiktSenses(word, targetLang, nativeLang) {
+  const edition = WIKT_EDITIONS.has(nativeLang) ? nativeLang : 'en';
+  const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word)}/definitions?lang=${targetLang}`;
+  const response = await fetch(url, { headers: API_HEADERS });
+
+  if (response.status === 404) return [];
+  if (!response.ok) {
+    console.error('WiktApi error:', response.status, await response.text().catch(() => ''));
+    return [];
+  }
+
+  const data = await response.json();
+  const senses = [];
+  for (const entry of data.definitions || []) {
+    const pos = entry.pos || '';
+    for (const sense of entry.senses || []) {
+      if ((sense.tags || []).includes('form-of')) continue;
+      for (const gloss of sense.glosses || []) {
+        if (!gloss) continue;
+        senses.push({ gloss, pos, tags: sense.tags || [] });
+      }
+    }
+  }
+  return senses;
+}
+
 router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
   const { word, targetLang, nativeLang } = req.query;
 
@@ -211,37 +237,8 @@ router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'word, targetLang, and nativeLang are required' });
   }
 
-  const edition = WIKT_EDITIONS.has(nativeLang) ? nativeLang : 'en';
-
   try {
-    const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word)}/definitions?lang=${targetLang}`;
-    const response = await fetch(url, { headers: API_HEADERS });
-
-    if (response.status === 404) {
-      return res.json({ word, senses: [] });
-    }
-
-    if (!response.ok) {
-      console.error('WiktApi error:', response.status, await response.text().catch(() => ''));
-      return res.status(502).json({ error: 'WiktApi request failed' });
-    }
-
-    const data = await response.json();
-
-    // Flatten all senses from all POS groups, filtering out form-of entries
-    const senses = [];
-    for (const entry of data.definitions || []) {
-      const pos = entry.pos || '';
-      for (const sense of entry.senses || []) {
-        const tags = sense.tags || [];
-        if (tags.includes('form-of')) continue;
-        for (const gloss of sense.glosses || []) {
-          if (!gloss) continue;
-          senses.push({ gloss, pos, tags });
-        }
-      }
-    }
-
+    const senses = await fetchWiktSenses(word, targetLang, nativeLang);
     return res.json({ word, senses });
   } catch (err) {
     console.error('WiktApi network error:', err);
@@ -358,7 +355,74 @@ router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
   }
 
   try {
-    const prompt = `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
+    // Try to fetch Wiktionary senses for standardized definitions
+    let wiktSenses = [];
+    if (targetLang) {
+      try {
+        wiktSenses = await fetchWiktSenses(word, targetLang, nativeLang);
+      } catch (err) {
+        console.error('fetchWiktSenses error in enrich:', err);
+      }
+    }
+
+    let translation, definition, part_of_speech, frequency, example_sentence, geminiImageTerm;
+
+    if (wiktSenses.length > 0) {
+      // Path A: Wiktionary senses available — ask Gemini to pick the best one
+      const senseList = wiktSenses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n');
+
+      const prompt = `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
+${targetLang ? `The sentence is in ${targetLang}.` : ''}
+The user's native language is ${nativeLang}.
+
+Here are the dictionary senses for "${word}":
+${senseList}
+
+Respond in EXACTLY this format (six parts separated by " // "):
+TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEFINITION
+
+- TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
+- SENSE_INDEX: The integer index (0-${wiktSenses.length - 1}) of the sense that best matches how "${word}" is used in the sentence.
+- FREQUENCY: An integer 1-10 rating how common this word is for a language learner:
+  1-2: Rare/specialized words most learners won't encounter
+  3-4: Uncommon words that appear in specific contexts
+  5-6: Moderately common words useful for intermediate learners
+  7-8: Common everyday words important for conversation
+  9-10: Essential high-frequency words (top 500 most used)
+- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
+- IMAGE_TERM: A 1-4 word English phrase for finding a photo of this specific meaning. For "charge" meaning electricity → "phone charging cable". For "charge" meaning attack → "cavalry charge battle".
+- FALLBACK_DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown. Only used if SENSE_INDEX is invalid.`;
+
+      const raw = await callGemini(prompt);
+
+      const parts = raw.split('//').map((s) => s.trim());
+      if (parts.length < 6) {
+        console.error(`Gemini enrich (wikt) returned ${parts.length} parts instead of 6:`, raw.slice(0, 300));
+      }
+
+      translation = parts[0] || '';
+
+      // Resolve definition + POS from sense index
+      const senseIndex = parseInt(parts[1], 10);
+      if (!isNaN(senseIndex) && senseIndex >= 0 && senseIndex < wiktSenses.length) {
+        definition = wiktSenses[senseIndex].gloss;
+        part_of_speech = wiktSenses[senseIndex].pos || null;
+      } else {
+        console.error('Gemini returned invalid SENSE_INDEX:', parts[1], `(valid: 0-${wiktSenses.length - 1})`);
+        definition = parts[5] || '';
+        part_of_speech = null;
+      }
+
+      frequency = parts[2] ? parseInt(parts[2], 10) : null;
+      if (parts[2] && isNaN(frequency)) {
+        console.error('Gemini enrich returned non-numeric frequency:', parts[2]);
+        frequency = null;
+      }
+      example_sentence = parts[3] || null;
+      geminiImageTerm = parts[4]?.trim() || null;
+    } else {
+      // Path B: No Wiktionary senses — full Gemini generation (unchanged)
+      const prompt = `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
 ${targetLang ? `The sentence is in ${targetLang}.` : ''}
 The user's native language is ${nativeLang}.
 
@@ -377,22 +441,23 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
 - EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
 - IMAGE_TERM: A 1-4 word English phrase for finding a photo of this specific meaning. For "charge" meaning electricity → "phone charging cable". For "charge" meaning attack → "cavalry charge battle".`;
 
-    const raw = await callGemini(prompt);
+      const raw = await callGemini(prompt);
 
-    const parts = raw.split('//').map((s) => s.trim());
-    if (parts.length < 6) {
-      console.error(`Gemini enrich returned ${parts.length} parts instead of 6:`, raw.slice(0, 300));
+      const parts = raw.split('//').map((s) => s.trim());
+      if (parts.length < 6) {
+        console.error(`Gemini enrich returned ${parts.length} parts instead of 6:`, raw.slice(0, 300));
+      }
+      translation = parts[0] || '';
+      definition = parts[1] || '';
+      part_of_speech = parts[2] || null;
+      frequency = parts[3] ? parseInt(parts[3], 10) : null;
+      if (parts[3] && isNaN(frequency)) {
+        console.error('Gemini enrich returned non-numeric frequency:', parts[3]);
+        frequency = null;
+      }
+      example_sentence = parts[4] || null;
+      geminiImageTerm = parts[5]?.trim() || null;
     }
-    const translation = parts[0] || '';
-    const definition = parts[1] || '';
-    const part_of_speech = parts[2] || null;
-    let frequency = parts[3] ? parseInt(parts[3], 10) : null;
-    if (parts[3] && isNaN(frequency)) {
-      console.error('Gemini enrich returned non-numeric frequency:', parts[3]);
-      frequency = null;
-    }
-    const example_sentence = parts[4] || null;
-    const geminiImageTerm = parts[5]?.trim() || null;
 
     // For English target words, override Gemini frequency with SUBTLEX-US corpus data
     if (targetLang === 'en' || targetLang?.startsWith('en-')) {
