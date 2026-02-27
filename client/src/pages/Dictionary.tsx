@@ -313,6 +313,17 @@ export default function Dictionary() {
                                     <span className="dict-field-value">{w.definition}</span>
                                   </div>
                                 )}
+                                {w.forms && (() => {
+                                  try {
+                                    const fl: string[] = JSON.parse(w.forms);
+                                    return (
+                                      <div className="dict-field">
+                                        <span className="dict-field-label">Forms</span>
+                                        <span className="dict-field-value text-muted">{fl.join(', ')}</span>
+                                      </div>
+                                    );
+                                  } catch { return null; }
+                                })()}
                                 {w.example_sentence && (
                                   <div className="dict-field">
                                     <span className="dict-field-label">Example</span>
