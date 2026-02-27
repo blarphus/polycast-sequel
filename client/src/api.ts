@@ -228,6 +228,13 @@ export function translateSentence(sentence: string, fromLang: string, toLang: st
   });
 }
 
+/** Route Pixabay image URLs through the server proxy to avoid CDN rate-limiting. */
+export function proxyImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (!url.startsWith('https://pixabay.com/')) return url;
+  return `/api/dictionary/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
 // ---- Saved Words (Personal Dictionary) ------------------------------------
 
 export interface SaveWordData {

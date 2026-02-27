@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDueWords, reviewWord, type SavedWord, type SrsAnswer } from '../api';
+import { getDueWords, reviewWord, proxyImageUrl, type SavedWord, type SrsAnswer } from '../api';
 import { getButtonTimeLabel, getNextDueSeconds } from '../utils/srs';
 import { renderTildeHighlight, renderCloze, stripTildes } from '../utils/tildeMarkup';
 
@@ -338,7 +338,7 @@ export default function Learn() {
               )}
 
               {card.image_url && (
-                <img className="flashcard-image" src={card.image_url} alt={card.word} />
+                <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
               )}
 
               <div className="flashcard-back-details">

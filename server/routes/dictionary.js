@@ -464,6 +464,37 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
 // ---------------------------------------------------------------------------
 
 /**
+ * GET /api/dictionary/image-proxy?url=URL
+ * Proxy a Pixabay image through the server so the browser never hits Pixabay directly.
+ * Avoids CDN rate-limiting (429) when many images load at once, and complies with
+ * Pixabay's policy against hotlinking webformatURLs from end-user browsers.
+ */
+router.get('/api/dictionary/image-proxy', authMiddleware, async (req, res) => {
+  const { url } = req.query;
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({ error: 'url is required' });
+  }
+  if (!url.startsWith('https://pixabay.com/')) {
+    return res.status(400).json({ error: 'Only Pixabay URLs are proxied' });
+  }
+  try {
+    const upstream = await fetch(url);
+    if (!upstream.ok) {
+      console.error(`[image-proxy] Upstream returned ${upstream.status} for ${url}`);
+      return res.status(upstream.status).end();
+    }
+    const contentType = upstream.headers.get('content-type') || 'image/jpeg';
+    const buffer = await upstream.arrayBuffer();
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    return res.send(Buffer.from(buffer));
+  } catch (err) {
+    console.error('[image-proxy] fetch error:', err);
+    return res.status(502).end();
+  }
+});
+
+/**
  * GET /api/dictionary/image-search?q=TERM
  * Search Pixabay for stock photos.
  */

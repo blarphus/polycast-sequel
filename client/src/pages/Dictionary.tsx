@@ -11,6 +11,7 @@ import { formatDate } from '../utils/dateFormat';
 import { renderTildeHighlight } from '../utils/tildeMarkup';
 import WordLookupModal from '../components/WordLookupModal';
 import ImagePicker from '../components/ImagePicker';
+import { proxyImageUrl } from '../api';
 import type { SavedWord } from '../api';
 
 // -- FrequencyDots: maps Gemini 1-10 → 1-5 display dots --------------------
@@ -340,8 +341,9 @@ export default function Dictionary() {
                                   <>
                                     <img
                                       className="dict-def-image dict-word-image--clickable"
-                                      src={w.image_url}
+                                      src={proxyImageUrl(w.image_url)!}
                                       alt={w.word}
+                                      loading="lazy"
                                       onClick={() => setLightboxUrl(w.image_url!)}
                                     />
                                     <button className="dict-change-image-btn" onClick={() => setImagePickerWord(w)}>
@@ -369,7 +371,7 @@ export default function Dictionary() {
 
       {lightboxUrl && (
         <div className="dict-lightbox" onClick={() => setLightboxUrl(null)}>
-          <img src={lightboxUrl.replace(/\/\d+px-/, '/800px-')} alt="Enlarged" />
+          <img src={proxyImageUrl(lightboxUrl)!} alt="Enlarged" />
         </div>
       )}
 
