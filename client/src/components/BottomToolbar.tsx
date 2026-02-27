@@ -4,15 +4,19 @@
 
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 export default function BottomToolbar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
+  const isTeacher = user?.account_type === 'teacher';
   const isHome = location.pathname === '/';
   const isDictionary = location.pathname === '/dictionary';
   const isLearn = location.pathname === '/learn';
   const isChats = location.pathname === '/chats';
+  const isStudents = location.pathname === '/students' || location.pathname.startsWith('/students/');
 
   return (
     <nav className="bottom-toolbar">
@@ -57,6 +61,20 @@ export default function BottomToolbar() {
         </svg>
         <span className="toolbar-label">Chats</span>
       </button>
+      {isTeacher && (
+        <button
+          className={`toolbar-tab toolbar-tab--orange${isStudents ? ' active' : ''}`}
+          onClick={() => navigate('/students')}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          <span className="toolbar-label">Students</span>
+        </button>
+      )}
     </nav>
   );
 }

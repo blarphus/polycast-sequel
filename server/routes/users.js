@@ -12,22 +12,29 @@ const router = Router();
  */
 router.get('/api/users/search', authMiddleware, async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, account_type } = req.query;
 
     if (!q || q.trim().length === 0) {
       return res.json([]);
     }
 
     const searchTerm = `%${q.trim()}%`;
+    const params = [req.userId, searchTerm];
+    let accountFilter = '';
+
+    if (account_type) {
+      params.push(account_type);
+      accountFilter = ` AND account_type = $${params.length}`;
+    }
 
     const result = await pool.query(
       `SELECT id, username, display_name
        FROM users
        WHERE id != $1
-         AND username ILIKE $2
+         AND username ILIKE $2${accountFilter}
        ORDER BY username ASC
        LIMIT 20`,
-      [req.userId, searchTerm],
+      params,
     );
 
     // Attach online status from in-memory presence map

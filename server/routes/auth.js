@@ -35,7 +35,7 @@ router.post('/api/signup', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO users (username, password_hash, display_name)
        VALUES ($1, $2, $3)
-       RETURNING id, username, display_name, created_at, native_language, target_language`,
+       RETURNING id, username, display_name, created_at, native_language, target_language, account_type`,
       [username.trim(), passwordHash, display_name?.trim() || null],
     );
 
@@ -52,6 +52,7 @@ router.post('/api/signup', async (req, res) => {
       created_at: user.created_at,
       native_language: user.native_language,
       target_language: user.target_language,
+      account_type: user.account_type,
     });
   } catch (err) {
     // Unique constraint violation on username
@@ -77,7 +78,7 @@ router.post('/api/login', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language FROM users WHERE LOWER(username) = LOWER($1)',
+      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, account_type FROM users WHERE LOWER(username) = LOWER($1)',
       [username.trim()],
     );
 
@@ -105,6 +106,7 @@ router.post('/api/login', async (req, res) => {
       created_at: user.created_at,
       native_language: user.native_language,
       target_language: user.target_language,
+      account_type: user.account_type,
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -129,7 +131,7 @@ router.post('/api/logout', (_req, res) => {
 router.get('/api/me', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit FROM users WHERE id = $1',
+      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type FROM users WHERE id = $1',
       [req.userId],
     );
 
@@ -152,12 +154,16 @@ router.get('/api/me', authMiddleware, async (req, res) => {
  */
 router.patch('/api/me/settings', authMiddleware, async (req, res) => {
   try {
-    const { native_language, target_language, daily_new_limit } = req.body;
+    const { native_language, target_language, daily_new_limit, account_type } = req.body;
+
+    if (account_type !== undefined && account_type !== 'student' && account_type !== 'teacher') {
+      return res.status(400).json({ error: 'account_type must be "student" or "teacher"' });
+    }
 
     const result = await pool.query(
-      `UPDATE users SET native_language = $1, target_language = $2, daily_new_limit = COALESCE($4, daily_new_limit) WHERE id = $3
-       RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit`,
-      [native_language || null, target_language || null, req.userId, daily_new_limit != null ? daily_new_limit : null],
+      `UPDATE users SET native_language = $1, target_language = $2, daily_new_limit = COALESCE($4, daily_new_limit), account_type = COALESCE($5, account_type) WHERE id = $3
+       RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type`,
+      [native_language || null, target_language || null, req.userId, daily_new_limit != null ? daily_new_limit : null, account_type || null],
     );
 
     const user = result.rows[0];

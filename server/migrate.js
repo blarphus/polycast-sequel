@@ -150,6 +150,24 @@ export async function migrate(pool) {
         ON messages (receiver_id) WHERE read_at IS NULL;
     `);
 
+    // Account type column (student or teacher)
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type VARCHAR(10) DEFAULT 'student';`);
+
+    // Classroom students table (teacher → student relationship)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS classroom_students (
+        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        teacher_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        student_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at  TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(teacher_id, student_id)
+      );
+    `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_classroom_students_teacher
+        ON classroom_students (teacher_id);
+    `);
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {

@@ -55,6 +55,7 @@ export interface AuthUser {
   native_language: string | null;
   target_language: string | null;
   daily_new_limit: number;
+  account_type: 'student' | 'teacher';
 }
 
 export function signup(username: string, password: string, displayName: string) {
@@ -79,9 +80,10 @@ export function getMe() {
   return request<AuthUser>('/me');
 }
 
-export function updateSettings(native_language: string | null, target_language: string | null, daily_new_limit?: number) {
+export function updateSettings(native_language: string | null, target_language: string | null, daily_new_limit?: number, account_type?: 'student' | 'teacher') {
   const body: Record<string, unknown> = { native_language, target_language };
   if (daily_new_limit !== undefined) body.daily_new_limit = daily_new_limit;
+  if (account_type !== undefined) body.account_type = account_type;
   return request<AuthUser>('/me/settings', {
     method: 'PATCH',
     body,
@@ -101,8 +103,10 @@ export interface UserResult {
   online?: boolean;
 }
 
-export function searchUsers(query: string) {
-  return request<UserResult[]>(`/users/search?q=${encodeURIComponent(query)}`);
+export function searchUsers(query: string, accountType?: string) {
+  const params = new URLSearchParams({ q: query });
+  if (accountType) params.set('account_type', accountType);
+  return request<UserResult[]>(`/users/search?${params}`);
 }
 
 // ---- Friends -------------------------------------------------------------
@@ -322,5 +326,59 @@ export function reviewWord(id: string, answer: SrsAnswer) {
     method: 'PATCH',
     body: { answer },
   });
+}
+
+// ---- Classroom (Teacher) --------------------------------------------------
+
+export interface ClassroomStudent {
+  classroom_id: string;
+  id: string;
+  username: string;
+  display_name: string;
+  online: boolean;
+  added_at: string;
+}
+
+export interface StudentStats {
+  totalWords: number;
+  wordsLearned: number;
+  wordsDue: number;
+  wordsNew: number;
+  wordsInLearning: number;
+  totalReviews: number;
+  accuracy: number | null;
+  lastReviewedAt: string | null;
+}
+
+export interface StudentWord {
+  id: string;
+  word: string;
+  translation: string;
+  part_of_speech: string | null;
+}
+
+export interface StudentDetail {
+  student: { id: string; username: string; display_name: string };
+  stats: StudentStats;
+  words: StudentWord[];
+}
+
+export function getClassroomStudents() {
+  return request<ClassroomStudent[]>('/classroom/students');
+}
+
+export function addClassroomStudent(studentId: string) {
+  return request<{ id: string }>('/classroom/students', {
+    method: 'POST',
+    body: { studentId },
+  });
+}
+
+export function removeClassroomStudent(studentId: string) {
+  return request<void>(`/classroom/students/${studentId}`, { method: 'DELETE' });
+}
+
+export function getStudentStats(studentId: string) {
+  return request<StudentDetail>(`/classroom/students/${studentId}/stats`);
 }
 

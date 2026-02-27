@@ -17,6 +17,8 @@ import Test from './pages/Test';
 import Settings from './pages/Settings';
 import Dictionary from './pages/Dictionary';
 import Learn from './pages/Learn';
+import Students from './pages/Students';
+import StudentDetail from './pages/StudentDetail';
 import IncomingCall from './components/IncomingCall';
 import BottomToolbar from './components/BottomToolbar';
 
@@ -146,6 +148,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Learn />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/students"
+          element={
+            <ProtectedRoute>
+              <Students />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/students/:studentId"
+          element={
+            <ProtectedRoute>
+              <StudentDetail />
             </ProtectedRoute>
           }
         />

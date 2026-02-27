@@ -38,6 +38,7 @@ export default function Settings() {
   const [nativeLang, setNativeLang] = useState(user?.native_language || '');
   const [targetLang, setTargetLang] = useState(user?.target_language || '');
   const [dailyNewLimit, setDailyNewLimit] = useState(user?.daily_new_limit ?? 5);
+  const [accountType, setAccountType] = useState<'student' | 'teacher'>(user?.account_type || 'student');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
@@ -47,7 +48,7 @@ export default function Settings() {
     setError('');
     setSaved(false);
     try {
-      await updateSettings(nativeLang || null, targetLang || null, dailyNewLimit);
+      await updateSettings(nativeLang || null, targetLang || null, dailyNewLimit, accountType);
       setSaved(true);
     } catch (err: any) {
       console.error('Settings: save failed:', err);
@@ -113,6 +114,24 @@ export default function Settings() {
               disabled={dailyNewLimit >= 50}
             >
               +
+            </button>
+          </div>
+        </div>
+
+        <div className="theme-toggle-row">
+          <span className="form-label" style={{ marginBottom: 0 }}>Account type</span>
+          <div className="theme-toggle">
+            <button
+              className={`theme-toggle-option${accountType === 'student' ? ' active' : ''}`}
+              onClick={() => setAccountType('student')}
+            >
+              Student
+            </button>
+            <button
+              className={`theme-toggle-option${accountType === 'teacher' ? ' active' : ''}`}
+              onClick={() => setAccountType('teacher')}
+            >
+              Teacher
             </button>
           </div>
         </div>

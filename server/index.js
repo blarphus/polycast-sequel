@@ -16,6 +16,7 @@ import usersRoutes from './routes/users.js';
 import friendsRoutes from './routes/friends.js';
 import dictionaryRoutes from './routes/dictionary.js';
 import messagesRoutes from './routes/messages.js';
+import classroomRoutes from './routes/classroom.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,6 +75,7 @@ async function main() {
   app.use(friendsRoutes);
   app.use(dictionaryRoutes);
   app.use(messagesRoutes);
+  app.use(classroomRoutes);
 
   // ------ SPA fallback ------
   app.get('*', (req, res) => {
