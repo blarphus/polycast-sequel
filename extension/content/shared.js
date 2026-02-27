@@ -72,6 +72,18 @@ function tokenizeElement(container) {
         e.preventDefault();
         handleWordClick(token, text, span);
       });
+      span.addEventListener('mouseenter', () => {
+        const video = document.querySelector('video');
+        if (video && !video.paused) {
+          video.pause();
+          pcPausedByHover = true;
+        }
+      });
+      span.addEventListener('mouseleave', () => {
+        if (pcPausedByHover && !activePopup) {
+          resumeIfWePaused();
+        }
+      });
       frag.appendChild(span);
     } else {
       frag.appendChild(document.createTextNode(token));
@@ -85,6 +97,15 @@ function tokenizeElement(container) {
 // ---- Popup UI -------------------------------------------------------------
 
 let activePopup = null;
+let pcPausedByHover = false;
+
+function resumeIfWePaused() {
+  if (pcPausedByHover) {
+    const video = document.querySelector('video');
+    if (video) video.play();
+    pcPausedByHover = false;
+  }
+}
 
 function removePopup() {
   if (activePopup) {
@@ -97,12 +118,16 @@ function removePopup() {
 document.addEventListener('click', (e) => {
   if (activePopup && !activePopup.contains(e.target) && !e.target.closest('.pc-word')) {
     removePopup();
+    resumeIfWePaused();
   }
 });
 
 // Close popup on Escape
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') removePopup();
+  if (e.key === 'Escape') {
+    removePopup();
+    resumeIfWePaused();
+  }
 });
 
 function handleWordClick(word, sentence, anchorEl) {
