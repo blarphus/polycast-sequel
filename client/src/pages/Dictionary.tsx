@@ -10,6 +10,7 @@ import { getDueStatus, formatDuration } from '../utils/srs';
 import { formatDate } from '../utils/dateFormat';
 import { renderTildeHighlight } from '../utils/tildeMarkup';
 import WordLookupModal from '../components/WordLookupModal';
+import ImagePicker from '../components/ImagePicker';
 import type { SavedWord } from '../api';
 
 // -- FrequencyDots: maps Gemini 1-10 → 1-5 display dots --------------------
@@ -100,13 +101,14 @@ interface WordGroup {
 export default function Dictionary() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { words, loading, removeWord, addWord } = useSavedWords();
+  const { words, loading, removeWord, addWord, updateImage } = useSavedWords();
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortMode>('date');
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lookupOpen, setLookupOpen] = useState(false);
+  const [imagePickerWord, setImagePickerWord] = useState<SavedWord | null>(null);
 
   const toggle = (key: string) => {
     setExpandedKeys((prev) => {
@@ -333,14 +335,25 @@ export default function Dictionary() {
                                   Remove
                                 </button>
                               </div>
-                              {w.image_url && (
-                                <img
-                                  className="dict-def-image dict-word-image--clickable"
-                                  src={w.image_url}
-                                  alt={w.word}
-                                  onClick={() => setLightboxUrl(w.image_url!)}
-                                />
-                              )}
+                              <div className="dict-image-block">
+                                {w.image_url ? (
+                                  <>
+                                    <img
+                                      className="dict-def-image dict-word-image--clickable"
+                                      src={w.image_url}
+                                      alt={w.word}
+                                      onClick={() => setLightboxUrl(w.image_url!)}
+                                    />
+                                    <button className="dict-change-image-btn" onClick={() => setImagePickerWord(w)}>
+                                      Change image
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button className="dict-add-image-btn" onClick={() => setImagePickerWord(w)}>
+                                    + Add image
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -358,6 +371,14 @@ export default function Dictionary() {
         <div className="dict-lightbox" onClick={() => setLightboxUrl(null)}>
           <img src={lightboxUrl.replace(/\/\d+px-/, '/800px-')} alt="Enlarged" />
         </div>
+      )}
+
+      {imagePickerWord && (
+        <ImagePicker
+          initialQuery={imagePickerWord.word}
+          onSelect={async (url) => { await updateImage(imagePickerWord.id, url); }}
+          onClose={() => setImagePickerWord(null)}
+        />
       )}
 
       {lookupOpen && user?.native_language && user?.target_language && (

@@ -273,6 +273,17 @@ export function deleteSavedWord(id: string) {
   return request<void>(`/dictionary/words/${id}`, { method: 'DELETE' });
 }
 
+export function searchImages(query: string) {
+  return request<{ images: string[] }>(`/dictionary/image-search?q=${encodeURIComponent(query)}`);
+}
+
+export function updateWordImage(id: string, imageUrl: string) {
+  return request<SavedWord>(`/dictionary/words/${id}/image`, {
+    method: 'PATCH',
+    body: { image_url: imageUrl },
+  });
+}
+
 // ---- SRS / Learn ----------------------------------------------------------
 
 export type SrsAnswer = 'again' | 'hard' | 'good' | 'easy';

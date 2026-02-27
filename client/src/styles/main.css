@@ -2135,6 +2135,101 @@ select.form-input {
 }
 
 /* ==========================================================================
+   Image Picker Modal
+   ========================================================================== */
+
+.imgpicker-modal {
+  max-width: 560px;
+}
+
+.imgpicker-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  min-height: 200px;
+}
+
+.imgpicker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.imgpicker-thumb {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bg-surface);
+  padding: 0;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.imgpicker-thumb:hover:not(:disabled) {
+  border-color: var(--accent);
+  transform: scale(1.03);
+}
+
+.imgpicker-thumb:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.imgpicker-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.imgpicker-thumb-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: var(--radius-sm);
+}
+
+.dict-image-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.dict-change-image-btn,
+.dict-add-image-btn {
+  background: none;
+  border: none;
+  padding: 0.15rem 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.dict-change-image-btn:hover,
+.dict-add-image-btn:hover {
+  color: var(--accent);
+}
+
+.dict-add-image-btn {
+  font-size: 0.8rem;
+  padding: 0.5rem 0;
+}
+
+@media (max-width: 600px) {
+  .imgpicker-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ==========================================================================
    Learn / Flashcard Page
    ========================================================================== */
 
@@ -2858,6 +2953,14 @@ select.form-input {
 
 [data-theme="dark"] .lookup-modal {
   box-shadow: 0 8px 48px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .imgpicker-thumb {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .imgpicker-thumb-spinner {
+  background: rgba(0, 0, 0, 0.6);
 }
 
 /* ---- Learn page background ----------------------------------------------- */

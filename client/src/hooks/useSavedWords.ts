@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { getSavedWords, saveWord, deleteSavedWord, SavedWord } from '../api';
+import { getSavedWords, saveWord, deleteSavedWord, updateWordImage, SavedWord } from '../api';
 
 export function useSavedWords() {
   const [words, setWords] = useState<SavedWord[]>([]);
@@ -66,5 +66,11 @@ export function useSavedWords() {
     setWords((prev) => prev.filter((w) => w.id !== id));
   }, []);
 
-  return { words, loading, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, removeWord };
+  const updateImage = useCallback(async (id: string, imageUrl: string) => {
+    const updated = await updateWordImage(id, imageUrl);
+    setWords((prev) => prev.map((w) => (w.id === id ? updated : w)));
+    return updated;
+  }, []);
+
+  return { words, loading, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, removeWord, updateImage };
 }

@@ -434,6 +434,73 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
 });
 
 // ---------------------------------------------------------------------------
+// Image search + update
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/dictionary/image-search?q=TERM
+ * Search Wikimedia Commons for JPEG thumbnails.
+ */
+router.get('/api/dictionary/image-search', authMiddleware, async (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.status(400).json({ error: 'q is required' });
+
+  try {
+    const params = new URLSearchParams({
+      action: 'query',
+      generator: 'search',
+      gsrsearch: q,
+      gsrnamespace: '6',
+      prop: 'imageinfo',
+      iiprop: 'url|mime',
+      iiurlwidth: '400',
+      format: 'json',
+      gsrlimit: '20',
+    });
+    const commonsRes = await fetch(
+      `https://commons.wikimedia.org/w/api.php?${params}`,
+      { headers: API_HEADERS },
+    );
+    if (!commonsRes.ok) {
+      console.error('Commons image-search failed:', commonsRes.status);
+      return res.json({ images: [] });
+    }
+    const data = await commonsRes.json();
+    const pages = Object.values(data.query?.pages || {});
+    const images = pages
+      .filter((p) => p.imageinfo?.[0]?.mime === 'image/jpeg')
+      .map((p) => p.imageinfo[0].thumburl);
+    return res.json({ images });
+  } catch (err) {
+    console.error('Image search error:', err);
+    return res.status(500).json({ error: 'Image search failed' });
+  }
+});
+
+/**
+ * PATCH /api/dictionary/words/:id/image
+ * Update the image_url on a saved word.
+ */
+router.patch('/api/dictionary/words/:id/image', authMiddleware, async (req, res) => {
+  const { image_url } = req.body;
+  if (!image_url) return res.status(400).json({ error: 'image_url is required' });
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE saved_words SET image_url = $1
+       WHERE id = $2 AND user_id = $3
+       RETURNING *`,
+      [image_url, req.params.id, req.userId],
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Word not found' });
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error('Error updating word image:', err);
+    return res.status(500).json({ error: 'Failed to update image' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // SRS (Spaced Repetition) — Anki-style algorithm
 // ---------------------------------------------------------------------------
 
