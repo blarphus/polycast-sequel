@@ -35,15 +35,22 @@ export async function handleDisconnect(io, socket, redisClient) {
   if (!userId) return;
 
   socketToUser.delete(socket.id);
-  userToSocket.delete(userId);
 
-  try {
-    await redisClient.del(`online:${userId}`);
-  } catch (err) {
-    console.error('Redis DEL error in handleDisconnect:', err);
+  // Only remove from userToSocket if THIS socket is still the active one.
+  // When a client reconnects, the new socket's handleConnect runs first and
+  // overwrites userToSocket with the new socket ID.  If we blindly delete
+  // here, we wipe the *new* socket's entry and the user becomes unreachable.
+  if (userToSocket.get(userId) === socket.id) {
+    userToSocket.delete(userId);
+
+    try {
+      await redisClient.del(`online:${userId}`);
+    } catch (err) {
+      console.error('Redis DEL error in handleDisconnect:', err);
+    }
+
+    io.emit('user:offline', { userId });
   }
-
-  io.emit('user:offline', { userId });
 }
 
 /**

@@ -26,9 +26,20 @@ export function getIO() {
  * @returns {Server} The Socket.IO server instance
  */
 export function setupSocket(server) {
+  const allowedOrigins = [
+    process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+    process.env.EXTENSION_ORIGIN,
+  ].filter(Boolean);
+
   const io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+      origin: (origin, cb) => {
+        if (!origin || allowedOrigins.includes(origin) || origin.startsWith('chrome-extension://')) {
+          cb(null, true);
+        } else {
+          cb(null, false);
+        }
+      },
       credentials: true,
     },
   });

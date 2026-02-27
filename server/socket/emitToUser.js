@@ -7,8 +7,10 @@ import { getIO } from './index.js';
 
 export function emitToUser(userId, eventName, data) {
   const socketId = userToSocket.get(userId);
-  if (socketId) {
-    const io = getIO();
-    if (io) io.to(socketId).emit(eventName, data);
+  if (!socketId) {
+    console.warn(`[emitToUser] ${eventName} → user ${userId} not in presence map (offline or stale)`);
+    return;
   }
+  const io = getIO();
+  if (io) io.to(socketId).emit(eventName, data);
 }
