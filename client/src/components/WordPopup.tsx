@@ -112,6 +112,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
         target_language: targetLang,
         sentence_context: sentence,
         frequency: enriched.frequency,
+        frequency_count: enriched.frequency_count,
         example_sentence: enriched.example_sentence,
         part_of_speech: enriched.part_of_speech,
         image_url: enriched.image_url,

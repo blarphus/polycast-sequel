@@ -68,6 +68,7 @@ export function useSavedWords() {
       target_language?: string;
       sentence_context?: string;
       frequency?: number | null;
+      frequency_count?: number | null;
       example_sentence?: string | null;
       part_of_speech?: string | null;
       image_url?: string | null;

@@ -102,6 +102,9 @@ export async function migrate(pool) {
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS ease_factor REAL DEFAULT 2.5;`);
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS learning_step INTEGER DEFAULT NULL;`);
 
+    // Raw SUBTLEX corpus occurrence count
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS frequency_count INTEGER DEFAULT NULL;`);
+
     // Reset legacy srs_interval values (old 1-9 ladder → new seconds-based system)
     await client.query(`UPDATE saved_words SET srs_interval = 0 WHERE srs_interval BETWEEN 1 AND 9;`);
 

@@ -17,6 +17,7 @@ interface Props {
     definition: string;
     target_language: string;
     frequency?: number | null;
+    frequency_count?: number | null;
     example_sentence?: string | null;
     part_of_speech?: string | null;
     image_url?: string | null;
@@ -95,6 +96,7 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
         part_of_speech: sense.pos || enriched.part_of_speech,
         translation: enriched.translation,
         frequency: enriched.frequency,
+        frequency_count: enriched.frequency_count,
         example_sentence: enriched.example_sentence,
         image_url: enriched.image_url,
         target_language: targetLang,

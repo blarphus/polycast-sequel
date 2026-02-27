@@ -194,6 +194,7 @@ export interface EnrichedWord {
   definition: string;
   part_of_speech: string | null;
   frequency: number | null;
+  frequency_count: number | null;
   example_sentence: string | null;
   image_url: string | null;
   lemma: string | null;
@@ -246,6 +247,7 @@ export interface SaveWordData {
   target_language?: string;
   sentence_context?: string;
   frequency?: number | null;
+  frequency_count?: number | null;
   example_sentence?: string | null;
   part_of_speech?: string | null;
   image_url?: string | null;
@@ -262,6 +264,7 @@ export interface SavedWord {
   sentence_context: string | null;
   created_at: string;
   frequency: number | null;
+  frequency_count: number | null;
   example_sentence: string | null;
   part_of_speech: string | null;
   srs_interval: number;

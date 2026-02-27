@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { getEnglishFrequency } from '../lib/englishFrequency.js';
+import { getEnglishFrequency, getEnglishFrequencyCount } from '../lib/englishFrequency.js';
 
 const router = Router();
 
@@ -499,6 +499,12 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
       if (corpusFreq !== null) frequency = corpusFreq;
     }
 
+    // Attach raw corpus count for English words
+    let frequency_count = null;
+    if (targetLang === 'en' || targetLang?.startsWith('en-')) {
+      frequency_count = getEnglishFrequencyCount(word);
+    }
+
     // Parse forms from Gemini's comma-separated FORMS field
     let forms = null;
     if (geminiFormsRaw) {
@@ -519,7 +525,7 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
     const imageSearchTerm = geminiImageTerm || word;
     const image_url = await fetchWordImage(imageSearchTerm);
 
-    return res.json({ word, translation, definition, part_of_speech, frequency, example_sentence, image_url, lemma, forms });
+    return res.json({ word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, image_url, lemma, forms });
   } catch (err) {
     console.error('Dictionary enrich error:', err);
     return res.status(500).json({ error: err.message || 'Enrichment failed' });
@@ -785,7 +791,7 @@ router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
  * POST /api/dictionary/words -- Save a word to the personal dictionary
  */
 router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
-  const { word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url, lemma, forms } = req.body;
+  const { word, translation, definition, target_language, sentence_context, frequency, frequency_count, example_sentence, part_of_speech, image_url, lemma, forms } = req.body;
 
   if (!word) {
     return res.status(400).json({ error: 'word is required' });
@@ -804,10 +810,10 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
 
     // Insert new definition
     const { rows } = await pool.query(
-      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url, lemma, forms)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url, lemma, forms, frequency_count)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
-      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null, image_url || null, lemma || null, forms || null],
+      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null, image_url || null, lemma || null, forms || null, frequency_count ?? null],
     );
     return res.status(201).json({ ...rows[0], _created: true });
   } catch (err) {

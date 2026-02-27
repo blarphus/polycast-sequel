@@ -341,6 +341,14 @@ export default function Dictionary() {
                                   <span className="dict-field-value text-muted">{formatDate(w.created_at)}</span>
                                 </div>
                                 <ReviewField word={w} />
+                                {w.frequency_count != null && (
+                                  <div className="dict-field">
+                                    <span className="dict-field-label">Corpus count</span>
+                                    <span className="dict-field-value text-muted">
+                                      {w.frequency_count.toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
                                 <button className="dict-remove-btn" onClick={() => removeWord(w.id)}>
                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="3 6 5 6 21 6" />

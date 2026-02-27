@@ -5,9 +5,20 @@ const corpus = require('subtlex-word-frequencies');
 
 // Build rank map: lowercased word → 1-based rank (1 = most common)
 const rankMap = new Map();
+// Build count map: lowercased word → raw corpus occurrence count
+const countMap = new Map();
 for (let i = 0; i < corpus.length; i++) {
   const key = corpus[i].word.toLowerCase();
   if (!rankMap.has(key)) rankMap.set(key, i + 1);
+  if (!countMap.has(key)) countMap.set(key, corpus[i].count);
+}
+
+/**
+ * Look up an English word's raw occurrence count from the SUBTLEX-US corpus.
+ * Returns null if the word is not in the corpus.
+ */
+export function getEnglishFrequencyCount(word) {
+  return countMap.get(word.toLowerCase()) ?? null;
 }
 
 /**
