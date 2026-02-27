@@ -9,6 +9,7 @@ import { DictionaryToastProvider } from './hooks/useDictionaryToast';
 import { useSocket } from './hooks/useSocket';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Home from './pages/Home';
 import ConversationList from './pages/ConversationList';
 import ChatView from './pages/ChatView';
 import Call from './pages/Call';
@@ -79,6 +80,14 @@ export default function App() {
         <Route path="/signup" element={<Signup />} />
         <Route
           path="/"
+          element={
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chats"
           element={
             <ProtectedRoute>
               <ConversationList />

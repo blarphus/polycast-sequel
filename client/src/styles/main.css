@@ -1630,7 +1630,7 @@ select.form-input {
   transform: translateX(-50%);
   z-index: 50;
   display: flex;
-  width: clamp(280px, 40vw, 420px);
+  width: clamp(310px, 50vw, 480px);
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -1677,9 +1677,259 @@ select.form-input {
   color: #6c63ff;
 }
 
+.toolbar-tab--blue.active {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
 .toolbar-label {
   font-size: 0.7rem;
   letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
+   Home Page
+   ========================================================================== */
+
+.home-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 7rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-section {
+  margin-bottom: 2rem;
+}
+
+.home-section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+
+.home-section-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+/* ---- New words grid ---- */
+
+.home-words-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.625rem;
+}
+
+.home-word-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.home-word-card--skeleton {
+  height: 80px;
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.15; }
+}
+
+.home-word-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.home-word-card-word {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.home-word-card-pos {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+.home-word-card-translation {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.home-start-learning-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.7rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.home-start-learning-btn:hover {
+  background: var(--accent-hover);
+}
+
+.home-empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ---- Carousels (videos / news) ---- */
+
+.home-carousel {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.5rem;
+  scrollbar-width: none;
+}
+
+.home-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.home-carousel-card {
+  flex: 0 0 220px;
+  scroll-snap-align: start;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.home-carousel-thumb {
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-carousel-thumb--news {
+  background: linear-gradient(135deg, #1a1a2e, #2d2d44);
+}
+
+.home-news-source {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.04em;
+}
+
+.home-carousel-info {
+  padding: 0.6rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.home-carousel-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.home-carousel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.home-difficulty-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fff;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  letter-spacing: 0.03em;
+}
+
+.home-word-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+/* ---- Daily limit stepper (Settings) ---- */
+
+.daily-limit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.daily-limit-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.daily-limit-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.daily-limit-btn:hover:not(:disabled) {
+  background: var(--bg-surface-hover);
+}
+
+.daily-limit-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.daily-limit-value {
+  font-size: 1rem;
+  font-weight: 700;
+  min-width: 2rem;
+  text-align: center;
+  color: var(--text-primary);
 }
 
 /* ==========================================================================
@@ -2976,6 +3226,11 @@ select.form-input {
 [data-theme="dark"] .toolbar-tab--purple.active {
   background: rgba(108, 99, 255, 0.15);
   color: #6c63ff;
+}
+
+[data-theme="dark"] .toolbar-tab--blue.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
 }
 
 /* ---- Dictionary shadows -------------------------------------------------- */

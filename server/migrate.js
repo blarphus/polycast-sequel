@@ -108,6 +108,9 @@ export async function migrate(pool) {
     // Reset legacy srs_interval values (old 1-9 ladder → new seconds-based system)
     await client.query(`UPDATE saved_words SET srs_interval = 0 WHERE srs_interval BETWEEN 1 AND 9;`);
 
+    // Daily new-card limit per user (default 5)
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_new_limit INTEGER DEFAULT 5;`);
+
     // Transcript entries table (stores completed sentences from calls)
     await client.query(`
       CREATE TABLE IF NOT EXISTS transcript_entries (

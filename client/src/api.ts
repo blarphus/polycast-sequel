@@ -54,6 +54,7 @@ export interface AuthUser {
   display_name: string;
   native_language: string | null;
   target_language: string | null;
+  daily_new_limit: number;
 }
 
 export function signup(username: string, password: string, displayName: string) {
@@ -78,11 +79,17 @@ export function getMe() {
   return request<AuthUser>('/me');
 }
 
-export function updateSettings(native_language: string | null, target_language: string | null) {
+export function updateSettings(native_language: string | null, target_language: string | null, daily_new_limit?: number) {
+  const body: Record<string, unknown> = { native_language, target_language };
+  if (daily_new_limit !== undefined) body.daily_new_limit = daily_new_limit;
   return request<AuthUser>('/me/settings', {
     method: 'PATCH',
-    body: { native_language, target_language },
+    body,
   });
+}
+
+export function getNewToday() {
+  return request<SavedWord[]>('/dictionary/new-today');
 }
 
 // ---- Users / Calls -------------------------------------------------------

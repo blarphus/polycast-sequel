@@ -20,7 +20,7 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>;
   signup: (username: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateSettings: (native_language: string | null, target_language: string | null) => Promise<void>;
+  updateSettings: (native_language: string | null, target_language: string | null, daily_new_limit?: number) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -64,8 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const updateSettings = useCallback(async (native_language: string | null, target_language: string | null) => {
-    const u = await api.updateSettings(native_language, target_language);
+  const updateSettings = useCallback(async (native_language: string | null, target_language: string | null, daily_new_limit?: number) => {
+    const u = await api.updateSettings(native_language, target_language, daily_new_limit);
     setUser(u);
   }, []);
 

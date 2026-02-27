@@ -129,7 +129,7 @@ router.post('/api/logout', (_req, res) => {
 router.get('/api/me', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, display_name, created_at, native_language, target_language FROM users WHERE id = $1',
+      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit FROM users WHERE id = $1',
       [req.userId],
     );
 
@@ -152,12 +152,12 @@ router.get('/api/me', authMiddleware, async (req, res) => {
  */
 router.patch('/api/me/settings', authMiddleware, async (req, res) => {
   try {
-    const { native_language, target_language } = req.body;
+    const { native_language, target_language, daily_new_limit } = req.body;
 
     const result = await pool.query(
-      `UPDATE users SET native_language = $1, target_language = $2 WHERE id = $3
-       RETURNING id, username, display_name, created_at, native_language, target_language`,
-      [native_language || null, target_language || null, req.userId],
+      `UPDATE users SET native_language = $1, target_language = $2, daily_new_limit = COALESCE($4, daily_new_limit) WHERE id = $3
+       RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit`,
+      [native_language || null, target_language || null, req.userId, daily_new_limit != null ? daily_new_limit : null],
     );
 
     const user = result.rows[0];

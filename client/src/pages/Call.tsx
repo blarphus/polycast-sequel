@@ -67,7 +67,7 @@ export default function Call() {
     socket.emit('call:end', { peerId });
     cleanupTranscription();
     cleanupPeer();
-    navigate('/');
+    navigate('/chats');
   }, [peerId, navigate, cleanupTranscription, cleanupPeer]);
 
   // ---- WebRTC peer connection + signaling (gated on streamReady) ----------
@@ -131,13 +131,13 @@ export default function Call() {
       setCallStatus('Call ended');
       cleanupTranscription();
       cleanupPeer();
-      setTimeout(() => navigate('/'), 1500);
+      setTimeout(() => navigate('/chats'), 1500);
     };
 
     const onCallRejected = () => {
       setCallStatus('Call rejected');
       cleanupPeer();
-      setTimeout(() => navigate('/'), 1500);
+      setTimeout(() => navigate('/chats'), 1500);
     };
 
     socket.on('call:accepted', onCallAccepted);
@@ -206,7 +206,7 @@ export default function Call() {
       <div className="call-page">
         <div className="call-status-overlay">
           <p className="call-status-text">Invalid call role: "{rawRole}". Must be "caller" or "callee".</p>
-          <button className="btn btn-primary" onClick={() => navigate('/')}>Go Home</button>
+          <button className="btn btn-primary" onClick={() => navigate('/chats')}>Go Home</button>
         </div>
       </div>
     );

@@ -37,6 +37,7 @@ export default function Settings() {
 
   const [nativeLang, setNativeLang] = useState(user?.native_language || '');
   const [targetLang, setTargetLang] = useState(user?.target_language || '');
+  const [dailyNewLimit, setDailyNewLimit] = useState(user?.daily_new_limit ?? 5);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
@@ -46,7 +47,7 @@ export default function Settings() {
     setError('');
     setSaved(false);
     try {
-      await updateSettings(nativeLang || null, targetLang || null);
+      await updateSettings(nativeLang || null, targetLang || null, dailyNewLimit);
       setSaved(true);
     } catch (err: any) {
       console.error('Settings: save failed:', err);
@@ -92,6 +93,27 @@ export default function Settings() {
                 {t === 'none' ? 'None' : t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="daily-limit-row">
+          <span className="form-label" style={{ marginBottom: 0 }}>Daily new words</span>
+          <div className="daily-limit-stepper">
+            <button
+              className="daily-limit-btn"
+              onClick={() => setDailyNewLimit((v) => Math.max(1, v - 1))}
+              disabled={dailyNewLimit <= 1}
+            >
+              &minus;
+            </button>
+            <span className="daily-limit-value">{dailyNewLimit}</span>
+            <button
+              className="daily-limit-btn"
+              onClick={() => setDailyNewLimit((v) => Math.min(50, v + 1))}
+              disabled={dailyNewLimit >= 50}
+            >
+              +
+            </button>
           </div>
         </div>
 

@@ -608,6 +608,32 @@ router.patch('/api/dictionary/words/:id/image', authMiddleware, async (req, res)
 });
 
 // ---------------------------------------------------------------------------
+// New cards for today (never-reviewed, capped by daily_new_limit)
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/dictionary/new-today -- New (never-reviewed) cards for today
+ */
+router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT sw.* FROM saved_words sw
+       JOIN users u ON u.id = sw.user_id
+       WHERE sw.user_id = $1
+         AND sw.due_at IS NULL
+         AND sw.last_reviewed_at IS NULL
+       ORDER BY sw.created_at ASC
+       LIMIT (SELECT daily_new_limit FROM users WHERE id = $1)`,
+      [req.userId],
+    );
+    return res.json(rows);
+  } catch (err) {
+    console.error('Error fetching new-today words:', err);
+    return res.status(500).json({ error: 'Failed to fetch new words' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // SRS (Spaced Repetition) — Anki-style algorithm
 // ---------------------------------------------------------------------------
 
