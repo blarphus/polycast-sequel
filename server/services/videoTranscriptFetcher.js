@@ -2,6 +2,14 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {
+  YoutubeTranscript,
+  YoutubeTranscriptDisabledError,
+  YoutubeTranscriptNotAvailableError,
+  YoutubeTranscriptNotAvailableLanguageError,
+  YoutubeTranscriptTooManyRequestError,
+  YoutubeTranscriptVideoUnavailableError,
+} from 'youtube-transcript-plus';
 
 const MANAGED_BIN_DIR = path.join(os.tmpdir(), 'polycast-tools');
 const MANAGED_YTDLP_BINARY = path.join(MANAGED_BIN_DIR, 'yt-dlp');
@@ -15,6 +23,11 @@ const YTDLP_PROXY_CACHE_MS = Number(process.env.YTDLP_PROXY_CACHE_MS || 120000);
 const YTDLP_PROXY_ENABLED = process.env.YTDLP_PROXY_ENABLED !== 'false';
 const YTDLP_SOCKET_TIMEOUT_SECONDS = String(process.env.YTDLP_SOCKET_TIMEOUT_SECONDS || 8);
 const YTDLP_ATTEMPT_TIMEOUT_MS = Number(process.env.YTDLP_ATTEMPT_TIMEOUT_MS || 25000);
+const YOUTUBE_TRANSCRIPT_REQUEST_TIMEOUT_MS =
+  Number(process.env.YOUTUBE_TRANSCRIPT_REQUEST_TIMEOUT_MS || 20000);
+const YOUTUBE_TRANSCRIPT_USER_AGENT = process.env.YOUTUBE_TRANSCRIPT_USER_AGENT ||
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+  '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 let resolvedYtDlpBinaryPromise = null;
 let proxyCache = { expiresAt: 0, proxies: [] };
@@ -256,6 +269,158 @@ function parseVtt(vttText) {
   return segments;
 }
 
+async function fetchWithTimeout({
+  url,
+  method = 'GET',
+  body,
+  headers = {},
+  lang,
+  userAgent,
+}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), YOUTUBE_TRANSCRIPT_REQUEST_TIMEOUT_MS);
+
+  try {
+    const mergedHeaders = {
+      ...headers,
+      'User-Agent': userAgent || YOUTUBE_TRANSCRIPT_USER_AGENT,
+    };
+
+    if (lang) {
+      mergedHeaders['Accept-Language'] = lang;
+    }
+
+    return await fetch(url, {
+      method,
+      body,
+      headers: mergedHeaders,
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function normalizeTranscriptPlusSegments(items) {
+  const segments = [];
+
+  for (const item of items || []) {
+    const text = String(item?.text || '').replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+
+    const offsetSeconds = Number(item?.offset);
+    const durationSeconds = Number(item?.duration);
+    if (!Number.isFinite(offsetSeconds) || !Number.isFinite(durationSeconds)) continue;
+
+    const offset = Math.max(0, Math.round(offsetSeconds * 1000));
+    const duration = Math.max(0, Math.round(durationSeconds * 1000));
+
+    segments.push({ text, offset, duration });
+  }
+
+  return segments;
+}
+
+function mapTranscriptPlusError(err) {
+  if (err instanceof YoutubeTranscriptTooManyRequestError) {
+    return new TranscriptFetchError(
+      'YouTube temporarily blocked transcript requests.',
+      'BLOCKED_OR_RATE_LIMITED',
+      true,
+    );
+  }
+
+  if (err instanceof YoutubeTranscriptVideoUnavailableError) {
+    return new TranscriptFetchError(
+      'Video is unavailable for transcript extraction.',
+      'SOURCE_UNAVAILABLE',
+      false,
+    );
+  }
+
+  if (err instanceof YoutubeTranscriptDisabledError) {
+    return new TranscriptFetchError(
+      'No YouTube captions available for this video/language.',
+      'NO_CAPTIONS',
+      false,
+    );
+  }
+
+  if (err instanceof YoutubeTranscriptNotAvailableLanguageError) {
+    return new TranscriptFetchError(
+      'Requested caption language is not available for this video.',
+      'NO_CAPTIONS',
+      false,
+    );
+  }
+
+  if (err instanceof YoutubeTranscriptNotAvailableError) {
+    return new TranscriptFetchError(
+      'Transcript fetch temporarily failed.',
+      'TRANSIENT_FETCH_ERROR',
+      true,
+    );
+  }
+
+  if (err?.name === 'AbortError') {
+    return new TranscriptFetchError(
+      'Transcript request timed out.',
+      'TRANSIENT_FETCH_ERROR',
+      true,
+    );
+  }
+
+  return new TranscriptFetchError(
+    err?.message || 'Transcript fetch temporarily failed.',
+    'TRANSIENT_FETCH_ERROR',
+    true,
+  );
+}
+
+async function fetchViaTranscriptPlus(youtubeId, language) {
+  const lang = (language || '').trim().toLowerCase();
+
+  const baseConfig = {
+    userAgent: YOUTUBE_TRANSCRIPT_USER_AGENT,
+    videoFetch: fetchWithTimeout,
+    playerFetch: fetchWithTimeout,
+    transcriptFetch: fetchWithTimeout,
+  };
+
+  try {
+    const transcript = await YoutubeTranscript.fetchTranscript(youtubeId, {
+      ...baseConfig,
+      ...(lang ? { lang } : {}),
+    });
+    const segments = normalizeTranscriptPlusSegments(transcript);
+    if (segments.length > 0) {
+      return { segments, source: 'youtubei' };
+    }
+    throw new TranscriptFetchError(
+      'No YouTube captions available for this video/language.',
+      'NO_CAPTIONS',
+      false,
+    );
+  } catch (err) {
+    if (err instanceof YoutubeTranscriptNotAvailableLanguageError) {
+      // If exact language is unavailable, accept the first available track.
+      try {
+        const transcript = await YoutubeTranscript.fetchTranscript(youtubeId, baseConfig);
+        const segments = normalizeTranscriptPlusSegments(transcript);
+        if (segments.length > 0) {
+          return { segments, source: 'youtubei' };
+        }
+      } catch (fallbackErr) {
+        throw mapTranscriptPlusError(fallbackErr);
+      }
+    }
+
+    if (err instanceof TranscriptFetchError) throw err;
+    throw mapTranscriptPlusError(err);
+  }
+}
+
 function classifyYtDlpFailure(stderrText) {
   const normalized = stderrText.toLowerCase();
 
@@ -264,7 +429,8 @@ function classifyYtDlpFailure(stderrText) {
       normalized.includes('http error 429') ||
       normalized.includes('sign in to confirm') ||
       normalized.includes('precondition check failed') ||
-      normalized.includes('failed_precondition')) {
+      normalized.includes('failed_precondition') ||
+      normalized.includes('page needs to be reloaded')) {
     return new TranscriptFetchError(
       'YouTube temporarily blocked transcript requests.',
       'BLOCKED_OR_RATE_LIMITED',
@@ -461,37 +627,53 @@ async function extractMode(youtubeId, language, mode, tempRoot) {
 }
 
 /**
- * Fetch transcript segments from YouTube captions using yt-dlp.
- * Returns manual captions first, then auto captions fallback.
+ * Fetch transcript segments from YouTube captions.
+ * Primary strategy matches modern Innertube caption extraction (like Vidscript),
+ * with yt-dlp as backup when YouTube transiently blocks requests.
  */
 export async function fetchYouTubeTranscript(youtubeId, language = 'en') {
   const normalizedLang = (language || 'en').trim().toLowerCase();
-  const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'polycast-transcript-'));
 
   try {
-    const manual = await extractMode(youtubeId, normalizedLang, 'manual', tempRoot);
-    if (manual) {
-      return { segments: manual, source: 'manual' };
+    return await fetchViaTranscriptPlus(youtubeId, normalizedLang);
+  } catch (primaryErr) {
+    const mappedPrimaryErr = primaryErr instanceof TranscriptFetchError
+      ? primaryErr
+      : new TranscriptFetchError(
+        primaryErr?.message || 'Transcript fetch failed.',
+        'TRANSIENT_FETCH_ERROR',
+        true,
+      );
+
+    // Only fall back on transient/block states where yt-dlp+proxy can still recover.
+    if (!mappedPrimaryErr.transient ||
+        (mappedPrimaryErr.code !== 'BLOCKED_OR_RATE_LIMITED' &&
+         mappedPrimaryErr.code !== 'TRANSIENT_FETCH_ERROR')) {
+      throw mappedPrimaryErr;
     }
 
-    const auto = await extractMode(youtubeId, normalizedLang, 'auto', tempRoot);
-    if (auto) {
-      return { segments: auto, source: 'auto' };
-    }
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'polycast-transcript-'));
+    try {
+      const manual = await extractMode(youtubeId, normalizedLang, 'manual', tempRoot);
+      if (manual) {
+        return { segments: manual, source: 'manual' };
+      }
 
-    throw new TranscriptFetchError(
-      'No YouTube captions available for this video/language.',
-      'NO_CAPTIONS',
-      false,
-    );
-  } catch (err) {
-    if (err instanceof TranscriptFetchError) throw err;
-    throw new TranscriptFetchError(
-      err?.message || 'Transcript fetch failed.',
-      'TRANSIENT_FETCH_ERROR',
-      true,
-    );
-  } finally {
-    await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+      const auto = await extractMode(youtubeId, normalizedLang, 'auto', tempRoot);
+      if (auto) {
+        return { segments: auto, source: 'auto' };
+      }
+
+      throw mappedPrimaryErr;
+    } catch (fallbackErr) {
+      if (fallbackErr instanceof TranscriptFetchError) throw fallbackErr;
+      throw new TranscriptFetchError(
+        fallbackErr?.message || mappedPrimaryErr.message,
+        'TRANSIENT_FETCH_ERROR',
+        true,
+      );
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+    }
   }
 }
