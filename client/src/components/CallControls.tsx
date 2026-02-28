@@ -56,13 +56,36 @@ export function PhoneOffIcon() {
   );
 }
 
+function MonitorIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+    </svg>
+  );
+}
+
+function MonitorStopIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+      <line x1="12" y1="17" x2="12" y2="21" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
 // ---- Component ------------------------------------------------------------
 
 interface CallControlsProps {
   isMuted: boolean;
   isCameraOff: boolean;
+  isScreenSharing: boolean;
   onToggleMute: () => void;
   onToggleCamera: () => void;
+  onToggleScreenShare: () => void;
   primaryAction: {
     label: string;
     icon: ReactNode;
@@ -74,8 +97,10 @@ interface CallControlsProps {
 export default function CallControls({
   isMuted,
   isCameraOff,
+  isScreenSharing,
   onToggleMute,
   onToggleCamera,
+  onToggleScreenShare,
   primaryAction,
 }: CallControlsProps) {
   return (
@@ -94,6 +119,14 @@ export default function CallControls({
         title={isCameraOff ? 'Turn camera on' : 'Turn camera off'}
       >
         {isCameraOff ? <VideoOffIcon /> : <VideoIcon />}
+      </button>
+
+      <button
+        className={`call-control-btn${isScreenSharing ? ' sharing' : ''}`}
+        onClick={onToggleScreenShare}
+        title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
+      >
+        {isScreenSharing ? <MonitorStopIcon /> : <MonitorIcon />}
       </button>
 
       <button

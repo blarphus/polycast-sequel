@@ -19,6 +19,7 @@ import {
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
 import TranscriptPanel from '../components/TranscriptPanel';
 import { useSavedWords } from '../hooks/useSavedWords';
+import { useScreenShare } from '../hooks/useScreenShare';
 import { getIceServers } from '../api';
 
 export default function Call() {
@@ -49,6 +50,7 @@ export default function Call() {
 
   const { controlsHidden, showControls } = useAutoHideControls();
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(streamRef);
+  const { isScreenSharing, toggleScreenShare } = useScreenShare(streamRef, pcRef, localVideoRef);
   const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
 
   // ---- Shared cleanup helper (WebRTC only — transcription handled by hook) --
@@ -327,8 +329,10 @@ export default function Call() {
         <CallControls
           isMuted={isMuted}
           isCameraOff={isCameraOff}
+          isScreenSharing={isScreenSharing}
           onToggleMute={toggleMute}
           onToggleCamera={toggleCamera}
+          onToggleScreenShare={toggleScreenShare}
           primaryAction={{
             label: 'End Call',
             icon: <PhoneOffIcon />,

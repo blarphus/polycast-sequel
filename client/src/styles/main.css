@@ -1151,6 +1151,10 @@ select.form-input {
   color: var(--danger);
 }
 
+.call-control-btn.sharing {
+  color: #22c55e;
+}
+
 .call-control-btn--danger {
   width: 56px;
   height: 56px;
