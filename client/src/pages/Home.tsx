@@ -118,6 +118,7 @@ export default function Home() {
                       {w.part_of_speech && (
                         <span className="home-word-row-pos">{w.part_of_speech}</span>
                       )}
+                      {w.priority && <span className="assigned-badge">Assigned</span>}
                     </div>
                     <span className="home-word-row-translation">{w.translation}</span>
                     <FrequencyDots frequency={w.frequency} />

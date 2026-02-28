@@ -294,6 +294,7 @@ export interface SavedWord {
   image_url: string | null;
   lemma: string | null;
   forms: string | null;
+  priority: boolean;
 }
 
 export function getSavedWords() {

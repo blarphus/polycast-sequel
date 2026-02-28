@@ -290,6 +290,9 @@ export default function Dictionary() {
                       {group.entries[0].part_of_speech && (
                         <span className={`dict-pos-badge pos-${group.entries[0].part_of_speech.toLowerCase()}`}>{group.entries[0].part_of_speech}</span>
                       )}
+                      {group.entries.some((e) => e.priority) && (
+                        <span className="assigned-badge">Assigned</span>
+                      )}
                       {group.entries.length > 1 && (
                         <span className="dict-def-count">{group.entries.length}</span>
                       )}

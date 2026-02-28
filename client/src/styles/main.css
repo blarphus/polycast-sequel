@@ -2281,6 +2281,18 @@ select.form-input {
   color: var(--accent);
 }
 
+.assigned-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
 /* Part-of-speech color coding */
 .pos-noun        { background: #dbeafe; color: #1d4ed8; }
 .pos-verb        { background: #d1fae5; color: #065f46; }

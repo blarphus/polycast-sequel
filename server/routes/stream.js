@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
 import { enrichWord, fetchWordImage } from '../enrichWord.js';
+import { getEnglishFrequency, getEnglishFrequencyCount } from '../lib/englishFrequency.js';
 
 const router = Router();
 
@@ -336,24 +337,55 @@ async function lookupWordForPost(word, nativeLang, targetLang) {
   const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". The user's native language is ${nativeLang}.
 
 Return a JSON object with exactly these keys:
-{"translation":"...","definition":"...","part_of_speech":"...","example_sentence":"..."}
+{"translation":"...","definition":"...","part_of_speech":"...","example_sentence":"...","frequency":0,"lemma":"...","forms":"..."}
 
 - translation: standard ${nativeLang} translation of "${word}", 1-3 words max
 - definition: what this word means in ${nativeLang}, 12 words max, no markdown
 - part_of_speech: one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
 - example_sentence: a short sentence in ${targetLang} using "${word}", wrap the word with tildes like ~word~, 15 words max
+- frequency: integer 1-10 how common this word is (1-2 rare, 3-4 uncommon, 5-6 moderate, 7-8 common everyday, 9-10 essential top-500)
+- lemma: dictionary/base form (infinitive for verbs, singular for nouns). Same as word if already base form. Empty string for particles/prepositions.
+- forms: comma-separated inflected forms of the lemma (e.g. "run, runs, ran, running"). Empty string if uninflected.
 
 Respond with ONLY the JSON object, no other text.`;
 
-  const raw = await callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 300, responseMimeType: 'application/json' });
+  const raw = await callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 400, responseMimeType: 'application/json' });
   const parsed = JSON.parse(raw);
   const image_url = await fetchWordImage(word);
+
+  let frequency = typeof parsed.frequency === 'number' ? parsed.frequency : null;
+  let frequency_count = null;
+
+  // For English words, override with corpus data
+  if (targetLang === 'en' || targetLang?.startsWith('en-')) {
+    const corpusFreq = getEnglishFrequency(word);
+    if (corpusFreq !== null) frequency = corpusFreq;
+    frequency_count = getEnglishFrequencyCount(word);
+  }
+
+  // Normalize forms
+  let forms = null;
+  if (parsed.forms) {
+    const formsList = parsed.forms.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (formsList.length > 1) forms = JSON.stringify(formsList);
+  }
+
+  // Normalize lemma
+  let lemma = parsed.lemma?.trim() || null;
+  if (lemma && parsed.part_of_speech === 'verb' && (targetLang === 'en' || targetLang?.startsWith('en-'))) {
+    if (!lemma.startsWith('to ')) lemma = 'to ' + lemma;
+  }
+
   return {
     translation: parsed.translation || '',
     definition: parsed.definition || '',
     part_of_speech: parsed.part_of_speech || null,
     example_sentence: parsed.example_sentence || null,
     image_url,
+    frequency,
+    frequency_count,
+    lemma,
+    forms,
   };
 }
 
