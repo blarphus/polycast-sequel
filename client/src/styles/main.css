@@ -4515,12 +4515,12 @@ select.form-input {
 .stream-preview-img-btn {
   background: none; border: none; padding: 0; cursor: pointer;
   border-radius: 4px; overflow: hidden; display: block;
-  width: 40px; height: 40px;
+  width: 72px; height: 72px;
 }
 .stream-preview-img-btn:hover { opacity: 0.8; }
-.stream-preview-img-btn img { width: 40px; height: 40px; object-fit: cover; display: block; }
+.stream-preview-img-btn img { width: 72px; height: 72px; object-fit: cover; display: block; }
 .stream-preview-img-placeholder {
-  display: block; width: 40px; height: 40px; background: #eee; border-radius: 4px;
+  display: block; width: 72px; height: 72px; background: #eee; border-radius: 4px;
 }
 
 /* ---- Classwork page responsive ------------------------------------------- */
@@ -4999,7 +4999,7 @@ select.form-input {
 /* ---- Create post modal (larger than edit modal) --------------------------- */
 
 .stream-create-modal {
-  max-width: 560px !important;
+  max-width: 900px !important;
   max-height: 90vh !important;
 }
 
