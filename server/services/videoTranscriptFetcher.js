@@ -8,8 +8,14 @@ const MANAGED_YTDLP_BINARY = path.join(MANAGED_BIN_DIR, 'yt-dlp');
 const YTDLP_BINARY_ENV = process.env.YTDLP_BINARY || null;
 const YTDLP_DOWNLOAD_URL = process.env.YTDLP_DOWNLOAD_URL ||
   'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp';
+const YTDLP_PROXY_LIST_URL = process.env.YTDLP_PROXY_LIST_URL ||
+  'https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=5000&country=all&ssl=all&anonymity=all';
+const YTDLP_PROXY_MAX_ATTEMPTS = Number(process.env.YTDLP_PROXY_MAX_ATTEMPTS || 20);
+const YTDLP_PROXY_CACHE_MS = Number(process.env.YTDLP_PROXY_CACHE_MS || 120000);
+const YTDLP_PROXY_ENABLED = process.env.YTDLP_PROXY_ENABLED !== 'false';
 
 let resolvedYtDlpBinaryPromise = null;
+let proxyCache = { expiresAt: 0, proxies: [] };
 
 export class TranscriptFetchError extends Error {
   constructor(message, code, transient = false) {
@@ -106,6 +112,46 @@ async function getYtDlpBinary() {
     });
   }
   return resolvedYtDlpBinaryPromise;
+}
+
+function normalizeProxy(proxyLine) {
+  const trimmed = proxyLine.trim().replace(/\r/g, '');
+  if (!trimmed) return null;
+  if (!/^[a-z]+:\/\//i.test(trimmed)) return `http://${trimmed}`;
+  return trimmed;
+}
+
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+async function getProxyCandidates() {
+  const now = Date.now();
+  if (proxyCache.expiresAt > now && proxyCache.proxies.length > 0) {
+    return proxyCache.proxies;
+  }
+
+  if (!YTDLP_PROXY_ENABLED) return [];
+
+  try {
+    const response = await fetch(YTDLP_PROXY_LIST_URL, {
+      headers: { 'User-Agent': 'polycast-sequel/1.0' },
+    });
+    if (!response.ok) return [];
+    const body = await response.text();
+    const proxies = body
+      .split('\n')
+      .map(normalizeProxy)
+      .filter(Boolean);
+    shuffleInPlace(proxies);
+    proxyCache = { expiresAt: now + YTDLP_PROXY_CACHE_MS, proxies };
+    return proxies;
+  } catch {
+    return [];
+  }
 }
 
 function decodeEntities(text) {
@@ -287,8 +333,8 @@ async function runYtDlp(url, language, outTemplate, mode) {
 
   const ytDlpBinary = await getYtDlpBinary();
 
-  await new Promise((resolve, reject) => {
-    const child = spawn(ytDlpBinary, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+  const execAttempt = (extraArgs = []) => new Promise((resolve, reject) => {
+    const child = spawn(ytDlpBinary, [...args, ...extraArgs], { stdio: ['ignore', 'pipe', 'pipe'] });
     let stderr = '';
 
     child.stderr.on('data', (chunk) => {
@@ -307,6 +353,42 @@ async function runYtDlp(url, language, outTemplate, mode) {
       reject(classifyYtDlpFailure(stderr));
     });
   });
+
+  try {
+    await execAttempt();
+    return;
+  } catch (err) {
+    const directErr = err instanceof TranscriptFetchError
+      ? err
+      : new TranscriptFetchError('Transcript fetch temporarily failed.', 'TRANSIENT_FETCH_ERROR', true);
+
+    if (directErr.code !== 'BLOCKED_OR_RATE_LIMITED' || !YTDLP_PROXY_ENABLED) {
+      throw directErr;
+    }
+
+    const proxies = await getProxyCandidates();
+    if (proxies.length === 0) {
+      throw directErr;
+    }
+
+    let lastErr = directErr;
+    for (const proxy of proxies.slice(0, YTDLP_PROXY_MAX_ATTEMPTS)) {
+      try {
+        await execAttempt(['--proxy', proxy]);
+        return;
+      } catch (proxyErr) {
+        if (proxyErr instanceof TranscriptFetchError) {
+          // Hard terminal states should short-circuit retries.
+          if (proxyErr.code === 'NO_CAPTIONS' || proxyErr.code === 'SOURCE_UNAVAILABLE') {
+            throw proxyErr;
+          }
+          lastErr = proxyErr;
+        }
+      }
+    }
+
+    throw lastErr;
+  }
 }
 
 function pickSubtitleFile(files, language) {
