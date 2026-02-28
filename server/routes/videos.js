@@ -55,15 +55,27 @@ async function fetchTranscript(youtubeId, lang = 'en') {
   // Step 1 — get caption track URLs from innertube player API
   const playerRes = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip',
+    },
     body: JSON.stringify({
       videoId: youtubeId,
       context: {
-        client: { clientName: 'ANDROID', clientVersion: '19.09.37', androidSdkVersion: 30 },
+        client: {
+          clientName: 'ANDROID',
+          clientVersion: '19.09.37',
+          androidSdkVersion: 30,
+          hl: lang,
+          gl: 'US',
+        },
       },
     }),
   });
-  if (!playerRes.ok) throw new Error(`innertube player returned ${playerRes.status}`);
+  if (!playerRes.ok) {
+    const errBody = await playerRes.text().catch(() => '');
+    throw new Error(`innertube player returned ${playerRes.status}: ${errBody.slice(0, 300)}`);
+  }
 
   const playerData = await playerRes.json();
   const tracks =
