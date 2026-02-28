@@ -454,7 +454,7 @@ function WordListTab({
               onPick={(sense) => {
                 setPreview(prev => prev
                   ? prev.map((p, j) => j === defPickerIdx
-                      ? { ...p, definition: sense.gloss, part_of_speech: sense.pos || p.part_of_speech }
+                      ? { ...p, definition: sense.gloss, part_of_speech: sense.pos || p.part_of_speech, example_sentence: null }
                       : p)
                   : prev);
               }}
