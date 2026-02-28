@@ -152,7 +152,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
               <p className="word-popup-translation">{translation}</p>
               {newDefinition && !saved && <span className="word-popup-new-def-pill">New definition!</span>}
             </div>
-            {partOfSpeech && <span className="word-popup-pos">{partOfSpeech}</span>}
+            {partOfSpeech && <span className={`word-popup-pos pos-${partOfSpeech.toLowerCase()}`}>{partOfSpeech}</span>}
             {definition && <p className="word-popup-definition">{definition}</p>}
           </>
         )}

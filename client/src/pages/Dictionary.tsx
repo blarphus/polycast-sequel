@@ -288,7 +288,7 @@ export default function Dictionary() {
                       <FrequencyDots frequency={maxFreq} />
                       {maxFreq != null && <span className="dict-freq-number">{maxFreq}/10</span>}
                       {group.entries[0].part_of_speech && (
-                        <span className="dict-pos-badge">{group.entries[0].part_of_speech}</span>
+                        <span className={`dict-pos-badge pos-${group.entries[0].part_of_speech.toLowerCase()}`}>{group.entries[0].part_of_speech}</span>
                       )}
                       {group.entries.length > 1 && (
                         <span className="dict-def-count">{group.entries.length}</span>
@@ -305,7 +305,7 @@ export default function Dictionary() {
                             <div className="dict-def-layout">
                               <div className="dict-def-info">
                                 {w.part_of_speech && (
-                                  <span className="dict-pos-badge">{w.part_of_speech}</span>
+                                  <span className={`dict-pos-badge pos-${w.part_of_speech.toLowerCase()}`}>{w.part_of_speech}</span>
                                 )}
                                 <div className="dict-field">
                                   <span className="dict-field-label">Translation</span>

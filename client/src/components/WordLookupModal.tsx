@@ -160,7 +160,7 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
                   disabled={savedIdxs.has(i)}
                 >
                   {savedIdxs.has(i) && <span className="lookup-saved-check">{'\u2713'}</span>}
-                  {s.pos && <span className="dict-pos-badge">{s.pos}</span>}
+                  {s.pos && <span className={`dict-pos-badge pos-${s.pos.toLowerCase()}`}>{s.pos}</span>}
                   <span className="lookup-gloss">{s.gloss}</span>
                 </button>
               ))}
