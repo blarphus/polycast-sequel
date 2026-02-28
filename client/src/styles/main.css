@@ -4469,8 +4469,8 @@ select.form-input {
 
 .stream-preview-header {
   display: grid;
-  grid-template-columns: 48px 1fr 1fr 1fr auto;
-  gap: 0.5rem;
+  grid-template-columns: 80px 1fr 1fr 1fr auto;
+  gap: 0.75rem;
   padding: 0.5rem 0.75rem;
   background: var(--bg-elevated);
   font-size: 0.75rem;
@@ -4482,8 +4482,8 @@ select.form-input {
 
 .stream-preview-row {
   display: grid;
-  grid-template-columns: 48px 1fr 1fr 1fr auto;
-  gap: 0.5rem;
+  grid-template-columns: 80px 1fr 1fr 1fr auto;
+  gap: 0.75rem;
   align-items: center;
   padding: 0.55rem 0.75rem;
   border-top: 1px solid var(--border);
@@ -4532,7 +4532,7 @@ select.form-input {
 
   .stream-preview-header,
   .stream-preview-row {
-    grid-template-columns: 48px 1fr 1fr auto;
+    grid-template-columns: 80px 1fr 1fr auto;
   }
 
   .stream-preview-header span:nth-child(4),
