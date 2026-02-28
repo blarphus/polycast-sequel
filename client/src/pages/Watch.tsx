@@ -277,49 +277,54 @@ export default function Watch() {
         <p className="watch-channel">{video.channel}</p>
       </div>
 
-      {/* Transcript lifecycle status */}
-      {!hasTranscript && video.transcript_status === 'processing' && (
-        <p className="watch-transcript-status">Captions are being fetched. This page will update automatically.</p>
-      )}
-      {!hasTranscript && video.transcript_status === 'failed' && (
-        <div className="watch-transcript-error-wrap">
-          <p className="watch-transcript-error">{video.transcript_error || 'Transcript temporarily unavailable'}</p>
-          <button className="btn-primary" onClick={handleRetryTranscript} disabled={retryingTranscript}>
-            {retryingTranscript ? 'Retrying...' : 'Retry transcript fetch'}
-          </button>
-        </div>
-      )}
+      <div className="watch-transcript-area">
+        {/* Transcript lifecycle status */}
+        {!hasTranscript && video.transcript_status === 'processing' && (
+          <p className="watch-transcript-status">Captions are being fetched. This page will update automatically.</p>
+        )}
+        {!hasTranscript && video.transcript_status === 'failed' && (
+          <div className="watch-transcript-error-wrap">
+            <p className="watch-transcript-error">{video.transcript_error || 'Transcript temporarily unavailable'}</p>
+            <button className="btn-primary" onClick={handleRetryTranscript} disabled={retryingTranscript}>
+              {retryingTranscript ? 'Retrying...' : 'Retry transcript fetch'}
+            </button>
+          </div>
+        )}
 
-      {/* Transcript */}
-      {hasTranscript && (
-        <div
-          className="watch-transcript"
-          ref={transcriptRef}
-          onScroll={handleTranscriptScroll}
-        >
-          {video.transcript.map((seg, i) => (
-            <div
-              key={i}
-              ref={(el) => { segmentRefs.current[i] = el; }}
-              className={`watch-segment${i === activeIndex ? ' watch-segment--active' : ''}`}
-            >
-              <button
-                className="watch-segment-time"
-                onClick={() => handleTimestampClick(seg.offset)}
+        {/* Transcript */}
+        {hasTranscript && (
+          <div
+            className="watch-transcript"
+            ref={transcriptRef}
+            onScroll={handleTranscriptScroll}
+          >
+            {video.transcript.map((seg, i) => (
+              <div
+                key={i}
+                ref={(el) => { segmentRefs.current[i] = el; }}
+                className={`watch-segment${i === activeIndex ? ' watch-segment--active' : ''}`}
               >
-                {formatTimestamp(seg.offset)}
-              </button>
-              <span className="watch-segment-text">
-                <TokenizedText
-                  text={seg.text}
-                  savedWords={savedWordsSet}
-                  onWordClick={handleWordClick}
-                />
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+                <button
+                  className="watch-segment-time"
+                  onClick={() => handleTimestampClick(seg.offset)}
+                >
+                  {formatTimestamp(seg.offset)}
+                </button>
+                <span className="watch-segment-text">
+                  <TokenizedText
+                    text={seg.text}
+                    savedWords={savedWordsSet}
+                    onWordClick={handleWordClick}
+                  />
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {!hasTranscript && video.transcript_status !== 'processing' && video.transcript_status !== 'failed' && (
+          <div className="watch-transcript watch-transcript--empty" />
+        )}
+      </div>
 
       {/* Word popup */}
       {popup && user && (
