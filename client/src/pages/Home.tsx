@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getNewToday, getVideos, SavedWord, VideoSummary } from '../api';
 import FriendRequests from '../components/FriendRequests';
 import PendingClasswork from '../components/PendingClasswork';
+import AddVideoModal from '../components/AddVideoModal';
 
 const LEVEL_COLORS = ['#ff4d4d', '#ff944d', '#ffdd4d', '#75d147', '#4ade80'];
 
@@ -58,6 +59,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [videos, setVideos] = useState<VideoSummary[]>([]);
   const [videosLoading, setVideosLoading] = useState(true);
+  const [showAddVideo, setShowAddVideo] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,6 +76,14 @@ export default function Home() {
       .finally(() => { if (!cancelled) setVideosLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  function refreshVideos() {
+    setVideosLoading(true);
+    getVideos()
+      .then((v) => setVideos(v))
+      .catch((err) => console.error('Failed to fetch videos:', err))
+      .finally(() => setVideosLoading(false));
+  }
 
   const displayName = user?.display_name || user?.username || '';
   const firstName = displayName.split(/\s+/)[0];
@@ -140,8 +150,13 @@ export default function Home() {
 
       {/* Section 2: Videos for you */}
       <section className="home-section">
-        <h2 className="home-section-title">Videos for you</h2>
-        <p className="home-section-subtitle">watch and learn new words</p>
+        <div className="home-section-header">
+          <div>
+            <h2 className="home-section-title">Videos for you</h2>
+            <p className="home-section-subtitle">watch and learn new words</p>
+          </div>
+          <button className="home-add-video-btn" onClick={() => setShowAddVideo(true)}>+</button>
+        </div>
         <div className="home-carousel">
           {videosLoading ? (
             Array.from({ length: 3 }, (_, i) => (
@@ -201,6 +216,10 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {showAddVideo && (
+        <AddVideoModal onClose={() => setShowAddVideo(false)} onAdded={refreshVideos} />
+      )}
     </div>
   );
 }

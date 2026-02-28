@@ -597,3 +597,7 @@ export function getVideo(id: string) {
   return request<VideoDetail>(`/videos/${id}`);
 }
 
+export function addVideo(url: string, language: string) {
+  return request<VideoDetail>('/videos', { method: 'POST', body: { url, language } });
+}
+
