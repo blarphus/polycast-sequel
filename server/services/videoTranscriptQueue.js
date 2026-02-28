@@ -31,23 +31,48 @@ function parseJob(raw) {
 }
 
 function mapErrorToMessage(err) {
+  const withDetail = (friendly, code = 'UNKNOWN', detail = '') => {
+    const suffix = detail ? ` (${code}: ${detail})` : ` (${code})`;
+    return `${friendly}${suffix}`;
+  };
+
   if (err instanceof TranscriptFetchError) {
     switch (err.code) {
       case 'NO_CAPTIONS':
-        return 'No YouTube captions are available for this video and language.';
+        return withDetail(
+          'No YouTube captions are available for this video and language.',
+          err.code,
+          err.message,
+        );
       case 'BLOCKED_OR_RATE_LIMITED':
-        return 'YouTube temporarily blocked transcript requests. Please retry later.';
+        return withDetail(
+          'YouTube temporarily blocked transcript requests. Please retry later.',
+          err.code,
+          err.message,
+        );
       case 'SOURCE_UNAVAILABLE':
-        return 'Video is unavailable for transcript extraction.';
+        return withDetail(
+          'Video is unavailable for transcript extraction.',
+          err.code,
+          err.message,
+        );
       case 'CONFIG_ERROR':
-        return 'Transcript service is not configured correctly on the server.';
+        return withDetail(
+          'Transcript service is not configured correctly on the server.',
+          err.code,
+          err.message,
+        );
       case 'PARSER_ERROR':
-        return 'Transcript parsing failed for this video.';
+        return withDetail(
+          'Transcript parsing failed for this video.',
+          err.code,
+          err.message,
+        );
       default:
-        return 'Transcript fetch temporarily failed.';
+        return withDetail('Transcript fetch temporarily failed.', err.code, err.message);
     }
   }
-  return 'Transcript fetch temporarily failed.';
+  return withDetail('Transcript fetch temporarily failed.', 'UNKNOWN', err?.message || '');
 }
 
 function shouldRetry(err, attempt) {
