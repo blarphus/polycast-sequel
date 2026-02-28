@@ -1,9 +1,11 @@
 import { Router } from 'express';
+import { XMLParser } from 'fast-xml-parser';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
-import { YoutubeTranscript } from 'youtube-transcript';
 
 const router = Router();
+
+const xmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
 
 /**
  * Extract a YouTube video ID from common URL formats.
@@ -31,7 +33,7 @@ function parseDuration(iso) {
 }
 
 /**
- * Decode common HTML entities that youtube-transcript returns.
+ * Decode common HTML entities that YouTube captions return.
  */
 function decodeEntities(text) {
   return text
@@ -41,6 +43,64 @@ function decodeEntities(text) {
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&nbsp;/g, ' ');
+}
+
+/**
+ * Fetch transcript via YouTube's innertube API (avoids page-scraping rate limits).
+ * 1. Calls innertube player endpoint to discover caption track URLs.
+ * 2. Fetches the timedtext XML for the first matching track.
+ * 3. Parses XML into [{text, offset, duration}] segments.
+ */
+async function fetchTranscript(youtubeId, lang = 'en') {
+  // Step 1 — get caption track URLs from innertube player API
+  const playerRes = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      videoId: youtubeId,
+      context: {
+        client: { clientName: 'ANDROID', clientVersion: '19.09.37', androidSdkVersion: 30 },
+      },
+    }),
+  });
+  if (!playerRes.ok) throw new Error(`innertube player returned ${playerRes.status}`);
+
+  const playerData = await playerRes.json();
+  const tracks =
+    playerData.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
+  if (tracks.length === 0) throw new Error('No caption tracks available');
+
+  // Prefer exact language match, then any track
+  const track = tracks.find((t) => t.languageCode === lang) ?? tracks[0];
+
+  // Step 2 — fetch the timedtext XML
+  const ttRes = await fetch(track.baseUrl);
+  if (!ttRes.ok) throw new Error(`timedtext returned ${ttRes.status}`);
+  const xml = await ttRes.text();
+
+  // Step 3 — parse XML into segments
+  const parsed = xmlParser.parse(xml);
+  const body = parsed?.timedtext?.body;
+  if (!body) throw new Error('Unexpected timedtext XML structure');
+
+  // body.p can be a single object or an array
+  const paragraphs = Array.isArray(body.p) ? body.p : body.p ? [body.p] : [];
+
+  return paragraphs.map((p) => {
+    // Collect text from <s> children (word-level segments)
+    let text;
+    if (p.s) {
+      const segs = Array.isArray(p.s) ? p.s : [p.s];
+      text = segs.map((s) => (typeof s === 'string' ? s : s['#text'] ?? '')).join('');
+    } else {
+      text = typeof p === 'string' ? p : p['#text'] ?? '';
+    }
+    return {
+      text: decodeEntities(text.trim()),
+      offset: Number(p['@_t'] ?? 0),
+      duration: Number(p['@_d'] ?? 0),
+    };
+  }).filter((s) => s.text);
 }
 
 /**
@@ -104,14 +164,8 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
     // Eagerly fetch transcript
     let transcript = null;
     try {
-      const segments = await YoutubeTranscript.fetchTranscript(youtube_id);
-      transcript = JSON.stringify(
-        segments.map((s) => ({
-          text: decodeEntities(s.text),
-          offset: s.offset,
-          duration: s.duration,
-        })),
-      );
+      const segments = await fetchTranscript(youtube_id, language);
+      transcript = JSON.stringify(segments);
     } catch (transcriptErr) {
       console.error(`Transcript fetch failed for ${youtube_id}:`, transcriptErr.message);
     }
@@ -149,18 +203,13 @@ router.get('/api/videos/:id', authMiddleware, async (req, res) => {
     // Lazy-fetch transcript if not cached
     if (video.transcript === null) {
       try {
-        const segments = await YoutubeTranscript.fetchTranscript(video.youtube_id);
-        const cleaned = segments.map((s) => ({
-          text: decodeEntities(s.text),
-          offset: s.offset,
-          duration: s.duration,
-        }));
+        const segments = await fetchTranscript(video.youtube_id, video.language);
 
         await pool.query(
           'UPDATE videos SET transcript = $1 WHERE id = $2',
-          [JSON.stringify(cleaned), id],
+          [JSON.stringify(segments), id],
         );
-        video.transcript = cleaned;
+        video.transcript = segments;
       } catch (transcriptErr) {
         console.error(`Transcript fetch failed for video ${id}:`, transcriptErr.message);
         video.transcript_error = 'Transcript temporarily unavailable';
