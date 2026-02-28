@@ -250,6 +250,34 @@ export async function migrate(pool) {
     await client.query(`ALTER TABLE stream_post_words ADD COLUMN IF NOT EXISTS lemma TEXT DEFAULT NULL;`);
     await client.query(`ALTER TABLE stream_post_words ADD COLUMN IF NOT EXISTS forms TEXT DEFAULT NULL;`);
 
+    // Videos table (YouTube video library)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS videos (
+        id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        youtube_id       VARCHAR(20) UNIQUE NOT NULL,
+        title            TEXT NOT NULL,
+        channel          TEXT NOT NULL,
+        language         VARCHAR(10) NOT NULL DEFAULT 'en',
+        duration_seconds INTEGER,
+        transcript       JSONB DEFAULT NULL,
+        created_at       TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    // Seed default English videos (only if table is empty)
+    const { rows: existingVideos } = await client.query('SELECT 1 FROM videos LIMIT 1');
+    if (existingVideos.length === 0) {
+      await client.query(`
+        INSERT INTO videos (youtube_id, title, channel, language, duration_seconds) VALUES
+          ('7_LPdttKXPc', 'How The Economic Machine Works', 'Principles by Ray Dalio', 'en', 1844),
+          ('dQw4w9WgXcQ', 'Rick Astley - Never Gonna Give You Up', 'Rick Astley', 'en', 213),
+          ('YbJOTdZBX1g', 'How to Learn a Language in Record Time', 'Nathaniel Drew', 'en', 780),
+          ('HAnw168huqA', 'Learn English With TV Series', 'English with Lucy', 'en', 900),
+          ('UIp6_0kct_U', 'A Beginners Guide to Quantum Computing', 'IBM Technology', 'en', 1068)
+        ON CONFLICT (youtube_id) DO NOTHING;
+      `);
+    }
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {

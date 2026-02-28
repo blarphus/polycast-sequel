@@ -1,0 +1,99 @@
+/* ==========================================================================
+   Watch Page
+   ========================================================================== */
+
+.watch-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 7rem;
+}
+
+/* ---- YouTube player wrapper (16:9) ---- */
+
+.watch-player-wrapper {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: #000;
+  margin-bottom: 1rem;
+}
+
+.watch-player-wrapper iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* ---- Video info ---- */
+
+.watch-info {
+  margin-bottom: 1rem;
+}
+
+.watch-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: 0.2rem;
+}
+
+.watch-channel {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+/* ---- Transcript panel ---- */
+
+.watch-transcript {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+/* ---- Transcript segment ---- */
+
+.watch-segment {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--radius);
+  transition: background 0.2s ease;
+}
+
+.watch-segment--active {
+  background: var(--accent-light);
+}
+
+.watch-segment-time {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  min-width: 3rem;
+  text-align: left;
+  line-height: 1.5;
+}
+
+.watch-segment-time:hover {
+  text-decoration: underline;
+}
+
+.watch-segment-text {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}

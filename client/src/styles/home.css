@@ -294,6 +294,62 @@
   overflow: hidden;
 }
 
+.home-carousel-card--clickable {
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.home-carousel-card--clickable:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px rgba(108, 99, 255, 0.15);
+}
+
+.home-carousel-card--skeleton {
+  pointer-events: none;
+}
+
+.home-carousel-thumb--skeleton {
+  background: var(--bg-elevated);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.home-carousel-thumb--video {
+  position: relative;
+  background: #000;
+}
+
+.home-carousel-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.home-carousel-duration {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+.home-carousel-channel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.home-skeleton-line {
+  height: 12px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+  margin-bottom: 0.3rem;
+}
+
 .home-carousel-thumb {
   height: 120px;
   display: flex;

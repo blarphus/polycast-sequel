@@ -19,6 +19,7 @@ import messagesRoutes from './routes/messages.js';
 import classroomRoutes from './routes/classroom.js';
 import iceServersRoutes from './routes/iceServers.js';
 import streamRoutes from './routes/stream.js';
+import videosRoutes from './routes/videos.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,6 +81,7 @@ async function main() {
   app.use(classroomRoutes);
   app.use(iceServersRoutes);
   app.use(streamRoutes);
+  app.use(videosRoutes);
 
   // ------ SPA fallback ------
   app.get('*', (req, res) => {

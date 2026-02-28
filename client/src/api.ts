@@ -567,3 +567,32 @@ export function generateExampleSentence(word: string, targetLang: string, defini
   });
 }
 
+// ---- Videos ---------------------------------------------------------------
+
+export interface VideoSummary {
+  id: string;
+  youtube_id: string;
+  title: string;
+  channel: string;
+  language: string;
+  duration_seconds: number | null;
+}
+
+export interface TranscriptSegment {
+  text: string;
+  offset: number;
+  duration: number;
+}
+
+export interface VideoDetail extends VideoSummary {
+  transcript: TranscriptSegment[];
+}
+
+export function getVideos() {
+  return request<VideoSummary[]>('/videos');
+}
+
+export function getVideo(id: string) {
+  return request<VideoDetail>(`/videos/${id}`);
+}
+

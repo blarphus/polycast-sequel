@@ -137,4 +137,13 @@
   .flashcard-complete-stats {
     gap: 1.25rem;
   }
+
+  /* Watch page responsive */
+  .watch-page {
+    padding: 1rem 1rem 7rem;
+  }
+
+  .watch-transcript {
+    max-height: 300px;
+  }
 }

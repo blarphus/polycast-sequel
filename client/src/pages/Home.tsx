@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getNewToday, SavedWord } from '../api';
+import { getNewToday, getVideos, SavedWord, VideoSummary } from '../api';
 import FriendRequests from '../components/FriendRequests';
 import PendingClasswork from '../components/PendingClasswork';
 
@@ -28,15 +28,6 @@ function FrequencyDots({ frequency }: { frequency: number | null }) {
   );
 }
 
-// Placeholder data for video cards
-const MOCK_VIDEOS = [
-  { title: 'Street food in Mexico City', difficulty: 'A2', gradient: 'linear-gradient(135deg, #667eea, #764ba2)', words: ['comida', 'calle'] },
-  { title: 'A day at the market', difficulty: 'A1', gradient: 'linear-gradient(135deg, #f093fb, #f5576c)', words: ['comprar', 'fruta'] },
-  { title: 'Travel vlog: Barcelona', difficulty: 'B1', gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)', words: ['ciudad', 'bonito'] },
-  { title: 'Cooking with abuela', difficulty: 'A2', gradient: 'linear-gradient(135deg, #43e97b, #38f9d7)', words: ['cocinar', 'receta'] },
-  { title: 'History of flamenco', difficulty: 'B2', gradient: 'linear-gradient(135deg, #fa709a, #fee140)', words: ['baile', 'tradición'] },
-];
-
 // Placeholder data for news cards
 const MOCK_NEWS = [
   { source: 'El País', headline: 'Nuevas medidas para el turismo sostenible', difficulty: 'B1', words: ['turismo', 'medida'] },
@@ -52,12 +43,21 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   C1: '#8b5cf6', C2: '#8b5cf6',
 };
 
+function formatDuration(seconds: number | null): string {
+  if (seconds == null) return '';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 export default function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [newWords, setNewWords] = useState<SavedWord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [videos, setVideos] = useState<VideoSummary[]>([]);
+  const [videosLoading, setVideosLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +68,10 @@ export default function Home() {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
+    getVideos()
+      .then((v) => { if (!cancelled) setVideos(v); })
+      .catch((err) => console.error('Failed to fetch videos:', err))
+      .finally(() => { if (!cancelled) setVideosLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -134,31 +138,41 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Section 2: Videos for you (placeholder) */}
+      {/* Section 2: Videos for you */}
       <section className="home-section">
         <h2 className="home-section-title">Videos for you</h2>
-        <p className="home-section-subtitle">containing words you're practicing</p>
+        <p className="home-section-subtitle">watch and learn new words</p>
         <div className="home-carousel">
-          {MOCK_VIDEOS.map((v, i) => (
-            <div key={i} className="home-carousel-card">
-              <div className="home-carousel-thumb" style={{ background: v.gradient }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="rgba(255,255,255,0.8)" stroke="none">
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-              </div>
-              <div className="home-carousel-info">
-                <span className="home-carousel-title">{v.title}</span>
-                <div className="home-carousel-meta">
-                  <span className="home-difficulty-pill" style={{ background: DIFFICULTY_COLORS[v.difficulty] || '#3b82f6' }}>
-                    {v.difficulty}
-                  </span>
-                  {v.words.map((word) => (
-                    <span key={word} className="home-word-badge">{word}</span>
-                  ))}
+          {videosLoading ? (
+            Array.from({ length: 3 }, (_, i) => (
+              <div key={i} className="home-carousel-card home-carousel-card--skeleton">
+                <div className="home-carousel-thumb home-carousel-thumb--skeleton" />
+                <div className="home-carousel-info">
+                  <div className="home-skeleton-line" style={{ width: '80%' }} />
+                  <div className="home-skeleton-line" style={{ width: '50%' }} />
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            videos.map((v) => (
+              <div key={v.id} className="home-carousel-card home-carousel-card--clickable" onClick={() => navigate(`/watch/${v.id}`)}>
+                <div className="home-carousel-thumb home-carousel-thumb--video">
+                  <img
+                    src={`https://img.youtube.com/vi/${v.youtube_id}/mqdefault.jpg`}
+                    alt={v.title}
+                    className="home-carousel-thumb-img"
+                  />
+                  {v.duration_seconds != null && (
+                    <span className="home-carousel-duration">{formatDuration(v.duration_seconds)}</span>
+                  )}
+                </div>
+                <div className="home-carousel-info">
+                  <span className="home-carousel-title">{v.title}</span>
+                  <span className="home-carousel-channel">{v.channel}</span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </section>
 

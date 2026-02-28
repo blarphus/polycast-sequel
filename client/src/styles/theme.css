@@ -332,6 +332,12 @@
     linear-gradient(90deg, rgba(108,99,255,0.1) 1px, transparent 1px) 0 0 / 20px 20px;
 }
 
+/* ---- Watch page active segment ------------------------------------------- */
+
+[data-theme="dark"] .watch-segment--active {
+  background: rgba(108, 99, 255, 0.15);
+}
+
 /* ---- Dark theme sidebar -------------------------------------------------- */
 
 @media (min-width: 769px) {
