@@ -82,6 +82,11 @@ function shouldRetry(err, attempt) {
   return Boolean(err.transient);
 }
 
+function shouldNormalizeTranscriptSource(source) {
+  // Human-made caption tracks should be preserved as-is.
+  return source !== 'manual';
+}
+
 async function markProcessing(pool, videoId, attempt) {
   await pool.query(
     `UPDATE videos
@@ -195,7 +200,17 @@ export async function startTranscriptWorker({ redisClient, pool }) {
       await markProcessing(pool, job.videoId, job.attempt);
 
       const { segments, source } = await fetchYouTubeTranscript(job.youtubeId, job.language);
-      const normalized = normalizeTranscriptSegmentsStrict(segments, { language: job.language });
+      const normalized = shouldNormalizeTranscriptSource(source)
+        ? normalizeTranscriptSegmentsStrict(segments, { language: job.language })
+        : {
+          segments,
+          meta: {
+            applied: false,
+            reason: 'manual_source',
+            engine: 'deterministic-v1',
+            language: String(job.language || '').toLowerCase(),
+          },
+        };
       const segmentsToSave = normalized.meta.applied ? normalized.segments : segments;
 
       await markReady(pool, job.videoId, segmentsToSave, source, job.attempt);
