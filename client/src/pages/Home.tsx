@@ -2,7 +2,7 @@
 // pages/Home.tsx -- Central learning hub (default landing page)
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getNewToday, getVideos, SavedWord, VideoSummary } from '../api';
@@ -60,6 +60,8 @@ export default function Home() {
   const [videos, setVideos] = useState<VideoSummary[]>([]);
   const [videosLoading, setVideosLoading] = useState(true);
   const [showAddVideo, setShowAddVideo] = useState(false);
+  const videosCarouselRef = useRef<HTMLDivElement | null>(null);
+  const newsCarouselRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +85,16 @@ export default function Home() {
       .then((v) => setVideos(v))
       .catch((err) => console.error('Failed to fetch videos:', err))
       .finally(() => setVideosLoading(false));
+  }
+
+  function scrollCarousel(ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') {
+    const el = ref.current;
+    if (!el) return;
+    const amount = Math.max(220, Math.floor(el.clientWidth * 0.85));
+    el.scrollBy({
+      left: direction === 'left' ? -amount : amount,
+      behavior: 'smooth',
+    });
   }
 
   const displayName = user?.display_name || user?.username || '';
@@ -157,37 +169,53 @@ export default function Home() {
           </div>
           <button className="home-add-video-btn" onClick={() => setShowAddVideo(true)}>+</button>
         </div>
-        <div className="home-carousel">
-          {videosLoading ? (
-            Array.from({ length: 3 }, (_, i) => (
-              <div key={i} className="home-carousel-card home-carousel-card--skeleton">
-                <div className="home-carousel-thumb home-carousel-thumb--skeleton" />
-                <div className="home-carousel-info">
-                  <div className="home-skeleton-line" style={{ width: '80%' }} />
-                  <div className="home-skeleton-line" style={{ width: '50%' }} />
+        <div className="home-carousel-shell">
+          <button
+            className="home-carousel-arrow home-carousel-arrow--left"
+            aria-label="Scroll videos left"
+            onClick={() => scrollCarousel(videosCarouselRef, 'left')}
+          >
+            ‹
+          </button>
+          <div className="home-carousel" ref={videosCarouselRef}>
+            {videosLoading ? (
+              Array.from({ length: 3 }, (_, i) => (
+                <div key={i} className="home-carousel-card home-carousel-card--skeleton">
+                  <div className="home-carousel-thumb home-carousel-thumb--skeleton" />
+                  <div className="home-carousel-info">
+                    <div className="home-skeleton-line" style={{ width: '80%' }} />
+                    <div className="home-skeleton-line" style={{ width: '50%' }} />
+                  </div>
                 </div>
-              </div>
-            ))
-          ) : (
-            videos.map((v) => (
-              <div key={v.id} className="home-carousel-card home-carousel-card--clickable" onClick={() => navigate(`/watch/${v.id}`)}>
-                <div className="home-carousel-thumb home-carousel-thumb--video">
-                  <img
-                    src={`https://img.youtube.com/vi/${v.youtube_id}/mqdefault.jpg`}
-                    alt={v.title}
-                    className="home-carousel-thumb-img"
-                  />
-                  {v.duration_seconds != null && (
-                    <span className="home-carousel-duration">{formatDuration(v.duration_seconds)}</span>
-                  )}
+              ))
+            ) : (
+              videos.map((v) => (
+                <div key={v.id} className="home-carousel-card home-carousel-card--clickable" onClick={() => navigate(`/watch/${v.id}`)}>
+                  <div className="home-carousel-thumb home-carousel-thumb--video">
+                    <img
+                      src={`https://img.youtube.com/vi/${v.youtube_id}/mqdefault.jpg`}
+                      alt={v.title}
+                      className="home-carousel-thumb-img"
+                    />
+                    {v.duration_seconds != null && (
+                      <span className="home-carousel-duration">{formatDuration(v.duration_seconds)}</span>
+                    )}
+                  </div>
+                  <div className="home-carousel-info">
+                    <span className="home-carousel-title">{v.title}</span>
+                    <span className="home-carousel-channel">{v.channel}</span>
+                  </div>
                 </div>
-                <div className="home-carousel-info">
-                  <span className="home-carousel-title">{v.title}</span>
-                  <span className="home-carousel-channel">{v.channel}</span>
-                </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
+          <button
+            className="home-carousel-arrow home-carousel-arrow--right"
+            aria-label="Scroll videos right"
+            onClick={() => scrollCarousel(videosCarouselRef, 'right')}
+          >
+            ›
+          </button>
         </div>
       </section>
 
@@ -195,25 +223,41 @@ export default function Home() {
       <section className="home-section">
         <h2 className="home-section-title">News for you</h2>
         <p className="home-section-subtitle">articles with words you know</p>
-        <div className="home-carousel">
-          {MOCK_NEWS.map((n, i) => (
-            <div key={i} className="home-carousel-card">
-              <div className="home-carousel-thumb home-carousel-thumb--news">
-                <span className="home-news-source">{n.source}</span>
-              </div>
-              <div className="home-carousel-info">
-                <span className="home-carousel-title">{n.headline}</span>
-                <div className="home-carousel-meta">
-                  <span className="home-difficulty-pill" style={{ background: DIFFICULTY_COLORS[n.difficulty] || '#3b82f6' }}>
-                    {n.difficulty}
-                  </span>
-                  {n.words.map((word) => (
-                    <span key={word} className="home-word-badge">{word}</span>
-                  ))}
+        <div className="home-carousel-shell">
+          <button
+            className="home-carousel-arrow home-carousel-arrow--left"
+            aria-label="Scroll news left"
+            onClick={() => scrollCarousel(newsCarouselRef, 'left')}
+          >
+            ‹
+          </button>
+          <div className="home-carousel" ref={newsCarouselRef}>
+            {MOCK_NEWS.map((n, i) => (
+              <div key={i} className="home-carousel-card">
+                <div className="home-carousel-thumb home-carousel-thumb--news">
+                  <span className="home-news-source">{n.source}</span>
+                </div>
+                <div className="home-carousel-info">
+                  <span className="home-carousel-title">{n.headline}</span>
+                  <div className="home-carousel-meta">
+                    <span className="home-difficulty-pill" style={{ background: DIFFICULTY_COLORS[n.difficulty] || '#3b82f6' }}>
+                      {n.difficulty}
+                    </span>
+                    {n.words.map((word) => (
+                      <span key={word} className="home-word-badge">{word}</span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <button
+            className="home-carousel-arrow home-carousel-arrow--right"
+            aria-label="Scroll news right"
+            onClick={() => scrollCarousel(newsCarouselRef, 'right')}
+          >
+            ›
+          </button>
         </div>
       </section>
 
