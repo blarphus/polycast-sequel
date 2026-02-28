@@ -1,4 +1,5 @@
 import { fetchYouTubeTranscript, TranscriptFetchError } from './videoTranscriptFetcher.js';
+import { normalizeTranscriptSegmentsStrict } from './videoTranscriptNormalizer.js';
 
 const QUEUE_KEY = 'queue:video_transcripts';
 const DELAYED_KEY = 'queue:video_transcripts:delayed';
@@ -194,11 +195,14 @@ export async function startTranscriptWorker({ redisClient, pool }) {
       await markProcessing(pool, job.videoId, job.attempt);
 
       const { segments, source } = await fetchYouTubeTranscript(job.youtubeId, job.language);
-      await markReady(pool, job.videoId, segments, source, job.attempt);
+      const normalized = normalizeTranscriptSegmentsStrict(segments, { language: job.language });
+      const segmentsToSave = normalized.meta.applied ? normalized.segments : segments;
+
+      await markReady(pool, job.videoId, segmentsToSave, source, job.attempt);
       await redisClient.del(key);
 
       console.log(
-        `[transcript-queue] Ready video=${job.videoId} source=${source} lang=${job.language} segments=${segments.length}`,
+        `[transcript-queue] Ready video=${job.videoId} source=${source} lang=${job.language} segments=${segmentsToSave.length} normalize=${normalized.meta.applied ? 'applied' : 'skipped'} reason=${normalized.meta.reason}`,
       );
     } catch (err) {
       const message = mapErrorToMessage(err);
