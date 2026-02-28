@@ -20,7 +20,9 @@ export default function ImagePicker({ initialQuery, onSelect, onClose }: Props) 
   const [customUrl, setCustomUrl] = useState('');
   const [customPreviewError, setCustomPreviewError] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [tab, setTab] = useState<'search' | 'custom'>('search');
   const inputRef = useRef<HTMLInputElement>(null);
+  const customInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
 
   const doSearch = useCallback(async (term: string) => {
@@ -47,8 +49,9 @@ export default function ImagePicker({ initialQuery, onSelect, onClose }: Props) 
   }, [initialQuery, doSearch]);
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (tab === 'search') inputRef.current?.focus();
+    else customInputRef.current?.focus();
+  }, [tab]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -100,6 +103,7 @@ export default function ImagePicker({ initialQuery, onSelect, onClose }: Props) 
     if (url) {
       setCustomUrl(url);
       setCustomPreviewError(false);
+      setTab('custom');
     }
   }, []);
 
@@ -138,101 +142,119 @@ export default function ImagePicker({ initialQuery, onSelect, onClose }: Props) 
           <button className="word-popup-close" onClick={onClose}>&times;</button>
         </div>
 
-        <div className="lookup-search-row">
-          <input
-            ref={inputRef}
-            type="text"
-            className="form-input lookup-input"
-            placeholder="Search images..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') doSearch(query); }}
-          />
+        <div className="imgpicker-tabs">
           <button
-            className="btn btn-primary btn-sm"
-            onClick={() => doSearch(query)}
-            disabled={searching || !query.trim()}
+            className={`imgpicker-tab${tab === 'search' ? ' imgpicker-tab--active' : ''}`}
+            onClick={() => setTab('search')}
           >
             Search
           </button>
+          <button
+            className={`imgpicker-tab${tab === 'custom' ? ' imgpicker-tab--active' : ''}`}
+            onClick={() => setTab('custom')}
+          >
+            Custom URL
+          </button>
         </div>
 
-        <div className="imgpicker-divider"><span>or</span></div>
+        {tab === 'search' ? (
+          <>
+            <div className="lookup-search-row">
+              <input
+                ref={inputRef}
+                type="text"
+                className="form-input lookup-input"
+                placeholder="Search images..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') doSearch(query); }}
+              />
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => doSearch(query)}
+                disabled={searching || !query.trim()}
+              >
+                Search
+              </button>
+            </div>
 
-        <div className="imgpicker-custom-section">
-          <div className="imgpicker-custom-row">
-            <input
-              type="text"
-              className="form-input lookup-input"
-              placeholder="Paste image URL..."
-              value={customUrl}
-              onChange={(e) => {
-                setCustomUrl(e.target.value);
-                setCustomPreviewError(false);
-              }}
-            />
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => handleSelect(customUrl)}
-              disabled={!customUrl.trim() || customPreviewError || savingUrl !== null}
-            >
-              Use This Image
-            </button>
-          </div>
+            <div className="imgpicker-results">
+              {searching && (
+                <div className="lookup-center">
+                  <div className="loading-spinner" />
+                </div>
+              )}
 
-          {customUrl.trim() && (
-            <div className="imgpicker-custom-preview-wrap">
-              {!customPreviewError ? (
-                <img
-                  className="imgpicker-custom-preview"
-                  src={customUrl}
-                  alt="Preview"
-                  onError={() => setCustomPreviewError(true)}
-                />
-              ) : (
-                <div className="imgpicker-custom-preview imgpicker-custom-preview-error">
-                  Invalid image
+              {!searching && searched && images.length === 0 && (
+                <p className="lookup-empty">No images found.</p>
+              )}
+
+              {images.length > 0 && (
+                <div className="imgpicker-grid">
+                  {images.map((url) => (
+                    <button
+                      key={url}
+                      className="imgpicker-thumb"
+                      onClick={() => handleSelect(url)}
+                      disabled={savingUrl !== null}
+                    >
+                      <img src={url} alt="" />
+                      {savingUrl === url && (
+                        <div className="imgpicker-thumb-spinner">
+                          <div className="loading-spinner" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
-          )}
+          </>
+        ) : (
+          <div className="imgpicker-custom-section">
+            <div className="imgpicker-custom-row">
+              <input
+                ref={customInputRef}
+                type="text"
+                className="form-input lookup-input"
+                placeholder="Paste image URL..."
+                value={customUrl}
+                onChange={(e) => {
+                  setCustomUrl(e.target.value);
+                  setCustomPreviewError(false);
+                }}
+              />
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => handleSelect(customUrl)}
+                disabled={!customUrl.trim() || customPreviewError || savingUrl !== null}
+              >
+                Use This Image
+              </button>
+            </div>
 
-          <div className={`imgpicker-dropzone${dragging ? ' imgpicker-dropzone--active' : ''}`}>
-            Drag an image here from another tab
+            {customUrl.trim() && (
+              <div className="imgpicker-custom-preview-wrap">
+                {!customPreviewError ? (
+                  <img
+                    className="imgpicker-custom-preview"
+                    src={customUrl}
+                    alt="Preview"
+                    onError={() => setCustomPreviewError(true)}
+                  />
+                ) : (
+                  <div className="imgpicker-custom-preview imgpicker-custom-preview-error">
+                    Invalid image
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className={`imgpicker-dropzone${dragging ? ' imgpicker-dropzone--active' : ''}`}>
+              Drag an image here from another tab
+            </div>
           </div>
-        </div>
-
-        <div className="imgpicker-results">
-          {searching && (
-            <div className="lookup-center">
-              <div className="loading-spinner" />
-            </div>
-          )}
-
-          {!searching && searched && images.length === 0 && (
-            <p className="lookup-empty">No images found.</p>
-          )}
-
-          {images.length > 0 && (
-            <div className="imgpicker-grid">
-              {images.map((url) => (
-                <button
-                  key={url}
-                  className="imgpicker-thumb"
-                  onClick={() => handleSelect(url)}
-                  disabled={savingUrl !== null}
-                >
-                  <img src={url} alt="" />
-                  {savingUrl === url && (
-                    <div className="imgpicker-thumb-spinner">
-                      <div className="loading-spinner" />
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
