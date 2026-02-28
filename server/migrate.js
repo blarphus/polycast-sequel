@@ -238,6 +238,14 @@ export async function migrate(pool) {
     await client.query(`ALTER TABLE stream_posts ADD COLUMN IF NOT EXISTS topic_id UUID REFERENCES stream_topics(id) ON DELETE SET NULL;`);
     await client.query(`ALTER TABLE stream_posts ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;`);
 
+    // Enrichment columns on stream_post_words (full enrichment stored at post creation)
+    await client.query(`ALTER TABLE stream_post_words ADD COLUMN IF NOT EXISTS frequency INTEGER DEFAULT NULL;`);
+    await client.query(`ALTER TABLE stream_post_words ADD COLUMN IF NOT EXISTS frequency_count INTEGER DEFAULT NULL;`);
+    await client.query(`ALTER TABLE stream_post_words ADD COLUMN IF NOT EXISTS example_sentence TEXT DEFAULT NULL;`);
+    await client.query(`ALTER TABLE stream_post_words ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT NULL;`);
+    await client.query(`ALTER TABLE stream_post_words ADD COLUMN IF NOT EXISTS lemma TEXT DEFAULT NULL;`);
+    await client.query(`ALTER TABLE stream_post_words ADD COLUMN IF NOT EXISTS forms TEXT DEFAULT NULL;`);
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {

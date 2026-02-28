@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
+import { enrichWord } from '../enrichWord.js';
 
 const router = Router();
 
@@ -37,32 +38,6 @@ async function callGemini(prompt, generationConfig = {}) {
     throw new Error('Gemini returned no text content');
   }
   return text;
-}
-
-async function lookupWordForPost(word, nativeLang, targetLang) {
-  const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". The user's native language is ${nativeLang}.
-
-Return a JSON object with exactly these keys:
-{"translation":"...","definition":"...","part_of_speech":"..."}
-
-- translation: standard ${nativeLang} translation of "${word}", 1-3 words max
-- definition: what this word means in ${nativeLang}, 12 words max, no markdown
-- part_of_speech: one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
-
-Respond with ONLY the JSON object, no other text.`;
-
-  const raw = await callGemini(prompt, {
-    thinkingConfig: { thinkingBudget: 0 },
-    maxOutputTokens: 150,
-    responseMimeType: 'application/json',
-  });
-
-  const parsed = JSON.parse(raw);
-  return {
-    translation: parsed.translation || '',
-    definition: parsed.definition || '',
-    part_of_speech: parsed.part_of_speech || null,
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -442,20 +417,23 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
 
         const enriched = await Promise.all(
           words.map(async (word, i) => {
-            const result = await lookupWordForPost(
-              typeof word === 'string' ? word.trim() : word.word,
-              nativeLang,
-              targetLang,
-            );
-            return { word: typeof word === 'string' ? word.trim() : word.word, position: i, ...result };
+            const wordStr = typeof word === 'string' ? word.trim() : word.word;
+            const result = await enrichWord(wordStr, '', nativeLang, targetLang);
+            return { word: wordStr, position: i, ...result };
           }),
         );
 
         for (const w of enriched) {
           await client.query(
-            `INSERT INTO stream_post_words (post_id, word, translation, definition, part_of_speech, position)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [post.id, w.word, w.translation, w.definition, w.part_of_speech, w.position],
+            `INSERT INTO stream_post_words
+               (post_id, word, translation, definition, part_of_speech, position,
+                frequency, frequency_count, example_sentence, image_url, lemma, forms)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+            [
+              post.id, w.word, w.translation, w.definition, w.part_of_speech, w.position,
+              w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
+              w.image_url ?? null, w.lemma ?? null, w.forms ?? null,
+            ],
           );
         }
       }
@@ -644,10 +622,16 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, async
 
     for (const w of wordsToAdd) {
       const { rowCount } = await pool.query(
-        `INSERT INTO saved_words (user_id, word, translation, definition, target_language, part_of_speech, priority)
-         VALUES ($1, $2, $3, $4, $5, $6, true)
+        `INSERT INTO saved_words
+           (user_id, word, translation, definition, target_language, part_of_speech,
+            frequency, frequency_count, example_sentence, image_url, lemma, forms, priority)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true)
          ON CONFLICT DO NOTHING`,
-        [req.userId, w.word, w.translation, w.definition, targetLanguage, w.part_of_speech],
+        [
+          req.userId, w.word, w.translation, w.definition, targetLanguage, w.part_of_speech,
+          w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
+          w.image_url ?? null, w.lemma ?? null, w.forms ?? null,
+        ],
       );
       if (rowCount > 0) {
         added++;

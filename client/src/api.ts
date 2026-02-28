@@ -409,6 +409,12 @@ export interface StreamPostWord {
   definition: string;
   part_of_speech: string | null;
   position: number | null;
+  frequency?: number | null;
+  frequency_count?: number | null;
+  example_sentence?: string | null;
+  image_url?: string | null;
+  lemma?: string | null;
+  forms?: string | null;
 }
 
 export interface StreamPost {
