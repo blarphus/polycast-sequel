@@ -13,6 +13,8 @@ const YTDLP_PROXY_LIST_URL = process.env.YTDLP_PROXY_LIST_URL ||
 const YTDLP_PROXY_MAX_ATTEMPTS = Number(process.env.YTDLP_PROXY_MAX_ATTEMPTS || 20);
 const YTDLP_PROXY_CACHE_MS = Number(process.env.YTDLP_PROXY_CACHE_MS || 120000);
 const YTDLP_PROXY_ENABLED = process.env.YTDLP_PROXY_ENABLED !== 'false';
+const YTDLP_SOCKET_TIMEOUT_SECONDS = String(process.env.YTDLP_SOCKET_TIMEOUT_SECONDS || 8);
+const YTDLP_ATTEMPT_TIMEOUT_MS = Number(process.env.YTDLP_ATTEMPT_TIMEOUT_MS || 25000);
 
 let resolvedYtDlpBinaryPromise = null;
 let proxyCache = { expiresAt: 0, proxies: [] };
@@ -318,6 +320,7 @@ async function runYtDlp(url, language, outTemplate, mode) {
     '--no-call-home',
     '--no-check-certificates',
     '--geo-bypass',
+    '--socket-timeout', YTDLP_SOCKET_TIMEOUT_SECONDS,
     '--sub-format', 'vtt',
     '--sub-langs', language,
     '--extractor-args', 'youtube:player_client=tv,android,web_embedded',
@@ -336,16 +339,28 @@ async function runYtDlp(url, language, outTemplate, mode) {
   const execAttempt = (extraArgs = []) => new Promise((resolve, reject) => {
     const child = spawn(ytDlpBinary, [...args, ...extraArgs], { stdio: ['ignore', 'pipe', 'pipe'] });
     let stderr = '';
+    let timedOut = false;
 
     child.stderr.on('data', (chunk) => {
       stderr += chunk.toString();
     });
 
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGKILL');
+    }, YTDLP_ATTEMPT_TIMEOUT_MS);
+
     child.on('error', (err) => {
+      clearTimeout(timer);
       reject(classifyYtDlpFailure(`${stderr}\n${err.message}`));
     });
 
     child.on('close', (code) => {
+      clearTimeout(timer);
+      if (timedOut) {
+        reject(classifyYtDlpFailure(`${stderr}\nTimed out after ${YTDLP_ATTEMPT_TIMEOUT_MS}ms`));
+        return;
+      }
       if (code === 0) {
         resolve();
         return;
