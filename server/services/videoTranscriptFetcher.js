@@ -2,20 +2,14 @@ import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const MANAGED_BIN_DIR = path.join(os.tmpdir(), 'polycast-tools');
+const MANAGED_YTDLP_BINARY = path.join(MANAGED_BIN_DIR, 'yt-dlp');
+const YTDLP_BINARY_ENV = process.env.YTDLP_BINARY || null;
+const YTDLP_DOWNLOAD_URL = process.env.YTDLP_DOWNLOAD_URL ||
+  'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp';
 
-const DEFAULT_YTDLP_BINARY = path.resolve(
-  __dirname,
-  '..',
-  'node_modules',
-  'youtube-dl-exec',
-  'bin',
-  'yt-dlp',
-);
-const YTDLP_BINARY = process.env.YTDLP_BINARY || DEFAULT_YTDLP_BINARY;
+let resolvedYtDlpBinaryPromise = null;
 
 export class TranscriptFetchError extends Error {
   constructor(message, code, transient = false) {
@@ -24,6 +18,94 @@ export class TranscriptFetchError extends Error {
     this.code = code;
     this.transient = transient;
   }
+}
+
+async function commandWorks(commandPath, args = ['--version']) {
+  return new Promise((resolve) => {
+    const child = spawn(commandPath, args, { stdio: ['ignore', 'ignore', 'ignore'] });
+    let settled = false;
+
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      child.kill('SIGKILL');
+      resolve(false);
+    }, 8000);
+
+    child.on('error', () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(false);
+    });
+
+    child.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(code === 0);
+    });
+  });
+}
+
+async function ensureManagedYtDlpBinary() {
+  await fs.mkdir(MANAGED_BIN_DIR, { recursive: true });
+
+  const response = await fetch(YTDLP_DOWNLOAD_URL, {
+    redirect: 'follow',
+    headers: { 'User-Agent': 'polycast-sequel/1.0' },
+  });
+
+  if (!response.ok) {
+    throw new TranscriptFetchError(
+      `Failed to download yt-dlp binary (${response.status}).`,
+      'CONFIG_ERROR',
+      false,
+    );
+  }
+
+  const bytes = Buffer.from(await response.arrayBuffer());
+  const tempFile = `${MANAGED_YTDLP_BINARY}.tmp`;
+  await fs.writeFile(tempFile, bytes, { mode: 0o755 });
+  await fs.rename(tempFile, MANAGED_YTDLP_BINARY);
+  await fs.chmod(MANAGED_YTDLP_BINARY, 0o755);
+}
+
+async function resolveYtDlpBinary() {
+  if (YTDLP_BINARY_ENV) {
+    const exists = await commandWorks(YTDLP_BINARY_ENV);
+    if (exists) return YTDLP_BINARY_ENV;
+  }
+
+  if (await commandWorks('yt-dlp')) {
+    return 'yt-dlp';
+  }
+
+  if (await commandWorks(MANAGED_YTDLP_BINARY)) {
+    return MANAGED_YTDLP_BINARY;
+  }
+
+  await ensureManagedYtDlpBinary();
+
+  if (await commandWorks(MANAGED_YTDLP_BINARY)) {
+    return MANAGED_YTDLP_BINARY;
+  }
+
+  throw new TranscriptFetchError(
+    'yt-dlp binary is not available on the server.',
+    'CONFIG_ERROR',
+    false,
+  );
+}
+
+async function getYtDlpBinary() {
+  if (!resolvedYtDlpBinaryPromise) {
+    resolvedYtDlpBinaryPromise = resolveYtDlpBinary().catch((err) => {
+      resolvedYtDlpBinaryPromise = null;
+      throw err;
+    });
+  }
+  return resolvedYtDlpBinaryPromise;
 }
 
 function decodeEntities(text) {
@@ -166,7 +248,8 @@ function classifyYtDlpFailure(stderrText) {
 
   if (normalized.includes('enoent') ||
       normalized.includes('python') ||
-      normalized.includes('permission denied')) {
+      normalized.includes('permission denied') ||
+      normalized.includes('not found')) {
     return new TranscriptFetchError(
       'yt-dlp is not configured correctly on the server.',
       'CONFIG_ERROR',
@@ -199,18 +282,10 @@ async function runYtDlp(url, language, outTemplate, mode) {
     args.push('--write-auto-subs');
   }
 
-  try {
-    await fs.access(YTDLP_BINARY);
-  } catch {
-    throw new TranscriptFetchError(
-      'yt-dlp binary is not available on the server.',
-      'CONFIG_ERROR',
-      false,
-    );
-  }
+  const ytDlpBinary = await getYtDlpBinary();
 
   await new Promise((resolve, reject) => {
-    const child = spawn(YTDLP_BINARY, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(ytDlpBinary, args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let stderr = '';
 
     child.stderr.on('data', (chunk) => {
