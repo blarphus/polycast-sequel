@@ -179,7 +179,7 @@ const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
 
 async function fetchWiktSenses(word, targetLang, nativeLang) {
   const edition = WIKT_EDITIONS.has(nativeLang) ? nativeLang : 'en';
-  const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word)}/definitions?lang=${targetLang}`;
+  const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word.toLowerCase())}/definitions?lang=${targetLang}`;
   const response = await fetch(url, { headers: API_HEADERS });
 
   if (response.status === 404) return [];
