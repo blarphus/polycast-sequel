@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getNewToday, SavedWord } from '../api';
 import FriendRequests from '../components/FriendRequests';
+import PendingClasswork from '../components/PendingClasswork';
 
 const LEVEL_COLORS = ['#ff4d4d', '#ff944d', '#ffdd4d', '#75d147', '#4ade80'];
 
@@ -77,6 +78,9 @@ export default function Home() {
     <div className="home-page">
       {/* Pending friend requests */}
       <FriendRequests />
+
+      {/* Pending classwork (students only) */}
+      {user?.account_type !== 'teacher' && <PendingClasswork />}
 
       {/* Hero: greeting left, new-words card right */}
       <div className="home-hero">

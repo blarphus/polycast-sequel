@@ -142,6 +142,49 @@ router.get('/api/stream', authMiddleware, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/stream/pending — incomplete word lists for students
+// ---------------------------------------------------------------------------
+
+router.get('/api/stream/pending', authMiddleware, async (req, res) => {
+  try {
+    const { rows: userRows } = await pool.query(
+      'SELECT account_type FROM users WHERE id = $1',
+      [req.userId],
+    );
+    if (userRows.length === 0) return res.status(401).json({ error: 'User not found' });
+    if (userRows[0].account_type === 'teacher') {
+      return res.json({ count: 0, posts: [] });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT sp.id, sp.title, sp.created_at,
+              COALESCE(wc.cnt, 0)::int AS word_count,
+              COALESCE(u.display_name, u.username) AS teacher_name
+       FROM stream_posts sp
+       JOIN users u ON u.id = sp.teacher_id
+       LEFT JOIN (
+         SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
+       ) wc ON wc.post_id = sp.id
+       WHERE sp.type = 'word_list'
+         AND sp.teacher_id IN (
+           SELECT teacher_id FROM classroom_students WHERE student_id = $1
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM stream_word_list_completions swlc
+           WHERE swlc.post_id = sp.id AND swlc.student_id = $1
+         )
+       ORDER BY sp.created_at DESC`,
+      [req.userId],
+    );
+
+    return res.json({ count: rows.length, posts: rows });
+  } catch (err) {
+    console.error('GET /api/stream/pending error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to load pending classwork' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // POST /api/stream/topics — create a topic (teacher only)
 // ---------------------------------------------------------------------------
 

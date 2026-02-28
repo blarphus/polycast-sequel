@@ -2,9 +2,10 @@
 // components/BottomToolbar.tsx -- Bottom navigation bar (Home | Dictionary | Learn | Chats)
 // ---------------------------------------------------------------------------
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { getPendingClasswork } from '../api';
 
 export default function BottomToolbar() {
   const location = useLocation();
@@ -12,6 +13,17 @@ export default function BottomToolbar() {
   const { user } = useAuth();
 
   const isTeacher = user?.account_type === 'teacher';
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (isTeacher) return;
+    let cancelled = false;
+    getPendingClasswork()
+      .then((data) => { if (!cancelled) setPendingCount(data.count); })
+      .catch((err) => console.error('Failed to fetch pending classwork count:', err));
+    return () => { cancelled = true; };
+  }, [isTeacher]);
+
   const isHome = location.pathname === '/';
   const isDictionary = location.pathname === '/dictionary';
   const isLearn = location.pathname === '/learn';
@@ -58,10 +70,13 @@ export default function BottomToolbar() {
           className={`toolbar-tab toolbar-tab--teal${isClasswork ? ' active' : ''}`}
           onClick={() => navigate('/classwork')}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-            <path d="M6 12v5c3 3 9 3 12 0v-5" />
-          </svg>
+          <span className="toolbar-tab-icon-wrap">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+              <path d="M6 12v5c3 3 9 3 12 0v-5" />
+            </svg>
+            {pendingCount > 0 && <span className="toolbar-badge">{pendingCount}</span>}
+          </span>
           <span className="toolbar-label">Classwork</span>
         </button>
       )}

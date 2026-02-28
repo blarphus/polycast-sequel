@@ -539,6 +539,25 @@ export function lookupPostWords(words: string[], nativeLang: string, targetLang:
   });
 }
 
+// ---- Pending Classwork (Student) -------------------------------------------
+
+export interface PendingWordList {
+  id: string;
+  title: string;
+  word_count: number;
+  teacher_name: string;
+  created_at: string;
+}
+
+export interface PendingClasswork {
+  count: number;
+  posts: PendingWordList[];
+}
+
+export function getPendingClasswork() {
+  return request<PendingClasswork>('/stream/pending');
+}
+
 export function generateExampleSentence(word: string, targetLang: string, definition?: string) {
   const body: Record<string, unknown> = { word, targetLang };
   if (definition) body.definition = definition;
