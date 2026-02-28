@@ -14,7 +14,7 @@ async function callGemini(prompt, generationConfig = {}) {
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
   const response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -327,6 +327,36 @@ router.patch('/api/stream/reorder', authMiddleware, async (req, res) => {
     return res.status(500).json({ error: err.message || 'Failed to reorder' });
   }
 });
+
+// ---------------------------------------------------------------------------
+// lookupWordForPost — quick translation/definition preview for word list creation
+// ---------------------------------------------------------------------------
+
+async function lookupWordForPost(word, nativeLang, targetLang) {
+  const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". The user's native language is ${nativeLang}.
+
+Return a JSON object with exactly these keys:
+{"translation":"...","definition":"...","part_of_speech":"..."}
+
+- translation: standard ${nativeLang} translation of "${word}", 1-3 words max
+- definition: what this word means in ${nativeLang}, 12 words max, no markdown
+- part_of_speech: one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
+
+Respond with ONLY the JSON object, no other text.`;
+
+  const raw = await callGemini(prompt, {
+    thinkingConfig: { thinkingBudget: 0 },
+    maxOutputTokens: 150,
+    responseMimeType: 'application/json',
+  });
+
+  const parsed = JSON.parse(raw);
+  return {
+    translation: parsed.translation || '',
+    definition: parsed.definition || '',
+    part_of_speech: parsed.part_of_speech || null,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // POST /api/stream/words/lookup — preview word translations (teacher only)

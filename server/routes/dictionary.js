@@ -32,7 +32,7 @@ async function callGemini(prompt, generationConfig = {}) {
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
   const response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
