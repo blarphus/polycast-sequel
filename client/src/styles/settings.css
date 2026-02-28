@@ -1,0 +1,347 @@
+/* ==========================================================================
+   Word Lookup Modal
+   ========================================================================== */
+
+.dict-lookup-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.dict-lookup-btn:hover {
+  background: var(--accent-hover);
+  transform: scale(1.08);
+}
+
+.dict-lookup-btn:active {
+  transform: scale(0.95);
+}
+
+.lookup-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.lookup-modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  margin: 1rem;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+.lookup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.lookup-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.lookup-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  flex-shrink: 0;
+}
+
+.lookup-input {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.lookup-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 1.25rem 1rem;
+  min-height: 80px;
+}
+
+.lookup-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 0;
+}
+
+.lookup-error {
+  color: var(--danger);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.lookup-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.lookup-count {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  margin: 0.5rem 0;
+}
+
+.lookup-sense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lookup-sense {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+
+.lookup-sense:hover:not(:disabled) {
+  background: var(--bg-surface-hover);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.lookup-sense:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.lookup-sense:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.lookup-gloss {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.lookup-sense--saved {
+  border-color: var(--success);
+  background: var(--success-dim);
+  cursor: default;
+}
+
+.lookup-sense--saved:hover:not(:disabled) {
+  transform: none;
+}
+
+.lookup-saved-check {
+  flex-shrink: 0;
+  color: var(--success);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+/* ==========================================================================
+   Image Picker Modal
+   ========================================================================== */
+
+.imgpicker-modal {
+  max-width: 560px;
+}
+
+.imgpicker-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  min-height: 200px;
+}
+
+.imgpicker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.imgpicker-thumb {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--bg-surface);
+  padding: 0;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.imgpicker-thumb:hover:not(:disabled) {
+  border-color: var(--accent);
+  transform: scale(1.03);
+}
+
+.imgpicker-thumb:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.imgpicker-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.imgpicker-thumb-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: var(--radius-sm);
+}
+
+.dict-image-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.dict-change-image-btn,
+.dict-add-image-btn {
+  background: none;
+  border: none;
+  padding: 0.15rem 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.dict-change-image-btn:hover,
+.dict-add-image-btn:hover {
+  color: var(--accent);
+}
+
+.dict-add-image-btn {
+  font-size: 0.8rem;
+  padding: 0.5rem 0;
+}
+
+@media (max-width: 600px) {
+  .imgpicker-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ==========================================================================
+   Theme Toggle (Settings page)
+   ========================================================================== */
+
+.theme-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.theme-toggle {
+  display: flex;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.theme-toggle-option {
+  padding: 0.4rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  border-radius: 999px;
+}
+
+.theme-toggle-option.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ---- Texture toggle (Settings page) ------------------------------------- */
+
+.texture-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.texture-toggle {
+  display: flex;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.texture-toggle-option {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: var(--font);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  border-radius: 999px;
+}
+
+.texture-toggle-option.active {
+  background: var(--accent);
+  color: #fff;
+}

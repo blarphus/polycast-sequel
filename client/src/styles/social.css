@@ -1,0 +1,154 @@
+/* ==========================================================================
+   Social -- User Search, Online Dot, Friend Requests
+   ========================================================================== */
+
+/* ---- User Search --------------------------------------------------------- */
+
+.user-search {
+  position: relative;
+}
+
+.user-search-input-wrap {
+  position: relative;
+}
+
+.user-search-input {
+  padding-right: 2.5rem;
+}
+
+.user-search-spinner {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.user-search-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.user-search-results {
+  list-style: none;
+  margin-top: 0.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.user-search-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  transition: background var(--transition);
+}
+
+.user-search-item:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+.user-search-item:hover {
+  background: var(--bg-surface-hover);
+}
+
+.user-search-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-search-display {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.user-search-username {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.user-search-empty {
+  margin-top: 0.5rem;
+}
+
+/* ---- Online Dot ---------------------------------------------------------- */
+
+.online-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.online-dot.online {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+.online-dot.offline {
+  background: var(--text-muted);
+}
+
+/* ---- User Search Actions ------------------------------------------------- */
+
+.user-search-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ---- Friend Requests ----------------------------------------------------- */
+
+.friend-requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.friend-request-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+
+.friend-request-item:hover {
+  background: var(--bg-surface-hover);
+}
+
+.friend-request-info {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.friend-request-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.friend-request-username {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.friend-request-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

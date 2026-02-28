@@ -1,0 +1,140 @@
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 600px) {
+  .home-header {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .home-header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .home-main {
+    padding: 1rem;
+    padding-bottom: 100px;
+  }
+
+  .home-page {
+    padding: 1.25rem 1rem 7rem;
+  }
+
+  .home-hero {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .home-hero-left {
+    padding: 0.5rem 0 0;
+  }
+
+  .home-greeting {
+    font-size: 1.35rem;
+  }
+
+  .home-greeting-sub {
+    margin-bottom: 1rem;
+  }
+
+  .home-start-learning-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .call-local-video {
+    width: 120px;
+    height: 90px;
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+
+  .conversations-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .conversation-item {
+    padding: 0.75rem 1rem;
+  }
+
+  .chat-bubble {
+    max-width: 85%;
+  }
+
+  .incoming-call-modal {
+    min-width: unset;
+    margin: 1rem;
+  }
+
+  .auth-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .call-controls-bar {
+    gap: 0.65rem;
+    padding: 0.6rem 1rem;
+    bottom: 1.5rem;
+  }
+
+  .call-control-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .call-control-btn--danger {
+    width: 48px;
+    height: 48px;
+  }
+
+  .subtitle-bar {
+    padding-bottom: 6rem;
+  }
+
+  .transcript-panel {
+    height: clamp(120px, 25vh, 220px);
+  }
+
+  .test-label {
+    top: 0.75rem;
+    left: 0.75rem;
+  }
+
+  /* Bottom toolbar responsive */
+  .bottom-toolbar {
+    width: calc(100% - 2rem);
+    bottom: 12px;
+  }
+
+  /* Dictionary controls responsive */
+  .dict-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dict-sort {
+    min-width: unset;
+    width: 100%;
+  }
+
+  /* Flashcard responsive */
+  .flashcard {
+    width: min(85vw, 500px);
+    height: min(50vh, 350px);
+  }
+
+  .flashcard-answer-buttons {
+    gap: 10px;
+  }
+
+  .flashcard-btn {
+    padding: 0.6rem 1rem;
+    max-width: 170px;
+  }
+
+  .flashcard-complete-stats {
+    gap: 1.25rem;
+  }
+}
