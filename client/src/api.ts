@@ -415,7 +415,11 @@ export interface StreamPostWord {
   image_url?: string | null;
   lemma?: string | null;
   forms?: string | null;
+  image_urls?: string[];
+  definitions?: Array<{ gloss: string; pos: string }>;
 }
+
+export type WordOverride = { word: string; image_url?: string | null; definition?: string };
 
 export interface StreamPost {
   id: string;
@@ -455,7 +459,7 @@ export function createPost(data: {
   title: string;
   body?: string;
   attachments?: StreamAttachment[];
-  words?: string[];
+  words?: (string | WordOverride)[];
   target_language?: string;
   lesson_items?: LessonItem[];
   topic_id?: string | null;

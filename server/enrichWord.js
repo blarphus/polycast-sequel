@@ -86,7 +86,16 @@ const WIKT_EDITIONS = new Set([
   'ku','ms','nl','pl','pt','ru','th','tr','vi','zh',
 ]);
 
-async function fetchWiktSenses(word, targetLang, nativeLang) {
+export async function fetchWordImages(searchTerm, count = 5) {
+  try {
+    return await searchPixabay(searchTerm, count);
+  } catch (err) {
+    console.error('fetchWordImages error:', err);
+    return [];
+  }
+}
+
+export async function fetchWiktSenses(word, targetLang, nativeLang) {
   const edition = WIKT_EDITIONS.has(nativeLang) ? nativeLang : 'en';
   const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word)}/definitions?lang=${targetLang}`;
   const response = await fetch(url, { headers: API_HEADERS });

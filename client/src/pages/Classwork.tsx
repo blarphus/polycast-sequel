@@ -5,7 +5,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import * as api from '../api';
-import type { StreamPost, StreamTopic, StreamPostWord, StreamAttachment, LessonItem } from '../api';
+import type { StreamPost, StreamTopic, StreamPostWord, StreamAttachment, LessonItem, WordOverride } from '../api';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -292,7 +292,7 @@ function WordListTab({
 }: {
   defaultTargetLang: string;
   nativeLang: string;
-  onSubmit: (data: { title: string; words: string[]; target_language: string }) => Promise<void>;
+  onSubmit: (data: { title: string; words: (string | WordOverride)[]; target_language: string }) => Promise<void>;
 }) {
   const [title, setTitle] = useState('');
   const [targetLang, setTargetLang] = useState(defaultTargetLang);
@@ -303,6 +303,7 @@ function WordListTab({
   const [submitting, setSubmitting] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const [openDefPicker, setOpenDefPicker] = useState<number | null>(null);
 
   const wordLines = wordsText.split('\n').map((w) => w.trim()).filter(Boolean);
 
@@ -326,12 +327,28 @@ function WordListTab({
     }
   };
 
+  const cycleImage = (i: number) => {
+    setPreview(prev => {
+      if (!prev) return prev;
+      const w = prev[i];
+      const urls = w.image_urls;
+      if (!urls || urls.length <= 1) return prev;
+      const cur = urls.indexOf(w.image_url || '');
+      const next = (cur + 1) % urls.length;
+      return prev.map((p, j) => j === i ? { ...p, image_url: urls[next] } : p);
+    });
+  };
+
   const handleSubmit = async () => {
     if (!preview || preview.length === 0) { setSubmitError('No words to post'); return; }
     setSubmitting(true);
     setSubmitError('');
     try {
-      await onSubmit({ title, words: preview.map((w) => w.word), target_language: targetLang });
+      await onSubmit({
+        title,
+        words: preview.map(w => ({ word: w.word, image_url: w.image_url ?? null, definition: w.definition })),
+        target_language: targetLang,
+      });
     } catch (err: any) {
       console.error('Create word list post failed:', err);
       setSubmitError(err instanceof Error ? err.message : String(err));
@@ -389,22 +406,61 @@ function WordListTab({
               <span />
             </div>
             {preview.map((w, i) => (
-              <div key={i} className="stream-preview-row">
-                <span className="stream-preview-img">
-                  {w.image_url
-                    ? <img src={w.image_url} alt={w.word} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} />
-                    : <span style={{ display: 'inline-block', width: 40, height: 40, background: '#eee', borderRadius: 4 }} />}
-                </span>
-                <span className="stream-preview-word">{w.word}</span>
-                <span className="stream-preview-translation">{w.translation}</span>
-                <span className="stream-preview-pos">{w.part_of_speech || '—'}</span>
-                <button
-                  className="btn-small btn-danger"
-                  onClick={() => setPreview((prev) => prev ? prev.filter((_, j) => j !== i) : prev)}
-                >
-                  ✕
-                </button>
-              </div>
+              <React.Fragment key={i}>
+                <div className="stream-preview-row">
+                  <span
+                    className="stream-preview-img"
+                    onClick={() => (w.image_urls?.length ?? 0) > 1 && cycleImage(i)}
+                    style={{ cursor: (w.image_urls?.length ?? 0) > 1 ? 'pointer' : 'default', position: 'relative', display: 'inline-block' }}
+                  >
+                    {w.image_url
+                      ? <img src={w.image_url} alt={w.word} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
+                      : <span style={{ display: 'inline-block', width: 40, height: 40, background: '#eee', borderRadius: 4 }} />}
+                    {(w.image_urls?.length ?? 0) > 1 && (
+                      <span className="img-cycle-badge">
+                        {(w.image_urls!.indexOf(w.image_url || '') + 1)}/{w.image_urls!.length}
+                      </span>
+                    )}
+                  </span>
+                  <span className="stream-preview-word">{w.word}</span>
+                  <span className="stream-preview-translation">
+                    <span>{w.translation}</span>
+                    <span
+                      className={`stream-preview-def${(w.definitions?.length ?? 0) > 0 ? ' clickable' : ''}`}
+                      onClick={() => (w.definitions?.length ?? 0) > 0 && setOpenDefPicker(openDefPicker === i ? null : i)}
+                    >
+                      {w.definition || '—'}
+                      {(w.definitions?.length ?? 0) > 0 && <span className="def-picker-hint"> ▾</span>}
+                    </span>
+                  </span>
+                  <span className="stream-preview-pos">{w.part_of_speech || '—'}</span>
+                  <button
+                    className="btn-small btn-danger"
+                    onClick={() => setPreview((prev) => prev ? prev.filter((_, j) => j !== i) : prev)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                {openDefPicker === i && w.definitions && w.definitions.length > 0 && (
+                  <div className="stream-def-picker">
+                    {w.definitions.map((d, di) => (
+                      <div
+                        key={di}
+                        className={`def-picker-option${d.gloss === w.definition ? ' selected' : ''}`}
+                        onClick={() => {
+                          setPreview(prev => prev
+                            ? prev.map((p, j) => j === i ? { ...p, definition: d.gloss, part_of_speech: d.pos || p.part_of_speech } : p)
+                            : prev);
+                          setOpenDefPicker(null);
+                        }}
+                      >
+                        <span className="def-picker-pos">{d.pos}</span>
+                        <span>{d.gloss}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </React.Fragment>
             ))}
           </div>
           <button
@@ -623,7 +679,7 @@ function CreatePostModal({
     onCreated(post);
   };
 
-  const handleWordListSubmit = async (data: { title: string; words: string[]; target_language: string }) => {
+  const handleWordListSubmit = async (data: { title: string; words: (string | WordOverride)[]; target_language: string }) => {
     const post = await api.createPost({ type: 'word_list', ...data, topic_id: selectedTopicId });
     onCreated(post);
   };

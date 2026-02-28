@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord, fetchWordImage } from '../enrichWord.js';
+import { enrichWord, fetchWordImage, fetchWordImages, fetchWiktSenses } from '../enrichWord.js';
 
 const router = Router();
 
@@ -344,19 +344,20 @@ Return a JSON object with exactly these keys:
 
 Respond with ONLY the JSON object, no other text.`;
 
-  const raw = await callGemini(prompt, {
-    thinkingConfig: { thinkingBudget: 0 },
-    maxOutputTokens: 150,
-    responseMimeType: 'application/json',
-  });
+  const [raw, image_urls, wiktSenses] = await Promise.all([
+    callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 150, responseMimeType: 'application/json' }),
+    fetchWordImages(word, 5),
+    fetchWiktSenses(word, targetLang, nativeLang),
+  ]);
 
   const parsed = JSON.parse(raw);
-  const image_url = await fetchWordImage(word);
   return {
     translation: parsed.translation || '',
     definition: parsed.definition || '',
     part_of_speech: parsed.part_of_speech || null,
-    image_url,
+    image_url: image_urls[0] || null,
+    image_urls,
+    definitions: wiktSenses.map(s => ({ gloss: s.gloss, pos: s.pos })),
   };
 }
 
@@ -451,6 +452,10 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
           words.map(async (word, i) => {
             const wordStr = typeof word === 'string' ? word.trim() : word.word;
             const result = await enrichWord(wordStr, '', nativeLang, targetLang);
+            if (typeof word === 'object') {
+              if (word.image_url !== undefined) result.image_url = word.image_url;
+              if (word.definition !== undefined) result.definition = word.definition;
+            }
             return { word: wordStr, position: i, ...result };
           }),
         );
