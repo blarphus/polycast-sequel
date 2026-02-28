@@ -13,16 +13,17 @@ export default function BottomToolbar() {
   const { user } = useAuth();
 
   const isTeacher = user?.account_type === 'teacher';
+  const isStudent = user?.account_type === 'student';
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
-    if (isTeacher) return;
+    if (!isStudent) return;
     let cancelled = false;
     getPendingClasswork()
       .then((data) => { if (!cancelled) setPendingCount(data.count); })
       .catch((err) => console.error('Failed to fetch pending classwork count:', err));
     return () => { cancelled = true; };
-  }, [isTeacher]);
+  }, [isStudent]);
 
   const isHome = location.pathname === '/';
   const isDictionary = location.pathname === '/dictionary';

@@ -80,7 +80,7 @@ export default function Home() {
       <FriendRequests />
 
       {/* Pending classwork (students only) */}
-      {user?.account_type !== 'teacher' && <PendingClasswork />}
+      {user?.account_type === 'student' && <PendingClasswork />}
 
       {/* Hero: greeting left, new-words card right */}
       <div className="home-hero">
