@@ -1,62 +1,9 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord as enrichWordHelper } from '../enrichWord.js';
+import { enrichWord as enrichWordHelper, callGemini, searchPixabay, fetchWiktSenses, WIKT_EDITIONS, API_HEADERS } from '../enrichWord.js';
 
 const router = Router();
-
-async function searchPixabay(query, perPage = 3) {
-  const pixabayKey = process.env.PIXABAY_API_KEY;
-  if (!pixabayKey) {
-    console.error('PIXABAY_API_KEY is not set — skipping Pixabay search');
-    return [];
-  }
-  const params = new URLSearchParams({
-    key: pixabayKey,
-    q: query,
-    image_type: 'photo',
-    per_page: String(perPage),
-    safesearch: 'true',
-  });
-  const res = await fetch(`https://pixabay.com/api/?${params}`);
-  if (!res.ok) {
-    console.error('Pixabay search failed:', res.status);
-    return [];
-  }
-  const data = await res.json();
-  return (data.hits || []).map(h => h.webformatURL);
-}
-
-async function callGemini(prompt, generationConfig = {}) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
-
-  const response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig,
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const err = await response.text();
-    console.error('Gemini API error:', err);
-    throw new Error('Gemini request failed');
-  }
-
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    console.error('Gemini API returned no text content:', JSON.stringify(data).slice(0, 500));
-    throw new Error('Gemini returned no text content');
-  }
-  return text;
-}
 
 /**
  * GET /api/dictionary/lookup?word=X&sentence=Y&nativeLang=Z&targetLang=W
@@ -78,7 +25,7 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
     let wiktSenses = [];
     if (targetLang) {
       try {
-        wiktSenses = await fetchWiktSenses(word, targetLang, nativeLang);
+        wiktSenses = await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang);
       } catch (err) {
         console.error('fetchWiktSenses error in lookup:', err);
       }
@@ -170,50 +117,6 @@ Respond with ONLY the JSON object, no other text.`;
  * GET /api/dictionary/wikt-lookup?word=X&targetLang=Y&nativeLang=Z
  * Proxies to WiktApi for structured Wiktionary definitions.
  */
-const WIKT_EDITIONS = new Set([
-  'cs','de','el','en','es','fr','id','it','ja','ko',
-  'ku','ms','nl','pl','pt','ru','th','tr','vi','zh',
-]);
-
-const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
-
-async function fetchWiktSenses(word, targetLang, nativeLang) {
-  const edition = WIKT_EDITIONS.has(nativeLang) ? nativeLang : 'en';
-  const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word.toLowerCase())}/definitions?lang=${targetLang}`;
-  const response = await fetch(url, { headers: API_HEADERS });
-
-  if (response.status === 404) return [];
-  if (!response.ok) {
-    console.error('WiktApi error:', response.status, await response.text().catch(() => ''));
-    return [];
-  }
-
-  const data = await response.json();
-  const senses = [];
-  for (const entry of data.definitions || []) {
-    const pos = entry.pos || '';
-    for (const sense of entry.senses || []) {
-      if ((sense.tags || []).includes('form-of')) continue;
-      const firstExample = (sense.examples || []).find(e => e.type === 'example') || null;
-      let example = null;
-      if (firstExample) {
-        let text = firstExample.text;
-        const offsets = (firstExample.bold_text_offsets || []).slice().sort((a, b) => b[0] - a[0]);
-        for (const [start, end] of offsets) {
-          text = text.slice(0, start) + '~' + text.slice(start, end) + '~' + text.slice(end);
-        }
-        example = { text, translation: firstExample.translation || firstExample.english || null };
-      }
-      for (const gloss of sense.glosses || []) {
-        if (!gloss) continue;
-        senses.push({ gloss, pos, tags: sense.tags || [], example });
-      }
-    }
-  }
-  return senses;
-}
-
-
 router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
   const { word, targetLang, nativeLang } = req.query;
 
@@ -222,7 +125,7 @@ router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
   }
 
   try {
-    const senses = await fetchWiktSenses(word, targetLang, nativeLang);
+    const senses = await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang);
     return res.json({ word, senses });
   } catch (err) {
     console.error('WiktApi network error:', err);

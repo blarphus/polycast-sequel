@@ -1,45 +1,10 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord, fetchWordImage } from '../enrichWord.js';
+import { enrichWord, fetchWordImage, callGemini } from '../enrichWord.js';
 import { getEnglishFrequency, getEnglishFrequencyCount } from '../lib/englishFrequency.js';
 
 const router = Router();
-
-// ---------------------------------------------------------------------------
-// Gemini helper
-// ---------------------------------------------------------------------------
-
-async function callGemini(prompt, generationConfig = {}) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
-
-  const response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig,
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const err = await response.text();
-    console.error('Gemini API error:', err);
-    throw new Error('Gemini request failed');
-  }
-
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    console.error('Gemini returned no text content:', JSON.stringify(data).slice(0, 500));
-    throw new Error('Gemini returned no text content');
-  }
-  return text;
-}
 
 // ---------------------------------------------------------------------------
 // GET /api/stream

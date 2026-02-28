@@ -1831,14 +1831,6 @@ select.form-input {
   50% { opacity: 0.15; }
 }
 
-.stream-word-chip--skeleton {
-  width: 80px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
-  animation: skeleton-pulse 1.2s ease-in-out infinite;
-}
-
 .word-list-enriching {
   font-size: 0.75rem;
   color: var(--text-muted);
@@ -4263,74 +4255,6 @@ select.form-input {
   background: var(--bg-elevated);
   border-color: var(--accent);
   text-decoration: none;
-}
-
-/* ---- Word chips ----------------------------------------------------------- */
-
-.stream-word-chips-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 0.5rem;
-}
-
-.stream-word-chips-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.stream-word-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-.stream-word-chip--interactive {
-  cursor: pointer;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
-}
-
-.stream-word-chip--interactive:hover {
-  background: var(--bg-elevated);
-  border-color: var(--border-light);
-}
-
-.stream-word-chip--known {
-  background: var(--bg-elevated) !important;
-  color: var(--text-muted) !important;
-  border-color: transparent !important;
-  text-decoration: line-through;
-  opacity: 0.65;
-}
-
-.stream-word-chip--more {
-  background: transparent;
-  border-style: dashed;
-  color: var(--text-muted);
-  font-size: 0.78rem;
-}
-
-.stream-chip-word {
-  font-weight: 600;
-}
-
-.stream-chip-translation {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-}
-
-.stream-word-chip--known .stream-chip-translation {
-  color: var(--text-muted);
 }
 
 .stream-word-count-label {

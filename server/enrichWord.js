@@ -6,9 +6,9 @@
 
 import { getEnglishFrequency, getEnglishFrequencyCount } from './lib/englishFrequency.js';
 
-const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
+export const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
 
-async function searchPixabay(query, perPage = 3) {
+export async function searchPixabay(query, perPage = 3) {
   const pixabayKey = process.env.PIXABAY_API_KEY;
   if (!pixabayKey) {
     console.error('PIXABAY_API_KEY is not set — skipping Pixabay search');
@@ -50,7 +50,7 @@ function parseFrequency(str) {
   return n;
 }
 
-async function callGemini(prompt, generationConfig = {}) {
+export async function callGemini(prompt, generationConfig = {}) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
@@ -81,12 +81,12 @@ async function callGemini(prompt, generationConfig = {}) {
   return text;
 }
 
-const WIKT_EDITIONS = new Set([
+export const WIKT_EDITIONS = new Set([
   'cs','de','el','en','es','fr','id','it','ja','ko',
   'ku','ms','nl','pl','pt','ru','th','tr','vi','zh',
 ]);
 
-async function fetchWiktSenses(word, targetLang, nativeLang) {
+export async function fetchWiktSenses(word, targetLang, nativeLang) {
   const edition = WIKT_EDITIONS.has(nativeLang) ? nativeLang : 'en';
   const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word)}/definitions?lang=${targetLang}`;
   const response = await fetch(url, { headers: API_HEADERS });
