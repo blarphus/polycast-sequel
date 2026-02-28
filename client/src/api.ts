@@ -224,7 +224,7 @@ export function lookupWord(word: string, sentence: string, nativeLang: string, t
   return request<{ word: string; valid: boolean; translation: string; definition: string; part_of_speech: string | null; sense_index: number | null; matched_gloss: string | null; lemma: string | null }>(`/dictionary/lookup?${params}`);
 }
 
-export interface WiktSense { gloss: string; pos: string; tags: string[]; }
+export interface WiktSense { gloss: string; pos: string; tags: string[]; example: { text: string; translation: string | null } | null; }
 export interface WiktLookupResult { word: string; senses: WiktSense[]; }
 
 export function wiktLookup(word: string, targetLang: string, nativeLang: string) {

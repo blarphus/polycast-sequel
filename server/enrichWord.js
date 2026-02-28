@@ -104,9 +104,15 @@ async function fetchWiktSenses(word, targetLang, nativeLang) {
     for (const sense of entry.senses || []) {
       if ((sense.tags || []).includes('form-of')) continue;
       const firstExample = (sense.examples || []).find(e => e.type === 'example') || null;
-      const example = firstExample
-        ? { text: firstExample.text, translation: firstExample.translation || firstExample.english || null }
-        : null;
+      let example = null;
+      if (firstExample) {
+        let text = firstExample.text;
+        const offsets = (firstExample.bold_text_offsets || []).slice().sort((a, b) => b[0] - a[0]);
+        for (const [start, end] of offsets) {
+          text = text.slice(0, start) + '~' + text.slice(start, end) + '~' + text.slice(end);
+        }
+        example = { text, translation: firstExample.translation || firstExample.english || null };
+      }
       for (const gloss of sense.glosses || []) {
         if (!gloss) continue;
         senses.push({ gloss, pos, tags: sense.tags || [], example });
