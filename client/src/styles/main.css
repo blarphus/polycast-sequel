@@ -4504,34 +4504,19 @@ select.form-input {
   font-size: 0.8rem;
 }
 
-.img-cycle-badge {
-  position: absolute; bottom: 0; right: 0;
-  background: rgba(0,0,0,0.55); color: #fff;
-  font-size: 0.6rem; padding: 1px 3px;
-  border-radius: 0 0 4px 0; line-height: 1.4;
-  pointer-events: none;
-}
-
 .stream-preview-def { font-size: 0.75rem; color: var(--text-muted); }
 .stream-preview-def.clickable { cursor: pointer; }
 .stream-preview-def.clickable:hover { color: var(--accent); }
-.def-picker-hint { opacity: 0.6; }
 
-.stream-def-picker {
-  background: var(--bg-elevated);
-  border-top: 1px solid var(--border);
-  padding: 0.25rem 0.75rem 0.4rem;
+.stream-preview-img-btn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  border-radius: 4px; overflow: hidden; display: block;
+  width: 40px; height: 40px;
 }
-.def-picker-option {
-  display: flex; gap: 0.6rem; align-items: baseline;
-  padding: 0.3rem 0.4rem; cursor: pointer;
-  font-size: 0.83rem; border-radius: var(--radius-sm);
-}
-.def-picker-option:hover { background: var(--bg-hover); }
-.def-picker-option.selected { color: var(--accent); font-weight: 600; }
-.def-picker-pos {
-  font-size: 0.7rem; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.04em; min-width: 46px;
+.stream-preview-img-btn:hover { opacity: 0.8; }
+.stream-preview-img-btn img { width: 40px; height: 40px; object-fit: cover; display: block; }
+.stream-preview-img-placeholder {
+  display: block; width: 40px; height: 40px; background: #eee; border-radius: 4px;
 }
 
 /* ---- Classwork page responsive ------------------------------------------- */

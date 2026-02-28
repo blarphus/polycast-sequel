@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord, fetchWordImage, fetchWordImages, fetchWiktSenses } from '../enrichWord.js';
+import { enrichWord, fetchWordImage } from '../enrichWord.js';
 
 const router = Router();
 
@@ -344,20 +344,14 @@ Return a JSON object with exactly these keys:
 
 Respond with ONLY the JSON object, no other text.`;
 
-  const [raw, image_urls, wiktSenses] = await Promise.all([
-    callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 150, responseMimeType: 'application/json' }),
-    fetchWordImages(word, 5),
-    fetchWiktSenses(word, targetLang, nativeLang),
-  ]);
-
+  const raw = await callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 150, responseMimeType: 'application/json' });
   const parsed = JSON.parse(raw);
+  const image_url = await fetchWordImage(word);
   return {
     translation: parsed.translation || '',
     definition: parsed.definition || '',
     part_of_speech: parsed.part_of_speech || null,
-    image_url: image_urls[0] || null,
-    image_urls,
-    definitions: wiktSenses.map(s => ({ gloss: s.gloss, pos: s.pos })),
+    image_url,
   };
 }
 

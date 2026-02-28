@@ -6,6 +6,8 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import * as api from '../api';
 import type { StreamPost, StreamTopic, StreamPostWord, StreamAttachment, LessonItem, WordOverride } from '../api';
+import ImagePicker from '../components/ImagePicker';
+import WordLookupModal from '../components/WordLookupModal';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -303,7 +305,8 @@ function WordListTab({
   const [submitting, setSubmitting] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [submitError, setSubmitError] = useState('');
-  const [openDefPicker, setOpenDefPicker] = useState<number | null>(null);
+  const [imagePickerIdx, setImagePickerIdx] = useState<number | null>(null);
+  const [defPickerIdx, setDefPickerIdx] = useState<number | null>(null);
 
   const wordLines = wordsText.split('\n').map((w) => w.trim()).filter(Boolean);
 
@@ -325,18 +328,6 @@ function WordListTab({
     } finally {
       setLooking(false);
     }
-  };
-
-  const cycleImage = (i: number) => {
-    setPreview(prev => {
-      if (!prev) return prev;
-      const w = prev[i];
-      const urls = w.image_urls;
-      if (!urls || urls.length <= 1) return prev;
-      const cur = urls.indexOf(w.image_url || '');
-      const next = (cur + 1) % urls.length;
-      return prev.map((p, j) => j === i ? { ...p, image_url: urls[next] } : p);
-    });
   };
 
   const handleSubmit = async () => {
@@ -406,61 +397,31 @@ function WordListTab({
               <span />
             </div>
             {preview.map((w, i) => (
-              <React.Fragment key={i}>
-                <div className="stream-preview-row">
-                  <span
-                    className="stream-preview-img"
-                    onClick={() => (w.image_urls?.length ?? 0) > 1 && cycleImage(i)}
-                    style={{ cursor: (w.image_urls?.length ?? 0) > 1 ? 'pointer' : 'default', position: 'relative', display: 'inline-block' }}
-                  >
-                    {w.image_url
-                      ? <img src={w.image_url} alt={w.word} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
-                      : <span style={{ display: 'inline-block', width: 40, height: 40, background: '#eee', borderRadius: 4 }} />}
-                    {(w.image_urls?.length ?? 0) > 1 && (
-                      <span className="img-cycle-badge">
-                        {(w.image_urls!.indexOf(w.image_url || '') + 1)}/{w.image_urls!.length}
-                      </span>
-                    )}
+              <div key={i} className="stream-preview-row">
+                <button
+                  className="stream-preview-img-btn"
+                  onClick={() => setImagePickerIdx(i)}
+                  title="Change image"
+                >
+                  {w.image_url
+                    ? <img src={w.image_url} alt={w.word} />
+                    : <span className="stream-preview-img-placeholder" />}
+                </button>
+                <span className="stream-preview-word">{w.word}</span>
+                <span className="stream-preview-translation">
+                  <span>{w.translation}</span>
+                  <span className="stream-preview-def clickable" onClick={() => setDefPickerIdx(i)}>
+                    {w.definition || '—'}
                   </span>
-                  <span className="stream-preview-word">{w.word}</span>
-                  <span className="stream-preview-translation">
-                    <span>{w.translation}</span>
-                    <span
-                      className={`stream-preview-def${(w.definitions?.length ?? 0) > 0 ? ' clickable' : ''}`}
-                      onClick={() => (w.definitions?.length ?? 0) > 0 && setOpenDefPicker(openDefPicker === i ? null : i)}
-                    >
-                      {w.definition || '—'}
-                      {(w.definitions?.length ?? 0) > 0 && <span className="def-picker-hint"> ▾</span>}
-                    </span>
-                  </span>
-                  <span className="stream-preview-pos">{w.part_of_speech || '—'}</span>
-                  <button
-                    className="btn-small btn-danger"
-                    onClick={() => setPreview((prev) => prev ? prev.filter((_, j) => j !== i) : prev)}
-                  >
-                    ✕
-                  </button>
-                </div>
-                {openDefPicker === i && w.definitions && w.definitions.length > 0 && (
-                  <div className="stream-def-picker">
-                    {w.definitions.map((d, di) => (
-                      <div
-                        key={di}
-                        className={`def-picker-option${d.gloss === w.definition ? ' selected' : ''}`}
-                        onClick={() => {
-                          setPreview(prev => prev
-                            ? prev.map((p, j) => j === i ? { ...p, definition: d.gloss, part_of_speech: d.pos || p.part_of_speech } : p)
-                            : prev);
-                          setOpenDefPicker(null);
-                        }}
-                      >
-                        <span className="def-picker-pos">{d.pos}</span>
-                        <span>{d.gloss}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </React.Fragment>
+                </span>
+                <span className="stream-preview-pos">{w.part_of_speech || '—'}</span>
+                <button
+                  className="btn-small btn-danger"
+                  onClick={() => setPreview((prev) => prev ? prev.filter((_, j) => j !== i) : prev)}
+                >
+                  ✕
+                </button>
+              </div>
             ))}
           </div>
           <button
@@ -471,6 +432,32 @@ function WordListTab({
           >
             {submitting ? 'Posting…' : `Post Word List (${preview.length} words)`}
           </button>
+          {imagePickerIdx !== null && (
+            <ImagePicker
+              initialQuery={preview[imagePickerIdx].word}
+              onSelect={async (url) => {
+                setPreview(prev => prev
+                  ? prev.map((p, j) => j === imagePickerIdx ? { ...p, image_url: url } : p)
+                  : prev);
+              }}
+              onClose={() => setImagePickerIdx(null)}
+            />
+          )}
+          {defPickerIdx !== null && (
+            <WordLookupModal
+              targetLang={targetLang}
+              nativeLang={nativeLang}
+              initialQuery={preview[defPickerIdx].word}
+              onPick={(sense) => {
+                setPreview(prev => prev
+                  ? prev.map((p, j) => j === defPickerIdx
+                      ? { ...p, definition: sense.gloss, part_of_speech: sense.pos || p.part_of_speech }
+                      : p)
+                  : prev);
+              }}
+              onClose={() => setDefPickerIdx(null)}
+            />
+          )}
         </>
       )}
       {lookedUp && preview && preview.length === 0 && (

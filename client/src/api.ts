@@ -415,8 +415,6 @@ export interface StreamPostWord {
   image_url?: string | null;
   lemma?: string | null;
   forms?: string | null;
-  image_urls?: string[];
-  definitions?: Array<{ gloss: string; pos: string }>;
 }
 
 export type WordOverride = { word: string; image_url?: string | null; definition?: string };

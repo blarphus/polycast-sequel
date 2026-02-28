@@ -10,8 +10,8 @@ import { useDictionaryToast } from '../hooks/useDictionaryToast';
 interface Props {
   targetLang: string;
   nativeLang: string;
-  isDefinitionSaved: (word: string, definition: string) => boolean;
-  onSave: (data: {
+  isDefinitionSaved?: (word: string, definition: string) => boolean;
+  onSave?: (data: {
     word: string;
     translation: string;
     definition: string;
@@ -24,11 +24,13 @@ interface Props {
     lemma?: string | null;
     forms?: string | null;
   }) => Promise<unknown>;
+  onPick?: (sense: WiktSense) => void;
+  initialQuery?: string;
   onClose: () => void;
 }
 
-export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSaved, onSave, onClose }: Props) {
-  const [query, setQuery] = useState('');
+export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSaved, onSave, onPick, initialQuery, onClose }: Props) {
+  const [query, setQuery] = useState(initialQuery ?? '');
   const [senses, setSenses] = useState<WiktSense[]>([]);
   const [searched, setSearched] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -50,8 +52,8 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const doSearch = async () => {
-    const trimmed = query.trim();
+  const doSearch = async (term?: string) => {
+    const trimmed = (term ?? query).trim();
     if (!trimmed) return;
 
     setSearching(true);
@@ -64,9 +66,11 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
       const result = await wiktLookup(trimmed, targetLang, nativeLang);
       setSenses(result.senses);
       setSearched(true);
-      setSavedIdxs(new Set(
-        result.senses.flatMap((s, i) => isDefinitionSaved(trimmed, s.gloss) ? [i] : []),
-      ));
+      if (!onPick) {
+        setSavedIdxs(new Set(
+          result.senses.flatMap((s, i) => isDefinitionSaved?.(trimmed, s.gloss) ? [i] : []),
+        ));
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Lookup failed';
       console.error('WiktApi lookup error:', err);
@@ -76,7 +80,16 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
     }
   };
 
+  useEffect(() => {
+    if (initialQuery?.trim()) doSearch(initialQuery.trim());
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSenseClick = (sense: WiktSense, idx: number) => {
+    if (onPick) {
+      onPick(sense);
+      onClose();
+      return;
+    }
     if (savedIdxs.has(idx)) return;
     setSavedIdxs(prev => new Set(prev).add(idx));
 
@@ -90,7 +103,7 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
       );
 
       const savedWord = enriched.lemma || word;
-      await onSave({
+      await onSave!({
         word: savedWord,
         definition: sense.gloss,
         part_of_speech: sense.pos || enriched.part_of_speech,
@@ -126,7 +139,7 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
           />
           <button
             className="btn btn-primary btn-sm"
-            onClick={doSearch}
+            onClick={() => doSearch()}
             disabled={searching || !query.trim()}
           >
             Search
