@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord } from '../enrichWord.js';
+import { enrichWord, fetchWordImage } from '../enrichWord.js';
 
 const router = Router();
 
@@ -351,10 +351,12 @@ Respond with ONLY the JSON object, no other text.`;
   });
 
   const parsed = JSON.parse(raw);
+  const image_url = await fetchWordImage(word);
   return {
     translation: parsed.translation || '',
     definition: parsed.definition || '',
     part_of_speech: parsed.part_of_speech || null,
+    image_url,
   };
 }
 
@@ -651,6 +653,7 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, async
     let skipped = 0;
 
     for (const w of wordsToAdd) {
+      const imageUrl = w.image_url !== null ? w.image_url : await fetchWordImage(w.word);
       const { rowCount } = await pool.query(
         `INSERT INTO saved_words
            (user_id, word, translation, definition, target_language, part_of_speech,
@@ -660,7 +663,7 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, async
         [
           req.userId, w.word, w.translation, w.definition, targetLanguage, w.part_of_speech,
           w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
-          w.image_url ?? null, w.lemma ?? null, w.forms ?? null,
+          imageUrl, w.lemma ?? null, w.forms ?? null,
         ],
       );
       if (rowCount > 0) {

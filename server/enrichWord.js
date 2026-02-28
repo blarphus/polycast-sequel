@@ -30,7 +30,7 @@ async function searchPixabay(query, perPage = 3) {
   return (data.hits || []).map(h => h.webformatURL);
 }
 
-async function fetchWordImage(searchTerm) {
+export async function fetchWordImage(searchTerm) {
   try {
     const urls = await searchPixabay(searchTerm);
     return urls[0] || null;

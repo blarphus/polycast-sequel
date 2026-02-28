@@ -382,6 +382,7 @@ function WordListTab({
         <>
           <div className="stream-preview-table">
             <div className="stream-preview-header">
+              <span>Image</span>
               <span>Word</span>
               <span>Translation</span>
               <span>Part of speech</span>
@@ -389,6 +390,11 @@ function WordListTab({
             </div>
             {preview.map((w, i) => (
               <div key={i} className="stream-preview-row">
+                <span className="stream-preview-img">
+                  {w.image_url
+                    ? <img src={w.image_url} alt={w.word} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} />
+                    : <span style={{ display: 'inline-block', width: 40, height: 40, background: '#eee', borderRadius: 4 }} />}
+                </span>
                 <span className="stream-preview-word">{w.word}</span>
                 <span className="stream-preview-translation">{w.translation}</span>
                 <span className="stream-preview-pos">{w.part_of_speech || '—'}</span>
