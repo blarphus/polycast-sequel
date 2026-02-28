@@ -806,18 +806,16 @@ export async function fetchYouTubeTranscript(youtubeId, language = 'en') {
 
   // External provider fallback is highly reliable when Render IPs are blocked by YouTube.
   let externalProviderError = null;
-  if (mappedPrimaryErr.code !== 'SOURCE_UNAVAILABLE') {
-    try {
-      return await fetchViaVcyon(youtubeId, normalizedLang);
-    } catch (err) {
-      externalProviderError = err instanceof TranscriptFetchError
-        ? err
-        : new TranscriptFetchError(
-          err?.message || 'External transcript provider temporarily unavailable.',
-          'TRANSIENT_FETCH_ERROR',
-          true,
-        );
-    }
+  try {
+    return await fetchViaVcyon(youtubeId, normalizedLang);
+  } catch (err) {
+    externalProviderError = err instanceof TranscriptFetchError
+      ? err
+      : new TranscriptFetchError(
+        err?.message || 'External transcript provider temporarily unavailable.',
+        'TRANSIENT_FETCH_ERROR',
+        true,
+      );
   }
 
   // Only use yt-dlp+proxy fallback for transient failures.
