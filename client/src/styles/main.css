@@ -4469,7 +4469,7 @@ select.form-input {
 
 .stream-preview-header {
   display: grid;
-  grid-template-columns: 80px 1fr 1fr 1fr auto;
+  grid-template-columns: 80px 1fr 2fr 1fr 44px;
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
   background: var(--bg-elevated);
@@ -4482,7 +4482,7 @@ select.form-input {
 
 .stream-preview-row {
   display: grid;
-  grid-template-columns: 80px 1fr 1fr 1fr auto;
+  grid-template-columns: 80px 1fr 2fr 1fr 44px;
   gap: 0.75rem;
   align-items: center;
   padding: 0.55rem 0.75rem;
@@ -4509,15 +4509,39 @@ select.form-input {
 }
 
 .stream-preview-def { font-size: 0.75rem; color: var(--text-muted); }
-.stream-preview-def.clickable { cursor: pointer; }
+.stream-preview-def.clickable {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.stream-preview-def.clickable::after {
+  content: ' ✎';
+  opacity: 0.5;
+  font-style: normal;
+}
 .stream-preview-def.clickable:hover { color: var(--accent); }
+.stream-preview-def.clickable:hover::after { opacity: 1; }
 
 .stream-preview-img-btn {
   background: none; border: none; padding: 0; cursor: pointer;
   border-radius: 4px; overflow: hidden; display: block;
   width: 72px; height: 72px;
+  position: relative;
 }
-.stream-preview-img-btn:hover { opacity: 0.8; }
+.stream-preview-img-btn::after {
+  content: '⊕';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 1.5rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.stream-preview-img-btn:hover::after { opacity: 1; }
 .stream-preview-img-btn img { width: 72px; height: 72px; object-fit: cover; display: block; }
 .stream-preview-img-placeholder {
   display: block; width: 72px; height: 72px; background: #eee; border-radius: 4px;
@@ -4532,7 +4556,7 @@ select.form-input {
 
   .stream-preview-header,
   .stream-preview-row {
-    grid-template-columns: 80px 1fr 1fr auto;
+    grid-template-columns: 80px 1fr 2fr 44px;
   }
 
   .stream-preview-header span:nth-child(4),
