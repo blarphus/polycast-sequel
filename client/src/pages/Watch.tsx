@@ -68,6 +68,20 @@ export default function Watch() {
 
   const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
 
+  // Keep the watch page pinned to viewport height so transcript scrolling
+  // remains inside the transcript container (not the document body).
+  useEffect(() => {
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, []);
+
   // Fetch video data
   useEffect(() => {
     if (!id) return;
@@ -176,13 +190,18 @@ export default function Watch() {
     };
   }, [video]);
 
-  // Auto-scroll to active segment
+  // Auto-scroll to active segment (inside transcript container only).
   useEffect(() => {
     if (activeIndex < 0 || !autoScrollRef.current) return;
+    const container = transcriptRef.current;
     const el = segmentRefs.current[activeIndex];
-    if (el) {
-      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    }
+    if (!container || !el) return;
+
+    const targetTop = el.offsetTop - (container.clientHeight / 2) + (el.clientHeight / 2);
+    container.scrollTo({
+      top: Math.max(0, targetTop),
+      behavior: 'smooth',
+    });
   }, [activeIndex]);
 
   // Track manual scroll to disable auto-scroll
@@ -191,12 +210,10 @@ export default function Watch() {
     if (!el) return;
     const activeEl = segmentRefs.current[activeIndex];
     if (!activeEl) return;
-    const elRect = el.getBoundingClientRect();
-    const activeRect = activeEl.getBoundingClientRect();
     const threshold = 120;
     const visible =
-      activeRect.top >= elRect.top - threshold &&
-      activeRect.bottom <= elRect.bottom + threshold;
+      activeEl.offsetTop >= el.scrollTop - threshold &&
+      (activeEl.offsetTop + activeEl.clientHeight) <= (el.scrollTop + el.clientHeight + threshold);
     autoScrollRef.current = visible;
   }, [activeIndex]);
 

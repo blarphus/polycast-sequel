@@ -3,9 +3,14 @@
    ========================================================================== */
 
 .watch-page {
-  max-width: 800px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 1.5rem 1.5rem 7rem;
+  padding: 1rem 1.5rem 0;
+  height: calc(100dvh - 96px);
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 0.75rem;
+  overflow: hidden;
 }
 
 /* ---- YouTube player wrapper (16:9) ---- */
@@ -13,11 +18,10 @@
 .watch-player-wrapper {
   position: relative;
   width: 100%;
-  padding-bottom: 56.25%;
+  padding-bottom: min(56.25%, 48dvh);
   overflow: hidden;
   border-radius: var(--radius-lg);
   background: #000;
-  margin-bottom: 1rem;
 }
 
 .watch-player-wrapper iframe {
@@ -32,7 +36,7 @@
 /* ---- Video info ---- */
 
 .watch-info {
-  margin-bottom: 1rem;
+  min-height: 0;
 }
 
 .watch-title {
@@ -49,7 +53,7 @@
 }
 
 .watch-transcript-status {
-  margin: 0 0 0.8rem;
+  margin: 0;
   color: var(--text-muted);
   font-size: 0.9rem;
 }
@@ -59,7 +63,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 0.6rem;
-  margin: 0 0 1rem;
+  margin: 0;
 }
 
 .watch-transcript-error {
@@ -74,9 +78,11 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  max-height: 400px;
+  min-height: 0;
+  height: 100%;
   overflow-y: auto;
   padding: 0.5rem;
+  overscroll-behavior: contain;
 }
 
 /* ---- Transcript segment ---- */
@@ -116,4 +122,16 @@
   font-size: 0.88rem;
   color: var(--text-primary);
   line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .watch-page {
+    padding: 0.8rem 1rem 0;
+    height: calc(100dvh - 86px);
+    gap: 0.6rem;
+  }
+
+  .watch-player-wrapper {
+    padding-bottom: min(56.25%, 42dvh);
+  }
 }
