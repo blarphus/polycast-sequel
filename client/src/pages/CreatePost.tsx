@@ -1,12 +1,12 @@
 // ---------------------------------------------------------------------------
-// pages/CreatePost.tsx — Teacher creates a Material or Word List post
+// pages/CreatePost.tsx — Teacher creates a Material, Lesson, or Word List post
 // ---------------------------------------------------------------------------
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import * as api from '../api';
-import type { StreamAttachment, StreamPostWord } from '../api';
+import type { StreamAttachment, StreamPostWord, LessonItem } from '../api';
 
 const LANGUAGES = [
   { code: 'en', name: 'English' },
@@ -32,37 +32,88 @@ const LANGUAGES = [
 ];
 
 // ---------------------------------------------------------------------------
+// Shared: attachment editor used by Material tab and LessonItemEditor
+// ---------------------------------------------------------------------------
+
+function AttachmentEditor({
+  attachments,
+  onChange,
+}: {
+  attachments: StreamAttachment[];
+  onChange: (next: StreamAttachment[]) => void;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [url, setUrl] = useState('');
+  const [label, setLabel] = useState('');
+
+  const add = () => {
+    if (!url.trim()) return;
+    onChange([...attachments, { url: url.trim(), label: label.trim() || url.trim() }]);
+    setUrl('');
+    setLabel('');
+    setShowForm(false);
+  };
+
+  return (
+    <div className="attachment-editor">
+      {attachments.map((att, i) => (
+        <div key={i} className="stream-attachment-row">
+          <span className="stream-attachment-url">{att.label}</span>
+          <button
+            className="btn-small btn-danger"
+            onClick={() => onChange(attachments.filter((_, j) => j !== i))}
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+      {showForm ? (
+        <div className="stream-add-link-form">
+          <input
+            className="form-input"
+            placeholder="https://…"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            autoFocus
+          />
+          <input
+            className="form-input"
+            placeholder="Label (optional)"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+          />
+          <div className="stream-add-link-row">
+            <button className="btn btn-secondary btn-sm" onClick={() => setShowForm(false)}>
+              Cancel
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={add}>
+              Add Link
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn btn-secondary btn-sm" onClick={() => setShowForm(true)}>
+          + Add Link
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Material tab
 // ---------------------------------------------------------------------------
 
 function MaterialTab({
   onSubmit,
 }: {
-  onSubmit: (data: {
-    title: string;
-    body: string;
-    attachments: StreamAttachment[];
-  }) => Promise<void>;
+  onSubmit: (data: { title: string; body: string; attachments: StreamAttachment[] }) => Promise<void>;
 }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [attachments, setAttachments] = useState<StreamAttachment[]>([]);
-  const [newUrl, setNewUrl] = useState('');
-  const [newLabel, setNewLabel] = useState('');
-  const [showLinkForm, setShowLinkForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  const addLink = () => {
-    if (!newUrl.trim()) return;
-    setAttachments((prev) => [
-      ...prev,
-      { url: newUrl.trim(), label: newLabel.trim() || newUrl.trim() },
-    ]);
-    setNewUrl('');
-    setNewLabel('');
-    setShowLinkForm(false);
-  };
 
   const handleSubmit = async () => {
     if (!title.trim() && !body.trim() && attachments.length === 0) {
@@ -103,58 +154,161 @@ function MaterialTab({
       />
 
       <label className="form-label">Links</label>
-      {attachments.map((att, i) => (
-        <div key={i} className="stream-attachment-row">
-          <span className="stream-attachment-url">{att.label}</span>
-          <button
-            className="btn-small btn-danger"
-            onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
-          >
+      <AttachmentEditor attachments={attachments} onChange={setAttachments} />
+
+      <button
+        className="btn btn-primary btn-block"
+        disabled={submitting}
+        onClick={handleSubmit}
+        style={{ marginTop: '1.25rem' }}
+      >
+        {submitting ? 'Posting…' : 'Post Material'}
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Lesson tab — multiple material items under one lesson header
+// ---------------------------------------------------------------------------
+
+function LessonItemEditor({
+  item,
+  index,
+  onChange,
+  onRemove,
+  showRemove,
+}: {
+  item: LessonItem;
+  index: number;
+  onChange: (updated: LessonItem) => void;
+  onRemove: () => void;
+  showRemove: boolean;
+}) {
+  return (
+    <div className="lesson-item-editor">
+      <div className="lesson-item-editor-header">
+        <span className="lesson-item-number">Item {index + 1}</span>
+        {showRemove && (
+          <button className="btn-small btn-danger" onClick={onRemove}>
             Remove
           </button>
-        </div>
-      ))}
+        )}
+      </div>
 
-      {showLinkForm ? (
-        <div className="stream-add-link-form">
-          <input
-            className="form-input"
-            placeholder="https://…"
-            value={newUrl}
-            onChange={(e) => setNewUrl(e.target.value)}
-            autoFocus
+      <label className="form-label">Title</label>
+      <input
+        className="form-input"
+        placeholder={`e.g. Watch video ${index + 1}`}
+        value={item.title}
+        onChange={(e) => onChange({ ...item, title: e.target.value })}
+      />
+
+      <label className="form-label">Notes (optional)</label>
+      <textarea
+        className="form-input stream-textarea"
+        placeholder="Instructions or context for this item…"
+        value={item.body || ''}
+        onChange={(e) => onChange({ ...item, body: e.target.value })}
+        rows={3}
+      />
+
+      <label className="form-label">Links</label>
+      <AttachmentEditor
+        attachments={item.attachments}
+        onChange={(atts) => onChange({ ...item, attachments: atts })}
+      />
+    </div>
+  );
+}
+
+function LessonTab({
+  onSubmit,
+}: {
+  onSubmit: (data: { title: string; lesson_items: LessonItem[] }) => Promise<void>;
+}) {
+  const [title, setTitle] = useState('');
+  const [items, setItems] = useState<LessonItem[]>([
+    { title: '', body: '', attachments: [] },
+  ]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const updateItem = (i: number, updated: LessonItem) => {
+    setItems((prev) => prev.map((it, idx) => (idx === i ? updated : it)));
+  };
+
+  const removeItem = (i: number) => {
+    setItems((prev) => prev.filter((_, idx) => idx !== i));
+  };
+
+  const addItem = () => {
+    setItems((prev) => [...prev, { title: '', body: '', attachments: [] }]);
+  };
+
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      setError('Lesson title is required');
+      return;
+    }
+    const validItems = items.filter(
+      (it) => it.title.trim() || (it.attachments && it.attachments.length > 0),
+    );
+    if (validItems.length === 0) {
+      setError('Add at least one item with a title or link');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      await onSubmit({ title, lesson_items: validItems });
+    } catch (err: any) {
+      console.error('Create lesson post failed:', err);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="create-post-tab-content">
+      {error && <div className="auth-error">{error}</div>}
+
+      <label className="form-label">Lesson Title</label>
+      <input
+        className="form-input"
+        placeholder="e.g. Lesson 1: Introduction"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+      />
+
+      <div className="lesson-items-list">
+        {items.map((item, i) => (
+          <LessonItemEditor
+            key={i}
+            item={item}
+            index={i}
+            onChange={(updated) => updateItem(i, updated)}
+            onRemove={() => removeItem(i)}
+            showRemove={items.length > 1}
           />
-          <input
-            className="form-input"
-            placeholder="Label (optional)"
-            value={newLabel}
-            onChange={(e) => setNewLabel(e.target.value)}
-          />
-          <div className="stream-add-link-row">
-            <button className="btn btn-secondary btn-sm" onClick={() => setShowLinkForm(false)}>
-              Cancel
-            </button>
-            <button className="btn btn-primary btn-sm" onClick={addLink}>
-              Add Link
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          className="btn btn-secondary btn-sm"
-          style={{ marginBottom: '1.25rem' }}
-          onClick={() => setShowLinkForm(true)}
-        >
-          + Add Link
-        </button>
-      )}
+        ))}
+      </div>
+
+      <button
+        className="btn btn-secondary btn-block"
+        onClick={addItem}
+        style={{ marginBottom: '1rem' }}
+      >
+        + Add Material Item
+      </button>
 
       <button
         className="btn btn-primary btn-block"
         disabled={submitting}
         onClick={handleSubmit}
       >
-        {submitting ? 'Posting…' : 'Post Material'}
+        {submitting ? 'Posting…' : `Post Lesson (${items.length} item${items.length !== 1 ? 's' : ''})`}
       </button>
     </div>
   );
@@ -183,24 +337,12 @@ function WordListTab({
   const [lookupError, setLookupError] = useState('');
   const [submitError, setSubmitError] = useState('');
 
-  const wordLines = wordsText
-    .split('\n')
-    .map((w) => w.trim())
-    .filter(Boolean);
+  const wordLines = wordsText.split('\n').map((w) => w.trim()).filter(Boolean);
 
   const handleLookup = async () => {
-    if (wordLines.length === 0) {
-      setLookupError('Enter at least one word');
-      return;
-    }
-    if (!nativeLang) {
-      setLookupError('Set your native language in Settings first');
-      return;
-    }
-    if (!targetLang) {
-      setLookupError('Select a target language');
-      return;
-    }
+    if (wordLines.length === 0) { setLookupError('Enter at least one word'); return; }
+    if (!nativeLang) { setLookupError('Set your native language in Settings first'); return; }
+    if (!targetLang) { setLookupError('Select a target language'); return; }
     setLooking(true);
     setLookupError('');
     setLookedUp(false);
@@ -217,15 +359,8 @@ function WordListTab({
     }
   };
 
-  const removePreviewWord = (idx: number) => {
-    setPreview((prev) => (prev ? prev.filter((_, i) => i !== idx) : prev));
-  };
-
   const handleSubmit = async () => {
-    if (!preview || preview.length === 0) {
-      setSubmitError('No words to post');
-      return;
-    }
+    if (!preview || preview.length === 0) { setSubmitError('No words to post'); return; }
     setSubmitting(true);
     setSubmitError('');
     try {
@@ -298,14 +433,13 @@ function WordListTab({
                 <span className="stream-preview-pos">{w.part_of_speech || '—'}</span>
                 <button
                   className="btn-small btn-danger"
-                  onClick={() => removePreviewWord(i)}
+                  onClick={() => setPreview((prev) => prev ? prev.filter((_, j) => j !== i) : prev)}
                 >
                   ✕
                 </button>
               </div>
             ))}
           </div>
-
           <button
             className="btn btn-primary btn-block"
             disabled={submitting || preview.length === 0}
@@ -331,22 +465,19 @@ function WordListTab({
 export default function CreatePost() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<'material' | 'word_list'>('material');
+  const [tab, setTab] = useState<'material' | 'lesson' | 'word_list'>('material');
 
-  const handleMaterialSubmit = async (data: {
-    title: string;
-    body: string;
-    attachments: StreamAttachment[];
-  }) => {
+  const handleMaterialSubmit = async (data: { title: string; body: string; attachments: StreamAttachment[] }) => {
     await api.createPost({ type: 'material', ...data });
     navigate('/classwork');
   };
 
-  const handleWordListSubmit = async (data: {
-    title: string;
-    words: string[];
-    target_language: string;
-  }) => {
+  const handleLessonSubmit = async (data: { title: string; lesson_items: LessonItem[] }) => {
+    await api.createPost({ type: 'lesson', ...data });
+    navigate('/classwork');
+  };
+
+  const handleWordListSubmit = async (data: { title: string; words: string[]; target_language: string }) => {
     await api.createPost({ type: 'word_list', ...data });
     navigate('/classwork');
   };
@@ -371,6 +502,12 @@ export default function CreatePost() {
           Material
         </button>
         <button
+          className={`create-post-tab${tab === 'lesson' ? ' active' : ''}`}
+          onClick={() => setTab('lesson')}
+        >
+          Lesson
+        </button>
+        <button
           className={`create-post-tab${tab === 'word_list' ? ' active' : ''}`}
           onClick={() => setTab('word_list')}
         >
@@ -378,9 +515,9 @@ export default function CreatePost() {
         </button>
       </div>
 
-      {tab === 'material' ? (
-        <MaterialTab onSubmit={handleMaterialSubmit} />
-      ) : (
+      {tab === 'material' && <MaterialTab onSubmit={handleMaterialSubmit} />}
+      {tab === 'lesson' && <LessonTab onSubmit={handleLessonSubmit} />}
+      {tab === 'word_list' && (
         <WordListTab
           defaultTargetLang={user?.target_language || ''}
           nativeLang={user?.native_language || ''}

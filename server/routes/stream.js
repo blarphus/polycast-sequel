@@ -228,10 +228,10 @@ router.post('/api/stream/words/lookup', authMiddleware, async (req, res) => {
 // ---------------------------------------------------------------------------
 
 router.post('/api/stream/posts', authMiddleware, async (req, res) => {
-  const { type, title, body, attachments, words, target_language } = req.body;
+  const { type, title, body, attachments, words, target_language, lesson_items } = req.body;
 
-  if (!type || !['material', 'word_list'].includes(type)) {
-    return res.status(400).json({ error: 'type must be material or word_list' });
+  if (!type || !['material', 'word_list', 'lesson'].includes(type)) {
+    return res.status(400).json({ error: 'type must be material, word_list, or lesson' });
   }
 
   try {
@@ -249,8 +249,8 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
       await client.query('BEGIN');
 
       const { rows: postRows } = await client.query(
-        `INSERT INTO stream_posts (teacher_id, type, title, body, attachments, target_language)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO stream_posts (teacher_id, type, title, body, attachments, target_language, lesson_items)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING *`,
         [
           req.userId,
@@ -259,6 +259,7 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
           body || null,
           JSON.stringify(attachments || []),
           target_language || user.target_language || null,
+          JSON.stringify(lesson_items || []),
         ],
       );
       const post = postRows[0];
@@ -318,7 +319,7 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
 // ---------------------------------------------------------------------------
 
 router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
-  const { title, body, attachments } = req.body;
+  const { title, body, attachments, lesson_items } = req.body;
 
   try {
     const { rows: existing } = await pool.query(
@@ -335,13 +336,15 @@ router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
        SET title = COALESCE($1, title),
            body = COALESCE($2, body),
            attachments = COALESCE($3, attachments),
+           lesson_items = COALESCE($4, lesson_items),
            updated_at = NOW()
-       WHERE id = $4
+       WHERE id = $5
        RETURNING *`,
       [
         title !== undefined ? title : null,
         body !== undefined ? body : null,
         attachments !== undefined ? JSON.stringify(attachments) : null,
+        lesson_items !== undefined ? JSON.stringify(lesson_items) : null,
         req.params.id,
       ],
     );

@@ -395,6 +395,12 @@ export interface StreamAttachment {
   label: string;
 }
 
+export interface LessonItem {
+  title: string;
+  body?: string;
+  attachments: StreamAttachment[];
+}
+
 export interface StreamPostWord {
   id: string;
   post_id: string;
@@ -408,10 +414,11 @@ export interface StreamPostWord {
 export interface StreamPost {
   id: string;
   teacher_id: string;
-  type: 'material' | 'word_list';
+  type: 'material' | 'word_list' | 'lesson';
   title: string | null;
   body: string | null;
   attachments: StreamAttachment[];
+  lesson_items?: LessonItem[];
   target_language: string | null;
   created_at: string;
   updated_at: string;
@@ -427,12 +434,13 @@ export function getStream() {
 }
 
 export function createPost(data: {
-  type: 'material' | 'word_list';
+  type: 'material' | 'word_list' | 'lesson';
   title: string;
   body?: string;
   attachments?: StreamAttachment[];
   words?: string[];
   target_language?: string;
+  lesson_items?: LessonItem[];
 }) {
   return request<StreamPost>('/stream/posts', { method: 'POST', body: data });
 }
@@ -441,6 +449,7 @@ export function updatePost(postId: string, data: {
   title?: string;
   body?: string;
   attachments?: StreamAttachment[];
+  lesson_items?: LessonItem[];
 }) {
   return request<StreamPost>(`/stream/posts/${postId}`, { method: 'PATCH', body: data });
 }

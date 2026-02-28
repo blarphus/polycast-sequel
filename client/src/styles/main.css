@@ -4091,7 +4091,7 @@ select.form-input {
    ========================================================================== */
 
 .classwork-page {
-  max-width: 720px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 2rem 1.5rem 7rem;
   overflow-y: auto;
@@ -4516,4 +4516,112 @@ select.form-input {
   .stream-preview-row .stream-preview-pos {
     display: none;
   }
+}
+
+/* ---- Lesson post card ----------------------------------------------------- */
+
+.stream-post-card--lesson {
+  border-left: 3px solid #14b8a6;
+}
+
+.stream-post-type-badge--lesson {
+  background: rgba(20, 184, 166, 0.12);
+  color: #0d9488;
+}
+
+/* ---- Lesson items display (feed) ------------------------------------------ */
+
+.lesson-items-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.lesson-item-display {
+  display: flex;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.lesson-item-display:last-child {
+  border-bottom: none;
+}
+
+.lesson-item-display-number {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(20, 184, 166, 0.12);
+  color: #0d9488;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.lesson-item-display-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.lesson-item-display-title {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.lesson-item-display-body {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  margin-bottom: 0.5rem;
+}
+
+/* ---- Lesson item editor (CreatePost + EditModal) -------------------------- */
+
+.lesson-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.lesson-item-editor {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: var(--bg-primary);
+}
+
+.lesson-item-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.lesson-item-number {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #0d9488;
+}
+
+.attachment-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
 }

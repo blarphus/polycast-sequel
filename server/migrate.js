@@ -220,6 +220,9 @@ export async function migrate(pool) {
     // Priority flag on saved_words (teacher-assigned words surface first in SRS)
     await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS priority BOOLEAN DEFAULT false;`);
 
+    // Lesson items (array of {title, body, attachments} stored as JSONB on stream_posts)
+    await client.query(`ALTER TABLE stream_posts ADD COLUMN IF NOT EXISTS lesson_items JSONB DEFAULT '[]';`);
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {

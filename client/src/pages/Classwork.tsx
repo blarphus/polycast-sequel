@@ -6,7 +6,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import * as api from '../api';
-import type { StreamPost, StreamPostWord, StreamAttachment } from '../api';
+import type { StreamPost, StreamPostWord, StreamAttachment, LessonItem } from '../api';
 
 // ---------------------------------------------------------------------------
 // Attachment renderer
@@ -15,18 +15,11 @@ import type { StreamPost, StreamPostWord, StreamAttachment } from '../api';
 function AttachmentLink({ att }: { att: StreamAttachment }) {
   const url = att.url;
   const label = att.label || url;
-
-  const isYoutube =
-    url.includes('youtube.com/watch') || url.includes('youtu.be/');
+  const isYoutube = url.includes('youtube.com/watch') || url.includes('youtu.be/');
   const isPdf = url.toLowerCase().endsWith('.pdf');
 
   return (
-    <a
-      className="stream-attachment-link"
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+    <a className="stream-attachment-link" href={url} target="_blank" rel="noopener noreferrer">
       {isYoutube && (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.2 31.2 0 0 0 0 12a31.2 31.2 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.2 31.2 0 0 0 24 12a31.2 31.2 0 0 0-.5-5.8zM9.75 15.5v-7l6.25 3.5-6.25 3.5z" />
@@ -51,6 +44,33 @@ function AttachmentLink({ att }: { att: StreamAttachment }) {
 }
 
 // ---------------------------------------------------------------------------
+// Lesson items display (shared between teacher + student)
+// ---------------------------------------------------------------------------
+
+function LessonItemsList({ items }: { items: LessonItem[] }) {
+  return (
+    <div className="lesson-items-display">
+      {items.map((item, i) => (
+        <div key={i} className="lesson-item-display">
+          <div className="lesson-item-display-number">{i + 1}</div>
+          <div className="lesson-item-display-content">
+            {item.title && <p className="lesson-item-display-title">{item.title}</p>}
+            {item.body && <p className="lesson-item-display-body">{item.body}</p>}
+            {item.attachments && item.attachments.length > 0 && (
+              <div className="stream-attachments">
+                {item.attachments.map((att, j) => (
+                  <AttachmentLink key={j} att={att} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Edit modal
 // ---------------------------------------------------------------------------
 
@@ -66,6 +86,7 @@ function EditModal({
   const [title, setTitle] = useState(post.title || '');
   const [body, setBody] = useState(post.body || '');
   const [attachments, setAttachments] = useState<StreamAttachment[]>(post.attachments || []);
+  const [lessonItems, setLessonItems] = useState<LessonItem[]>(post.lesson_items || []);
   const [newUrl, setNewUrl] = useState('');
   const [newLabel, setNewLabel] = useState('');
   const [saving, setSaving] = useState(false);
@@ -75,11 +96,10 @@ function EditModal({
     setSaving(true);
     setError('');
     try {
-      const updated = await api.updatePost(post.id, {
-        title,
-        body: post.type === 'material' ? body : undefined,
-        attachments: post.type === 'material' ? attachments : undefined,
-      });
+      const data: Parameters<typeof api.updatePost>[1] = { title };
+      if (post.type === 'material') { data.body = body; data.attachments = attachments; }
+      if (post.type === 'lesson') { data.lesson_items = lessonItems; }
+      const updated = await api.updatePost(post.id, data);
       onSave(updated);
     } catch (err: any) {
       console.error('Edit post failed:', err);
@@ -96,18 +116,20 @@ function EditModal({
     setNewLabel('');
   };
 
+  const updateLessonItem = (i: number, field: keyof LessonItem, value: string) => {
+    setLessonItems((prev) => prev.map((it, idx) =>
+      idx === i ? { ...it, [field]: value } : it,
+    ));
+  };
+
   return (
     <div className="stream-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="stream-modal">
         <h2 className="stream-modal-title">Edit Post</h2>
         {error && <div className="auth-error">{error}</div>}
 
-        <label className="form-label">Title</label>
-        <input
-          className="form-input"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <label className="form-label">{post.type === 'lesson' ? 'Lesson Title' : 'Title'}</label>
+        <input className="form-input" value={title} onChange={(e) => setTitle(e.target.value)} />
 
         {post.type === 'material' && (
           <>
@@ -118,7 +140,6 @@ function EditModal({
               onChange={(e) => setBody(e.target.value)}
               rows={4}
             />
-
             <label className="form-label">Links</label>
             {attachments.map((att, i) => (
               <div key={i} className="stream-attachment-row">
@@ -151,10 +172,27 @@ function EditModal({
           </>
         )}
 
+        {post.type === 'lesson' && lessonItems.map((item, i) => (
+          <div key={i} className="lesson-item-editor" style={{ marginBottom: '1rem' }}>
+            <span className="lesson-item-number">Item {i + 1}</span>
+            <label className="form-label" style={{ marginTop: '0.5rem' }}>Title</label>
+            <input
+              className="form-input"
+              value={item.title}
+              onChange={(e) => updateLessonItem(i, 'title', e.target.value)}
+            />
+            <label className="form-label">Notes</label>
+            <textarea
+              className="form-input stream-textarea"
+              value={item.body || ''}
+              onChange={(e) => updateLessonItem(i, 'body', e.target.value)}
+              rows={2}
+            />
+          </div>
+        ))}
+
         <div className="stream-modal-actions">
-          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>
-            Cancel
-          </button>
+          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -165,7 +203,7 @@ function EditModal({
 }
 
 // ---------------------------------------------------------------------------
-// Teacher post card
+// Teacher post card — handles material, lesson, and word_list
 // ---------------------------------------------------------------------------
 
 function TeacherPostCard({
@@ -191,15 +229,15 @@ function TeacherPostCard({
     }
   };
 
+  const badgeLabel = post.type === 'material' ? 'Material' : post.type === 'lesson' ? 'Lesson' : 'Word List';
+
   return (
-    <div className="stream-post-card">
+    <div className={`stream-post-card${post.type === 'lesson' ? ' stream-post-card--lesson' : ''}`}>
       <div className="stream-post-header">
-        <span className="stream-post-type-badge">
-          {post.type === 'material' ? 'Material' : 'Word List'}
+        <span className={`stream-post-type-badge${post.type === 'lesson' ? ' stream-post-type-badge--lesson' : ''}`}>
+          {badgeLabel}
         </span>
-        <span className="stream-post-date">
-          {new Date(post.created_at).toLocaleDateString()}
-        </span>
+        <span className="stream-post-date">{new Date(post.created_at).toLocaleDateString()}</span>
       </div>
 
       {post.title && <h3 className="stream-post-title">{post.title}</h3>}
@@ -209,21 +247,21 @@ function TeacherPostCard({
           {post.body && <p className="stream-post-body">{post.body}</p>}
           {post.attachments && post.attachments.length > 0 && (
             <div className="stream-attachments">
-              {post.attachments.map((att, i) => (
-                <AttachmentLink key={i} att={att} />
-              ))}
+              {post.attachments.map((att, i) => <AttachmentLink key={i} att={att} />)}
             </div>
           )}
         </>
+      )}
+
+      {post.type === 'lesson' && (
+        <LessonItemsList items={post.lesson_items || []} />
       )}
 
       {post.type === 'word_list' && (
         <>
           <div className="stream-word-chips-preview">
             {(post.words || []).slice(0, 6).map((w) => (
-              <span key={w.id} className="stream-word-chip">
-                {w.word}
-              </span>
+              <span key={w.id} className="stream-word-chip">{w.word}</span>
             ))}
             {(post.word_count || 0) > 6 && (
               <span className="stream-word-chip stream-word-chip--more">
@@ -236,14 +274,8 @@ function TeacherPostCard({
       )}
 
       <div className="stream-post-actions">
-        <button className="btn-small" onClick={() => onEdit(post)}>
-          Edit
-        </button>
-        <button
-          className="btn-small btn-danger"
-          onClick={handleDelete}
-          disabled={deleting}
-        >
+        <button className="btn-small" onClick={() => onEdit(post)}>Edit</button>
+        <button className="btn-small btn-danger" onClick={handleDelete} disabled={deleting}>
           {deleting ? 'Deleting…' : 'Delete'}
         </button>
       </div>
@@ -252,7 +284,7 @@ function TeacherPostCard({
 }
 
 // ---------------------------------------------------------------------------
-// Student word list card
+// Student: word list card
 // ---------------------------------------------------------------------------
 
 function StudentWordListCard({
@@ -262,9 +294,7 @@ function StudentWordListCard({
   post: StreamPost;
   onUpdate: (updated: Partial<StreamPost> & { id: string }) => void;
 }) {
-  const [knownIds, setKnownIds] = useState<Set<string>>(
-    new Set(post.known_word_ids || []),
-  );
+  const [knownIds, setKnownIds] = useState<Set<string>>(new Set(post.known_word_ids || []));
   const [completed, setCompleted] = useState(post.completed || false);
   const [adding, setAdding] = useState(false);
   const [addResult, setAddResult] = useState<{ added: number; skipped: number } | null>(null);
@@ -276,24 +306,19 @@ function StudentWordListCard({
   const toggleKnown = async (word: StreamPostWord) => {
     const wasKnown = knownIds.has(word.id);
     const newKnown = !wasKnown;
-
     setKnownIds((prev) => {
       const next = new Set(prev);
-      if (newKnown) next.add(word.id);
-      else next.delete(word.id);
+      if (newKnown) next.add(word.id); else next.delete(word.id);
       return next;
     });
-
     try {
       await api.toggleWordKnown(post.id, word.id, newKnown);
     } catch (err: any) {
       console.error('toggleWordKnown failed:', err);
       setError(err instanceof Error ? err.message : String(err));
-      // Revert optimistic update
       setKnownIds((prev) => {
         const next = new Set(prev);
-        if (wasKnown) next.add(word.id);
-        else next.delete(word.id);
+        if (wasKnown) next.add(word.id); else next.delete(word.id);
         return next;
       });
     }
@@ -322,15 +347,10 @@ function StudentWordListCard({
         {post.target_language && (
           <span className="stream-lang-badge">{post.target_language.toUpperCase()}</span>
         )}
-        <span className="stream-post-date">
-          {new Date(post.created_at).toLocaleDateString()}
-        </span>
+        <span className="stream-post-date">{new Date(post.created_at).toLocaleDateString()}</span>
       </div>
-
       {post.title && <h3 className="stream-post-title">{post.title}</h3>}
-
       {error && <div className="auth-error" style={{ marginBottom: '0.75rem' }}>{error}</div>}
-
       <div className="stream-word-chips-grid">
         {words.map((w) => {
           const isKnown = knownIds.has(w.id);
@@ -342,20 +362,16 @@ function StudentWordListCard({
               title={isKnown ? 'Unmark as known' : 'Mark as known'}
             >
               <span className="stream-chip-word">{w.word}</span>
-              {w.translation && (
-                <span className="stream-chip-translation"> — {w.translation}</span>
-              )}
+              {w.translation && <span className="stream-chip-translation"> — {w.translation}</span>}
             </button>
           );
         })}
       </div>
-
       <div className="stream-word-known-counter">
         <span>{knownIds.size} known</span>
         <span className="stream-counter-dot">·</span>
         <span>{unknownCount} to add</span>
       </div>
-
       {completed || addResult ? (
         <div className="stream-completed-banner">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -380,7 +396,7 @@ function StudentWordListCard({
 }
 
 // ---------------------------------------------------------------------------
-// Student material card
+// Student: material card
 // ---------------------------------------------------------------------------
 
 function StudentMaterialCard({ post }: { post: StreamPost }) {
@@ -388,19 +404,32 @@ function StudentMaterialCard({ post }: { post: StreamPost }) {
     <div className="stream-post-card">
       <div className="stream-post-header">
         <span className="stream-post-type-badge">Material</span>
-        <span className="stream-post-date">
-          {new Date(post.created_at).toLocaleDateString()}
-        </span>
+        <span className="stream-post-date">{new Date(post.created_at).toLocaleDateString()}</span>
       </div>
       {post.title && <h3 className="stream-post-title">{post.title}</h3>}
       {post.body && <p className="stream-post-body">{post.body}</p>}
       {post.attachments && post.attachments.length > 0 && (
         <div className="stream-attachments">
-          {post.attachments.map((att, i) => (
-            <AttachmentLink key={i} att={att} />
-          ))}
+          {post.attachments.map((att, i) => <AttachmentLink key={i} att={att} />)}
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Student: lesson card
+// ---------------------------------------------------------------------------
+
+function StudentLessonCard({ post }: { post: StreamPost }) {
+  return (
+    <div className="stream-post-card stream-post-card--lesson">
+      <div className="stream-post-header">
+        <span className="stream-post-type-badge stream-post-type-badge--lesson">Lesson</span>
+        <span className="stream-post-date">{new Date(post.created_at).toLocaleDateString()}</span>
+      </div>
+      {post.title && <h3 className="stream-post-title">{post.title}</h3>}
+      <LessonItemsList items={post.lesson_items || []} />
     </div>
   );
 }
@@ -431,23 +460,14 @@ export default function Classwork() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    loadStream();
-  }, [loadStream]);
+  useEffect(() => { loadStream(); }, [loadStream]);
 
-  const handleDelete = (id: string) => {
-    setPosts((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  const handleEdit = (post: StreamPost) => {
-    setEditingPost(post);
-  };
-
+  const handleDelete = (id: string) => setPosts((prev) => prev.filter((p) => p.id !== id));
+  const handleEdit = (post: StreamPost) => setEditingPost(post);
   const handleEditSaved = (updated: StreamPost) => {
     setPosts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
     setEditingPost(null);
   };
-
   const handleStudentUpdate = (partial: Partial<StreamPost> & { id: string }) => {
     setPosts((prev) => prev.map((p) => (p.id === partial.id ? { ...p, ...partial } : p)));
   };
@@ -457,10 +477,7 @@ export default function Classwork() {
       <div className="classwork-header">
         <h1 className="classwork-title">Classwork</h1>
         {isTeacher && (
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => navigate('/classwork/create')}
-          >
+          <button className="btn btn-primary btn-sm" onClick={() => navigate('/classwork/create')}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
@@ -477,7 +494,7 @@ export default function Classwork() {
       ) : posts.length === 0 ? (
         <div className="classwork-empty">
           {isTeacher
-            ? 'No posts yet. Click "Create Post" to share materials or word lists with your students.'
+            ? 'No posts yet. Click "Create Post" to share materials, lessons, or word lists.'
             : "Your teacher hasn't posted anything yet, or you haven't been added to a class."}
         </div>
       ) : (
@@ -494,12 +511,11 @@ export default function Classwork() {
               );
             }
 
-            // Student view: group by teacher
             const teacherName = post.teacher_name;
+            const idx = posts.indexOf(post);
             const showTeacherHeader =
               teacherName &&
-              (posts.indexOf(post) === 0 ||
-                posts[posts.indexOf(post) - 1].teacher_name !== teacherName);
+              (idx === 0 || posts[idx - 1].teacher_name !== teacherName);
 
             return (
               <React.Fragment key={post.id}>
@@ -508,6 +524,8 @@ export default function Classwork() {
                 )}
                 {post.type === 'word_list' ? (
                   <StudentWordListCard post={post} onUpdate={handleStudentUpdate} />
+                ) : post.type === 'lesson' ? (
+                  <StudentLessonCard post={post} />
                 ) : (
                   <StudentMaterialCard post={post} />
                 )}
@@ -518,11 +536,7 @@ export default function Classwork() {
       )}
 
       {editingPost && (
-        <EditModal
-          post={editingPost}
-          onSave={handleEditSaved}
-          onClose={() => setEditingPost(null)}
-        />
+        <EditModal post={editingPost} onSave={handleEditSaved} onClose={() => setEditingPost(null)} />
       )}
     </div>
   );
