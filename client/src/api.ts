@@ -576,6 +576,8 @@ export interface VideoSummary {
   channel: string;
   language: string;
   duration_seconds: number | null;
+  transcript_status: 'missing' | 'processing' | 'ready' | 'failed';
+  transcript_source?: 'manual' | 'auto' | 'none';
 }
 
 export interface TranscriptSegment {
@@ -586,6 +588,7 @@ export interface TranscriptSegment {
 
 export interface VideoDetail extends VideoSummary {
   transcript: TranscriptSegment[] | null;
+  transcript_last_error?: string | null;
   transcript_error?: string;
 }
 
@@ -601,3 +604,6 @@ export function addVideo(url: string, language: string) {
   return request<VideoDetail>('/videos', { method: 'POST', body: { url, language } });
 }
 
+export function retryVideoTranscript(id: string) {
+  return request<VideoDetail>(`/videos/${id}/transcript/retry`, { method: 'POST' });
+}

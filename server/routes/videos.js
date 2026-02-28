@@ -1,11 +1,10 @@
 import { Router } from 'express';
-import { XMLParser } from 'fast-xml-parser';
 import pool from '../db.js';
+import redisClient from '../redis.js';
 import { authMiddleware } from '../auth.js';
+import { enqueueTranscriptJob } from '../services/videoTranscriptQueue.js';
 
 const router = Router();
-
-const xmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
 
 /**
  * Extract a YouTube video ID from common URL formats.
@@ -32,100 +31,95 @@ function parseDuration(iso) {
          parseInt(m[3] || '0', 10);
 }
 
-/**
- * Decode common HTML entities that YouTube captions return.
- */
-function decodeEntities(text) {
-  return text
-    .replace(/&amp;/g, '&')
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, ' ');
-}
+function attachTranscriptError(video) {
+  const out = { ...video };
+  const hasTranscript = Array.isArray(out.transcript)
+    ? out.transcript.length > 0
+    : Boolean(out.transcript);
+  const status = out.transcript_status || (hasTranscript ? 'ready' : 'missing');
+  out.transcript_status = status;
 
-/**
- * Fetch transcript via YouTube's innertube API (avoids page-scraping rate limits).
- * 1. Calls innertube player endpoint to discover caption track URLs.
- * 2. Fetches the timedtext XML for the first matching track.
- * 3. Parses XML into [{text, offset, duration}] segments.
- */
-async function fetchTranscript(youtubeId, lang = 'en') {
-  // Step 1 — get caption track URLs from innertube player API
-  const playerRes = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': 'com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip',
-    },
-    body: JSON.stringify({
-      videoId: youtubeId,
-      context: {
-        client: {
-          clientName: 'ANDROID',
-          clientVersion: '19.09.37',
-          androidSdkVersion: 30,
-          hl: lang,
-          gl: 'US',
-        },
-      },
-    }),
-  });
-  if (!playerRes.ok) {
-    const errBody = await playerRes.text().catch(() => '');
-    throw new Error(`innertube player returned ${playerRes.status}: ${errBody.slice(0, 300)}`);
+  if (!out.transcript_source) {
+    out.transcript_source = hasTranscript ? 'manual' : 'none';
   }
 
-  const playerData = await playerRes.json();
-  const tracks =
-    playerData.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? [];
-  if (tracks.length === 0) throw new Error('No caption tracks available');
+  if (status === 'failed') {
+    out.transcript_error = out.transcript_last_error || 'Transcript temporarily unavailable';
+  }
 
-  // Prefer exact language match, then any track
-  const track = tracks.find((t) => t.languageCode === lang) ?? tracks[0];
+  return out;
+}
 
-  // Step 2 — fetch the timedtext XML
-  const ttRes = await fetch(track.baseUrl);
-  if (!ttRes.ok) throw new Error(`timedtext returned ${ttRes.status}`);
-  const xml = await ttRes.text();
+async function fetchVideoById(id) {
+  const { rows } = await pool.query('SELECT * FROM videos WHERE id = $1', [id]);
+  return rows[0] || null;
+}
 
-  // Step 3 — parse XML into segments
-  const parsed = xmlParser.parse(xml);
-  const body = parsed?.timedtext?.body;
-  if (!body) throw new Error('Unexpected timedtext XML structure');
+async function queueTranscriptIfNeeded(video, opts = {}) {
+  const { force = false } = opts;
 
-  // body.p can be a single object or an array
-  const paragraphs = Array.isArray(body.p) ? body.p : body.p ? [body.p] : [];
+  if (!video) return null;
 
-  return paragraphs.map((p) => {
-    // Collect text from <s> children (word-level segments)
-    let text;
-    if (p.s) {
-      const segs = Array.isArray(p.s) ? p.s : [p.s];
-      text = segs.map((s) => (typeof s === 'string' ? s : s['#text'] ?? '')).join('');
-    } else {
-      text = typeof p === 'string' ? p : p['#text'] ?? '';
-    }
-    return {
-      text: decodeEntities(text.trim()),
-      offset: Number(p['@_t'] ?? 0),
-      duration: Number(p['@_d'] ?? 0),
-    };
-  }).filter((s) => s.text);
+  const hasTranscript = Array.isArray(video.transcript) && video.transcript.length > 0;
+  if (!force && hasTranscript && video.transcript_status === 'ready') {
+    return attachTranscriptError(video);
+  }
+
+  if (!force && video.transcript_status === 'processing') {
+    return attachTranscriptError(video);
+  }
+
+  const { rows: updatedRows } = await pool.query(
+    `UPDATE videos
+     SET transcript_status = 'processing',
+         transcript_last_error = NULL,
+         transcript_updated_at = NOW()
+     WHERE id = $1
+     RETURNING *`,
+    [video.id],
+  );
+
+  const updated = updatedRows[0] || video;
+  const enqueueResult = await enqueueTranscriptJob(
+    redisClient,
+    {
+      videoId: updated.id,
+      youtubeId: updated.youtube_id,
+      language: updated.language,
+      attempt: 1,
+    },
+    { force },
+  );
+
+  if (!enqueueResult.accepted && enqueueResult.reason === 'redis_unavailable') {
+    const { rows: failedRows } = await pool.query(
+      `UPDATE videos
+       SET transcript_status = 'failed',
+           transcript_source = 'none',
+           transcript_last_error = 'Transcript queue unavailable. Please try again later.',
+           transcript_updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [video.id],
+    );
+    return attachTranscriptError(failedRows[0] || updated);
+  }
+
+  return attachTranscriptError(updated);
 }
 
 /**
  * GET /api/videos
- * List all videos (summary — no transcript).
+ * List all videos (summary).
  */
 router.get('/api/videos', authMiddleware, async (_req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, youtube_id, title, channel, language, duration_seconds
+      `SELECT id, youtube_id, title, channel, language, duration_seconds,
+              transcript_status, transcript_source
        FROM videos ORDER BY created_at DESC`,
     );
-    res.json(rows);
+    res.json(rows.map(attachTranscriptError));
   } catch (err) {
     console.error('GET /api/videos failed:', err);
     res.status(500).json({ error: 'Failed to fetch videos' });
@@ -134,7 +128,7 @@ router.get('/api/videos', authMiddleware, async (_req, res) => {
 
 /**
  * POST /api/videos
- * Create a new video from a YouTube URL.
+ * Create a new video from a YouTube URL, then queue transcript extraction.
  */
 router.post('/api/videos', authMiddleware, async (req, res) => {
   try {
@@ -144,11 +138,21 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
     const youtube_id = parseYouTubeId(url);
     if (!youtube_id) return res.status(400).json({ error: 'Invalid YouTube URL' });
 
-    // Duplicate check — return existing video
+    // Duplicate check — return existing video and ensure queued if transcript missing.
     const existing = await pool.query('SELECT * FROM videos WHERE youtube_id = $1', [youtube_id]);
-    if (existing.rows.length > 0) return res.json(existing.rows[0]);
+    if (existing.rows.length > 0) {
+      const existingVideo = existing.rows[0];
 
-    // Fetch metadata from YouTube Data API
+      if (!existingVideo.transcript &&
+          (!existingVideo.transcript_status || existingVideo.transcript_status === 'missing')) {
+        const queued = await queueTranscriptIfNeeded(existingVideo);
+        return res.json(queued || attachTranscriptError(existingVideo));
+      }
+
+      return res.json(attachTranscriptError(existingVideo));
+    }
+
+    // Fetch metadata from YouTube Data API.
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
       console.error('POST /api/videos: YOUTUBE_API_KEY not set');
@@ -173,23 +177,15 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
     const channel = item.snippet.channelTitle;
     const duration_seconds = parseDuration(item.contentDetails.duration);
 
-    // Eagerly fetch transcript
-    let transcript = null;
-    try {
-      const segments = await fetchTranscript(youtube_id, language);
-      transcript = JSON.stringify(segments);
-    } catch (transcriptErr) {
-      console.error(`Transcript fetch failed for ${youtube_id}:`, transcriptErr.message);
-    }
-
     const { rows } = await pool.query(
-      `INSERT INTO videos (youtube_id, title, channel, language, duration_seconds, transcript)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO videos (youtube_id, title, channel, language, duration_seconds)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [youtube_id, title, channel, language, duration_seconds, transcript],
+      [youtube_id, title, channel, language, duration_seconds],
     );
 
-    res.status(201).json(rows[0]);
+    const queued = await queueTranscriptIfNeeded(rows[0]);
+    res.status(201).json(queued || attachTranscriptError(rows[0]));
   } catch (err) {
     console.error('POST /api/videos failed:', err);
     res.status(500).json({ error: 'Failed to add video' });
@@ -198,40 +194,63 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
 
 /**
  * GET /api/videos/:id
- * Return full video detail including transcript.
- * If transcript is NULL, lazy-fetch from YouTube and cache.
+ * Return full video detail including transcript lifecycle status.
  */
 router.get('/api/videos/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
+    let video = await fetchVideoById(id);
 
-    const { rows } = await pool.query('SELECT * FROM videos WHERE id = $1', [id]);
-    if (rows.length === 0) {
+    if (!video) {
       return res.status(404).json({ error: 'Video not found' });
     }
 
-    const video = rows[0];
+    const hasTranscript = Array.isArray(video.transcript) && video.transcript.length > 0;
 
-    // Lazy-fetch transcript if not cached
-    if (video.transcript === null) {
-      try {
-        const segments = await fetchTranscript(video.youtube_id, video.language);
-
-        await pool.query(
-          'UPDATE videos SET transcript = $1 WHERE id = $2',
-          [JSON.stringify(segments), id],
-        );
-        video.transcript = segments;
-      } catch (transcriptErr) {
-        console.error(`Transcript fetch failed for video ${id}:`, transcriptErr.message);
-        video.transcript_error = 'Transcript temporarily unavailable';
-      }
+    // Keep lifecycle status consistent for older rows.
+    if (hasTranscript && video.transcript_status !== 'ready') {
+      const { rows } = await pool.query(
+        `UPDATE videos
+         SET transcript_status = 'ready',
+             transcript_source = CASE WHEN transcript_source = 'none' THEN 'manual' ELSE transcript_source END,
+             transcript_last_error = NULL,
+             transcript_updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [id],
+      );
+      video = rows[0] || video;
     }
 
-    res.json(video);
+    // Queue background extraction on cache miss.
+    if (!hasTranscript && (!video.transcript_status || video.transcript_status === 'missing')) {
+      video = await queueTranscriptIfNeeded(video) || video;
+    }
+
+    res.json(attachTranscriptError(video));
   } catch (err) {
     console.error('GET /api/videos/:id failed:', err);
     res.status(500).json({ error: 'Failed to fetch video' });
+  }
+});
+
+/**
+ * POST /api/videos/:id/transcript/retry
+ * Force a new background transcript extraction attempt.
+ */
+router.post('/api/videos/:id/transcript/retry', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const video = await fetchVideoById(id);
+    if (!video) return res.status(404).json({ error: 'Video not found' });
+
+    const queued = await queueTranscriptIfNeeded(video, { force: true });
+    if (!queued) return res.status(500).json({ error: 'Failed to queue transcript retry' });
+
+    res.json(queued);
+  } catch (err) {
+    console.error('POST /api/videos/:id/transcript/retry failed:', err);
+    res.status(500).json({ error: 'Failed to retry transcript extraction' });
   }
 });
 

@@ -264,6 +264,26 @@ export async function migrate(pool) {
       );
     `);
 
+    // Transcript ingestion lifecycle columns (queued/background extraction)
+    await client.query(`ALTER TABLE videos ADD COLUMN IF NOT EXISTS transcript_status VARCHAR(20) NOT NULL DEFAULT 'missing';`);
+    await client.query(`ALTER TABLE videos ADD COLUMN IF NOT EXISTS transcript_source VARCHAR(20) NOT NULL DEFAULT 'none';`);
+    await client.query(`ALTER TABLE videos ADD COLUMN IF NOT EXISTS transcript_last_error TEXT DEFAULT NULL;`);
+    await client.query(`ALTER TABLE videos ADD COLUMN IF NOT EXISTS transcript_attempts INTEGER NOT NULL DEFAULT 0;`);
+    await client.query(`ALTER TABLE videos ADD COLUMN IF NOT EXISTS transcript_updated_at TIMESTAMPTZ DEFAULT NULL;`);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_videos_transcript_status
+        ON videos (transcript_status);
+    `);
+
+    // Backfill status for legacy rows that already had transcript content.
+    await client.query(`
+      UPDATE videos
+      SET transcript_status = 'ready',
+          transcript_source = CASE WHEN transcript_source = 'none' THEN 'manual' ELSE transcript_source END
+      WHERE transcript IS NOT NULL AND transcript_status = 'missing';
+    `);
+
     // Seed default English videos (only if table is empty)
     const { rows: existingVideos } = await client.query('SELECT 1 FROM videos LIMIT 1');
     if (existingVideos.length === 0) {

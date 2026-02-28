@@ -6,7 +6,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
-import { getVideo, VideoDetail } from '../api';
+import { getVideo, retryVideoTranscript, VideoDetail } from '../api';
 import TokenizedText from '../components/TokenizedText';
 import WordPopup from '../components/WordPopup';
 import { PopupState } from '../textTokens';
@@ -58,6 +58,7 @@ export default function Watch() {
   const [error, setError] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
   const [popup, setPopup] = useState<PopupState | null>(null);
+  const [retryingTranscript, setRetryingTranscript] = useState(false);
 
   const playerRef = useRef<YT.Player | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -81,6 +82,21 @@ export default function Watch() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [id]);
+
+  // Poll while transcript extraction is running in the background.
+  useEffect(() => {
+    if (!id || !video || video.transcript_status !== 'processing') return;
+
+    const timer = setInterval(() => {
+      getVideo(id)
+        .then((v) => setVideo(v))
+        .catch((err) => {
+          console.error('Failed to refresh video transcript status:', err);
+        });
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [id, video?.transcript_status]);
 
   // Load YouTube IFrame API
   useEffect(() => {
@@ -196,6 +212,19 @@ export default function Watch() {
     setPopup({ word, sentence, rect });
   };
 
+  const handleRetryTranscript = async () => {
+    if (!id) return;
+    setRetryingTranscript(true);
+    try {
+      const updated = await retryVideoTranscript(id);
+      setVideo(updated);
+    } catch (err) {
+      console.error('Failed to retry transcript fetch:', err);
+    } finally {
+      setRetryingTranscript(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="watch-page">
@@ -216,6 +245,7 @@ export default function Watch() {
   }
 
   if (!video) return null;
+  const hasTranscript = Array.isArray(video.transcript) && video.transcript.length > 0;
 
   return (
     <div className="watch-page">
@@ -230,13 +260,21 @@ export default function Watch() {
         <p className="watch-channel">{video.channel}</p>
       </div>
 
-      {/* Transcript unavailable message */}
-      {!video.transcript && video.transcript_error && (
-        <p className="watch-transcript-error">{video.transcript_error}</p>
+      {/* Transcript lifecycle status */}
+      {!hasTranscript && video.transcript_status === 'processing' && (
+        <p className="watch-transcript-status">Captions are being fetched. This page will update automatically.</p>
+      )}
+      {!hasTranscript && video.transcript_status === 'failed' && (
+        <div className="watch-transcript-error-wrap">
+          <p className="watch-transcript-error">{video.transcript_error || 'Transcript temporarily unavailable'}</p>
+          <button className="btn-primary" onClick={handleRetryTranscript} disabled={retryingTranscript}>
+            {retryingTranscript ? 'Retrying...' : 'Retry transcript fetch'}
+          </button>
+        </div>
       )}
 
       {/* Transcript */}
-      {video.transcript && video.transcript.length > 0 && (
+      {hasTranscript && (
         <div
           className="watch-transcript"
           ref={transcriptRef}

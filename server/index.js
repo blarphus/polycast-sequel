@@ -20,6 +20,7 @@ import classroomRoutes from './routes/classroom.js';
 import iceServersRoutes from './routes/iceServers.js';
 import streamRoutes from './routes/stream.js';
 import videosRoutes from './routes/videos.js';
+import { startTranscriptWorker } from './services/videoTranscriptQueue.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +34,8 @@ const ALLOWED_ORIGINS = [
 ].filter(Boolean);
 
 async function main() {
+  let transcriptWorker = null;
+
   // ------ Database migrations ------
   try {
     await migrate(pool);
@@ -44,6 +47,7 @@ async function main() {
   // ------ Redis connection ------
   try {
     await redisClient.connect();
+    transcriptWorker = await startTranscriptWorker({ redisClient, pool });
   } catch (err) {
     console.error('Failed to connect to Redis (will retry in background):', err.message);
   }
@@ -109,6 +113,7 @@ async function main() {
   const shutdown = async () => {
     console.log('\nShutting down...');
     io.close();
+    try { await transcriptWorker?.stop(); } catch (err) { console.error('Transcript worker stop error during shutdown:', err); }
     try { await redisClient.quit(); } catch (err) { console.error('Redis quit error during shutdown:', err); }
     try { await pool.end(); } catch (err) { console.error('Pool end error during shutdown:', err); }
     server.close(() => {
