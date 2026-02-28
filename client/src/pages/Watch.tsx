@@ -266,6 +266,17 @@ export default function Watch() {
 
   return (
     <div className="watch-page">
+      <div className="watch-topbar">
+        <button
+          className="watch-back-btn"
+          onClick={() => navigate('/')}
+          aria-label="Back to home"
+        >
+          <span className="watch-back-arrow" aria-hidden="true">←</span>
+          <span>Back</span>
+        </button>
+      </div>
+
       {/* YouTube Player */}
       <div className="watch-player-wrapper">
         <div id="yt-player" />
