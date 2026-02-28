@@ -8,6 +8,7 @@ import * as api from '../api';
 import type { StreamPost, StreamTopic, StreamPostWord, StreamAttachment, LessonItem, WordOverride } from '../api';
 import ImagePicker from '../components/ImagePicker';
 import WordLookupModal from '../components/WordLookupModal';
+import { renderTildeHighlight } from '../utils/tildeMarkup';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -337,7 +338,7 @@ function WordListTab({
     try {
       await onSubmit({
         title,
-        words: preview.map(w => ({ word: w.word, image_url: w.image_url ?? null, definition: w.definition })),
+        words: preview.map(w => ({ word: w.word, image_url: w.image_url ?? null, definition: w.definition, example_sentence: w.example_sentence ?? null })),
         target_language: targetLang,
       });
     } catch (err: any) {
@@ -411,7 +412,9 @@ function WordListTab({
                 <span className="stream-preview-translation">
                   <span>{w.translation}</span>
                   <span className="stream-preview-def clickable" onClick={() => setDefPickerIdx(i)}>
-                    {w.definition || '—'}
+                    {w.example_sentence
+                      ? renderTildeHighlight(w.example_sentence, 'stream-preview-highlight')
+                      : '—'}
                   </span>
                 </span>
                 <span className="stream-preview-pos">{w.part_of_speech || '—'}</span>

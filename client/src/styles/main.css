@@ -4509,6 +4509,7 @@ select.form-input {
 }
 
 .stream-preview-def { font-size: 0.75rem; color: var(--text-muted); }
+.stream-preview-highlight { font-weight: 600; color: var(--text-primary); }
 .stream-preview-def.clickable {
   cursor: pointer;
   text-decoration: underline dotted;

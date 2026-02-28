@@ -336,21 +336,23 @@ async function lookupWordForPost(word, nativeLang, targetLang) {
   const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". The user's native language is ${nativeLang}.
 
 Return a JSON object with exactly these keys:
-{"translation":"...","definition":"...","part_of_speech":"..."}
+{"translation":"...","definition":"...","part_of_speech":"...","example_sentence":"..."}
 
 - translation: standard ${nativeLang} translation of "${word}", 1-3 words max
 - definition: what this word means in ${nativeLang}, 12 words max, no markdown
 - part_of_speech: one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
+- example_sentence: a short sentence in ${targetLang} using "${word}", wrap the word with tildes like ~word~, 15 words max
 
 Respond with ONLY the JSON object, no other text.`;
 
-  const raw = await callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 150, responseMimeType: 'application/json' });
+  const raw = await callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 300, responseMimeType: 'application/json' });
   const parsed = JSON.parse(raw);
   const image_url = await fetchWordImage(word);
   return {
     translation: parsed.translation || '',
     definition: parsed.definition || '',
     part_of_speech: parsed.part_of_speech || null,
+    example_sentence: parsed.example_sentence || null,
     image_url,
   };
 }
@@ -449,6 +451,7 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
             if (typeof word === 'object') {
               if (word.image_url !== undefined) result.image_url = word.image_url;
               if (word.definition !== undefined) result.definition = word.definition;
+              if (word.example_sentence !== undefined) result.example_sentence = word.example_sentence;
             }
             return { word: wordStr, position: i, ...result };
           }),
