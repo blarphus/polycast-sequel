@@ -4351,6 +4351,85 @@ select.form-input {
   color: var(--text-muted);
 }
 
+/* ---- Word image cards (teacher preview + student interactive) ------------- */
+
+.stream-word-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.stream-word-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem;
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  text-align: center;
+  overflow: hidden;
+}
+
+.stream-word-card-img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.35rem;
+}
+
+.stream-word-card-word {
+  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.stream-word-card-translation {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.2;
+  margin-top: 0.1rem;
+}
+
+.stream-word-card--interactive {
+  cursor: pointer;
+  transition: border-color var(--transition), opacity var(--transition);
+}
+
+.stream-word-card--interactive:hover {
+  border-color: var(--accent);
+}
+
+.stream-word-card--known {
+  opacity: 0.45;
+}
+
+.stream-word-card--known .stream-word-card-word {
+  text-decoration: line-through;
+}
+
+.stream-word-card--known .stream-word-card-img {
+  filter: grayscale(1);
+}
+
+.stream-word-card--skeleton {
+  min-height: 100px;
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.stream-word-card--more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+  border-style: dashed;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 /* ---- Completed banner ----------------------------------------------------- */
 
 .stream-completed-banner {

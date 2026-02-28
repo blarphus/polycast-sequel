@@ -924,16 +924,21 @@ function TeacherPostCard({
           {enrichingIds && enrichingIds.size > 0 && (
             <p className="word-list-enriching">Loading words…</p>
           )}
-          <div className="stream-word-chips-preview">
+          <div className="stream-word-cards">
             {(post.words || []).slice(0, 6).map((w) => (
               enrichingIds?.has(w.id)
-                ? <div key={w.id} className="stream-word-chip stream-word-chip--skeleton" />
-                : <span key={w.id} className="stream-word-chip">{w.word}</span>
+                ? <div key={w.id} className="stream-word-card stream-word-card--skeleton" />
+                : <div key={w.id} className="stream-word-card">
+                    {w.image_url && (
+                      <img className="stream-word-card-img" src={api.proxyImageUrl(w.image_url)!} alt={w.word} loading="lazy" />
+                    )}
+                    <span className="stream-word-card-word">{w.word}</span>
+                  </div>
             ))}
             {(post.word_count || 0) > 6 && (
-              <span className="stream-word-chip stream-word-chip--more">
+              <div className="stream-word-card stream-word-card--more">
                 +{(post.word_count || 0) - 6} more
-              </span>
+              </div>
             )}
           </div>
           <p className="stream-word-count-label">{post.word_count || 0} words</p>
@@ -1044,18 +1049,21 @@ function StudentWordListCard({
       </div>
       {post.title && <h3 className="stream-post-title">{post.title}</h3>}
       {error && <div className="auth-error" style={{ marginBottom: '0.75rem' }}>{error}</div>}
-      <div className="stream-word-chips-grid">
+      <div className="stream-word-cards">
         {words.map((w) => {
           const isKnown = knownIds.has(w.id);
           return (
             <button
               key={w.id}
-              className={`stream-word-chip stream-word-chip--interactive${isKnown ? ' stream-word-chip--known' : ''}`}
+              className={`stream-word-card stream-word-card--interactive${isKnown ? ' stream-word-card--known' : ''}`}
               onClick={() => toggleKnown(w)}
               title={isKnown ? 'Unmark as known' : 'Mark as known'}
             >
-              <span className="stream-chip-word">{w.word}</span>
-              {w.translation && <span className="stream-chip-translation"> — {w.translation}</span>}
+              {w.image_url && (
+                <img className="stream-word-card-img" src={api.proxyImageUrl(w.image_url)!} alt={w.word} loading="lazy" />
+              )}
+              <span className="stream-word-card-word">{w.word}</span>
+              {w.translation && <span className="stream-word-card-translation">{w.translation}</span>}
             </button>
           );
         })}
