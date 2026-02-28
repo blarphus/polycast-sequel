@@ -19,7 +19,7 @@ export async function searchPixabay(query, perPage = 3) {
     q: query,
     image_type: 'photo',
     per_page: String(perPage),
-    safesearch: 'true',
+    safesearch: 'false',
   });
   const res = await fetch(`https://pixabay.com/api/?${params}`);
   if (!res.ok) {
@@ -358,5 +358,5 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
   const imageSearchTerm = geminiImageTerm || word;
   const image_url = await fetchWordImage(imageSearchTerm);
 
-  return { word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, image_url, lemma, forms };
+  return { word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, image_url, lemma, forms, image_term: geminiImageTerm || word };
 }

@@ -403,7 +403,7 @@ export default function Dictionary() {
 
       {imagePickerWord && (
         <ImagePicker
-          initialQuery={imagePickerWord.word}
+          initialQuery={imagePickerWord.image_term || imagePickerWord.word}
           onSelect={async (url) => { await updateImage(imagePickerWord.id, url); }}
           onClose={() => setImagePickerWord(null)}
         />

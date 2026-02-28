@@ -216,6 +216,7 @@ export interface EnrichedWord {
   image_url: string | null;
   lemma: string | null;
   forms: string | null;
+  image_term: string | null;
 }
 
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
@@ -270,6 +271,7 @@ export interface SaveWordData {
   image_url?: string | null;
   lemma?: string | null;
   forms?: string | null;
+  image_term?: string | null;
 }
 
 export interface SavedWord {
@@ -295,6 +297,7 @@ export interface SavedWord {
   lemma: string | null;
   forms: string | null;
   priority: boolean;
+  image_term: string | null;
 }
 
 export function getSavedWords() {
@@ -416,6 +419,7 @@ export interface StreamPostWord {
   image_url?: string | null;
   lemma?: string | null;
   forms?: string | null;
+  image_term?: string | null;
 }
 
 export type WordOverride = {

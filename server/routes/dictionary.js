@@ -488,7 +488,7 @@ router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
  * POST /api/dictionary/words -- Save a word to the personal dictionary
  */
 router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
-  const { word, translation, definition, target_language, sentence_context, frequency, frequency_count, example_sentence, part_of_speech, image_url, lemma, forms } = req.body;
+  const { word, translation, definition, target_language, sentence_context, frequency, frequency_count, example_sentence, part_of_speech, image_url, lemma, forms, image_term } = req.body;
 
   if (!word) {
     return res.status(400).json({ error: 'word is required' });
@@ -507,10 +507,10 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
 
     // Insert new definition
     const { rows } = await pool.query(
-      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url, lemma, forms, frequency_count)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url, lemma, forms, frequency_count, image_term)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING *`,
-      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null, image_url || null, lemma || null, forms || null, frequency_count ?? null],
+      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null, image_url || null, lemma || null, forms || null, frequency_count ?? null, image_term || null],
     );
     return res.status(201).json({ ...rows[0], _created: true });
   } catch (err) {

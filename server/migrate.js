@@ -238,6 +238,10 @@ export async function migrate(pool) {
     await client.query(`ALTER TABLE stream_posts ADD COLUMN IF NOT EXISTS topic_id UUID REFERENCES stream_topics(id) ON DELETE SET NULL;`);
     await client.query(`ALTER TABLE stream_posts ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;`);
 
+    // image_term (Gemini's IMAGE_TERM for better Pixabay searches)
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS image_term TEXT DEFAULT NULL;`);
+    await client.query(`ALTER TABLE stream_post_words ADD COLUMN IF NOT EXISTS image_term TEXT DEFAULT NULL;`);
+
     // Enrichment columns on stream_post_words (full enrichment stored at post creation)
     await client.query(`ALTER TABLE stream_post_words ADD COLUMN IF NOT EXISTS frequency INTEGER DEFAULT NULL;`);
     await client.query(`ALTER TABLE stream_post_words ADD COLUMN IF NOT EXISTS frequency_count INTEGER DEFAULT NULL;`);

@@ -118,6 +118,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
         image_url: enriched.image_url,
         lemma: enriched.lemma || lemma || null,
         forms: enriched.forms || null,
+        image_term: enriched.image_term,
       });
     });
   };

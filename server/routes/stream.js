@@ -302,7 +302,7 @@ async function lookupWordForPost(word, nativeLang, targetLang) {
   const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". The user's native language is ${nativeLang}.
 
 Return a JSON object with exactly these keys:
-{"translation":"...","definition":"...","part_of_speech":"...","example_sentence":"...","frequency":0,"lemma":"...","forms":"..."}
+{"translation":"...","definition":"...","part_of_speech":"...","example_sentence":"...","frequency":0,"lemma":"...","forms":"...","image_term":"..."}
 
 - translation: standard ${nativeLang} translation of "${word}", 1-3 words max
 - definition: what this word means in ${nativeLang}, 12 words max, no markdown
@@ -311,12 +311,13 @@ Return a JSON object with exactly these keys:
 - frequency: integer 1-10 how common this word is (1-2 rare, 3-4 uncommon, 5-6 moderate, 7-8 common everyday, 9-10 essential top-500)
 - lemma: dictionary/base form (infinitive for verbs, singular for nouns). Same as word if already base form. Empty string for particles/prepositions.
 - forms: comma-separated inflected forms of the lemma (e.g. "run, runs, ran, running"). Empty string if uninflected.
+- image_term: a 1-4 word English phrase describing a concrete, photographable subject that captures THIS SPECIFIC meaning of the word. Works as a stock-photo search query. Concrete nouns → the object itself. Abstract words → a vivid scene or tangible symbol. Do NOT repeat the word itself unless it is already a concrete noun.
 
 Respond with ONLY the JSON object, no other text.`;
 
   const raw = await callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 400, responseMimeType: 'application/json' });
   const parsed = JSON.parse(raw);
-  const image_url = await fetchWordImage(word);
+  const image_url = await fetchWordImage(parsed.image_term || word);
 
   let frequency = typeof parsed.frequency === 'number' ? parsed.frequency : null;
   let frequency_count = null;
@@ -351,6 +352,7 @@ Respond with ONLY the JSON object, no other text.`;
     frequency_count,
     lemma,
     forms,
+    image_term: parsed.image_term || word,
   };
 }
 
@@ -491,6 +493,7 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
                 image_url: word.image_url ?? null,
                 lemma: word.lemma ?? null,
                 forms: word.forms ?? null,
+                image_term: word.image_term ?? null,
               };
             }
             // No preview data — enrich now (posted without lookup)
@@ -508,12 +511,12 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
           await client.query(
             `INSERT INTO stream_post_words
                (post_id, word, translation, definition, part_of_speech, position,
-                frequency, frequency_count, example_sentence, image_url, lemma, forms)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+                frequency, frequency_count, example_sentence, image_url, lemma, forms, image_term)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
             [
               post.id, w.word, w.translation, w.definition, w.part_of_speech, w.position,
               w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
-              w.image_url ?? null, w.lemma ?? null, w.forms ?? null,
+              w.image_url ?? null, w.lemma ?? null, w.forms ?? null, w.image_term ?? null,
             ],
           );
         }
@@ -578,11 +581,12 @@ router.get('/api/stream/posts/:id/enrich', authMiddleware, async (req, res) => {
       await pool.query(
         `UPDATE stream_post_words
          SET translation=$1, definition=$2, part_of_speech=$3, frequency=$4,
-             frequency_count=$5, example_sentence=$6, image_url=$7, lemma=$8, forms=$9
-         WHERE id=$10`,
+             frequency_count=$5, example_sentence=$6, image_url=$7, lemma=$8, forms=$9,
+             image_term=$10
+         WHERE id=$11`,
         [result.translation, result.definition, result.part_of_speech,
          result.frequency, result.frequency_count, result.example_sentence,
-         result.image_url, result.lemma, result.forms, w.id],
+         result.image_url, result.lemma, result.forms, result.image_term, w.id],
       );
       res.write(`data: ${JSON.stringify({ word_id: w.id, ...result })}\n\n`);
     } catch (err) {
@@ -674,6 +678,7 @@ router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
                 image_url: word.image_url ?? null,
                 lemma: word.lemma ?? null,
                 forms: word.forms ?? null,
+                image_term: word.image_term ?? null,
               };
             }
             const result = await enrichWord(wordStr, '', nativeLang, targetLang);
@@ -690,12 +695,12 @@ router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
           await client.query(
             `INSERT INTO stream_post_words
                (post_id, word, translation, definition, part_of_speech, position,
-                frequency, frequency_count, example_sentence, image_url, lemma, forms)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+                frequency, frequency_count, example_sentence, image_url, lemma, forms, image_term)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
             [
               req.params.id, w.word, w.translation, w.definition, w.part_of_speech, w.position,
               w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
-              w.image_url ?? null, w.lemma ?? null, w.forms ?? null,
+              w.image_url ?? null, w.lemma ?? null, w.forms ?? null, w.image_term ?? null,
             ],
           );
         }
