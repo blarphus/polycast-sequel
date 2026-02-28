@@ -271,8 +271,11 @@ async function runYtDlp(url, language, outTemplate, mode) {
     '--no-warnings',
     '--no-call-home',
     '--no-check-certificates',
+    '--geo-bypass',
     '--sub-format', 'vtt',
     '--sub-langs', language,
+    '--extractor-args', 'youtube:player_client=tv,android,web_embedded',
+    '--extractor-args', 'youtube:player_skip=webpage',
     '--output', outTemplate,
   ];
 
