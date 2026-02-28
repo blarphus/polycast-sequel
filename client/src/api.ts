@@ -517,3 +517,10 @@ export function lookupPostWords(words: string[], nativeLang: string, targetLang:
   });
 }
 
+export function generateExampleSentence(word: string, targetLang: string) {
+  return request<{ example_sentence: string | null }>('/stream/words/example', {
+    method: 'POST',
+    body: { word, targetLang },
+  });
+}
+

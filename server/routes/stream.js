@@ -358,6 +358,39 @@ Respond with ONLY the JSON object, no other text.`;
 }
 
 // ---------------------------------------------------------------------------
+// POST /api/stream/words/example — generate a single example sentence (teacher)
+// ---------------------------------------------------------------------------
+
+router.post('/api/stream/words/example', authMiddleware, async (req, res) => {
+  const { word, targetLang } = req.body;
+  if (!word) return res.status(400).json({ error: 'word is required' });
+  if (!targetLang) return res.status(400).json({ error: 'targetLang is required' });
+
+  try {
+    const { rows: userRows } = await pool.query(
+      'SELECT account_type FROM users WHERE id = $1',
+      [req.userId],
+    );
+    if (userRows[0]?.account_type !== 'teacher') {
+      return res.status(403).json({ error: 'Only teachers can generate example sentences' });
+    }
+
+    const prompt = `Write a short example sentence in ${targetLang} using the word "${word}". Wrap the word with tildes like ~word~. 15 words max.
+
+Return a JSON object: {"example_sentence":"..."}
+
+Respond with ONLY the JSON object, no other text.`;
+
+    const raw = await callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 100, responseMimeType: 'application/json' });
+    const parsed = JSON.parse(raw);
+    return res.json({ example_sentence: parsed.example_sentence || null });
+  } catch (err) {
+    console.error('POST /api/stream/words/example error:', err);
+    return res.status(500).json({ error: err.message || 'Example sentence generation failed' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // POST /api/stream/words/lookup — preview word translations (teacher only)
 // ---------------------------------------------------------------------------
 

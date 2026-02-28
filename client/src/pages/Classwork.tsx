@@ -451,12 +451,22 @@ function WordListTab({
               targetLang={targetLang}
               nativeLang={nativeLang}
               initialQuery={preview[defPickerIdx].word}
-              onPick={(sense) => {
+              onPick={async (sense) => {
+                const idx = defPickerIdx!;
+                const word = preview[idx].word;
                 setPreview(prev => prev
-                  ? prev.map((p, j) => j === defPickerIdx
+                  ? prev.map((p, j) => j === idx
                       ? { ...p, definition: sense.gloss, part_of_speech: sense.pos || p.part_of_speech, example_sentence: null }
                       : p)
                   : prev);
+                try {
+                  const { example_sentence } = await api.generateExampleSentence(word, targetLang);
+                  setPreview(prev => prev
+                    ? prev.map((p, j) => j === idx ? { ...p, example_sentence } : p)
+                    : prev);
+                } catch (err) {
+                  console.error('Failed to generate example sentence:', err);
+                }
               }}
               onClose={() => setDefPickerIdx(null)}
             />
