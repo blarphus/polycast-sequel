@@ -338,7 +338,18 @@ function WordListTab({
     try {
       await onSubmit({
         title,
-        words: preview.map(w => ({ word: w.word, image_url: w.image_url ?? null, definition: w.definition, example_sentence: w.example_sentence ?? null })),
+        words: preview.map(w => ({
+          word: w.word,
+          translation: w.translation,
+          definition: w.definition,
+          part_of_speech: w.part_of_speech ?? null,
+          frequency: w.frequency ?? null,
+          frequency_count: w.frequency_count ?? null,
+          example_sentence: w.example_sentence ?? null,
+          image_url: w.image_url ?? null,
+          lemma: w.lemma ?? null,
+          forms: w.forms ?? null,
+        })),
         target_language: targetLang,
       });
     } catch (err: any) {
@@ -825,6 +836,7 @@ function TeacherPostCard({
   onDragOver,
   onDrop,
   onDragEnd,
+  enrichingIds,
 }: {
   post: StreamPost;
   topics: StreamTopic[];
@@ -837,6 +849,7 @@ function TeacherPostCard({
   onDragOver?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
+  enrichingIds?: Set<string>;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -908,9 +921,14 @@ function TeacherPostCard({
 
       {post.type === 'word_list' && (
         <>
+          {enrichingIds && enrichingIds.size > 0 && (
+            <p className="word-list-enriching">Loading words…</p>
+          )}
           <div className="stream-word-chips-preview">
             {(post.words || []).slice(0, 6).map((w) => (
-              <span key={w.id} className="stream-word-chip">{w.word}</span>
+              enrichingIds?.has(w.id)
+                ? <div key={w.id} className="stream-word-chip stream-word-chip--skeleton" />
+                : <span key={w.id} className="stream-word-chip">{w.word}</span>
             ))}
             {(post.word_count || 0) > 6 && (
               <span className="stream-word-chip stream-word-chip--more">
@@ -1127,6 +1145,7 @@ function TopicSection({
   onDragOverTopic,
   onDropTopic,
   onStudentUpdate,
+  enrichingWordIds,
 }: {
   topic: StreamTopic | null;
   posts: StreamPost[];
@@ -1149,6 +1168,7 @@ function TopicSection({
   onDragOverTopic: (topicId: string) => void;
   onDropTopic: (e: React.DragEvent, targetTopicId: string) => void;
   onStudentUpdate: (partial: Partial<StreamPost> & { id: string }) => void;
+  enrichingWordIds: Map<string, Set<string>>;
 }) {
   const [topicMenuOpen, setTopicMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -1269,6 +1289,7 @@ function TopicSection({
                     draggable={true}
                     onDragStart={(e) => onDragStartPost(e, post)}
                     onDragEnd={onDragEndPost}
+                    enrichingIds={enrichingWordIds.get(post.id)}
                   />
                 </div>
               );
@@ -1355,6 +1376,7 @@ export default function Classwork() {
 
   const [topics, setTopics] = useState<StreamTopic[]>([]);
   const [posts, setPosts] = useState<StreamPost[]>([]);
+  const [enrichingWordIds, setEnrichingWordIds] = useState<Map<string, Set<string>>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -1397,6 +1419,50 @@ export default function Classwork() {
   const handlePostCreated = (post: StreamPost) => {
     setPosts((prev) => [post, ...prev]);
     setCreateType(null);
+
+    const unenriched = (post.words || []).filter((w) => !w.translation);
+    if (unenriched.length > 0) {
+      const wordIdSet = new Set(unenriched.map((w) => w.id));
+      setEnrichingWordIds((prev) => new Map(prev).set(post.id, wordIdSet));
+
+      const es = api.enrichPostStream(post.id);
+      es.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.done) {
+          setEnrichingWordIds((prev) => {
+            const next = new Map(prev);
+            next.delete(post.id);
+            return next;
+          });
+          es.close();
+          return;
+        }
+        if (data.error) {
+          setEnrichingWordIds((prev) => {
+            const next = new Map(prev);
+            const set = next.get(post.id);
+            if (set) { set.delete(data.word_id); if (set.size === 0) next.delete(post.id); }
+            return next;
+          });
+          return;
+        }
+        setPosts((prev) => prev.map((p) => {
+          if (p.id !== post.id) return p;
+          return { ...p, words: (p.words || []).map((w) => w.id === data.word_id ? { ...w, ...data } : w) };
+        }));
+        setEnrichingWordIds((prev) => {
+          const next = new Map(prev);
+          const set = next.get(post.id);
+          if (set) { set.delete(data.word_id); if (set.size === 0) next.delete(post.id); }
+          return next;
+        });
+      };
+      es.onerror = (e) => {
+        console.error('enrichPostStream error:', e);
+        es.close();
+        setEnrichingWordIds((prev) => { const next = new Map(prev); next.delete(post.id); return next; });
+      };
+    }
   };
 
   const handleMovePost = async (postId: string, newTopicId: string | null) => {
@@ -1622,6 +1688,7 @@ export default function Classwork() {
               onDragOverTopic={handleDragOverTopic}
               onDropTopic={handleDropTopic}
               onStudentUpdate={handleStudentUpdate}
+              enrichingWordIds={enrichingWordIds}
             />
           )}
 
@@ -1650,6 +1717,7 @@ export default function Classwork() {
               onDragOverTopic={handleDragOverTopic}
               onDropTopic={handleDropTopic}
               onStudentUpdate={handleStudentUpdate}
+              enrichingWordIds={enrichingWordIds}
             />
           ))}
 

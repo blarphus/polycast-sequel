@@ -417,7 +417,18 @@ export interface StreamPostWord {
   forms?: string | null;
 }
 
-export type WordOverride = { word: string; image_url?: string | null; definition?: string };
+export type WordOverride = {
+  word: string;
+  translation?: string;
+  definition?: string;
+  part_of_speech?: string | null;
+  frequency?: number | null;
+  frequency_count?: number | null;
+  example_sentence?: string | null;
+  image_url?: string | null;
+  lemma?: string | null;
+  forms?: string | null;
+};
 
 export interface StreamPost {
   id: string;
@@ -463,6 +474,10 @@ export function createPost(data: {
   topic_id?: string | null;
 }) {
   return request<StreamPost>('/stream/posts', { method: 'POST', body: data });
+}
+
+export function enrichPostStream(postId: string): EventSource {
+  return new EventSource(`/api/stream/posts/${postId}/enrich`, { withCredentials: true });
 }
 
 export function updatePost(postId: string, data: {

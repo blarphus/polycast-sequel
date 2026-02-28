@@ -481,6 +481,22 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
         const enriched = await Promise.all(
           words.map(async (word, i) => {
             const wordStr = typeof word === 'string' ? word.trim() : word.word;
+            if (typeof word === 'object' && word.translation) {
+              // Already enriched from lookup — use preview data directly
+              return {
+                word: wordStr, position: i,
+                translation: word.translation,
+                definition: word.definition ?? '',
+                part_of_speech: word.part_of_speech ?? null,
+                frequency: word.frequency ?? null,
+                frequency_count: word.frequency_count ?? null,
+                example_sentence: word.example_sentence ?? null,
+                image_url: word.image_url ?? null,
+                lemma: word.lemma ?? null,
+                forms: word.forms ?? null,
+              };
+            }
+            // No preview data — enrich now (posted without lookup)
             const result = await enrichWord(wordStr, '', nativeLang, targetLang);
             if (typeof word === 'object') {
               if (word.image_url !== undefined) result.image_url = word.image_url;
@@ -524,6 +540,62 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
     console.error('POST /api/stream/posts error:', err);
     return res.status(500).json({ error: err.message || 'Failed to create post' });
   }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/stream/posts/:id/enrich — SSE: enrich words that have no translation
+// ---------------------------------------------------------------------------
+
+router.get('/api/stream/posts/:id/enrich', authMiddleware, async (req, res) => {
+  const postId = req.params.id;
+
+  const { rows } = await pool.query(
+    'SELECT teacher_id, target_language FROM stream_posts WHERE id = $1',
+    [postId],
+  );
+  if (!rows[0] || rows[0].teacher_id !== req.userId) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const { rows: userRows } = await pool.query(
+    'SELECT native_language FROM users WHERE id = $1', [req.userId],
+  );
+  const nativeLang = userRows[0]?.native_language;
+  const targetLang = rows[0].target_language;
+
+  const { rows: wordRows } = await pool.query(
+    `SELECT id, word FROM stream_post_words
+     WHERE post_id = $1 AND (translation IS NULL OR translation = '')
+     ORDER BY position ASC`,
+    [postId],
+  );
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  for (const w of wordRows) {
+    try {
+      const result = await enrichWord(w.word, '', nativeLang, targetLang);
+      await pool.query(
+        `UPDATE stream_post_words
+         SET translation=$1, definition=$2, part_of_speech=$3, frequency=$4,
+             frequency_count=$5, example_sentence=$6, image_url=$7, lemma=$8, forms=$9
+         WHERE id=$10`,
+        [result.translation, result.definition, result.part_of_speech,
+         result.frequency, result.frequency_count, result.example_sentence,
+         result.image_url, result.lemma, result.forms, w.id],
+      );
+      res.write(`data: ${JSON.stringify({ word_id: w.id, ...result })}\n\n`);
+    } catch (err) {
+      console.error(`enrichPostStream: failed to enrich word ${w.id}:`, err);
+      res.write(`data: ${JSON.stringify({ word_id: w.id, error: true })}\n\n`);
+    }
+  }
+
+  res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+  res.end();
 });
 
 // ---------------------------------------------------------------------------
