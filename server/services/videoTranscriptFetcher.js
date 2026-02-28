@@ -28,6 +28,11 @@ const YOUTUBE_TRANSCRIPT_REQUEST_TIMEOUT_MS =
 const YOUTUBE_TRANSCRIPT_USER_AGENT = process.env.YOUTUBE_TRANSCRIPT_USER_AGENT ||
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const VCYON_ENABLED = process.env.VCYON_ENABLED !== 'false';
+const VCYON_TRANSCRIPT_API_URL = process.env.VCYON_TRANSCRIPT_API_URL ||
+  'https://api.vcyon.com/v1/youtube/transcript';
+const VCYON_API_KEY = process.env.VCYON_API_KEY || '';
+const VCYON_TIMEOUT_MS = Number(process.env.VCYON_TIMEOUT_MS || 25000);
 
 let resolvedYtDlpBinaryPromise = null;
 let proxyCache = { expiresAt: 0, proxies: [] };
@@ -421,6 +426,158 @@ async function fetchViaTranscriptPlus(youtubeId, language) {
   }
 }
 
+function normalizeVcyonSegments(items) {
+  const segments = [];
+
+  for (const item of items || []) {
+    const text = String(item?.text || '').replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+
+    const start = Number(item?.start ?? item?.offset ?? 0);
+    const end = Number(item?.end);
+    const rawDuration = Number(item?.duration);
+
+    if (!Number.isFinite(start)) continue;
+
+    let duration = 0;
+    if (Number.isFinite(end) && end >= start) {
+      duration = end - start;
+    } else if (Number.isFinite(rawDuration) && rawDuration >= 0) {
+      duration = rawDuration;
+    }
+
+    segments.push({
+      text,
+      offset: Math.max(0, Math.round(start)),
+      duration: Math.max(0, Math.round(duration)),
+    });
+  }
+
+  return segments;
+}
+
+async function fetchViaVcyon(youtubeId, language) {
+  if (!VCYON_ENABLED) {
+    throw new TranscriptFetchError(
+      'External transcript provider disabled.',
+      'CONFIG_ERROR',
+      false,
+    );
+  }
+
+  const requestUrl = new URL(VCYON_TRANSCRIPT_API_URL);
+  requestUrl.searchParams.set('videoId', youtubeId);
+  if (language) {
+    requestUrl.searchParams.set('lang', language);
+  }
+
+  const headers = {
+    Accept: 'application/json',
+    'User-Agent': 'polycast-sequel/1.0',
+  };
+
+  if (VCYON_API_KEY) {
+    headers.Authorization = `Bearer ${VCYON_API_KEY}`;
+    headers['x-api-key'] = VCYON_API_KEY;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), VCYON_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(requestUrl, {
+      headers,
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      const msg = `${response.status} ${body}`.toLowerCase();
+
+      if (msg.includes('api key') || msg.includes('unauthorized') || response.status === 401) {
+        throw new TranscriptFetchError(
+          'External transcript provider rejected credentials.',
+          'CONFIG_ERROR',
+          false,
+        );
+      }
+
+      if (response.status === 404) {
+        throw new TranscriptFetchError(
+          'No YouTube captions available for this video/language.',
+          'NO_CAPTIONS',
+          false,
+        );
+      }
+
+      throw new TranscriptFetchError(
+        'External transcript provider temporarily unavailable.',
+        'TRANSIENT_FETCH_ERROR',
+        true,
+      );
+    }
+
+    const data = await response.json();
+    if (!data || data.success === false) {
+      const message = String(data?.error || data?.message || '').toLowerCase();
+
+      if (message.includes('api key') || message.includes('unauthorized')) {
+        throw new TranscriptFetchError(
+          'External transcript provider rejected credentials.',
+          'CONFIG_ERROR',
+          false,
+        );
+      }
+
+      if (message.includes('no transcript') || message.includes('no captions')) {
+        throw new TranscriptFetchError(
+          'No YouTube captions available for this video/language.',
+          'NO_CAPTIONS',
+          false,
+        );
+      }
+
+      throw new TranscriptFetchError(
+        'External transcript provider temporarily unavailable.',
+        'TRANSIENT_FETCH_ERROR',
+        true,
+      );
+    }
+
+    const hasTranscript = Boolean(data?.data?.hasTranscript);
+    const segments = normalizeVcyonSegments(data?.data?.segments);
+
+    if (!hasTranscript || segments.length === 0) {
+      throw new TranscriptFetchError(
+        'No YouTube captions available for this video/language.',
+        'NO_CAPTIONS',
+        false,
+      );
+    }
+
+    return { segments, source: 'vcyon' };
+  } catch (err) {
+    if (err instanceof TranscriptFetchError) throw err;
+
+    if (err?.name === 'AbortError') {
+      throw new TranscriptFetchError(
+        'External transcript provider timed out.',
+        'TRANSIENT_FETCH_ERROR',
+        true,
+      );
+    }
+
+    throw new TranscriptFetchError(
+      err?.message || 'External transcript provider temporarily unavailable.',
+      'TRANSIENT_FETCH_ERROR',
+      true,
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function classifyYtDlpFailure(stderrText) {
   const normalized = stderrText.toLowerCase();
 
@@ -634,46 +791,67 @@ async function extractMode(youtubeId, language, mode, tempRoot) {
 export async function fetchYouTubeTranscript(youtubeId, language = 'en') {
   const normalizedLang = (language || 'en').trim().toLowerCase();
 
+  let mappedPrimaryErr;
   try {
     return await fetchViaTranscriptPlus(youtubeId, normalizedLang);
   } catch (primaryErr) {
-    const mappedPrimaryErr = primaryErr instanceof TranscriptFetchError
+    mappedPrimaryErr = primaryErr instanceof TranscriptFetchError
       ? primaryErr
       : new TranscriptFetchError(
         primaryErr?.message || 'Transcript fetch failed.',
         'TRANSIENT_FETCH_ERROR',
         true,
       );
+  }
 
-    // Only fall back on transient/block states where yt-dlp+proxy can still recover.
-    if (!mappedPrimaryErr.transient ||
-        (mappedPrimaryErr.code !== 'BLOCKED_OR_RATE_LIMITED' &&
-         mappedPrimaryErr.code !== 'TRANSIENT_FETCH_ERROR')) {
-      throw mappedPrimaryErr;
-    }
-
-    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'polycast-transcript-'));
+  // External provider fallback is highly reliable when Render IPs are blocked by YouTube.
+  let externalProviderError = null;
+  if (mappedPrimaryErr.code !== 'SOURCE_UNAVAILABLE') {
     try {
-      const manual = await extractMode(youtubeId, normalizedLang, 'manual', tempRoot);
-      if (manual) {
-        return { segments: manual, source: 'manual' };
-      }
-
-      const auto = await extractMode(youtubeId, normalizedLang, 'auto', tempRoot);
-      if (auto) {
-        return { segments: auto, source: 'auto' };
-      }
-
-      throw mappedPrimaryErr;
-    } catch (fallbackErr) {
-      if (fallbackErr instanceof TranscriptFetchError) throw fallbackErr;
-      throw new TranscriptFetchError(
-        fallbackErr?.message || mappedPrimaryErr.message,
-        'TRANSIENT_FETCH_ERROR',
-        true,
-      );
-    } finally {
-      await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+      return await fetchViaVcyon(youtubeId, normalizedLang);
+    } catch (err) {
+      externalProviderError = err instanceof TranscriptFetchError
+        ? err
+        : new TranscriptFetchError(
+          err?.message || 'External transcript provider temporarily unavailable.',
+          'TRANSIENT_FETCH_ERROR',
+          true,
+        );
     }
+  }
+
+  // Only use yt-dlp+proxy fallback for transient failures.
+  if (!mappedPrimaryErr.transient ||
+      (mappedPrimaryErr.code !== 'BLOCKED_OR_RATE_LIMITED' &&
+       mappedPrimaryErr.code !== 'TRANSIENT_FETCH_ERROR')) {
+    if (externalProviderError && externalProviderError.code !== 'TRANSIENT_FETCH_ERROR') {
+      throw externalProviderError;
+    }
+    throw mappedPrimaryErr;
+  }
+
+  const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'polycast-transcript-'));
+  try {
+    const manual = await extractMode(youtubeId, normalizedLang, 'manual', tempRoot);
+    if (manual) {
+      return { segments: manual, source: 'manual' };
+    }
+
+    const auto = await extractMode(youtubeId, normalizedLang, 'auto', tempRoot);
+    if (auto) {
+      return { segments: auto, source: 'auto' };
+    }
+
+    if (externalProviderError) throw externalProviderError;
+    throw mappedPrimaryErr;
+  } catch (fallbackErr) {
+    if (fallbackErr instanceof TranscriptFetchError) throw fallbackErr;
+    throw new TranscriptFetchError(
+      fallbackErr?.message || mappedPrimaryErr.message,
+      'TRANSIENT_FETCH_ERROR',
+      true,
+    );
+  } finally {
+    await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
   }
 }
