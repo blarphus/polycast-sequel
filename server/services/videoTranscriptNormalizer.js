@@ -1,5 +1,8 @@
 const NORMALIZATION_ENABLED = process.env.TRANSCRIPT_NORMALIZATION_ENABLED !== 'false';
-const NORMALIZATION_PAUSE_MS = Number(process.env.TRANSCRIPT_NORMALIZATION_PAUSE_MS || 1200);
+const NORMALIZATION_PAUSE_MS = Number(process.env.TRANSCRIPT_NORMALIZATION_PAUSE_MS || 2200);
+const NORMALIZATION_SOFT_PAUSE_MS = Number(process.env.TRANSCRIPT_NORMALIZATION_SOFT_PAUSE_MS || 900);
+const NORMALIZATION_MIN_SENTENCE_WORDS = Number(process.env.TRANSCRIPT_NORMALIZATION_MIN_SENTENCE_WORDS || 8);
+const NORMALIZATION_MAX_SENTENCE_WORDS = Number(process.env.TRANSCRIPT_NORMALIZATION_MAX_SENTENCE_WORDS || 30);
 const NORMALIZATION_LANGS = new Set(
   String(process.env.TRANSCRIPT_NORMALIZATION_LANGS || 'en,es')
     .split(',')
@@ -54,6 +57,7 @@ function firstWordLower(text) {
 }
 
 function shouldTerminateSegment({
+  sentenceWordCount,
   currentText,
   nextText,
   nextOffset,
@@ -62,17 +66,25 @@ function shouldTerminateSegment({
   language,
 }) {
   if (!currentText) return false;
-  if (END_PUNCT_RE.test(currentText)) return false;
+  if (END_PUNCT_RE.test(currentText)) return true;
   if (!nextText) return true;
 
   const pauseMs = Math.max(0, Number(nextOffset || 0) - (Number(currentOffset || 0) + Number(currentDuration || 0)));
   if (pauseMs >= NORMALIZATION_PAUSE_MS) return true;
 
+  if (sentenceWordCount >= NORMALIZATION_MAX_SENTENCE_WORDS && pauseMs >= NORMALIZATION_SOFT_PAUSE_MS) {
+    return true;
+  }
+
   const nextWord = firstWordLower(nextText);
   if (!nextWord) return true;
 
   const continuationSet = language === 'es' ? ES_CONTINUATIONS : EN_CONTINUATIONS;
-  return !continuationSet.has(nextWord);
+  if (pauseMs >= NORMALIZATION_SOFT_PAUSE_MS && sentenceWordCount >= NORMALIZATION_MIN_SENTENCE_WORDS) {
+    return !continuationSet.has(nextWord);
+  }
+
+  return false;
 }
 
 function normalizeSegmentText({ text, capitalizeStart, addTerminalPeriod }) {
@@ -93,20 +105,30 @@ function normalizeSegmentText({ text, capitalizeStart, addTerminalPeriod }) {
 }
 
 function normalizeByRules(segments, language) {
-  const out = [];
-  let sentenceStart = true;
+  const out = segments.map((seg) => ({ ...seg, text: collapseWhitespace(seg?.text || '') }));
+  const sentenceStartIndices = [];
+  const sentenceEndIndices = [];
+  let windowStart = -1;
+  let windowWords = 0;
 
-  for (let i = 0; i < segments.length; i += 1) {
-    const seg = segments[i];
-    const next = segments[i + 1] || null;
+  for (let i = 0; i < out.length; i += 1) {
+    const seg = out[i];
+    const next = out[i + 1] || null;
 
-    const rawText = collapseWhitespace(seg?.text || '');
+    const rawText = seg.text;
     if (!rawText) {
-      out.push({ ...seg, text: rawText });
       continue;
     }
 
+    if (windowStart === -1) {
+      windowStart = i;
+      sentenceStartIndices.push(i);
+      windowWords = 0;
+    }
+
+    windowWords += extractWordTokens(rawText).length;
     const addTerminalPeriod = shouldTerminateSegment({
+      sentenceWordCount: windowWords,
       currentText: rawText,
       nextText: next?.text || '',
       nextOffset: next?.offset || 0,
@@ -115,18 +137,30 @@ function normalizeByRules(segments, language) {
       language,
     });
 
-    const normalizedText = normalizeSegmentText({
+    seg.text = normalizeSegmentText({
       text: rawText,
-      capitalizeStart: sentenceStart,
-      addTerminalPeriod,
+      capitalizeStart: false,
+      addTerminalPeriod: false,
     });
 
-    out.push({
-      ...seg,
-      text: normalizedText,
-    });
+    if (addTerminalPeriod) {
+      sentenceEndIndices.push(i);
+      windowStart = -1;
+      windowWords = 0;
+    }
+  }
 
-    sentenceStart = addTerminalPeriod || END_PUNCT_RE.test(normalizedText);
+  // Apply sentence-level casing/punctuation after chunk grouping.
+  for (const idx of sentenceStartIndices) {
+    if (!out[idx]?.text) continue;
+    out[idx].text = uppercaseFirstLetter(out[idx].text);
+  }
+
+  for (const idx of sentenceEndIndices) {
+    if (!out[idx]?.text) continue;
+    if (!END_PUNCT_RE.test(out[idx].text)) {
+      out[idx].text = `${out[idx].text}.`;
+    }
   }
 
   return out;
@@ -177,4 +211,3 @@ export function normalizeTranscriptSegmentsStrict(segments, { language } = {}) {
     meta: { applied: true, reason: 'ok', engine: 'deterministic-v1', language: lang, changedSegments },
   };
 }
-
