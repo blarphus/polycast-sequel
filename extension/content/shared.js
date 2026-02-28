@@ -52,9 +52,31 @@ function tokenizeElement(container) {
   const text = container.textContent;
   if (!text || !text.trim()) return;
 
+  // Recovery guard: if cursor is no longer over this container but hover-pause is stuck, resume.
+  if (pcPausedByHover && !activePopup && !container.matches(':hover')) {
+    resumeIfWePaused();
+  }
+
   // Skip if already tokenized with the same text
   if (container.dataset.pcTokenized === text) return;
   container.dataset.pcTokenized = text;
+
+  // Attach container-level hover listeners once — survives subtitle text changes
+  if (!container.dataset.pcHoverListened) {
+    container.dataset.pcHoverListened = 'true';
+    container.addEventListener('mouseenter', () => {
+      const video = document.querySelector('video');
+      if (video && !video.paused) {
+        video.pause();
+        pcPausedByHover = true;
+      }
+    });
+    container.addEventListener('mouseleave', () => {
+      if (pcPausedByHover && !activePopup) {
+        resumeIfWePaused();
+      }
+    });
+  }
 
   const tokens = tokenize(text);
   const frag = document.createDocumentFragment();
@@ -71,18 +93,6 @@ function tokenizeElement(container) {
         e.stopPropagation();
         e.preventDefault();
         handleWordClick(token, text, span);
-      });
-      span.addEventListener('mouseenter', () => {
-        const video = document.querySelector('video');
-        if (video && !video.paused) {
-          video.pause();
-          pcPausedByHover = true;
-        }
-      });
-      span.addEventListener('mouseleave', () => {
-        if (pcPausedByHover && !activePopup) {
-          resumeIfWePaused();
-        }
       });
       frag.appendChild(span);
     } else {
