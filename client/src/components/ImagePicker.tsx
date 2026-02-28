@@ -17,7 +17,11 @@ export default function ImagePicker({ initialQuery, onSelect, onClose }: Props) 
   const [searched, setSearched] = useState(false);
   const [searching, setSearching] = useState(false);
   const [savingUrl, setSavingUrl] = useState<string | null>(null);
+  const [customUrl, setCustomUrl] = useState('');
+  const [customPreviewError, setCustomPreviewError] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dragCounter = useRef(0);
 
   const doSearch = useCallback(async (term: string) => {
     const trimmed = term.trim();
@@ -46,6 +50,59 @@ export default function ImagePicker({ initialQuery, onSelect, onClose }: Props) 
     inputRef.current?.focus();
   }, []);
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (dragCounter.current === 1) setDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) setDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current = 0;
+    setDragging(false);
+
+    let url = '';
+
+    // 1. Try text/uri-list (standard for dragged URLs)
+    url = e.dataTransfer.getData('text/uri-list').trim();
+
+    // 2. Try text/plain
+    if (!url) {
+      const plain = e.dataTransfer.getData('text/plain').trim();
+      if (plain.startsWith('http://') || plain.startsWith('https://')) {
+        url = plain;
+      }
+    }
+
+    // 3. Try text/html — parse out src="..." from <img> tag
+    if (!url) {
+      const html = e.dataTransfer.getData('text/html');
+      if (html) {
+        const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+        if (match) url = match[1];
+      }
+    }
+
+    if (url) {
+      setCustomUrl(url);
+      setCustomPreviewError(false);
+    }
+  }, []);
+
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -69,7 +126,13 @@ export default function ImagePicker({ initialQuery, onSelect, onClose }: Props) 
 
   return (
     <div className="lookup-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="lookup-modal imgpicker-modal">
+      <div
+        className={`lookup-modal imgpicker-modal${dragging ? ' imgpicker-modal--dragging' : ''}`}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <div className="lookup-header">
           <span className="lookup-title">Change image</span>
           <button className="word-popup-close" onClick={onClose}>&times;</button>
@@ -92,6 +155,51 @@ export default function ImagePicker({ initialQuery, onSelect, onClose }: Props) 
           >
             Search
           </button>
+        </div>
+
+        <div className="imgpicker-divider"><span>or</span></div>
+
+        <div className="imgpicker-custom-section">
+          <div className="imgpicker-custom-row">
+            <input
+              type="text"
+              className="form-input lookup-input"
+              placeholder="Paste image URL..."
+              value={customUrl}
+              onChange={(e) => {
+                setCustomUrl(e.target.value);
+                setCustomPreviewError(false);
+              }}
+            />
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => handleSelect(customUrl)}
+              disabled={!customUrl.trim() || customPreviewError || savingUrl !== null}
+            >
+              Use This Image
+            </button>
+          </div>
+
+          {customUrl.trim() && (
+            <div className="imgpicker-custom-preview-wrap">
+              {!customPreviewError ? (
+                <img
+                  className="imgpicker-custom-preview"
+                  src={customUrl}
+                  alt="Preview"
+                  onError={() => setCustomPreviewError(true)}
+                />
+              ) : (
+                <div className="imgpicker-custom-preview imgpicker-custom-preview-error">
+                  Invalid image
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className={`imgpicker-dropzone${dragging ? ' imgpicker-dropzone--active' : ''}`}>
+            Drag an image here from another tab
+          </div>
         </div>
 
         <div className="imgpicker-results">
