@@ -207,8 +207,10 @@ router.get('/api/videos/:id', authMiddleware, async (req, res) => {
 
     const hasTranscript = Array.isArray(video.transcript) && video.transcript.length > 0;
 
-    // Keep lifecycle status consistent for older rows.
-    if (hasTranscript && video.transcript_status !== 'ready') {
+    // Keep lifecycle status consistent for older rows, but do not override active processing retries.
+    if (hasTranscript &&
+        video.transcript_status !== 'ready' &&
+        video.transcript_status !== 'processing') {
       const { rows } = await pool.query(
         `UPDATE videos
          SET transcript_status = 'ready',
