@@ -10,3 +10,7 @@ Exceptions (these are NOT fallbacks):
 - `initialSaved ?? false` — optional boolean prop default
 - Form initial values like `user?.native_language || ''` — empty string = "Select..." option
 - `closePeerConnection` try/catch — `removeTrack` throws if connection already closed, this is cleanup
+
+## File Organization
+
+**Keep code in the right files.** When adding or editing features, put the code in the file where it logically belongs — not in one monolithic file. Components, utilities, routes, and styles each have their own files/directories. If a new feature spans multiple concerns, split it across the appropriate existing files rather than stuffing everything into one place. Follow the established project structure (e.g. `client/src/components/`, `client/src/pages/`, `server/routes/`, CSS partials).
