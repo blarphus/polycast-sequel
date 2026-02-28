@@ -487,6 +487,8 @@ export function updatePost(postId: string, data: {
   attachments?: StreamAttachment[];
   lesson_items?: LessonItem[];
   topic_id?: string | null;
+  words?: WordOverride[];
+  target_language?: string;
 }) {
   return request<StreamPost>(`/stream/posts/${postId}`, { method: 'PATCH', body: data });
 }

@@ -387,8 +387,19 @@ export default function Classwork() {
         </div>
       )}
 
-      {editingPost && (
+      {editingPost && editingPost.type !== 'word_list' && (
         <EditModal post={editingPost} onSave={handleEditSaved} onClose={() => setEditingPost(null)} />
+      )}
+      {editingPost && editingPost.type === 'word_list' && (
+        <CreatePostModal
+          defaultTab="word_list"
+          topics={topics}
+          user={user!}
+          onCreated={handlePostCreated}
+          onClose={() => setEditingPost(null)}
+          editingPost={editingPost}
+          onSaved={handleEditSaved}
+        />
       )}
 
       {createType && (

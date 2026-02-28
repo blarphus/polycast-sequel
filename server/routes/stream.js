@@ -600,7 +600,7 @@ router.get('/api/stream/posts/:id/enrich', authMiddleware, async (req, res) => {
 // ---------------------------------------------------------------------------
 
 router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
-  const { title, body, attachments, lesson_items } = req.body;
+  const { title, body, attachments, lesson_items, words, target_language } = req.body;
   const topicIdInBody = Object.prototype.hasOwnProperty.call(req.body, 'topic_id');
   const topicId = req.body.topic_id;
 
@@ -614,6 +614,109 @@ router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Not your post' });
     }
 
+    // --- Word list edit: delete old words + re-insert in a transaction ---
+    if (Array.isArray(words) && existing[0].type === 'word_list') {
+      if (words.length === 0) {
+        return res.status(400).json({ error: 'Word list must have at least one word' });
+      }
+
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        // Update post row (title + target_language + topic)
+        const updateParams = [
+          title !== undefined ? title : existing[0].title,
+          target_language !== undefined ? target_language : existing[0].target_language,
+        ];
+        let updateQuery = `UPDATE stream_posts
+           SET title = $1, target_language = $2, updated_at = NOW()`;
+        if (topicIdInBody) {
+          updateParams.push(topicId);
+          updateQuery += `, topic_id = $${updateParams.length}`;
+        }
+        updateParams.push(req.params.id);
+        updateQuery += ` WHERE id = $${updateParams.length} RETURNING *`;
+        const { rows: postRows } = await client.query(updateQuery, updateParams);
+        const post = postRows[0];
+
+        // Reset student completions (word list changed)
+        await client.query(
+          'DELETE FROM stream_word_list_completions WHERE post_id = $1',
+          [req.params.id],
+        );
+
+        // Delete old words (cascades to stream_word_known)
+        await client.query(
+          'DELETE FROM stream_post_words WHERE post_id = $1',
+          [req.params.id],
+        );
+
+        // Insert new words (same pattern as POST creation)
+        const { rows: userRows } = await client.query(
+          'SELECT native_language FROM users WHERE id = $1', [req.userId],
+        );
+        const nativeLang = userRows[0]?.native_language;
+        const targetLang = target_language || existing[0].target_language;
+
+        const enriched = await Promise.all(
+          words.map(async (word, i) => {
+            const wordStr = typeof word === 'string' ? word.trim() : word.word;
+            if (typeof word === 'object' && word.translation) {
+              return {
+                word: wordStr, position: i,
+                translation: word.translation,
+                definition: word.definition ?? '',
+                part_of_speech: word.part_of_speech ?? null,
+                frequency: word.frequency ?? null,
+                frequency_count: word.frequency_count ?? null,
+                example_sentence: word.example_sentence ?? null,
+                image_url: word.image_url ?? null,
+                lemma: word.lemma ?? null,
+                forms: word.forms ?? null,
+              };
+            }
+            const result = await enrichWord(wordStr, '', nativeLang, targetLang);
+            if (typeof word === 'object') {
+              if (word.image_url !== undefined) result.image_url = word.image_url;
+              if (word.definition !== undefined) result.definition = word.definition;
+              if (word.example_sentence !== undefined) result.example_sentence = word.example_sentence;
+            }
+            return { word: wordStr, position: i, ...result };
+          }),
+        );
+
+        for (const w of enriched) {
+          await client.query(
+            `INSERT INTO stream_post_words
+               (post_id, word, translation, definition, part_of_speech, position,
+                frequency, frequency_count, example_sentence, image_url, lemma, forms)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+            [
+              req.params.id, w.word, w.translation, w.definition, w.part_of_speech, w.position,
+              w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
+              w.image_url ?? null, w.lemma ?? null, w.forms ?? null,
+            ],
+          );
+        }
+
+        await client.query('COMMIT');
+
+        const { rows: wordRows } = await pool.query(
+          'SELECT * FROM stream_post_words WHERE post_id = $1 ORDER BY position ASC',
+          [req.params.id],
+        );
+
+        return res.json({ ...post, words: wordRows, word_count: wordRows.length });
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+    }
+
+    // --- Standard (non-word-list) update ---
     const params = [
       title !== undefined ? title : null,
       body !== undefined ? body : null,
@@ -627,6 +730,11 @@ router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
            attachments = COALESCE($3, attachments),
            lesson_items = COALESCE($4, lesson_items),
            updated_at = NOW()`;
+
+    if (target_language !== undefined) {
+      params.push(target_language);
+      query += `, target_language = $${params.length}`;
+    }
 
     if (topicIdInBody) {
       params.push(topicId);

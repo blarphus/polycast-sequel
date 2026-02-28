@@ -291,16 +291,19 @@ function WordListTab({
   defaultTargetLang,
   nativeLang,
   onSubmit,
+  initialData,
 }: {
   defaultTargetLang: string;
   nativeLang: string;
   onSubmit: (data: { title: string; words: (string | WordOverride)[]; target_language: string }) => Promise<void>;
+  initialData?: { title: string; words: StreamPostWord[]; target_language: string };
 }) {
-  const [title, setTitle] = useState('');
-  const [targetLang, setTargetLang] = useState(defaultTargetLang);
+  const isEditMode = !!initialData;
+  const [title, setTitle] = useState(initialData?.title || '');
+  const [targetLang, setTargetLang] = useState(initialData?.target_language || defaultTargetLang);
   const [wordsText, setWordsText] = useState('');
-  const [preview, setPreview] = useState<StreamPostWord[] | null>(null);
-  const [lookedUp, setLookedUp] = useState(false);
+  const [preview, setPreview] = useState<StreamPostWord[] | null>(initialData?.words || null);
+  const [lookedUp, setLookedUp] = useState(isEditMode);
   const [looking, setLooking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lookupError, setLookupError] = useState('');
@@ -316,11 +319,19 @@ function WordListTab({
     if (!targetLang) { setLookupError('Select a target language'); return; }
     setLooking(true);
     setLookupError('');
-    setLookedUp(false);
-    setPreview(null);
+    if (!isEditMode) {
+      setLookedUp(false);
+      setPreview(null);
+    }
     try {
       const result = await api.lookupPostWords(wordLines, nativeLang, targetLang);
-      setPreview(result.words);
+      if (isEditMode) {
+        // Merge new words into existing preview
+        setPreview((prev) => [...(prev || []), ...result.words]);
+        setWordsText('');
+      } else {
+        setPreview(result.words);
+      }
       setLookedUp(true);
     } catch (err: any) {
       console.error('lookupPostWords failed:', err);
@@ -373,19 +384,20 @@ function WordListTab({
       <select
         className="form-input"
         value={targetLang}
-        onChange={(e) => { setTargetLang(e.target.value); setLookedUp(false); setPreview(null); }}
+        onChange={(e) => { setTargetLang(e.target.value); if (!isEditMode) { setLookedUp(false); setPreview(null); } }}
+        disabled={isEditMode}
       >
         <option value="">Select language…</option>
         {LANGUAGES.map((l) => (
           <option key={l.code} value={l.code}>{l.name}</option>
         ))}
       </select>
-      <label className="form-label">Words (one per line)</label>
+      <label className="form-label">{isEditMode ? 'Add More Words (one per line)' : 'Words (one per line)'}</label>
       <textarea
         className="form-input stream-textarea"
         placeholder={'casa\ncomer\nfeliz'}
         value={wordsText}
-        onChange={(e) => { setWordsText(e.target.value); setLookedUp(false); setPreview(null); }}
+        onChange={(e) => { setWordsText(e.target.value); if (!isEditMode) { setLookedUp(false); setPreview(null); } }}
         rows={6}
       />
       {lookupError && <div className="auth-error">{lookupError}</div>}
@@ -443,7 +455,9 @@ function WordListTab({
             onClick={handleSubmit}
             style={{ marginTop: '1rem' }}
           >
-            {submitting ? 'Posting…' : `Post Word List (${preview.length} words)`}
+            {submitting
+              ? (isEditMode ? 'Saving…' : 'Posting…')
+              : (isEditMode ? `Save Word List (${preview.length} words)` : `Post Word List (${preview.length} words)`)}
           </button>
           {imagePickerIdx !== null && (
             <ImagePicker
@@ -508,15 +522,20 @@ export function CreatePostModal({
   user,
   onCreated,
   onClose,
+  editingPost,
+  onSaved,
 }: {
   defaultTab: 'material' | 'lesson' | 'word_list';
   topics: StreamTopic[];
   user: { native_language: string | null; target_language: string | null };
   onCreated: (post: StreamPost) => void;
   onClose: () => void;
+  editingPost?: StreamPost | null;
+  onSaved?: (updated: StreamPost) => void;
 }) {
+  const isEditMode = !!editingPost;
   const [tab, setTab] = useState<'material' | 'lesson' | 'word_list'>(defaultTab);
-  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(editingPost?.topic_id ?? null);
 
   const handleMaterialSubmit = async (data: { title: string; body: string; attachments: StreamAttachment[] }) => {
     const post = await api.createPost({ type: 'material', ...data, topic_id: selectedTopicId });
@@ -533,11 +552,22 @@ export function CreatePostModal({
     onCreated(post);
   };
 
+  const handleWordListEdit = async (data: { title: string; words: (string | WordOverride)[]; target_language: string }) => {
+    if (!editingPost || !onSaved) return;
+    const updated = await api.updatePost(editingPost.id, {
+      title: data.title,
+      words: data.words as WordOverride[],
+      target_language: data.target_language,
+      topic_id: selectedTopicId,
+    });
+    onSaved(updated);
+  };
+
   return (
     <div className="stream-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="stream-modal stream-create-modal">
         <div className="stream-create-modal-header">
-          <h2 className="stream-modal-title">New Post</h2>
+          <h2 className="stream-modal-title">{isEditMode ? 'Edit Word List' : 'New Post'}</h2>
           <button className="stream-modal-close-btn" onClick={onClose} aria-label="Close">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -562,19 +592,26 @@ export function CreatePostModal({
           </div>
         )}
 
-        <div className="create-post-tabs">
-          <button className={`create-post-tab${tab === 'material' ? ' active' : ''}`} onClick={() => setTab('material')}>Material</button>
-          <button className={`create-post-tab${tab === 'lesson' ? ' active' : ''}`} onClick={() => setTab('lesson')}>Lesson</button>
-          <button className={`create-post-tab${tab === 'word_list' ? ' active' : ''}`} onClick={() => setTab('word_list')}>Word List</button>
-        </div>
+        {!isEditMode && (
+          <div className="create-post-tabs">
+            <button className={`create-post-tab${tab === 'material' ? ' active' : ''}`} onClick={() => setTab('material')}>Material</button>
+            <button className={`create-post-tab${tab === 'lesson' ? ' active' : ''}`} onClick={() => setTab('lesson')}>Lesson</button>
+            <button className={`create-post-tab${tab === 'word_list' ? ' active' : ''}`} onClick={() => setTab('word_list')}>Word List</button>
+          </div>
+        )}
 
-        {tab === 'material' && <MaterialTab onSubmit={handleMaterialSubmit} />}
-        {tab === 'lesson' && <LessonTab onSubmit={handleLessonSubmit} />}
+        {tab === 'material' && !isEditMode && <MaterialTab onSubmit={handleMaterialSubmit} />}
+        {tab === 'lesson' && !isEditMode && <LessonTab onSubmit={handleLessonSubmit} />}
         {tab === 'word_list' && (
           <WordListTab
             defaultTargetLang={user?.target_language || ''}
             nativeLang={user?.native_language || ''}
-            onSubmit={handleWordListSubmit}
+            onSubmit={isEditMode ? handleWordListEdit : handleWordListSubmit}
+            initialData={editingPost ? {
+              title: editingPost.title || '',
+              words: editingPost.words || [],
+              target_language: editingPost.target_language || '',
+            } : undefined}
           />
         )}
       </div>
