@@ -818,13 +818,14 @@ export async function fetchYouTubeTranscript(youtubeId, language = 'en') {
       );
   }
 
-  // Only use yt-dlp+proxy fallback for transient failures.
-  if (!mappedPrimaryErr.transient ||
-      (mappedPrimaryErr.code !== 'BLOCKED_OR_RATE_LIMITED' &&
-       mappedPrimaryErr.code !== 'TRANSIENT_FETCH_ERROR')) {
-    if (externalProviderError && externalProviderError.code !== 'TRANSIENT_FETCH_ERROR') {
-      throw externalProviderError;
-    }
+  // Use yt-dlp+proxy fallback for transient failures from either primary or external provider.
+  const primaryAllowsYtDlp = mappedPrimaryErr.transient &&
+    (mappedPrimaryErr.code === 'BLOCKED_OR_RATE_LIMITED' ||
+     mappedPrimaryErr.code === 'TRANSIENT_FETCH_ERROR');
+  const shouldTryYtDlp = primaryAllowsYtDlp || Boolean(externalProviderError?.transient);
+
+  if (!shouldTryYtDlp) {
+    if (externalProviderError) throw externalProviderError;
     throw mappedPrimaryErr;
   }
 
