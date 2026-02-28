@@ -23,11 +23,16 @@ function decodeEntities(text) {
  * List all videos (summary — no transcript).
  */
 router.get('/api/videos', authMiddleware, async (_req, res) => {
-  const { rows } = await pool.query(
-    `SELECT id, youtube_id, title, channel, language, duration_seconds
-     FROM videos ORDER BY created_at DESC`,
-  );
-  res.json(rows);
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, youtube_id, title, channel, language, duration_seconds
+       FROM videos ORDER BY created_at DESC`,
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('GET /api/videos failed:', err);
+    res.status(500).json({ error: 'Failed to fetch videos' });
+  }
 });
 
 /**
@@ -36,32 +41,37 @@ router.get('/api/videos', authMiddleware, async (_req, res) => {
  * If transcript is NULL, lazy-fetch from YouTube and cache.
  */
 router.get('/api/videos/:id', authMiddleware, async (req, res) => {
-  const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-  const { rows } = await pool.query('SELECT * FROM videos WHERE id = $1', [id]);
-  if (rows.length === 0) {
-    return res.status(404).json({ error: 'Video not found' });
+    const { rows } = await pool.query('SELECT * FROM videos WHERE id = $1', [id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+
+    const video = rows[0];
+
+    // Lazy-fetch transcript if not cached
+    if (video.transcript === null) {
+      const segments = await YoutubeTranscript.fetchTranscript(video.youtube_id);
+      const cleaned = segments.map((s) => ({
+        text: decodeEntities(s.text),
+        offset: s.offset,
+        duration: s.duration,
+      }));
+
+      await pool.query(
+        'UPDATE videos SET transcript = $1 WHERE id = $2',
+        [JSON.stringify(cleaned), id],
+      );
+      video.transcript = cleaned;
+    }
+
+    res.json(video);
+  } catch (err) {
+    console.error('GET /api/videos/:id failed:', err);
+    res.status(500).json({ error: 'Failed to fetch video' });
   }
-
-  const video = rows[0];
-
-  // Lazy-fetch transcript if not cached
-  if (video.transcript === null) {
-    const segments = await YoutubeTranscript.fetchTranscript(video.youtube_id);
-    const cleaned = segments.map((s) => ({
-      text: decodeEntities(s.text),
-      offset: s.offset,
-      duration: s.duration,
-    }));
-
-    await pool.query(
-      'UPDATE videos SET transcript = $1 WHERE id = $2',
-      [JSON.stringify(cleaned), id],
-    );
-    video.transcript = cleaned;
-  }
-
-  res.json(video);
 });
 
 export default router;
