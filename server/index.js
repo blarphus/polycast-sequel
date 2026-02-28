@@ -122,4 +122,8 @@ async function main() {
   process.on('SIGTERM', shutdown);
 }
 
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
+});
+
 main();

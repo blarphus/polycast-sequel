@@ -53,18 +53,23 @@ router.get('/api/videos/:id', authMiddleware, async (req, res) => {
 
     // Lazy-fetch transcript if not cached
     if (video.transcript === null) {
-      const segments = await YoutubeTranscript.fetchTranscript(video.youtube_id);
-      const cleaned = segments.map((s) => ({
-        text: decodeEntities(s.text),
-        offset: s.offset,
-        duration: s.duration,
-      }));
+      try {
+        const segments = await YoutubeTranscript.fetchTranscript(video.youtube_id);
+        const cleaned = segments.map((s) => ({
+          text: decodeEntities(s.text),
+          offset: s.offset,
+          duration: s.duration,
+        }));
 
-      await pool.query(
-        'UPDATE videos SET transcript = $1 WHERE id = $2',
-        [JSON.stringify(cleaned), id],
-      );
-      video.transcript = cleaned;
+        await pool.query(
+          'UPDATE videos SET transcript = $1 WHERE id = $2',
+          [JSON.stringify(cleaned), id],
+        );
+        video.transcript = cleaned;
+      } catch (transcriptErr) {
+        console.error(`Transcript fetch failed for video ${id}:`, transcriptErr.message);
+        video.transcript_error = 'Transcript temporarily unavailable';
+      }
     }
 
     res.json(video);

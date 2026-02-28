@@ -585,7 +585,8 @@ export interface TranscriptSegment {
 }
 
 export interface VideoDetail extends VideoSummary {
-  transcript: TranscriptSegment[];
+  transcript: TranscriptSegment[] | null;
+  transcript_error?: string;
 }
 
 export function getVideos() {

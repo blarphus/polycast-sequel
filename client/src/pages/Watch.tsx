@@ -230,6 +230,11 @@ export default function Watch() {
         <p className="watch-channel">{video.channel}</p>
       </div>
 
+      {/* Transcript unavailable message */}
+      {!video.transcript && video.transcript_error && (
+        <p className="watch-transcript-error">{video.transcript_error}</p>
+      )}
+
       {/* Transcript */}
       {video.transcript && video.transcript.length > 0 && (
         <div
