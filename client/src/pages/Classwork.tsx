@@ -467,7 +467,7 @@ function WordListTab({
                   : prev);
                 if (!sense.example?.text) {
                   try {
-                    const { example_sentence } = await api.generateExampleSentence(word, targetLang);
+                    const { example_sentence } = await api.generateExampleSentence(word, targetLang, sense.gloss);
                     setPreview(prev => prev
                       ? prev.map((p, j) => j === idx ? { ...p, example_sentence } : p)
                       : prev);

@@ -362,7 +362,7 @@ Respond with ONLY the JSON object, no other text.`;
 // ---------------------------------------------------------------------------
 
 router.post('/api/stream/words/example', authMiddleware, async (req, res) => {
-  const { word, targetLang } = req.body;
+  const { word, targetLang, definition } = req.body;
   if (!word) return res.status(400).json({ error: 'word is required' });
   if (!targetLang) return res.status(400).json({ error: 'targetLang is required' });
 
@@ -375,7 +375,8 @@ router.post('/api/stream/words/example', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Only teachers can generate example sentences' });
     }
 
-    const prompt = `Write a short example sentence in ${targetLang} using the word "${word}". Wrap the word with tildes like ~word~. 15 words max.
+    const defHint = definition ? ` with the meaning "${definition}"` : '';
+    const prompt = `Write a short example sentence in ${targetLang} using the word "${word}"${defHint}. Wrap the word with tildes like ~word~. 15 words max.
 
 Return a JSON object: {"example_sentence":"..."}
 
