@@ -388,3 +388,84 @@ export function getStudentStats(studentId: string) {
   return request<StudentDetail>(`/classroom/students/${studentId}/stats`);
 }
 
+// ---- Stream (Classwork) ---------------------------------------------------
+
+export interface StreamAttachment {
+  url: string;
+  label: string;
+}
+
+export interface StreamPostWord {
+  id: string;
+  post_id: string;
+  word: string;
+  translation: string;
+  definition: string;
+  part_of_speech: string | null;
+  position: number | null;
+}
+
+export interface StreamPost {
+  id: string;
+  teacher_id: string;
+  type: 'material' | 'word_list';
+  title: string | null;
+  body: string | null;
+  attachments: StreamAttachment[];
+  target_language: string | null;
+  created_at: string;
+  updated_at: string;
+  word_count?: number;
+  words?: StreamPostWord[];
+  known_word_ids?: string[];
+  completed?: boolean;
+  teacher_name?: string;
+}
+
+export function getStream() {
+  return request<{ posts: StreamPost[] }>('/stream');
+}
+
+export function createPost(data: {
+  type: 'material' | 'word_list';
+  title: string;
+  body?: string;
+  attachments?: StreamAttachment[];
+  words?: string[];
+  target_language?: string;
+}) {
+  return request<StreamPost>('/stream/posts', { method: 'POST', body: data });
+}
+
+export function updatePost(postId: string, data: {
+  title?: string;
+  body?: string;
+  attachments?: StreamAttachment[];
+}) {
+  return request<StreamPost>(`/stream/posts/${postId}`, { method: 'PATCH', body: data });
+}
+
+export function deletePost(postId: string) {
+  return request<void>(`/stream/posts/${postId}`, { method: 'DELETE' });
+}
+
+export function toggleWordKnown(postId: string, postWordId: string, known: boolean) {
+  return request<void>(`/stream/posts/${postId}/known`, {
+    method: 'POST',
+    body: { postWordId, known },
+  });
+}
+
+export function addPostToDictionary(postId: string) {
+  return request<{ added: number; skipped: number }>(`/stream/posts/${postId}/add-to-dictionary`, {
+    method: 'POST',
+  });
+}
+
+export function lookupPostWords(words: string[], nativeLang: string, targetLang: string) {
+  return request<{ words: StreamPostWord[] }>('/stream/words/lookup', {
+    method: 'POST',
+    body: { words, nativeLang, targetLang },
+  });
+}
+

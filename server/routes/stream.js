@@ -1,0 +1,502 @@
+import { Router } from 'express';
+import { authMiddleware } from '../auth.js';
+import pool from '../db.js';
+
+const router = Router();
+
+// ---------------------------------------------------------------------------
+// Gemini helper
+// ---------------------------------------------------------------------------
+
+async function callGemini(prompt, generationConfig = {}) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
+  const response = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const err = await response.text();
+    console.error('Gemini API error:', err);
+    throw new Error('Gemini request failed');
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    console.error('Gemini returned no text content:', JSON.stringify(data).slice(0, 500));
+    throw new Error('Gemini returned no text content');
+  }
+  return text;
+}
+
+async function lookupWordForPost(word, nativeLang, targetLang) {
+  const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". The user's native language is ${nativeLang}.
+
+Return a JSON object with exactly these keys:
+{"translation":"...","definition":"...","part_of_speech":"..."}
+
+- translation: standard ${nativeLang} translation of "${word}", 1-3 words max
+- definition: what this word means in ${nativeLang}, 12 words max, no markdown
+- part_of_speech: one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
+
+Respond with ONLY the JSON object, no other text.`;
+
+  const raw = await callGemini(prompt, {
+    thinkingConfig: { thinkingBudget: 0 },
+    maxOutputTokens: 150,
+    responseMimeType: 'application/json',
+  });
+
+  const parsed = JSON.parse(raw);
+  return {
+    translation: parsed.translation || '',
+    definition: parsed.definition || '',
+    part_of_speech: parsed.part_of_speech || null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/stream
+// Teachers get their own posts; students get posts from all their teachers.
+// ---------------------------------------------------------------------------
+
+router.get('/api/stream', authMiddleware, async (req, res) => {
+  try {
+    const { rows: userRows } = await pool.query(
+      'SELECT account_type FROM users WHERE id = $1',
+      [req.userId],
+    );
+    if (userRows.length === 0) return res.status(401).json({ error: 'User not found' });
+    const isTeacher = userRows[0].account_type === 'teacher';
+
+    let posts;
+
+    if (isTeacher) {
+      const { rows } = await pool.query(
+        `SELECT sp.*,
+           COALESCE(wc.cnt, 0)::int AS word_count
+         FROM stream_posts sp
+         LEFT JOIN (
+           SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
+         ) wc ON wc.post_id = sp.id
+         WHERE sp.teacher_id = $1
+         ORDER BY sp.created_at DESC`,
+        [req.userId],
+      );
+      posts = rows;
+    } else {
+      const { rows } = await pool.query(
+        `SELECT sp.*,
+           COALESCE(wc.cnt, 0)::int AS word_count,
+           u.display_name AS teacher_display_name,
+           u.username AS teacher_username
+         FROM stream_posts sp
+         JOIN users u ON u.id = sp.teacher_id
+         LEFT JOIN (
+           SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
+         ) wc ON wc.post_id = sp.id
+         WHERE sp.teacher_id IN (
+           SELECT teacher_id FROM classroom_students WHERE student_id = $1
+         )
+         ORDER BY sp.created_at DESC`,
+        [req.userId],
+      );
+      posts = rows.map((p) => ({
+        ...p,
+        teacher_name: p.teacher_display_name || p.teacher_username,
+      }));
+    }
+
+    // Fetch words for all word_list posts in one query
+    const wordListPostIds = posts.filter((p) => p.type === 'word_list').map((p) => p.id);
+    let wordsByPostId = {};
+    if (wordListPostIds.length > 0) {
+      const { rows: wordRows } = await pool.query(
+        `SELECT * FROM stream_post_words
+         WHERE post_id = ANY($1)
+         ORDER BY position ASC NULLS LAST, created_at ASC`,
+        [wordListPostIds],
+      );
+      for (const w of wordRows) {
+        if (!wordsByPostId[w.post_id]) wordsByPostId[w.post_id] = [];
+        wordsByPostId[w.post_id].push(w);
+      }
+    }
+
+    // For students: fetch known_word_ids and completed status
+    let knownWordsByPostId = {};
+    let completedPostIds = new Set();
+
+    if (!isTeacher && wordListPostIds.length > 0) {
+      // Known words
+      const allWordIds = Object.values(wordsByPostId).flat().map((w) => w.id);
+      if (allWordIds.length > 0) {
+        const { rows: knownRows } = await pool.query(
+          `SELECT post_word_id FROM stream_word_known
+           WHERE student_id = $1 AND post_word_id = ANY($2)`,
+          [req.userId, allWordIds],
+        );
+        // Map post_word_id back to post_id
+        const wordIdToPostId = {};
+        for (const [postId, words] of Object.entries(wordsByPostId)) {
+          for (const w of words) wordIdToPostId[w.id] = postId;
+        }
+        for (const row of knownRows) {
+          const postId = wordIdToPostId[row.post_word_id];
+          if (!knownWordsByPostId[postId]) knownWordsByPostId[postId] = [];
+          knownWordsByPostId[postId].push(row.post_word_id);
+        }
+      }
+
+      // Completions
+      const { rows: completionRows } = await pool.query(
+        `SELECT post_id FROM stream_word_list_completions
+         WHERE student_id = $1 AND post_id = ANY($2)`,
+        [req.userId, wordListPostIds],
+      );
+      for (const row of completionRows) completedPostIds.add(row.post_id);
+    }
+
+    // Assemble final posts
+    const assembled = posts.map((p) => {
+      const post = { ...p };
+      if (p.type === 'word_list') {
+        post.words = wordsByPostId[p.id] || [];
+        if (!isTeacher) {
+          post.known_word_ids = knownWordsByPostId[p.id] || [];
+          post.completed = completedPostIds.has(p.id);
+        }
+      }
+      return post;
+    });
+
+    return res.json({ posts: assembled });
+  } catch (err) {
+    console.error('GET /api/stream error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to load stream' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/stream/words/lookup — preview word translations (teacher only)
+// ---------------------------------------------------------------------------
+
+router.post('/api/stream/words/lookup', authMiddleware, async (req, res) => {
+  const { words, nativeLang, targetLang } = req.body;
+
+  if (!Array.isArray(words) || words.length === 0) {
+    return res.status(400).json({ error: 'words array is required' });
+  }
+  if (!nativeLang) return res.status(400).json({ error: 'nativeLang is required' });
+  if (!targetLang) return res.status(400).json({ error: 'targetLang is required' });
+
+  try {
+    const { rows: userRows } = await pool.query(
+      'SELECT account_type FROM users WHERE id = $1',
+      [req.userId],
+    );
+    if (userRows[0]?.account_type !== 'teacher') {
+      return res.status(403).json({ error: 'Only teachers can look up words' });
+    }
+
+    const results = await Promise.all(
+      words.map(async (word, i) => {
+        const enriched = await lookupWordForPost(word.trim(), nativeLang, targetLang);
+        return { id: `preview-${i}`, word: word.trim(), position: i, ...enriched };
+      }),
+    );
+
+    return res.json({ words: results });
+  } catch (err) {
+    console.error('POST /api/stream/words/lookup error:', err);
+    return res.status(500).json({ error: err.message || 'Word lookup failed' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/stream/posts — create a post (teacher only)
+// ---------------------------------------------------------------------------
+
+router.post('/api/stream/posts', authMiddleware, async (req, res) => {
+  const { type, title, body, attachments, words, target_language } = req.body;
+
+  if (!type || !['material', 'word_list'].includes(type)) {
+    return res.status(400).json({ error: 'type must be material or word_list' });
+  }
+
+  try {
+    const { rows: userRows } = await pool.query(
+      'SELECT account_type, native_language, target_language FROM users WHERE id = $1',
+      [req.userId],
+    );
+    const user = userRows[0];
+    if (!user || user.account_type !== 'teacher') {
+      return res.status(403).json({ error: 'Only teachers can create posts' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const { rows: postRows } = await client.query(
+        `INSERT INTO stream_posts (teacher_id, type, title, body, attachments, target_language)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [
+          req.userId,
+          type,
+          title || null,
+          body || null,
+          JSON.stringify(attachments || []),
+          target_language || user.target_language || null,
+        ],
+      );
+      const post = postRows[0];
+
+      if (type === 'word_list' && Array.isArray(words) && words.length > 0) {
+        const nativeLang = user.native_language;
+        const targetLang = target_language || user.target_language;
+
+        if (!nativeLang) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Teacher must set native_language in settings before creating word lists' });
+        }
+
+        const enriched = await Promise.all(
+          words.map(async (word, i) => {
+            const result = await lookupWordForPost(
+              typeof word === 'string' ? word.trim() : word.word,
+              nativeLang,
+              targetLang,
+            );
+            return { word: typeof word === 'string' ? word.trim() : word.word, position: i, ...result };
+          }),
+        );
+
+        for (const w of enriched) {
+          await client.query(
+            `INSERT INTO stream_post_words (post_id, word, translation, definition, part_of_speech, position)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [post.id, w.word, w.translation, w.definition, w.part_of_speech, w.position],
+          );
+        }
+      }
+
+      await client.query('COMMIT');
+
+      // Return post with words if applicable
+      const { rows: wordRows } = await pool.query(
+        'SELECT * FROM stream_post_words WHERE post_id = $1 ORDER BY position ASC',
+        [post.id],
+      );
+
+      return res.status(201).json({ ...post, words: wordRows });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('POST /api/stream/posts error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to create post' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/stream/posts/:id — edit a post (teacher only, must own it)
+// ---------------------------------------------------------------------------
+
+router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
+  const { title, body, attachments } = req.body;
+
+  try {
+    const { rows: existing } = await pool.query(
+      'SELECT * FROM stream_posts WHERE id = $1',
+      [req.params.id],
+    );
+    if (existing.length === 0) return res.status(404).json({ error: 'Post not found' });
+    if (existing[0].teacher_id !== req.userId) {
+      return res.status(403).json({ error: 'Not your post' });
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE stream_posts
+       SET title = COALESCE($1, title),
+           body = COALESCE($2, body),
+           attachments = COALESCE($3, attachments),
+           updated_at = NOW()
+       WHERE id = $4
+       RETURNING *`,
+      [
+        title !== undefined ? title : null,
+        body !== undefined ? body : null,
+        attachments !== undefined ? JSON.stringify(attachments) : null,
+        req.params.id,
+      ],
+    );
+
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error('PATCH /api/stream/posts/:id error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to update post' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/stream/posts/:id — delete a post (teacher only, must own it)
+// ---------------------------------------------------------------------------
+
+router.delete('/api/stream/posts/:id', authMiddleware, async (req, res) => {
+  try {
+    const { rows: existing } = await pool.query(
+      'SELECT teacher_id FROM stream_posts WHERE id = $1',
+      [req.params.id],
+    );
+    if (existing.length === 0) return res.status(404).json({ error: 'Post not found' });
+    if (existing[0].teacher_id !== req.userId) {
+      return res.status(403).json({ error: 'Not your post' });
+    }
+
+    await pool.query('DELETE FROM stream_posts WHERE id = $1', [req.params.id]);
+    return res.status(204).end();
+  } catch (err) {
+    console.error('DELETE /api/stream/posts/:id error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to delete post' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/stream/posts/:postId/known — toggle known word (student)
+// ---------------------------------------------------------------------------
+
+router.post('/api/stream/posts/:postId/known', authMiddleware, async (req, res) => {
+  const { postWordId, known } = req.body;
+
+  if (!postWordId || known === undefined) {
+    return res.status(400).json({ error: 'postWordId and known are required' });
+  }
+
+  try {
+    // Verify the student is enrolled with the post's teacher
+    const { rows: postRows } = await pool.query(
+      'SELECT teacher_id FROM stream_posts WHERE id = $1',
+      [req.params.postId],
+    );
+    if (postRows.length === 0) return res.status(404).json({ error: 'Post not found' });
+
+    const { rows: enrollRows } = await pool.query(
+      'SELECT 1 FROM classroom_students WHERE teacher_id = $1 AND student_id = $2',
+      [postRows[0].teacher_id, req.userId],
+    );
+    if (enrollRows.length === 0) {
+      return res.status(403).json({ error: 'Not enrolled in this classroom' });
+    }
+
+    if (known) {
+      await pool.query(
+        `INSERT INTO stream_word_known (student_id, post_word_id)
+         VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [req.userId, postWordId],
+      );
+    } else {
+      await pool.query(
+        'DELETE FROM stream_word_known WHERE student_id = $1 AND post_word_id = $2',
+        [req.userId, postWordId],
+      );
+    }
+
+    return res.status(204).end();
+  } catch (err) {
+    console.error('POST /api/stream/posts/:postId/known error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to update known status' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/stream/posts/:postId/add-to-dictionary — student adds unknown words
+// ---------------------------------------------------------------------------
+
+router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, async (req, res) => {
+  try {
+    // Verify the post exists and student is enrolled
+    const { rows: postRows } = await pool.query(
+      'SELECT * FROM stream_posts WHERE id = $1',
+      [req.params.postId],
+    );
+    if (postRows.length === 0) return res.status(404).json({ error: 'Post not found' });
+    if (postRows[0].type !== 'word_list') {
+      return res.status(400).json({ error: 'Post is not a word list' });
+    }
+
+    const { rows: enrollRows } = await pool.query(
+      'SELECT 1 FROM classroom_students WHERE teacher_id = $1 AND student_id = $2',
+      [postRows[0].teacher_id, req.userId],
+    );
+    if (enrollRows.length === 0) {
+      return res.status(403).json({ error: 'Not enrolled in this classroom' });
+    }
+
+    // Get all words for this post that are NOT marked known by this student
+    const { rows: wordsToAdd } = await pool.query(
+      `SELECT spw.*
+       FROM stream_post_words spw
+       WHERE spw.post_id = $1
+         AND NOT EXISTS (
+           SELECT 1 FROM stream_word_known swk
+           WHERE swk.post_word_id = spw.id AND swk.student_id = $2
+         )`,
+      [req.params.postId, req.userId],
+    );
+
+    // Get student's target language for saved_words
+    const { rows: studentRows } = await pool.query(
+      'SELECT target_language FROM users WHERE id = $1',
+      [req.userId],
+    );
+    const targetLanguage = postRows[0].target_language || studentRows[0]?.target_language || null;
+
+    let added = 0;
+    let skipped = 0;
+
+    for (const w of wordsToAdd) {
+      const { rowCount } = await pool.query(
+        `INSERT INTO saved_words (user_id, word, translation, definition, target_language, part_of_speech, priority)
+         VALUES ($1, $2, $3, $4, $5, $6, true)
+         ON CONFLICT DO NOTHING`,
+        [req.userId, w.word, w.translation, w.definition, targetLanguage, w.part_of_speech],
+      );
+      if (rowCount > 0) {
+        added++;
+      } else {
+        skipped++;
+      }
+    }
+
+    // Record completion
+    await pool.query(
+      `INSERT INTO stream_word_list_completions (student_id, post_id)
+       VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [req.userId, req.params.postId],
+    );
+
+    return res.json({ added, skipped });
+  } catch (err) {
+    console.error('POST /api/stream/posts/:postId/add-to-dictionary error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to add words to dictionary' });
+  }
+});
+
+export default router;

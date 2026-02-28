@@ -658,6 +658,7 @@ router.get('/api/dictionary/due', authMiddleware, async (req, res) => {
               WHEN due_at IS NOT NULL THEN 1
               ELSE 2 END,
          due_at ASC NULLS LAST,
+         CASE WHEN due_at IS NULL AND priority = true THEN 0 ELSE 1 END ASC,
          frequency DESC NULLS LAST,
          created_at ASC`,
       [req.userId],

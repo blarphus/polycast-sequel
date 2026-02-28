@@ -1688,6 +1688,11 @@ select.form-input {
   color: #f59e0b;
 }
 
+.toolbar-tab--teal.active {
+  background: rgba(20, 184, 166, 0.1);
+  color: #14b8a6;
+}
+
 .toolbar-label {
   font-size: 0.7rem;
   letter-spacing: 0.02em;
@@ -3345,6 +3350,11 @@ select.form-input {
   color: #fbbf24;
 }
 
+[data-theme="dark"] .toolbar-tab--teal.active {
+  background: rgba(20, 184, 166, 0.15);
+  color: #2dd4bf;
+}
+
 /* ---- Dictionary shadows -------------------------------------------------- */
 
 [data-theme="dark"] .dict-item {
@@ -3729,7 +3739,8 @@ select.form-input {
   }
 
   .students-page,
-  .student-detail-page {
+  .student-detail-page,
+  .classwork-page {
     padding-bottom: 2rem;
   }
 }
@@ -4072,5 +4083,437 @@ select.form-input {
 
   .students-roster-item {
     padding: 0.75rem 1rem;
+  }
+}
+
+/* ==========================================================================
+   Classwork / Stream
+   ========================================================================== */
+
+.classwork-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 7rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.classwork-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.classwork-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.classwork-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 3rem 1rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* ---- Post feed ------------------------------------------------------------ */
+
+.classwork-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.stream-teacher-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0;
+  margin-top: 0.5rem;
+}
+
+/* ---- Post card ------------------------------------------------------------ */
+
+.stream-post-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+.stream-post-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.stream-post-type-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(20, 184, 166, 0.12);
+  color: #0d9488;
+}
+
+.stream-lang-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.stream-post-date {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.stream-post-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.stream-post-body {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin-bottom: 0.75rem;
+}
+
+.stream-post-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ---- Attachments ---------------------------------------------------------- */
+
+.stream-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.stream-attachment-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  transition: background var(--transition), border-color var(--transition);
+  width: fit-content;
+}
+
+.stream-attachment-link:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
+/* ---- Word chips ----------------------------------------------------------- */
+
+.stream-word-chips-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.stream-word-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.stream-word-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.stream-word-chip--interactive {
+  cursor: pointer;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.stream-word-chip--interactive:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-light);
+}
+
+.stream-word-chip--known {
+  background: var(--bg-elevated) !important;
+  color: var(--text-muted) !important;
+  border-color: transparent !important;
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+
+.stream-word-chip--more {
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.stream-chip-word {
+  font-weight: 600;
+}
+
+.stream-chip-translation {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.stream-word-chip--known .stream-chip-translation {
+  color: var(--text-muted);
+}
+
+.stream-word-count-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.stream-word-known-counter {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+
+.stream-counter-dot {
+  color: var(--text-muted);
+}
+
+/* ---- Completed banner ----------------------------------------------------- */
+
+.stream-completed-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  background: var(--success-dim);
+  color: var(--success);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* ---- Edit modal ----------------------------------------------------------- */
+
+.stream-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.stream-modal {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+}
+
+.stream-modal-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  color: var(--text-primary);
+}
+
+.stream-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  justify-content: flex-end;
+}
+
+.stream-attachment-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  margin-bottom: 0.4rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.stream-attachment-url {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-add-link-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.4rem;
+}
+
+.stream-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* ---- Create post page ----------------------------------------------------- */
+
+.create-post-tabs {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.create-post-tab {
+  flex: 1;
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+  font-family: var(--font);
+}
+
+.create-post-tab:hover {
+  background: var(--bg-elevated);
+}
+
+.create-post-tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.create-post-tab-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stream-add-link-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+}
+
+/* ---- Word preview table --------------------------------------------------- */
+
+.stream-preview-table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.stream-preview-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-elevated);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stream-preview-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.55rem 0.75rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+  font-size: 0.88rem;
+}
+
+.stream-preview-word {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stream-preview-translation {
+  color: var(--text-secondary);
+}
+
+.stream-preview-pos {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* ---- Classwork page responsive ------------------------------------------- */
+
+@media (max-width: 768px) {
+  .classwork-page {
+    padding: 1.25rem 1rem 7rem;
+  }
+
+  .stream-preview-header,
+  .stream-preview-row {
+    grid-template-columns: 1fr 1fr auto;
+  }
+
+  .stream-preview-header span:nth-child(3),
+  .stream-preview-row .stream-preview-pos {
+    display: none;
   }
 }

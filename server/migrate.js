@@ -169,6 +169,57 @@ export async function migrate(pool) {
         ON classroom_students (teacher_id);
     `);
 
+    // Stream posts (teacher-authored class stream)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS stream_posts (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        teacher_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type            VARCHAR(20) NOT NULL,
+        title           TEXT,
+        body            TEXT,
+        attachments     JSONB DEFAULT '[]',
+        target_language VARCHAR(10),
+        created_at      TIMESTAMPTZ DEFAULT NOW(),
+        updated_at      TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    // Words inside a word_list stream post
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS stream_post_words (
+        id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id        UUID NOT NULL REFERENCES stream_posts(id) ON DELETE CASCADE,
+        word           TEXT NOT NULL,
+        translation    TEXT DEFAULT '',
+        definition     TEXT DEFAULT '',
+        part_of_speech VARCHAR(50),
+        position       INTEGER,
+        created_at     TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    // Student "I know this" marks per word
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS stream_word_known (
+        student_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        post_word_id UUID NOT NULL REFERENCES stream_post_words(id) ON DELETE CASCADE,
+        PRIMARY KEY (student_id, post_word_id)
+      );
+    `);
+
+    // Tracks whether a student submitted a word list
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS stream_word_list_completions (
+        student_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        post_id      UUID NOT NULL REFERENCES stream_posts(id) ON DELETE CASCADE,
+        completed_at TIMESTAMPTZ DEFAULT NOW(),
+        PRIMARY KEY (student_id, post_id)
+      );
+    `);
+
+    // Priority flag on saved_words (teacher-assigned words surface first in SRS)
+    await client.query(`ALTER TABLE saved_words ADD COLUMN IF NOT EXISTS priority BOOLEAN DEFAULT false;`);
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {
