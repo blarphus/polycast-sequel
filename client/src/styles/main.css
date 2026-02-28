@@ -4626,3 +4626,388 @@ select.form-input {
   gap: 0.4rem;
   margin-bottom: 0.5rem;
 }
+
+/* ==========================================================================
+   Stream Topics (Google Classroom-style groupings)
+   ========================================================================== */
+
+/* ---- Topic section wrapper ------------------------------------------------ */
+
+.stream-topic-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 1.25rem;
+}
+
+.stream-no-topic-section .stream-topic-header {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+}
+
+.stream-topic-section--drop-target > .stream-topic-header {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.18);
+}
+
+/* ---- Topic section header ------------------------------------------------- */
+
+.stream-topic-header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.85rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.6rem;
+  user-select: none;
+}
+
+.stream-topic-header--dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.stream-topic-drag-handle {
+  font-size: 1rem;
+  color: var(--text-muted);
+  cursor: grab;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition);
+  letter-spacing: -0.1em;
+}
+
+.stream-topic-header:hover .stream-topic-drag-handle {
+  opacity: 1;
+}
+
+.stream-topic-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stream-topic-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.stream-topic-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: transform var(--transition), color var(--transition);
+  border-radius: var(--radius-sm);
+}
+
+.stream-topic-chevron:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+.stream-topic-chevron--collapsed svg {
+  transform: rotate(180deg);
+}
+
+.stream-topic-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: color var(--transition), background var(--transition);
+  opacity: 0;
+}
+
+.stream-topic-header:hover .stream-topic-menu-btn {
+  opacity: 1;
+}
+
+.stream-topic-menu-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+/* ---- Rename input (inline in header) -------------------------------------- */
+
+.stream-topic-rename-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  outline: none;
+  font-family: var(--font);
+}
+
+/* ---- Posts list inside topic ---------------------------------------------- */
+
+.stream-topic-posts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-left: 0.5rem;
+}
+
+.stream-topic-empty {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding: 0.75rem 0.5rem;
+  font-style: italic;
+}
+
+/* ---- Post drag-over indicator --------------------------------------------- */
+
+.stream-post-drop-indicator {
+  position: relative;
+}
+
+.stream-post-drop-indicator::before {
+  content: '';
+  display: block;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  margin-bottom: 0.35rem;
+}
+
+.stream-post-drag-over {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-lg);
+}
+
+/* ---- Post card: drag handle + draggable state ----------------------------- */
+
+.stream-post-card--draggable {
+  cursor: default;
+}
+
+.stream-post-drag-handle {
+  font-size: 1rem;
+  color: var(--text-muted);
+  cursor: grab;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition);
+  letter-spacing: -0.1em;
+  margin-right: 0.1rem;
+}
+
+.stream-post-card--draggable:hover .stream-post-drag-handle {
+  opacity: 1;
+}
+
+/* ---- Post "···" menu button ----------------------------------------------- */
+
+.stream-post-menu-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background var(--transition);
+  opacity: 0;
+  flex-shrink: 0;
+}
+
+.stream-post-card:hover .stream-post-menu-btn,
+.stream-post-card--draggable:hover .stream-post-menu-btn {
+  opacity: 1;
+}
+
+.stream-post-menu-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+
+/* ---- Post / Topic context menu -------------------------------------------- */
+
+.stream-post-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 300;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14);
+  min-width: 148px;
+  padding: 0.3rem 0;
+  overflow: visible;
+}
+
+.stream-post-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.48rem 0.9rem;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: left;
+  white-space: nowrap;
+  transition: background var(--transition);
+  justify-content: space-between;
+}
+
+.stream-post-menu-item:hover {
+  background: var(--bg-elevated);
+}
+
+.stream-post-menu-item--danger {
+  color: var(--error);
+}
+
+.stream-post-menu-item--has-submenu {
+  position: relative;
+}
+
+.stream-post-submenu {
+  position: absolute;
+  top: -4px;
+  right: calc(100% + 4px);
+  z-index: 310;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14);
+  min-width: 148px;
+  padding: 0.3rem 0;
+}
+
+.stream-post-menu-separator {
+  height: 1px;
+  background: var(--border);
+  margin: 0.3rem 0;
+}
+
+/* ---- + Create button + dropdown ------------------------------------------- */
+
+.stream-create-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.stream-create-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 300;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14);
+  min-width: 160px;
+  padding: 0.3rem 0;
+}
+
+.stream-create-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.55rem 1rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: left;
+  transition: background var(--transition);
+}
+
+.stream-create-menu-item:hover {
+  background: var(--bg-elevated);
+}
+
+.stream-create-menu-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.stream-create-menu-separator {
+  height: 1px;
+  background: var(--border);
+  margin: 0.3rem 0;
+}
+
+/* ---- Create post modal (larger than edit modal) --------------------------- */
+
+.stream-create-modal {
+  max-width: 560px !important;
+  max-height: 90vh !important;
+}
+
+.stream-create-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.stream-create-modal-header .stream-modal-title {
+  margin-bottom: 0;
+}
+
+.stream-modal-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background var(--transition);
+  flex-shrink: 0;
+}
+
+.stream-modal-close-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}

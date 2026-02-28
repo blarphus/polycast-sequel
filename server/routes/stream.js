@@ -67,7 +67,7 @@ Respond with ONLY the JSON object, no other text.`;
 
 // ---------------------------------------------------------------------------
 // GET /api/stream
-// Teachers get their own posts; students get posts from all their teachers.
+// Teachers get their own posts + topics; students get posts + topics from teachers.
 // ---------------------------------------------------------------------------
 
 router.get('/api/stream', authMiddleware, async (req, res) => {
@@ -80,8 +80,15 @@ router.get('/api/stream', authMiddleware, async (req, res) => {
     const isTeacher = userRows[0].account_type === 'teacher';
 
     let posts;
+    let topics;
 
     if (isTeacher) {
+      const { rows: topicRows } = await pool.query(
+        'SELECT * FROM stream_topics WHERE teacher_id = $1 ORDER BY position ASC',
+        [req.userId],
+      );
+      topics = topicRows;
+
       const { rows } = await pool.query(
         `SELECT sp.*,
            COALESCE(wc.cnt, 0)::int AS word_count
@@ -90,11 +97,21 @@ router.get('/api/stream', authMiddleware, async (req, res) => {
            SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
          ) wc ON wc.post_id = sp.id
          WHERE sp.teacher_id = $1
-         ORDER BY sp.created_at DESC`,
+         ORDER BY sp.position ASC NULLS LAST, sp.created_at DESC`,
         [req.userId],
       );
       posts = rows;
     } else {
+      const { rows: topicRows } = await pool.query(
+        `SELECT st.*, COALESCE(u.display_name, u.username) AS teacher_name
+         FROM stream_topics st
+         JOIN users u ON u.id = st.teacher_id
+         WHERE st.teacher_id IN (SELECT teacher_id FROM classroom_students WHERE student_id = $1)
+         ORDER BY st.position ASC`,
+        [req.userId],
+      );
+      topics = topicRows;
+
       const { rows } = await pool.query(
         `SELECT sp.*,
            COALESCE(wc.cnt, 0)::int AS word_count,
@@ -108,7 +125,7 @@ router.get('/api/stream', authMiddleware, async (req, res) => {
          WHERE sp.teacher_id IN (
            SELECT teacher_id FROM classroom_students WHERE student_id = $1
          )
-         ORDER BY sp.created_at DESC`,
+         ORDER BY sp.position ASC NULLS LAST, sp.created_at DESC`,
         [req.userId],
       );
       posts = rows.map((p) => ({
@@ -138,7 +155,6 @@ router.get('/api/stream', authMiddleware, async (req, res) => {
     let completedPostIds = new Set();
 
     if (!isTeacher && wordListPostIds.length > 0) {
-      // Known words
       const allWordIds = Object.values(wordsByPostId).flat().map((w) => w.id);
       if (allWordIds.length > 0) {
         const { rows: knownRows } = await pool.query(
@@ -146,7 +162,6 @@ router.get('/api/stream', authMiddleware, async (req, res) => {
            WHERE student_id = $1 AND post_word_id = ANY($2)`,
           [req.userId, allWordIds],
         );
-        // Map post_word_id back to post_id
         const wordIdToPostId = {};
         for (const [postId, words] of Object.entries(wordsByPostId)) {
           for (const w of words) wordIdToPostId[w.id] = postId;
@@ -158,7 +173,6 @@ router.get('/api/stream', authMiddleware, async (req, res) => {
         }
       }
 
-      // Completions
       const { rows: completionRows } = await pool.query(
         `SELECT post_id FROM stream_word_list_completions
          WHERE student_id = $1 AND post_id = ANY($2)`,
@@ -167,7 +181,6 @@ router.get('/api/stream', authMiddleware, async (req, res) => {
       for (const row of completionRows) completedPostIds.add(row.post_id);
     }
 
-    // Assemble final posts
     const assembled = posts.map((p) => {
       const post = { ...p };
       if (p.type === 'word_list') {
@@ -180,10 +193,163 @@ router.get('/api/stream', authMiddleware, async (req, res) => {
       return post;
     });
 
-    return res.json({ posts: assembled });
+    return res.json({ topics, posts: assembled });
   } catch (err) {
     console.error('GET /api/stream error:', err);
     return res.status(500).json({ error: err.message || 'Failed to load stream' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/stream/topics — create a topic (teacher only)
+// ---------------------------------------------------------------------------
+
+router.post('/api/stream/topics', authMiddleware, async (req, res) => {
+  const { title } = req.body;
+  if (!title || !title.trim()) return res.status(400).json({ error: 'title is required' });
+
+  try {
+    const { rows: userRows } = await pool.query(
+      'SELECT account_type FROM users WHERE id = $1',
+      [req.userId],
+    );
+    if (userRows[0]?.account_type !== 'teacher') {
+      return res.status(403).json({ error: 'Only teachers can create topics' });
+    }
+
+    const { rows: maxRows } = await pool.query(
+      'SELECT COALESCE(MAX(position), -1) AS max_pos FROM stream_topics WHERE teacher_id = $1',
+      [req.userId],
+    );
+    const nextPos = (maxRows[0].max_pos ?? -1) + 1;
+
+    const { rows } = await pool.query(
+      `INSERT INTO stream_topics (teacher_id, title, position)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [req.userId, title.trim(), nextPos],
+    );
+    return res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error('POST /api/stream/topics error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to create topic' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/stream/topics/:id — rename a topic (teacher only, must own it)
+// ---------------------------------------------------------------------------
+
+router.patch('/api/stream/topics/:id', authMiddleware, async (req, res) => {
+  const { title } = req.body;
+  try {
+    const { rows: existing } = await pool.query(
+      'SELECT * FROM stream_topics WHERE id = $1',
+      [req.params.id],
+    );
+    if (existing.length === 0) return res.status(404).json({ error: 'Topic not found' });
+    if (existing[0].teacher_id !== req.userId) {
+      return res.status(403).json({ error: 'Not your topic' });
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE stream_topics SET title = COALESCE($1, title) WHERE id = $2 RETURNING *`,
+      [title !== undefined ? title.trim() : null, req.params.id],
+    );
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error('PATCH /api/stream/topics/:id error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to update topic' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/stream/topics/:id — delete a topic; posts get topic_id = NULL
+// ---------------------------------------------------------------------------
+
+router.delete('/api/stream/topics/:id', authMiddleware, async (req, res) => {
+  try {
+    const { rows: existing } = await pool.query(
+      'SELECT teacher_id FROM stream_topics WHERE id = $1',
+      [req.params.id],
+    );
+    if (existing.length === 0) return res.status(404).json({ error: 'Topic not found' });
+    if (existing[0].teacher_id !== req.userId) {
+      return res.status(403).json({ error: 'Not your topic' });
+    }
+
+    await pool.query('DELETE FROM stream_topics WHERE id = $1', [req.params.id]);
+    return res.status(204).end();
+  } catch (err) {
+    console.error('DELETE /api/stream/topics/:id error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to delete topic' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/stream/reorder — bulk reorder posts and/or topics (teacher only)
+// ---------------------------------------------------------------------------
+
+router.patch('/api/stream/reorder', authMiddleware, async (req, res) => {
+  const { items } = req.body;
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'items array is required' });
+  }
+
+  try {
+    const { rows: userRows } = await pool.query(
+      'SELECT account_type FROM users WHERE id = $1',
+      [req.userId],
+    );
+    if (userRows[0]?.account_type !== 'teacher') {
+      return res.status(403).json({ error: 'Only teachers can reorder' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      for (const item of items) {
+        if (item.kind === 'post') {
+          const { rows } = await client.query(
+            'SELECT teacher_id FROM stream_posts WHERE id = $1',
+            [item.id],
+          );
+          if (rows.length === 0 || rows[0].teacher_id !== req.userId) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Not your post: ' + item.id });
+          }
+          await client.query(
+            `UPDATE stream_posts SET position = $1, topic_id = $2, updated_at = NOW() WHERE id = $3`,
+            [item.position, item.topic_id !== undefined ? item.topic_id : null, item.id],
+          );
+        } else if (item.kind === 'topic') {
+          const { rows } = await client.query(
+            'SELECT teacher_id FROM stream_topics WHERE id = $1',
+            [item.id],
+          );
+          if (rows.length === 0 || rows[0].teacher_id !== req.userId) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Not your topic: ' + item.id });
+          }
+          await client.query(
+            `UPDATE stream_topics SET position = $1 WHERE id = $2`,
+            [item.position, item.id],
+          );
+        }
+      }
+
+      await client.query('COMMIT');
+      return res.status(204).end();
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('PATCH /api/stream/reorder error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to reorder' });
   }
 });
 
@@ -228,7 +394,7 @@ router.post('/api/stream/words/lookup', authMiddleware, async (req, res) => {
 // ---------------------------------------------------------------------------
 
 router.post('/api/stream/posts', authMiddleware, async (req, res) => {
-  const { type, title, body, attachments, words, target_language, lesson_items } = req.body;
+  const { type, title, body, attachments, words, target_language, lesson_items, topic_id } = req.body;
 
   if (!type || !['material', 'word_list', 'lesson'].includes(type)) {
     return res.status(400).json({ error: 'type must be material, word_list, or lesson' });
@@ -249,8 +415,8 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
       await client.query('BEGIN');
 
       const { rows: postRows } = await client.query(
-        `INSERT INTO stream_posts (teacher_id, type, title, body, attachments, target_language, lesson_items)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO stream_posts (teacher_id, type, title, body, attachments, target_language, lesson_items, topic_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING *`,
         [
           req.userId,
@@ -260,6 +426,7 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
           JSON.stringify(attachments || []),
           target_language || user.target_language || null,
           JSON.stringify(lesson_items || []),
+          topic_id || null,
         ],
       );
       const post = postRows[0];
@@ -295,7 +462,6 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
 
       await client.query('COMMIT');
 
-      // Return post with words if applicable
       const { rows: wordRows } = await pool.query(
         'SELECT * FROM stream_post_words WHERE post_id = $1 ORDER BY position ASC',
         [post.id],
@@ -320,6 +486,8 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
 
 router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
   const { title, body, attachments, lesson_items } = req.body;
+  const topicIdInBody = Object.prototype.hasOwnProperty.call(req.body, 'topic_id');
+  const topicId = req.body.topic_id;
 
   try {
     const { rows: existing } = await pool.query(
@@ -331,24 +499,29 @@ router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Not your post' });
     }
 
-    const { rows } = await pool.query(
-      `UPDATE stream_posts
+    const params = [
+      title !== undefined ? title : null,
+      body !== undefined ? body : null,
+      attachments !== undefined ? JSON.stringify(attachments) : null,
+      lesson_items !== undefined ? JSON.stringify(lesson_items) : null,
+    ];
+
+    let query = `UPDATE stream_posts
        SET title = COALESCE($1, title),
            body = COALESCE($2, body),
            attachments = COALESCE($3, attachments),
            lesson_items = COALESCE($4, lesson_items),
-           updated_at = NOW()
-       WHERE id = $5
-       RETURNING *`,
-      [
-        title !== undefined ? title : null,
-        body !== undefined ? body : null,
-        attachments !== undefined ? JSON.stringify(attachments) : null,
-        lesson_items !== undefined ? JSON.stringify(lesson_items) : null,
-        req.params.id,
-      ],
-    );
+           updated_at = NOW()`;
 
+    if (topicIdInBody) {
+      params.push(topicId);
+      query += `, topic_id = $${params.length}`;
+    }
+
+    params.push(req.params.id);
+    query += ` WHERE id = $${params.length} RETURNING *`;
+
+    const { rows } = await pool.query(query, params);
     return res.json(rows[0]);
   } catch (err) {
     console.error('PATCH /api/stream/posts/:id error:', err);
@@ -391,7 +564,6 @@ router.post('/api/stream/posts/:postId/known', authMiddleware, async (req, res) 
   }
 
   try {
-    // Verify the student is enrolled with the post's teacher
     const { rows: postRows } = await pool.query(
       'SELECT teacher_id FROM stream_posts WHERE id = $1',
       [req.params.postId],
@@ -433,7 +605,6 @@ router.post('/api/stream/posts/:postId/known', authMiddleware, async (req, res) 
 
 router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, async (req, res) => {
   try {
-    // Verify the post exists and student is enrolled
     const { rows: postRows } = await pool.query(
       'SELECT * FROM stream_posts WHERE id = $1',
       [req.params.postId],
@@ -451,7 +622,6 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, async
       return res.status(403).json({ error: 'Not enrolled in this classroom' });
     }
 
-    // Get all words for this post that are NOT marked known by this student
     const { rows: wordsToAdd } = await pool.query(
       `SELECT spw.*
        FROM stream_post_words spw
@@ -463,7 +633,6 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, async
       [req.params.postId, req.userId],
     );
 
-    // Get student's target language for saved_words
     const { rows: studentRows } = await pool.query(
       'SELECT target_language FROM users WHERE id = $1',
       [req.userId],
@@ -487,7 +656,6 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, async
       }
     }
 
-    // Record completion
     await pool.query(
       `INSERT INTO stream_word_list_completions (student_id, post_id)
        VALUES ($1, $2)

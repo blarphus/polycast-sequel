@@ -20,7 +20,6 @@ import Learn from './pages/Learn';
 import Students from './pages/Students';
 import StudentDetail from './pages/StudentDetail';
 import Classwork from './pages/Classwork';
-import CreatePost from './pages/CreatePost';
 import IncomingCall from './components/IncomingCall';
 import BottomToolbar from './components/BottomToolbar';
 
@@ -174,14 +173,6 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Classwork />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/classwork/create"
-          element={
-            <ProtectedRoute>
-              <CreatePost />
             </ProtectedRoute>
           }
         />

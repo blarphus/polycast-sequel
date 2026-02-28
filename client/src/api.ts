@@ -427,10 +427,21 @@ export interface StreamPost {
   known_word_ids?: string[];
   completed?: boolean;
   teacher_name?: string;
+  topic_id?: string | null;
+  position?: number;
+}
+
+export interface StreamTopic {
+  id: string;
+  teacher_id: string;
+  title: string;
+  position: number;
+  created_at: string;
+  teacher_name?: string;
 }
 
 export function getStream() {
-  return request<{ posts: StreamPost[] }>('/stream');
+  return request<{ topics: StreamTopic[]; posts: StreamPost[] }>('/stream');
 }
 
 export function createPost(data: {
@@ -441,6 +452,7 @@ export function createPost(data: {
   words?: string[];
   target_language?: string;
   lesson_items?: LessonItem[];
+  topic_id?: string | null;
 }) {
   return request<StreamPost>('/stream/posts', { method: 'POST', body: data });
 }
@@ -450,8 +462,27 @@ export function updatePost(postId: string, data: {
   body?: string;
   attachments?: StreamAttachment[];
   lesson_items?: LessonItem[];
+  topic_id?: string | null;
 }) {
   return request<StreamPost>(`/stream/posts/${postId}`, { method: 'PATCH', body: data });
+}
+
+export function createTopic(title: string) {
+  return request<StreamTopic>('/stream/topics', { method: 'POST', body: { title } });
+}
+
+export function updateTopic(id: string, data: { title?: string }) {
+  return request<StreamTopic>(`/stream/topics/${id}`, { method: 'PATCH', body: data });
+}
+
+export function deleteTopic(id: string) {
+  return request<void>(`/stream/topics/${id}`, { method: 'DELETE' });
+}
+
+export function reorderStream(
+  items: Array<{ id: string; kind: 'post' | 'topic'; position: number; topic_id?: string | null }>,
+) {
+  return request<void>('/stream/reorder', { method: 'PATCH', body: { items } });
 }
 
 export function deletePost(postId: string) {

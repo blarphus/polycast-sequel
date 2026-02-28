@@ -223,6 +223,21 @@ export async function migrate(pool) {
     // Lesson items (array of {title, body, attachments} stored as JSONB on stream_posts)
     await client.query(`ALTER TABLE stream_posts ADD COLUMN IF NOT EXISTS lesson_items JSONB DEFAULT '[]';`);
 
+    // Stream topics (Google Classroom-style groupings)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS stream_topics (
+        id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        teacher_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title      TEXT NOT NULL,
+        position   INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    // Topic assignment and position ordering on stream posts
+    await client.query(`ALTER TABLE stream_posts ADD COLUMN IF NOT EXISTS topic_id UUID REFERENCES stream_topics(id) ON DELETE SET NULL;`);
+    await client.query(`ALTER TABLE stream_posts ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;`);
+
     await client.query('COMMIT');
     console.log('Database migrations completed successfully');
   } catch (err) {
