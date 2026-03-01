@@ -1,5 +1,4 @@
 import { fetchYouTubeTranscript, TranscriptFetchError } from './videoTranscriptFetcher.js';
-import { normalizeTranscriptSegmentsStrict } from './videoTranscriptNormalizer.js';
 
 const QUEUE_KEY = 'queue:video_transcripts';
 const DELAYED_KEY = 'queue:video_transcripts:delayed';
@@ -80,11 +79,6 @@ function shouldRetry(err, attempt) {
   if (attempt >= MAX_ATTEMPTS) return false;
   if (!(err instanceof TranscriptFetchError)) return true;
   return Boolean(err.transient);
-}
-
-function shouldNormalizeTranscriptSource(source) {
-  // Human-made caption tracks should be preserved as-is.
-  return source !== 'manual';
 }
 
 async function markProcessing(pool, videoId, attempt) {
@@ -200,24 +194,12 @@ export async function startTranscriptWorker({ redisClient, pool }) {
       await markProcessing(pool, job.videoId, job.attempt);
 
       const { segments, source } = await fetchYouTubeTranscript(job.youtubeId, job.language);
-      const normalized = shouldNormalizeTranscriptSource(source)
-        ? normalizeTranscriptSegmentsStrict(segments, { language: job.language })
-        : {
-          segments,
-          meta: {
-            applied: false,
-            reason: 'manual_source',
-            engine: 'deterministic-v1',
-            language: String(job.language || '').toLowerCase(),
-          },
-        };
-      const segmentsToSave = normalized.meta.applied ? normalized.segments : segments;
 
-      await markReady(pool, job.videoId, segmentsToSave, source, job.attempt);
+      await markReady(pool, job.videoId, segments, source, job.attempt);
       await redisClient.del(key);
 
       console.log(
-        `[transcript-queue] Ready video=${job.videoId} source=${source} lang=${job.language} segments=${segmentsToSave.length} normalize=${normalized.meta.applied ? 'applied' : 'skipped'} reason=${normalized.meta.reason}`,
+        `[transcript-queue] Ready video=${job.videoId} source=${source} lang=${job.language} segments=${segments.length}`,
       );
     } catch (err) {
       const message = mapErrorToMessage(err);
