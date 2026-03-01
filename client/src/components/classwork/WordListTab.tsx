@@ -32,13 +32,39 @@ export default function WordListTab({
   const [defPickerIdx, setDefPickerIdx] = useState<number | null>(null);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
-  const handleTemplateSelect = (data: { title: string; words: string[]; language: string }) => {
+  const handleTemplateSelect = (data: { title: string; words: (string | Record<string, unknown>)[]; language: string }) => {
     setTitle(data.title);
-    setWordsText(data.words.join('\n'));
     setTargetLang(data.language);
-    setPreview(null);
-    setLookedUp(false);
     setShowTemplatePicker(false);
+
+    // Pre-enriched template: words are objects with a translation field
+    const firstWord = data.words[0];
+    if (typeof firstWord === 'object' && firstWord !== null && 'translation' in firstWord) {
+      const enriched: StreamPostWord[] = (data.words as Record<string, unknown>[]).map((w, i) => ({
+        id: `tpl-${i}`,
+        post_id: '',
+        word: String(w.word ?? ''),
+        translation: String(w.translation ?? ''),
+        definition: String(w.definition ?? ''),
+        part_of_speech: (w.part_of_speech as string) ?? null,
+        position: i,
+        frequency: (w.frequency as number) ?? null,
+        frequency_count: (w.frequency_count as number) ?? null,
+        example_sentence: (w.example_sentence as string) ?? null,
+        image_url: (w.image_url as string) ?? null,
+        lemma: (w.lemma as string) ?? null,
+        forms: (w.forms as string) ?? null,
+        image_term: (w.image_term as string) ?? null,
+      }));
+      setPreview(enriched);
+      setLookedUp(true);
+      setWordsText('');
+    } else {
+      // Plain string words — current behavior
+      setWordsText((data.words as string[]).join('\n'));
+      setPreview(null);
+      setLookedUp(false);
+    }
   };
 
   const wordLines = wordsText.split('\n').map((w) => w.trim()).filter(Boolean);

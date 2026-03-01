@@ -550,7 +550,7 @@ export interface TemplateSummary {
 }
 export interface TemplateUnitDetail {
   textbook: { id: string; title: string; language: string };
-  unit: { id: string; title: string; description: string; words: string[] };
+  unit: { id: string; title: string; description: string; words: (string | StreamPostWord)[] };
 }
 
 export function getTemplates() {

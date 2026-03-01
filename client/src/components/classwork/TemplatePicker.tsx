@@ -3,7 +3,7 @@ import * as api from '../../api';
 import type { TemplateSummary } from '../../api';
 
 interface Props {
-  onSelect: (data: { title: string; words: string[]; language: string }) => void;
+  onSelect: (data: { title: string; words: (string | Record<string, unknown>)[]; language: string }) => void;
   onClose: () => void;
 }
 
