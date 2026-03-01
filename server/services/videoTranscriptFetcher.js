@@ -144,7 +144,7 @@ async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
   // Step 1: Player API — get caption tracks
   const playerUrl = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_API_KEY}`;
   const playerBody = JSON.stringify({
-    context: { client: { clientName: 'ANDROID', clientVersion: '20.10.38' } },
+    context: { client: { clientName: 'WEB', clientVersion: '2.20241126.01.00' } },
     videoId: youtubeId,
   });
 
@@ -270,13 +270,14 @@ export async function fetchYouTubeTranscript(youtubeId, language = 'en', onProgr
       errors.map((e) => e.message).join('; '),
     );
 
-    // Prefer non-transient errors (definitive answers like NO_CAPTIONS)
-    const nonTransient = errors.find(
-      (e) => e instanceof TranscriptFetchError && !e.transient,
+    // If ANY method had a transient error, throw transient so the queue retries.
+    // Only throw NO_CAPTIONS when ALL methods agree it's non-transient.
+    const transientErr = errors.find(
+      (e) => e instanceof TranscriptFetchError && e.transient,
     );
-    if (nonTransient) throw nonTransient;
+    if (transientErr) throw transientErr;
 
-    // Otherwise throw the first TranscriptFetchError
+    // All errors are non-transient — throw the first one (e.g. NO_CAPTIONS)
     const firstFetchErr = errors.find((e) => e instanceof TranscriptFetchError);
     if (firstFetchErr) throw firstFetchErr;
 
