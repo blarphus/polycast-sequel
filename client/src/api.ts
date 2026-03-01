@@ -577,7 +577,7 @@ export interface VideoSummary {
   language: string;
   duration_seconds: number | null;
   transcript_status: 'missing' | 'processing' | 'ready' | 'failed';
-  transcript_source?: 'manual' | 'auto' | 'none';
+  transcript_source?: 'manual' | 'auto' | 'none' | 'innertube' | 'youtubei';
   cefr_level: string | null;
   transcript_progress: number;
 }

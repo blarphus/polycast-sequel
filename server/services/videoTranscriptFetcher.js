@@ -119,6 +119,27 @@ function parseTranscriptXml(xml) {
   return segments;
 }
 
+function parseTranscriptJson3(json3) {
+  const segments = [];
+  for (const event of json3?.events || []) {
+    if (!event.segs) continue;
+
+    const text = event.segs.map(s => s.utf8 || '').join('').replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+
+    const offset = Number(event.tStartMs);
+    const duration = Number(event.dDurationMs);
+    if (!Number.isFinite(offset) || !Number.isFinite(duration)) continue;
+
+    segments.push({
+      text,
+      offset: Math.max(0, offset),
+      duration: Math.max(0, duration),
+    });
+  }
+  return segments;
+}
+
 async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
   // Step 1: Player API — get caption tracks
   const playerUrl = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_API_KEY}`;
@@ -157,18 +178,18 @@ async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
 
   // Find matching language track, fall back to first track
   const track = captionTracks.find(t => t.languageCode === language) || captionTracks[0];
-  // Strip &fmt= param to get raw XML
-  const baseUrl = track.baseUrl.replace(/&fmt=[^&]*/, '');
+  // Strip any existing &fmt= param and request json3 format
+  const baseUrl = track.baseUrl.replace(/&fmt=[^&]*/, '') + '&fmt=json3';
 
-  // Step 2: Timedtext XML — fetch and parse transcript
-  let xmlText;
+  // Step 2: Timedtext JSON3 — fetch and parse transcript
+  let json3;
   try {
-    const xmlRes = await fetchWithTimeout({ url: baseUrl });
-    if (!xmlRes.ok) {
-      const code = xmlRes.status === 429 ? 'BLOCKED_OR_RATE_LIMITED' : 'TRANSIENT_FETCH_ERROR';
-      throw new TranscriptFetchError(`Timedtext request returned ${xmlRes.status}`, code, true);
+    const ttRes = await fetchWithTimeout({ url: baseUrl });
+    if (!ttRes.ok) {
+      const code = ttRes.status === 429 ? 'BLOCKED_OR_RATE_LIMITED' : 'TRANSIENT_FETCH_ERROR';
+      throw new TranscriptFetchError(`Timedtext request returned ${ttRes.status}`, code, true);
     }
-    xmlText = await xmlRes.text();
+    json3 = await ttRes.json();
   } catch (err) {
     if (err instanceof TranscriptFetchError) throw err;
     if (err?.name === 'AbortError') {
@@ -177,7 +198,7 @@ async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
     throw new TranscriptFetchError(`Timedtext request failed: ${err.message}`, 'TRANSIENT_FETCH_ERROR', true);
   }
 
-  const segments = parseTranscriptXml(xmlText);
+  const segments = parseTranscriptJson3(json3);
   if (segments.length === 0) {
     throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
   }
