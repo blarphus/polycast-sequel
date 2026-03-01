@@ -20,7 +20,7 @@ function loadTextbook(id) {
 }
 
 // Pre-load all available textbooks
-const TEXTBOOK_IDS = [];
+const TEXTBOOK_IDS = ['cefrj-a1', 'cefrj-a2', 'cefrj-b1', 'cefrj-b2'];
 for (const id of TEXTBOOK_IDS) {
   loadTextbook(id);
 }
