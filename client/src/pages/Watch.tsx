@@ -59,6 +59,7 @@ export default function Watch() {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [retryingTranscript, setRetryingTranscript] = useState(false);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   const playerRef = useRef<YT.Player | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -215,14 +216,26 @@ export default function Watch() {
       activeEl.offsetTop >= el.scrollTop - threshold &&
       (activeEl.offsetTop + activeEl.clientHeight) <= (el.scrollTop + el.clientHeight + threshold);
     autoScrollRef.current = visible;
+    setShowScrollBtn(!visible);
   }, [activeIndex]);
 
   const handleTimestampClick = (offset: number) => {
     if (playerRef.current) {
       playerRef.current.seekTo(offset / 1000, true);
       autoScrollRef.current = true;
+      setShowScrollBtn(false);
     }
   };
+
+  const handleResumeAutoScroll = useCallback(() => {
+    autoScrollRef.current = true;
+    setShowScrollBtn(false);
+    const container = transcriptRef.current;
+    const el = segmentRefs.current[activeIndex];
+    if (container && el) {
+      container.scrollTo({ top: Math.max(0, el.offsetTop), behavior: 'smooth' });
+    }
+  }, [activeIndex]);
 
   const handleWordClick = (e: React.MouseEvent<HTMLSpanElement>, word: string, sentence: string) => {
     const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -304,32 +317,42 @@ export default function Watch() {
 
         {/* Transcript */}
         {hasTranscript && (
-          <div
-            className="watch-transcript"
-            ref={transcriptRef}
-            onScroll={handleTranscriptScroll}
-          >
-            {video.transcript.map((seg, i) => (
-              <div
-                key={i}
-                ref={(el) => { segmentRefs.current[i] = el; }}
-                className={`watch-segment${i === activeIndex ? ' watch-segment--active' : ''}`}
-              >
-                <button
-                  className="watch-segment-time"
-                  onClick={() => handleTimestampClick(seg.offset)}
+          <div className="watch-transcript-wrapper">
+            <div
+              className="watch-transcript"
+              ref={transcriptRef}
+              onScroll={handleTranscriptScroll}
+            >
+              {video.transcript.map((seg, i) => (
+                <div
+                  key={i}
+                  ref={(el) => { segmentRefs.current[i] = el; }}
+                  className={`watch-segment${i === activeIndex ? ' watch-segment--active' : ''}`}
                 >
-                  {formatTimestamp(seg.offset)}
-                </button>
-                <span className="watch-segment-text">
-                  <TokenizedText
-                    text={seg.text}
-                    savedWords={savedWordsSet}
-                    onWordClick={handleWordClick}
-                  />
-                </span>
-              </div>
-            ))}
+                  <button
+                    className="watch-segment-time"
+                    onClick={() => handleTimestampClick(seg.offset)}
+                  >
+                    {formatTimestamp(seg.offset)}
+                  </button>
+                  <span className="watch-segment-text">
+                    <TokenizedText
+                      text={seg.text}
+                      savedWords={savedWordsSet}
+                      onWordClick={handleWordClick}
+                    />
+                  </span>
+                </div>
+              ))}
+            </div>
+            {showScrollBtn && (
+              <button className="watch-scroll-btn" onClick={handleResumeAutoScroll} title="Resume auto-scroll">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="7 13 12 18 17 13" />
+                  <line x1="12" y1="6" x2="12" y2="18" />
+                </svg>
+              </button>
+            )}
           </div>
         )}
         {!hasTranscript && video.transcript_status !== 'processing' && video.transcript_status !== 'failed' && (
