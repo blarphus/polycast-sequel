@@ -539,6 +539,13 @@ export function lookupPostWords(words: string[], nativeLang: string, targetLang:
   });
 }
 
+export function batchTranslateWords(words: { word: string; definition: string }[], nativeLang: string) {
+  return request<{ translations: { translation: string; definition: string }[] }>('/stream/words/batch-translate', {
+    method: 'POST',
+    body: { words, nativeLang },
+  });
+}
+
 // ---- Templates (Textbook Word Lists) ---------------------------------------
 
 export interface TemplateUnitSummary {

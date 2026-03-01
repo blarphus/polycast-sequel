@@ -451,6 +451,49 @@ Respond with ONLY the JSON object, no other text.`;
 });
 
 // ---------------------------------------------------------------------------
+// POST /api/stream/words/batch-translate — translate pre-enriched template words
+// ---------------------------------------------------------------------------
+
+router.post('/api/stream/words/batch-translate', authMiddleware, requireTeacher, async (req, res) => {
+  const { words, nativeLang } = req.body;
+
+  if (!Array.isArray(words) || words.length === 0) {
+    return res.status(400).json({ error: 'words array is required' });
+  }
+  if (!nativeLang) return res.status(400).json({ error: 'nativeLang is required' });
+
+  try {
+    const wordList = words.map((w, i) => `${i}. ${w.word} — ${w.definition}`).join('\n');
+
+    const prompt = `For each English word below, provide a ${nativeLang} translation and a brief ${nativeLang} definition. Return a JSON array of objects in the same order.
+
+${wordList}
+
+Return ONLY a JSON array like: [{"translation":"...","definition":"..."},...]
+
+- translation: standard ${nativeLang} translation, 1-3 words max
+- definition: brief explanation in ${nativeLang}, 12 words max, no markdown`;
+
+    const raw = await callGemini(prompt, {
+      thinkingConfig: { thinkingBudget: 0 },
+      maxOutputTokens: words.length * 40,
+      responseMimeType: 'application/json',
+    });
+    const results = JSON.parse(raw);
+
+    if (!Array.isArray(results) || results.length !== words.length) {
+      console.error('batch-translate: expected', words.length, 'results, got', results?.length);
+      return res.status(500).json({ error: 'Translation count mismatch' });
+    }
+
+    return res.json({ translations: results });
+  } catch (err) {
+    console.error('POST /api/stream/words/batch-translate error:', err);
+    return res.status(500).json({ error: err.message || 'Batch translation failed' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // POST /api/stream/words/lookup — preview word translations (teacher only)
 // ---------------------------------------------------------------------------
 

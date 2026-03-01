@@ -28,11 +28,12 @@ export default function WordListTab({
   const [submitting, setSubmitting] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [submitError, setSubmitError] = useState('');
+  const [translating, setTranslating] = useState(false);
   const [imagePickerIdx, setImagePickerIdx] = useState<number | null>(null);
   const [defPickerIdx, setDefPickerIdx] = useState<number | null>(null);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
-  const handleTemplateSelect = (data: { title: string; words: (string | Record<string, unknown>)[]; language: string }) => {
+  const handleTemplateSelect = async (data: { title: string; words: (string | Record<string, unknown>)[]; language: string }) => {
     setTitle(data.title);
     setTargetLang(data.language);
     setShowTemplatePicker(false);
@@ -59,6 +60,26 @@ export default function WordListTab({
       setPreview(enriched);
       setLookedUp(true);
       setWordsText('');
+
+      // Translate into teacher's native language if not English
+      if (nativeLang && nativeLang !== 'en' && !nativeLang.startsWith('en-')) {
+        setTranslating(true);
+        try {
+          const pairs = enriched.map(w => ({ word: w.word, definition: w.definition }));
+          const { translations } = await api.batchTranslateWords(pairs, nativeLang);
+          setPreview(prev => prev
+            ? prev.map((w, i) => ({
+                ...w,
+                translation: translations[i]?.translation ?? w.translation,
+                definition: translations[i]?.definition ?? w.definition,
+              }))
+            : prev);
+        } catch (err) {
+          console.error('Batch translate failed:', err);
+        } finally {
+          setTranslating(false);
+        }
+      }
     } else {
       // Plain string words — current behavior
       setWordsText((data.words as string[]).join('\n'));
@@ -176,6 +197,12 @@ export default function WordListTab({
       </button>
       {lookedUp && preview && preview.length > 0 && (
         <>
+          {translating && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <div className="loading-spinner loading-spinner--small" />
+              <span>Translating…</span>
+            </div>
+          )}
           <div className="stream-preview-table">
             <div className="stream-preview-header">
               <span>Image</span>
@@ -216,7 +243,7 @@ export default function WordListTab({
           </div>
           <button
             className="btn btn-primary btn-block"
-            disabled={submitting || preview.length === 0}
+            disabled={submitting || translating || preview.length === 0}
             onClick={handleSubmit}
             style={{ marginTop: '1rem' }}
           >
