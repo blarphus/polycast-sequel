@@ -16,7 +16,10 @@ const router = Router();
 router.get('/api/classes/today', authMiddleware, async (req, res) => {
   try {
     const userId = req.userId;
-    const user = req.userRecord;
+    const { rows: [user] } = await pool.query(
+      'SELECT account_type FROM users WHERE id = $1',
+      [userId],
+    );
     const isTeacher = user.account_type === 'teacher';
 
     // Get today's ISO weekday (1=Mon..7=Sun)
