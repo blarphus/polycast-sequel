@@ -197,7 +197,7 @@ export default function Watch() {
     const el = segmentRefs.current[activeIndex];
     if (!container || !el) return;
 
-    const targetTop = el.offsetTop - (container.clientHeight / 2) + (el.clientHeight / 2);
+    const targetTop = el.offsetTop;
     container.scrollTo({
       top: Math.max(0, targetTop),
       behavior: 'smooth',
