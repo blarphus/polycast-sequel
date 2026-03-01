@@ -176,6 +176,11 @@
   color: #2dd4bf;
 }
 
+[data-theme="dark"] .toolbar-tab--settings.active {
+  background: rgba(156, 163, 175, 0.15);
+  color: #d1d5db;
+}
+
 /* ---- Dictionary shadows -------------------------------------------------- */
 
 [data-theme="dark"] .dict-item {

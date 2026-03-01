@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getPendingClasswork } from '../api';
-import { HomeIcon, BookIcon, BoltIcon, ChatBubbleIcon, PeopleIcon, ClassworkIcon } from './icons';
+import { HomeIcon, BookIcon, BoltIcon, ChatBubbleIcon, PeopleIcon, ClassworkIcon, SettingsIcon } from './icons';
 
 export default function BottomToolbar() {
   const location = useLocation();
@@ -32,6 +32,7 @@ export default function BottomToolbar() {
   const isChats = location.pathname === '/chats';
   const isClasswork = location.pathname === '/classwork' || location.pathname.startsWith('/classwork/');
   const isStudents = location.pathname === '/students' || location.pathname.startsWith('/students/');
+  const isSettings = location.pathname === '/settings';
 
   return (
     <nav className="bottom-toolbar">
@@ -96,6 +97,13 @@ export default function BottomToolbar() {
           </button>
         </>
       )}
+      <button
+        className={`toolbar-tab toolbar-tab--settings${isSettings ? ' active' : ''}`}
+        onClick={() => navigate('/settings')}
+      >
+        <SettingsIcon size={22} />
+        <span className="toolbar-label">Settings</span>
+      </button>
     </nav>
   );
 }

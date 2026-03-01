@@ -654,6 +654,11 @@
   color: #14b8a6;
 }
 
+.toolbar-tab--settings.active {
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--text-secondary);
+}
+
 .toolbar-label {
   font-size: 0.7rem;
   letter-spacing: 0.02em;

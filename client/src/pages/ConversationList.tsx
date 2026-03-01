@@ -9,7 +9,7 @@ import { socket } from '../socket';
 import { getConversations, Conversation, Message } from '../api';
 import { formatRelativeTime } from '../utils/dateFormat';
 import NewChatDrawer from '../components/NewChatDrawer';
-import { VideoIcon, SettingsIcon, LogoutIcon, SearchIcon } from '../components/icons';
+import { VideoIcon, LogoutIcon, SearchIcon } from '../components/icons';
 
 export default function ConversationList() {
   const { user, logout } = useAuth();
@@ -136,13 +136,6 @@ export default function ConversationList() {
             title="Test Camera"
           >
             <VideoIcon size={20} />
-          </button>
-          <button
-            className="conversations-icon-btn"
-            onClick={() => navigate('/settings')}
-            title="Settings"
-          >
-            <SettingsIcon size={20} />
           </button>
           <button
             className="conversations-icon-btn"

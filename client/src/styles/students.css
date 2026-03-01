@@ -59,6 +59,11 @@
     font-size: 0.9rem;
   }
 
+  .toolbar-tab--settings {
+    margin-top: auto;
+    margin-bottom: 0.75rem;
+  }
+
   /* Shift page content right when sidebar is showing */
   html.sidebar-visible #root {
     margin-left: var(--sidebar-width);
