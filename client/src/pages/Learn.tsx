@@ -8,6 +8,7 @@ import { getDueWords, reviewWord, proxyImageUrl, type SavedWord, type SrsAnswer 
 import { getButtonTimeLabel, getNextDueSeconds } from '../utils/srs';
 import { renderTildeHighlight, renderCloze, stripTildes } from '../utils/tildeMarkup';
 import { playFlipSound, playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
+import { BookIcon, CheckCircleIcon, SpeakerIcon, TapIcon, CloseIcon, CheckIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -233,10 +234,7 @@ export default function Learn() {
       <div className="learn-page">
         <div className="flashcard-empty">
           <div className="flashcard-empty-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-            </svg>
+            <BookIcon size={48} strokeWidth={1.5} />
           </div>
           <h2>No words to study yet</h2>
           <p>Save words from conversations to start learning.</p>
@@ -264,10 +262,7 @@ export default function Learn() {
       <div className="learn-page">
         <div className="flashcard-complete">
           <div className="flashcard-complete-icon">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
+            <CheckCircleIcon size={56} style={{ color: '#4ade80' }} />
           </div>
           <h2>Session Complete</h2>
           <div className="flashcard-complete-stats">
@@ -333,10 +328,7 @@ export default function Learn() {
                 <p className="flashcard-word-large">{card.word}</p>
               )}
               <p className="flashcard-hint">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 7.5V3a1.5 1.5 0 0 0-3 0v9l-2.56-2.56a1.5 1.5 0 0 0-2.12 2.12L12 16.5a5 5 0 0 0 5 5h1a5 5 0 0 0 5-5V9a1.5 1.5 0 0 0-3 0" />
-                  <path d="M18 7.5a1.5 1.5 0 0 0-3 0" />
-                </svg>
+                <TapIcon size={14} />
                 Tap to reveal
               </p>
             </div>
@@ -372,11 +364,7 @@ export default function Learn() {
                   playAudio(text, card.target_language);
                 }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                </svg>
+                <SpeakerIcon size={20} />
               </button>
             </div>
           </div>
@@ -390,10 +378,7 @@ export default function Learn() {
           disabled={!isFlipped || submitting}
           onClick={() => handleAnswer('again')}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <CloseIcon size={18} strokeWidth={2.5} />
           <span className="flashcard-btn-label">Incorrect</span>
           <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'again')}</span>
         </button>
@@ -402,9 +387,7 @@ export default function Learn() {
           disabled={!isFlipped || submitting}
           onClick={() => handleAnswer('good')}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
+          <CheckIcon size={18} strokeWidth={2.5} />
           <span className="flashcard-btn-label">Correct</span>
           <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'good')}</span>
         </button>

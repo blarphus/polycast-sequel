@@ -6,6 +6,7 @@ import WordLookupModal from '../WordLookupModal';
 import TemplatePicker from './TemplatePicker';
 import { renderTildeHighlight } from '../../utils/tildeMarkup';
 import { LANGUAGES } from './languages';
+import { CloseIcon } from '../icons';
 
 export default function WordListTab({
   defaultTargetLang,
@@ -251,7 +252,7 @@ export default function WordListTab({
                   className="btn-small btn-danger"
                   onClick={() => setPreview((prev) => prev ? prev.filter((_, j) => j !== i) : prev)}
                 >
-                  ✕
+                  <CloseIcon size={12} strokeWidth={2.5} />
                 </button>
               </div>
             ))}

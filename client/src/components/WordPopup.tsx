@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { lookupWord, enrichWord, type SaveWordData } from '../api';
 import { useDictionaryToast } from '../hooks/useDictionaryToast';
+import { CheckIcon } from './icons';
 
 interface WordPopupProps {
   word: string;
@@ -133,7 +134,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
             disabled={saved || loading}
             onClick={handleSave}
           >
-            {saved ? (duplicate ? '✓ Already saved' : '✓ Added') : 'Add'}
+            {saved ? (<><CheckIcon size={12} strokeWidth={3} style={{ verticalAlign: 'middle', marginRight: 2 }} />{duplicate ? ' Already saved' : ' Added'}</>) : 'Add'}
           </button>
         )}
         <button className="word-popup-close" onClick={onClose}>&times;</button>

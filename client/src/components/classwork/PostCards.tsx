@@ -5,6 +5,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as api from '../../api';
 import type { StreamPost, StreamTopic, StreamPostWord, StreamAttachment, LessonItem } from '../../api';
+import { YouTubeIcon, FileIcon, ExternalLinkIcon, ChevronRightIcon, CheckIcon } from '../icons';
 
 // ---------------------------------------------------------------------------
 // AttachmentLink (display only)
@@ -18,24 +19,9 @@ function AttachmentLink({ att }: { att: StreamAttachment }) {
 
   return (
     <a className="stream-attachment-link" href={url} target="_blank" rel="noopener noreferrer">
-      {isYoutube && (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.2 31.2 0 0 0 0 12a31.2 31.2 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.2 31.2 0 0 0 24 12a31.2 31.2 0 0 0-.5-5.8zM9.75 15.5v-7l6.25 3.5-6.25 3.5z" />
-        </svg>
-      )}
-      {isPdf && !isYoutube && (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-        </svg>
-      )}
-      {!isYoutube && !isPdf && (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-          <polyline points="15 3 21 3 21 9" />
-          <line x1="10" y1="14" x2="21" y2="3" />
-        </svg>
-      )}
+      {isYoutube && <YouTubeIcon size={16} />}
+      {isPdf && !isYoutube && <FileIcon size={16} />}
+      {!isYoutube && !isPdf && <ExternalLinkIcon size={16} />}
       <span>{label}</span>
     </a>
   );
@@ -114,7 +100,7 @@ function PostMenu({
             onMouseLeave={() => setShowMoveMenu(false)}
           >
             <span>Move to</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+            <ChevronRightIcon size={12} strokeWidth={2.5} />
             {showMoveMenu && (
               <div className="stream-post-menu stream-post-submenu">
                 {canMoveToNoTopic && (
@@ -360,9 +346,7 @@ export function StudentWordListCard({
       </div>
       {completed || addResult ? (
         <div className="stream-completed-banner">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
+          <CheckIcon size={16} strokeWidth={2.5} />
           {addResult
             ? `Added ${addResult.added} word${addResult.added !== 1 ? 's' : ''} to your dictionary`
             : 'Added to your dictionary'}

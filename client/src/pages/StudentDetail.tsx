@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import type { StudentDetail as StudentDetailData } from '../api';
+import { ChevronLeftIcon } from '../components/icons';
 
 export default function StudentDetail() {
   const { studentId } = useParams<{ studentId: string }>();
@@ -56,9 +57,7 @@ export default function StudentDetail() {
   return (
     <div className="student-detail-page">
       <button className="btn btn-back" onClick={() => navigate('/students')}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
+        <ChevronLeftIcon size={18} />
         Back
       </button>
 

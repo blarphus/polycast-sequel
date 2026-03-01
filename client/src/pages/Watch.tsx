@@ -10,6 +10,7 @@ import { getVideo, retryVideoTranscript, VideoDetail } from '../api';
 import TokenizedText from '../components/TokenizedText';
 import WordPopup from '../components/WordPopup';
 import { PopupState } from '../textTokens';
+import { ArrowDownIcon } from '../components/icons';
 
 // Minimal YT IFrame API type declarations
 declare global {
@@ -357,10 +358,7 @@ export default function Watch() {
             </div>
             {showScrollBtn && (
               <button className="watch-scroll-btn" onClick={handleResumeAutoScroll} title="Resume auto-scroll">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="7 13 12 18 17 13" />
-                  <line x1="12" y1="6" x2="12" y2="18" />
-                </svg>
+                <ArrowDownIcon size={18} strokeWidth={2.5} />
               </button>
             )}
           </div>

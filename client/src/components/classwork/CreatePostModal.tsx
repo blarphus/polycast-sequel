@@ -7,6 +7,7 @@ import * as api from '../../api';
 import type { StreamPost, StreamTopic, StreamAttachment, LessonItem, WordOverride, Recurrence } from '../../api';
 
 import WordListTab from './WordListTab';
+import { DocumentIcon, BookIcon, TypeIcon, CalendarIcon, CloseIcon } from '../icons';
 
 import { DAY_LABELS, DAY_VALUES } from './languages';
 export { LANGUAGES } from './languages';
@@ -492,10 +493,7 @@ export function CreatePostModal({
         <div className="stream-create-modal-header">
           <h2 className="stream-modal-title">{isEditMode ? 'Edit Word List' : 'New Post'}</h2>
           <button className="stream-modal-close-btn" onClick={onClose} aria-label="Close">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <CloseIcon size={18} strokeWidth={2.5} />
           </button>
         </div>
 
@@ -568,16 +566,16 @@ export function CreateMenu({
   return (
     <div ref={menuRef} className="stream-create-dropdown">
       <button className="stream-create-menu-item" onClick={() => { onSelect('material'); onClose(); }}>
-        <span className="stream-create-menu-icon">📄</span> Material
+        <span className="stream-create-menu-icon"><DocumentIcon size={16} /></span> Material
       </button>
       <button className="stream-create-menu-item" onClick={() => { onSelect('lesson'); onClose(); }}>
-        <span className="stream-create-menu-icon">📚</span> Lesson
+        <span className="stream-create-menu-icon"><BookIcon size={16} /></span> Lesson
       </button>
       <button className="stream-create-menu-item" onClick={() => { onSelect('word_list'); onClose(); }}>
-        <span className="stream-create-menu-icon">🔤</span> Word List
+        <span className="stream-create-menu-icon"><TypeIcon size={16} /></span> Word List
       </button>
       <button className="stream-create-menu-item" onClick={() => { onSelect('class_session'); onClose(); }}>
-        <span className="stream-create-menu-icon">📅</span> Class Session
+        <span className="stream-create-menu-icon"><CalendarIcon size={16} /></span> Class Session
       </button>
       <div className="stream-create-menu-separator" />
       <button className="stream-create-menu-item" onClick={() => { onSelect('topic'); onClose(); }}>

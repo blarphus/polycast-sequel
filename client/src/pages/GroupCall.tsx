@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useGroupCall } from '../hooks/useGroupCall';
 import { useMediaToggles } from '../hooks/useMediaToggles';
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
+import { MutedSpeakerIcon } from '../components/icons';
 import socket from '../socket';
 
 export default function GroupCall() {
@@ -161,7 +162,7 @@ export default function GroupCall() {
           />
           <div className="gc-tile-label">
             {user?.display_name || user?.username || 'You'}
-            {isMuted && <span className="gc-mute-indicator" title="Muted">🔇</span>}
+            {isMuted && <span className="gc-mute-indicator" title="Muted"><MutedSpeakerIcon size={14} /></span>}
           </div>
         </div>
 
@@ -233,7 +234,7 @@ function RemoteVideoTile({ stream, displayName }: { stream: MediaStream; display
       />
       <div className="gc-tile-label">
         {displayName}
-        {!audioEnabled && <span className="gc-mute-indicator" title="Muted">🔇</span>}
+        {!audioEnabled && <span className="gc-mute-indicator" title="Muted"><MutedSpeakerIcon size={14} /></span>}
       </div>
     </div>
   );

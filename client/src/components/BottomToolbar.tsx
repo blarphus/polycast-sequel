@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getPendingClasswork } from '../api';
+import { HomeIcon, BookIcon, BoltIcon, ChatBubbleIcon, PeopleIcon, ClassworkIcon } from './icons';
 
 export default function BottomToolbar() {
   const location = useLocation();
@@ -32,13 +33,6 @@ export default function BottomToolbar() {
   const isClasswork = location.pathname === '/classwork' || location.pathname.startsWith('/classwork/');
   const isStudents = location.pathname === '/students' || location.pathname.startsWith('/students/');
 
-  const ClassworkIcon = () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-      <path d="M6 12v5c3 3 9 3 12 0v-5" />
-    </svg>
-  );
-
   return (
     <nav className="bottom-toolbar">
       <div className="sidebar-brand">
@@ -48,29 +42,21 @@ export default function BottomToolbar() {
         className={`toolbar-tab toolbar-tab--blue${isHome ? ' active' : ''}`}
         onClick={() => navigate('/')}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
+        <HomeIcon size={22} />
         <span className="toolbar-label">Home</span>
       </button>
       <button
         className={`toolbar-tab toolbar-tab--red${isDictionary ? ' active' : ''}`}
         onClick={() => navigate('/dictionary')}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-        </svg>
+        <BookIcon size={22} />
         <span className="toolbar-label">Dictionary</span>
       </button>
       <button
         className={`toolbar-tab toolbar-tab--green${isLearn ? ' active' : ''}`}
         onClick={() => navigate('/learn')}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-        </svg>
+        <BoltIcon size={22} />
         <span className="toolbar-label">Learn</span>
       </button>
       {!isTeacher && (
@@ -79,7 +65,7 @@ export default function BottomToolbar() {
           onClick={() => navigate('/classwork')}
         >
           <span className="toolbar-tab-icon-wrap">
-            <ClassworkIcon />
+            <ClassworkIcon size={22} />
             {pendingCount > 0 && <span className="toolbar-badge">{pendingCount}</span>}
           </span>
           <span className="toolbar-label">Classwork</span>
@@ -89,9 +75,7 @@ export default function BottomToolbar() {
         className={`toolbar-tab toolbar-tab--purple${isChats ? ' active' : ''}`}
         onClick={() => navigate('/chats')}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
+        <ChatBubbleIcon size={22} />
         <span className="toolbar-label">Chats</span>
       </button>
       {isTeacher && (
@@ -100,19 +84,14 @@ export default function BottomToolbar() {
             className={`toolbar-tab toolbar-tab--teal${isClasswork ? ' active' : ''}`}
             onClick={() => navigate('/classwork')}
           >
-            <ClassworkIcon />
+            <ClassworkIcon size={22} />
             <span className="toolbar-label">Classwork</span>
           </button>
           <button
             className={`toolbar-tab toolbar-tab--orange${isStudents ? ' active' : ''}`}
             onClick={() => navigate('/students')}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
+            <PeopleIcon size={22} />
             <span className="toolbar-label">Students</span>
           </button>
         </>

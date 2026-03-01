@@ -13,6 +13,7 @@ import WordLookupModal from '../components/WordLookupModal';
 import ImagePicker from '../components/ImagePicker';
 import { proxyImageUrl } from '../api';
 import type { SavedWord } from '../api';
+import { SearchIcon, SearchMinusIcon, BookPlusIcon, ChevronDownIcon, TrashIcon } from '../components/icons';
 import { FrequencyDots, LEVEL_COLORS } from '../components/FrequencyDots';
 
 // -- DueStatusBadge: shows SRS status in collapsed header -------------------
@@ -192,10 +193,7 @@ export default function Dictionary() {
           {/* Controls row */}
           <div className="dict-controls">
             <div className="dict-search-wrapper">
-              <svg className="dict-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
+              <SearchIcon size={16} className="dict-search-icon" />
               <input
                 type="text"
                 className="form-input dict-search"
@@ -228,23 +226,14 @@ export default function Dictionary() {
               {search ? (
                 <>
                   <div className="dict-empty-icon">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      <line x1="8" y1="11" x2="14" y2="11" />
-                    </svg>
+                    <SearchMinusIcon size={40} strokeWidth={1.5} />
                   </div>
                   <p>No words match your search.</p>
                 </>
               ) : (
                 <>
                   <div className="dict-empty-icon">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                      <line x1="12" y1="8" x2="12" y2="14" />
-                      <line x1="9" y1="11" x2="15" y2="11" />
-                    </svg>
+                    <BookPlusIcon size={40} strokeWidth={1.5} />
                   </div>
                   <p>No saved words yet. Click on words in subtitles and press + to save them.</p>
                 </>
@@ -280,9 +269,7 @@ export default function Dictionary() {
                             <span className="dict-def-count">{group.entries.length}</span>
                           )}
                           <DueStatusBadge word={group.entries[0]} />
-                          <svg className="dict-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="6 9 12 15 18 9" />
-                          </svg>
+                          <ChevronDownIcon size={18} className="dict-chevron" />
                         </button>
                         {open && (
                           <div className="dict-item-body">
@@ -336,12 +323,7 @@ export default function Dictionary() {
                                       </div>
                                     )}
                                     <button className="dict-remove-btn" onClick={() => removeWord(w.id)}>
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="3 6 5 6 21 6" />
-                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                        <path d="M10 11v6" />
-                                        <path d="M14 11v6" />
-                                      </svg>
+                                      <TrashIcon size={16} />
                                       Remove
                                     </button>
                                   </div>

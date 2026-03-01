@@ -16,6 +16,7 @@ import {
   Message,
   Friend,
 } from '../api';
+import { VideoIcon, TranslateIcon, SendIcon } from '../components/icons';
 import { formatTime, getDateLabel, shouldShowDateSeparator } from '../utils/dateFormat';
 import type { PopupState } from '../textTokens';
 import TokenizedText from '../components/TokenizedText';
@@ -311,10 +312,7 @@ export default function ChatView() {
           onClick={() => navigate(`/call/${friendId}?role=caller`)}
           title="Video call"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="23 7 16 12 23 17 23 7" />
-            <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-          </svg>
+          <VideoIcon size={22} />
         </button>
       </header>
 
@@ -350,14 +348,7 @@ export default function ChatView() {
                     {translating.has(msg.id) ? (
                       <div className="loading-spinner" style={{ width: 14, height: 14 }} />
                     ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 8l6 6" />
-                        <path d="M4 14l6-6 2-3" />
-                        <path d="M2 5h12" />
-                        <path d="M7 2h1" />
-                        <path d="M22 22l-5-10-5 10" />
-                        <path d="M14 18h6" />
-                      </svg>
+                      <TranslateIcon size={14} />
                     )}
                   </button>
                 )}
@@ -400,10 +391,7 @@ export default function ChatView() {
           onClick={handleSend}
           disabled={!input.trim() || sending}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
+          <SendIcon size={20} />
         </button>
       </div>
 

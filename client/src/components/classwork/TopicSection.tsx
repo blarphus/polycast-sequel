@@ -7,6 +7,7 @@ import * as api from '../../api';
 import type { StreamPost, StreamTopic } from '../../api';
 import { TeacherPostCard, StudentWordListCard, StudentMaterialCard, StudentLessonCard } from './PostCards';
 import { TeacherClassSessionCard, StudentClassSessionCard } from './ClassSessionCard';
+import { ChevronUpIcon } from '../icons';
 
 // ---------------------------------------------------------------------------
 // Topic context menu (rename, delete)
@@ -158,9 +159,7 @@ export function TopicSection({
           onClick={onToggleCollapse}
           aria-label={collapsed ? 'Expand' : 'Collapse'}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="18 15 12 9 6 15" />
-          </svg>
+          <ChevronUpIcon size={14} strokeWidth={2.5} />
         </button>
 
         {isTeacher && !isNoTopic && !renaming && (

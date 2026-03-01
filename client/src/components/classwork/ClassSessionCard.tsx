@@ -6,6 +6,9 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { StreamPost, Recurrence } from '../../api';
 import { DAY_LABELS } from './languages';
+import { CalendarIcon } from '../icons';
+
+export { CalendarIcon } from '../icons';
 
 const DAY_NAMES = ['', ...DAY_LABELS];
 
@@ -50,17 +53,6 @@ function isJoinable(post: StreamPost): boolean {
 // ---------------------------------------------------------------------------
 // Teacher card
 // ---------------------------------------------------------------------------
-
-export function CalendarIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-    </svg>
-  );
-}
 
 export function TeacherClassSessionCard({ post }: { post: StreamPost }) {
   const navigate = useNavigate();
