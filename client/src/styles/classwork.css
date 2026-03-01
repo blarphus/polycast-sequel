@@ -1148,12 +1148,46 @@
   white-space: nowrap;
 }
 
-/* --- Thumbnail previews with word labels --- */
+/* --- Carousel with thumbnail previews --- */
+
+.template-carousel {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.template-carousel-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition), color var(--transition);
+}
+
+.template-carousel-arrow:hover:not(.template-carousel-arrow--disabled) {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
+.template-carousel-arrow--disabled {
+  opacity: 0.25;
+  cursor: default;
+}
 
 .template-unit-thumbs {
   display: flex;
   gap: 0.5rem;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .template-unit-thumb-item {

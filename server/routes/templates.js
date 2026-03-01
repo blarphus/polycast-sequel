@@ -40,11 +40,11 @@ router.get('/api/templates', authMiddleware, requireTeacher, (_req, res) => {
       units: book.units
         .filter((u) => u.words.length > 0)
         .map((u) => {
-          // Pick up to 4 preview words with images
+          // Collect all words with images for carousel preview
           const previews = [];
           if (typeof u.words[0] === 'object') {
             for (const w of u.words) {
-              if (w.image_url && previews.length < 4) {
+              if (w.image_url) {
                 previews.push({ image: w.image_url, word: w.word });
               }
             }

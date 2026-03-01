@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import * as api from '../../api';
 import type { TemplateSummary } from '../../api';
 
+const THUMBS_PER_PAGE = 4;
+
 interface Props {
   onSelect: (data: { title: string; words: (string | Record<string, unknown>)[]; language: string }) => void;
   onClose: () => void;
@@ -13,6 +15,7 @@ export default function TemplatePicker({ onSelect, onClose }: Props) {
   const [error, setError] = useState('');
   const [loadingUnit, setLoadingUnit] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [carouselPage, setCarouselPage] = useState<Record<string, number>>({});
 
   useEffect(() => {
     api.getTemplates()
@@ -57,6 +60,18 @@ export default function TemplatePicker({ onSelect, onClose }: Props) {
     setCollapsed(prev => ({ ...prev, [bookId]: !prev[bookId] }));
   };
 
+  const getPage = (unitId: string) => carouselPage[unitId] || 0;
+
+  const paginate = (e: React.MouseEvent, unitId: string, dir: number, totalPages: number) => {
+    e.stopPropagation();
+    setCarouselPage(prev => {
+      const cur = prev[unitId] || 0;
+      const next = cur + dir;
+      if (next < 0 || next >= totalPages) return prev;
+      return { ...prev, [unitId]: next };
+    });
+  };
+
   return (
     <div className="lookup-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="lookup-modal template-picker-modal">
@@ -95,36 +110,57 @@ export default function TemplatePicker({ onSelect, onClose }: Props) {
 
                 {!collapsed[book.id] && (
                   <div className="template-unit-list">
-                    {book.units.map((unit) => (
-                      <button
-                        key={unit.id}
-                        className="template-unit-row"
-                        onClick={() => handleUnitClick(book.id, unit.id)}
-                        disabled={loadingUnit !== null}
-                      >
-                        <div className="template-unit-info">
-                          <div className="template-unit-title-row">
-                            <span className="template-unit-title">{unit.title}</span>
-                            {loadingUnit === unit.id ? (
-                              <div className="loading-spinner loading-spinner--small" />
-                            ) : (
-                              <span className="template-unit-count">{unit.wordCount} words</span>
-                            )}
+                    {book.units.map((unit) => {
+                      const previews = unit.previews || [];
+                      const totalPages = Math.ceil(previews.length / THUMBS_PER_PAGE);
+                      const page = getPage(unit.id);
+                      const visible = previews.slice(page * THUMBS_PER_PAGE, (page + 1) * THUMBS_PER_PAGE);
+
+                      return (
+                        <button
+                          key={unit.id}
+                          className="template-unit-row"
+                          onClick={() => handleUnitClick(book.id, unit.id)}
+                          disabled={loadingUnit !== null}
+                        >
+                          <div className="template-unit-info">
+                            <div className="template-unit-title-row">
+                              <span className="template-unit-title">{unit.title}</span>
+                              {loadingUnit === unit.id ? (
+                                <div className="loading-spinner loading-spinner--small" />
+                              ) : (
+                                <span className="template-unit-count">{unit.wordCount} words</span>
+                              )}
+                            </div>
+                            <span className="template-unit-desc">{unit.description}</span>
                           </div>
-                          <span className="template-unit-desc">{unit.description}</span>
-                        </div>
-                        {unit.previews && unit.previews.length > 0 && (
-                          <div className="template-unit-thumbs">
-                            {unit.previews.map((p, j) => (
-                              <div key={j} className="template-unit-thumb-item">
-                                <img src={p.image} alt={p.word} className="template-unit-thumb" />
-                                <span className="template-unit-thumb-label">{p.word}</span>
+                          {previews.length > 0 && (
+                            <div className="template-carousel">
+                              <span
+                                className={`template-carousel-arrow ${page === 0 ? 'template-carousel-arrow--disabled' : ''}`}
+                                onClick={(e) => paginate(e, unit.id, -1, totalPages)}
+                              >
+                                &#x276E;
+                              </span>
+                              <div className="template-unit-thumbs">
+                                {visible.map((p, j) => (
+                                  <div key={page * THUMBS_PER_PAGE + j} className="template-unit-thumb-item">
+                                    <img src={p.image} alt={p.word} className="template-unit-thumb" />
+                                    <span className="template-unit-thumb-label">{p.word}</span>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        )}
-                      </button>
-                    ))}
+                              <span
+                                className={`template-carousel-arrow ${page >= totalPages - 1 ? 'template-carousel-arrow--disabled' : ''}`}
+                                onClick={(e) => paginate(e, unit.id, 1, totalPages)}
+                              >
+                                &#x276F;
+                              </span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
