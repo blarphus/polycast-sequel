@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { getDueWords, reviewWord, proxyImageUrl, type SavedWord, type SrsAnswer } from '../api';
 import { getButtonTimeLabel, getNextDueSeconds } from '../utils/srs';
 import { renderTildeHighlight, renderCloze, stripTildes } from '../utils/tildeMarkup';
+import { playFlipSound, playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -84,6 +85,13 @@ export default function Learn() {
     playAudio(textToSpeak, currentCard.target_language);
   }, [isFlipped, currentIndex, currentCard, playAudio]);
 
+  // Play celebratory sound when session is complete
+  useEffect(() => {
+    if (currentIndex >= cards.length && cards.length > 0 && !loading) {
+      playCompleteSound();
+    }
+  }, [currentIndex, cards.length, loading]);
+
   // ---------------------------------------------------------------------------
   // Answer handling
   // ---------------------------------------------------------------------------
@@ -91,6 +99,9 @@ export default function Learn() {
   const handleAnswer = useCallback(async (answer: SrsAnswer) => {
     if (!currentCard || submitting) return;
     setSubmitting(true);
+
+    if (answer === 'again') playIncorrectSound();
+    else playCorrectSound();
 
     const timeLabel = getButtonTimeLabel(currentCard, answer);
     setFeedback({ answer, text: timeLabel });
@@ -164,6 +175,7 @@ export default function Learn() {
     if (absDelta > 60 && elapsed < 800) {
       if (!isFlipped) {
         // Any swipe when not flipped → flip
+        playFlipSound();
         setIsFlipped(true);
       } else {
         // Flipped: right = good, left = again
@@ -304,7 +316,7 @@ export default function Learn() {
               ? `rgba(231, 76, 94, ${0.3 + leftSwipeIntensity * 0.7})`
               : undefined,
           }}
-          onClick={() => { if (!isFlipped && !submitting) setIsFlipped(true); }}
+          onClick={() => { if (!isFlipped && !submitting) { playFlipSound(); setIsFlipped(true); } }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
