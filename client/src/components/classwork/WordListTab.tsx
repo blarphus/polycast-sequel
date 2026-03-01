@@ -66,7 +66,8 @@ export default function WordListTab({
         setTranslating(true);
         try {
           const pairs = enriched.map(w => ({ word: w.word, definition: w.definition }));
-          const { translations } = await api.batchTranslateWords(pairs, nativeLang);
+          const allWords = enriched.map(w => w.word);
+          const { translations } = await api.batchTranslateWords(pairs, nativeLang, allWords);
           setPreview(prev => prev
             ? prev.map((w, i) => ({
                 ...w,

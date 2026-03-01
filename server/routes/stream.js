@@ -455,7 +455,7 @@ Respond with ONLY the JSON object, no other text.`;
 // ---------------------------------------------------------------------------
 
 router.post('/api/stream/words/batch-translate', authMiddleware, requireTeacher, async (req, res) => {
-  const { words, nativeLang } = req.body;
+  const { words, nativeLang, allWords } = req.body;
 
   if (!Array.isArray(words) || words.length === 0) {
     return res.status(400).json({ error: 'words array is required' });
@@ -463,22 +463,82 @@ router.post('/api/stream/words/batch-translate', authMiddleware, requireTeacher,
   if (!nativeLang) return res.status(400).json({ error: 'nativeLang is required' });
 
   try {
-    // Fetch Wiktionary senses in the teacher's native language for each word
-    const results = await Promise.all(
+    // 1. Fetch Wiktionary senses for each word
+    const sensesPerWord = await Promise.all(
       words.map(async (w) => {
         try {
-          const senses = await fetchWiktSenses(w.word, 'en', nativeLang);
-          if (senses.length > 0) {
-            // Use the first (most common) sense gloss as both translation and definition
-            return { translation: senses[0].gloss, definition: senses[0].gloss };
-          }
+          return await fetchWiktSenses(w.word, 'en', nativeLang);
         } catch (err) {
           console.error(`Wikt lookup failed for "${w.word}":`, err);
+          return [];
         }
-        // No senses found — keep English as-is
-        return null;
       }),
     );
+
+    // 2. Build initial results: single-sense words use that sense directly
+    const results = sensesPerWord.map((senses) => {
+      if (senses.length === 1) {
+        return { translation: senses[0].gloss, definition: senses[0].gloss };
+      }
+      return null; // will be resolved by Gemini or left null
+    });
+
+    // 3. Collect ambiguous words (multiple senses) that need Gemini disambiguation
+    const unitWordList = Array.isArray(allWords) && allWords.length > 0
+      ? allWords
+      : words.map(w => w.word);
+
+    const ambiguous = [];
+    for (let i = 0; i < words.length; i++) {
+      if (sensesPerWord[i].length > 1) {
+        ambiguous.push({ index: i, word: words[i].word, definition: words[i].definition, senses: sensesPerWord[i] });
+      }
+    }
+
+    // 4. If there are ambiguous words, use ONE Gemini call to disambiguate all of them
+    if (ambiguous.length > 0) {
+      const wordEntries = ambiguous.map((a, entryIdx) => {
+        const senseList = a.senses.map((s, si) => `  ${si}: [${s.pos}] ${s.gloss}`).join('\n');
+        return `WORD ${entryIdx}: "${a.word}" (English definition: "${a.definition}")\n${senseList}`;
+      }).join('\n\n');
+
+      const prompt = `You are a vocabulary-list translation assistant.
+
+A teacher is translating an English vocabulary unit into ${nativeLang}.
+The unit contains these words: ${unitWordList.join(', ')}
+
+For each ambiguous word below, pick the dictionary sense index that best matches the word's intended meaning in this thematic unit.
+
+${wordEntries}
+
+Respond with ONLY a JSON array of objects, one per word above, in order:
+[{"sense_index": <int>}, ...]
+
+Each sense_index must be a valid index from the senses listed for that word.`;
+
+      try {
+        const raw = await callGemini(prompt, {
+          thinkingConfig: { thinkingBudget: 0 },
+          maxOutputTokens: 200,
+          responseMimeType: 'application/json',
+        });
+        const picks = JSON.parse(raw);
+
+        for (let j = 0; j < ambiguous.length; j++) {
+          const a = ambiguous[j];
+          const pick = picks[j];
+          const si = typeof pick?.sense_index === 'number' ? pick.sense_index : 0;
+          const sense = a.senses[si] || a.senses[0];
+          results[a.index] = { translation: sense.gloss, definition: sense.gloss };
+        }
+      } catch (err) {
+        console.error('Gemini disambiguation failed, falling back to first sense:', err);
+        // Fallback: use first sense for each ambiguous word
+        for (const a of ambiguous) {
+          results[a.index] = { translation: a.senses[0].gloss, definition: a.senses[0].gloss };
+        }
+      }
+    }
 
     return res.json({ translations: results });
   } catch (err) {
