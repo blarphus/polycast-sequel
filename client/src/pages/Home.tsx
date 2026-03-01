@@ -26,7 +26,7 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   C1: '#8b5cf6', C2: '#8b5cf6',
 };
 
-function formatDuration(seconds: number | null): string {
+function formatVideoDuration(seconds: number | null): string {
   if (seconds == null) return '';
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -180,7 +180,7 @@ export default function Home() {
                       className="home-carousel-thumb-img"
                     />
                     {v.duration_seconds != null && (
-                      <span className="home-carousel-duration">{formatDuration(v.duration_seconds)}</span>
+                      <span className="home-carousel-duration">{formatVideoDuration(v.duration_seconds)}</span>
                     )}
                   </div>
                   <div className="home-carousel-info">

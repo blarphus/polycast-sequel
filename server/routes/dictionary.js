@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord as enrichWordHelper, callGemini, searchPixabay, fetchWiktSenses, WIKT_EDITIONS, API_HEADERS } from '../enrichWord.js';
+import { enrichWord as enrichWordHelper, callGemini, searchPixabay, fetchWiktSenses } from '../enrichWord.js';
 
 const router = Router();
 

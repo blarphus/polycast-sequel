@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
 import { enrichWord, fetchWordImage, callGemini } from '../enrichWord.js';
-import { getEnglishFrequency, getEnglishFrequencyCount } from '../lib/englishFrequency.js';
+import { applyEnglishFrequency } from '../lib/englishFrequency.js';
 
 const router = Router();
 
@@ -394,15 +394,8 @@ Respond with ONLY the JSON object, no other text.`;
   const parsed = JSON.parse(raw);
   const image_url = await fetchWordImage(parsed.image_term || word);
 
-  let frequency = typeof parsed.frequency === 'number' ? parsed.frequency : null;
-  let frequency_count = null;
-
-  // For English words, override with corpus data
-  if (targetLang === 'en' || targetLang?.startsWith('en-')) {
-    const corpusFreq = getEnglishFrequency(word);
-    if (corpusFreq !== null) frequency = corpusFreq;
-    frequency_count = getEnglishFrequencyCount(word);
-  }
+  const rawFrequency = typeof parsed.frequency === 'number' ? parsed.frequency : null;
+  const { frequency, frequency_count } = applyEnglishFrequency(word, targetLang, rawFrequency);
 
   // Normalize forms
   let forms = null;

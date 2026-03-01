@@ -25,6 +25,21 @@ export function getEnglishFrequencyCount(word) {
  * Look up an English word's frequency on a 1-10 scale using the SUBTLEX-US corpus.
  * Returns null if the word is not in the corpus.
  */
+/**
+ * Apply English corpus frequency data to a word if the target language is English.
+ * Returns { frequency, frequency_count } with overrides applied.
+ */
+export function applyEnglishFrequency(word, targetLang, currentFrequency) {
+  let frequency = currentFrequency;
+  let frequency_count = null;
+  if (targetLang === 'en' || targetLang?.startsWith('en-')) {
+    const corpusFreq = getEnglishFrequency(word);
+    if (corpusFreq !== null) frequency = corpusFreq;
+    frequency_count = getEnglishFrequencyCount(word);
+  }
+  return { frequency, frequency_count };
+}
+
 export function getEnglishFrequency(word) {
   const rank = rankMap.get(word.toLowerCase());
   if (rank === undefined) return null;

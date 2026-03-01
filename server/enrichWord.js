@@ -4,7 +4,7 @@
  * and the stream route (POST /api/stream/posts) at word-list creation time.
  */
 
-import { getEnglishFrequency, getEnglishFrequencyCount } from './lib/englishFrequency.js';
+import { applyEnglishFrequency } from './lib/englishFrequency.js';
 
 export const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
 
@@ -327,16 +327,9 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
   } // end if (translation === undefined) — Path A/B
 
   // For English target words, override Gemini frequency with SUBTLEX-US corpus data
-  if (targetLang === 'en' || targetLang?.startsWith('en-')) {
-    const corpusFreq = getEnglishFrequency(word);
-    if (corpusFreq !== null) frequency = corpusFreq;
-  }
-
-  // Attach raw corpus count for English words
-  let frequency_count = null;
-  if (targetLang === 'en' || targetLang?.startsWith('en-')) {
-    frequency_count = getEnglishFrequencyCount(word);
-  }
+  const englishFreq = applyEnglishFrequency(word, targetLang, frequency);
+  frequency = englishFreq.frequency;
+  const frequency_count = englishFreq.frequency_count;
 
   // Parse forms from Gemini's comma-separated FORMS field
   let forms = null;

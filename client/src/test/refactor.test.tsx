@@ -415,6 +415,8 @@ describe('Classwork component directory structure', () => {
     'EditModal.tsx',
     'PostCards.tsx',
     'TopicSection.tsx',
+    'WordListTab.tsx',
+    'languages.ts',
   ];
 
   it.each(expectedFiles)('file %s exists', (file) => {
