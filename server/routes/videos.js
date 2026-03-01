@@ -116,7 +116,7 @@ router.get('/api/videos', authMiddleware, async (_req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, youtube_id, title, channel, language, duration_seconds,
-              transcript_status, transcript_source, cefr_level
+              transcript_status, transcript_source, cefr_level, transcript_progress
        FROM videos ORDER BY created_at DESC`,
     );
     res.json(rows.map(attachTranscriptError));

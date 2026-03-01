@@ -97,14 +97,22 @@ function mapTranscriptPlusError(err) {
   return new TranscriptFetchError(err?.message || 'Transcript fetch temporarily failed.', 'TRANSIENT_FETCH_ERROR', true);
 }
 
-async function fetchViaTranscriptPlus(youtubeId, language) {
+async function fetchViaTranscriptPlus(youtubeId, language, onProgress) {
   const lang = (language || '').trim().toLowerCase();
+
+  const wrapFetch = (originalFetch, progressValue) => {
+    return async (opts) => {
+      const result = await originalFetch(opts);
+      if (onProgress) onProgress(progressValue);
+      return result;
+    };
+  };
 
   const baseConfig = {
     userAgent: YOUTUBE_TRANSCRIPT_USER_AGENT,
-    videoFetch: fetchWithTimeout,
-    playerFetch: fetchWithTimeout,
-    transcriptFetch: fetchWithTimeout,
+    videoFetch: onProgress ? wrapFetch(fetchWithTimeout, 30) : fetchWithTimeout,
+    playerFetch: onProgress ? wrapFetch(fetchWithTimeout, 55) : fetchWithTimeout,
+    transcriptFetch: onProgress ? wrapFetch(fetchWithTimeout, 80) : fetchWithTimeout,
   };
 
   try {
@@ -135,7 +143,7 @@ async function fetchViaTranscriptPlus(youtubeId, language) {
   }
 }
 
-export async function fetchYouTubeTranscript(youtubeId, language = 'en') {
+export async function fetchYouTubeTranscript(youtubeId, language = 'en', onProgress) {
   const normalizedLang = (language || 'en').trim().toLowerCase();
-  return fetchViaTranscriptPlus(youtubeId, normalizedLang);
+  return fetchViaTranscriptPlus(youtubeId, normalizedLang, onProgress);
 }

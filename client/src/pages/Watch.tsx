@@ -304,7 +304,17 @@ export default function Watch() {
       <div className="watch-transcript-area">
         {/* Transcript lifecycle status */}
         {!hasTranscript && video.transcript_status === 'processing' && (
-          <p className="watch-transcript-status">Captions are being fetched. This page will update automatically.</p>
+          <div className="watch-transcript-progress">
+            <div className="watch-transcript-progress-bar">
+              <div
+                className="watch-transcript-progress-fill"
+                style={{ width: `${video.transcript_progress}%` }}
+              />
+            </div>
+            <p className="watch-transcript-progress-text">
+              Fetching captions… {video.transcript_progress}%
+            </p>
+          </div>
         )}
         {!hasTranscript && video.transcript_status === 'failed' && (
           <div className="watch-transcript-error-wrap">

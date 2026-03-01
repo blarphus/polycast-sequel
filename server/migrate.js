@@ -271,6 +271,7 @@ export async function migrate(pool) {
     await client.query(`ALTER TABLE videos ADD COLUMN IF NOT EXISTS transcript_attempts INTEGER NOT NULL DEFAULT 0;`);
     await client.query(`ALTER TABLE videos ADD COLUMN IF NOT EXISTS transcript_updated_at TIMESTAMPTZ DEFAULT NULL;`);
     await client.query(`ALTER TABLE videos ADD COLUMN IF NOT EXISTS cefr_level VARCHAR(2) DEFAULT NULL;`);
+    await client.query(`ALTER TABLE videos ADD COLUMN IF NOT EXISTS transcript_progress INTEGER NOT NULL DEFAULT 0;`);
 
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_videos_transcript_status

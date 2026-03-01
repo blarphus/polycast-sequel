@@ -104,7 +104,8 @@ async function markReady(pool, videoId, segments, source, attempt, language) {
          transcript_last_error = NULL,
          transcript_attempts = $4,
          transcript_updated_at = NOW(),
-         cefr_level = $5
+         cefr_level = $5,
+         transcript_progress = 100
      WHERE id = $1`,
     [videoId, JSON.stringify(segments), source, attempt, cefrLevel],
   );
@@ -117,7 +118,8 @@ async function markFailed(pool, videoId, message, attempt) {
          transcript_source = 'none',
          transcript_last_error = $2,
          transcript_attempts = $3,
-         transcript_updated_at = NOW()
+         transcript_updated_at = NOW(),
+         transcript_progress = 0
      WHERE id = $1`,
     [videoId, message, attempt],
   );
@@ -193,10 +195,18 @@ export async function startTranscriptWorker({ redisClient, pool }) {
 
     const key = dedupeKey(job.videoId, job.language);
 
+    const onProgress = async (value) => {
+      await pool.query(
+        'UPDATE videos SET transcript_progress = $2 WHERE id = $1',
+        [job.videoId, value],
+      );
+    };
+
     try {
       await markProcessing(pool, job.videoId, job.attempt);
+      await onProgress(10);
 
-      const { segments, source } = await fetchYouTubeTranscript(job.youtubeId, job.language);
+      const { segments, source } = await fetchYouTubeTranscript(job.youtubeId, job.language, onProgress);
 
       await markReady(pool, job.videoId, segments, source, job.attempt, job.language);
       await redisClient.del(key);

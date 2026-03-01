@@ -579,6 +579,7 @@ export interface VideoSummary {
   transcript_status: 'missing' | 'processing' | 'ready' | 'failed';
   transcript_source?: 'manual' | 'auto' | 'none';
   cefr_level: string | null;
+  transcript_progress: number;
 }
 
 export interface TranscriptSegment {
