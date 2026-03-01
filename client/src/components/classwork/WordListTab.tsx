@@ -41,28 +41,42 @@ export default function WordListTab({
     // Pre-enriched template: words are objects with a translation field
     const firstWord = data.words[0];
     if (typeof firstWord === 'object' && firstWord !== null && 'translation' in firstWord) {
-      const enriched: StreamPostWord[] = (data.words as Record<string, unknown>[]).map((w, i) => ({
-        id: `tpl-${i}`,
-        post_id: '',
-        word: String(w.word ?? ''),
-        translation: String(w.translation ?? ''),
-        definition: String(w.definition ?? ''),
-        part_of_speech: (w.part_of_speech as string) ?? null,
-        position: i,
-        frequency: (w.frequency as number) ?? null,
-        frequency_count: (w.frequency_count as number) ?? null,
-        example_sentence: (w.example_sentence as string) ?? null,
-        image_url: (w.image_url as string) ?? null,
-        lemma: (w.lemma as string) ?? null,
-        forms: (w.forms as string) ?? null,
-        image_term: (w.image_term as string) ?? null,
-      }));
+      const rawWords = data.words as Record<string, unknown>[];
+      const isNonEnglish = !!(nativeLang && nativeLang !== 'en' && !nativeLang.startsWith('en-'));
+
+      // Use pre-computed translations when available (e.g. pt, es)
+      const allPrecomputed = isNonEnglish && rawWords.every(w => {
+        const txMap = w.translations as Record<string, Record<string, string>> | undefined;
+        return txMap?.[nativeLang]?.translation;
+      });
+
+      const enriched: StreamPostWord[] = rawWords.map((w, i) => {
+        const pre = isNonEnglish
+          ? (w.translations as Record<string, Record<string, string>> | undefined)?.[nativeLang]
+          : null;
+        return {
+          id: `tpl-${i}`,
+          post_id: '',
+          word: String(w.word ?? ''),
+          translation: pre?.translation ? String(pre.translation) : String(w.translation ?? ''),
+          definition: pre?.definition ? String(pre.definition) : String(w.definition ?? ''),
+          part_of_speech: (w.part_of_speech as string) ?? null,
+          position: i,
+          frequency: (w.frequency as number) ?? null,
+          frequency_count: (w.frequency_count as number) ?? null,
+          example_sentence: (w.example_sentence as string) ?? null,
+          image_url: (w.image_url as string) ?? null,
+          lemma: (w.lemma as string) ?? null,
+          forms: (w.forms as string) ?? null,
+          image_term: (w.image_term as string) ?? null,
+        };
+      });
       setPreview(enriched);
       setLookedUp(true);
       setWordsText('');
 
-      // Translate into teacher's native language if not English
-      if (nativeLang && nativeLang !== 'en' && !nativeLang.startsWith('en-')) {
+      // Only batch-translate if native lang is non-English and no pre-computed data
+      if (isNonEnglish && !allPrecomputed) {
         setTranslating(true);
         try {
           const pairs = enriched.map(w => ({ word: w.word, definition: w.definition }));
