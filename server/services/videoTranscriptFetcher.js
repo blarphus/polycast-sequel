@@ -80,7 +80,7 @@ function mapTranscriptPlusError(err) {
     return new TranscriptFetchError('YouTube temporarily blocked transcript requests.', 'BLOCKED_OR_RATE_LIMITED', true);
   }
   if (err instanceof YoutubeTranscriptVideoUnavailableError) {
-    return new TranscriptFetchError('Video is unavailable for transcript extraction.', 'SOURCE_UNAVAILABLE', false);
+    return new TranscriptFetchError('Video is unavailable for transcript extraction.', 'SOURCE_UNAVAILABLE', true);
   }
   if (err instanceof YoutubeTranscriptDisabledError) {
     return new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
