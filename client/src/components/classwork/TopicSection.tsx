@@ -6,6 +6,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import * as api from '../../api';
 import type { StreamPost, StreamTopic } from '../../api';
 import { TeacherPostCard, StudentWordListCard, StudentMaterialCard, StudentLessonCard } from './PostCards';
+import { TeacherClassSessionCard, StudentClassSessionCard } from './ClassSessionCard';
 
 // ---------------------------------------------------------------------------
 // Topic context menu (rename, delete)
@@ -191,6 +192,19 @@ export function TopicSection({
           )}
           {sortedPosts.map((post) => {
             if (isTeacher) {
+              // Class sessions get their own specialized card
+              if (post.type === 'class_session') {
+                return (
+                  <div
+                    key={post.id}
+                    className={dragOverId === post.id && dragItem?.kind === 'post' ? 'stream-post-drop-indicator' : ''}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragItem?.kind === 'post') onDragOverPost(post.id); }}
+                    onDrop={(e) => { e.stopPropagation(); onDropPost(e, post.id, topicId); }}
+                  >
+                    <TeacherClassSessionCard post={post} />
+                  </div>
+                );
+              }
               return (
                 <div
                   key={post.id}
@@ -216,7 +230,14 @@ export function TopicSection({
 
             // Student view
             const showTeacherLabel = !isNoTopic && !!post.teacher_name;
-            if (post.type === 'word_list') {
+            if (post.type === 'class_session') {
+              return (
+                <React.Fragment key={post.id}>
+                  {showTeacherLabel && <div className="stream-teacher-label">{post.teacher_name}</div>}
+                  <StudentClassSessionCard post={post} />
+                </React.Fragment>
+              );
+            } else if (post.type === 'word_list') {
               return (
                 <React.Fragment key={post.id}>
                   {showTeacherLabel && <div className="stream-teacher-label">{post.teacher_name}</div>}

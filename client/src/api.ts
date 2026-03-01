@@ -435,10 +435,16 @@ export type WordOverride = {
   forms?: string | null;
 };
 
+export interface Recurrence {
+  days: number[];
+  time: string;
+  until: string;
+}
+
 export interface StreamPost {
   id: string;
   teacher_id: string;
-  type: 'material' | 'word_list' | 'lesson';
+  type: 'material' | 'word_list' | 'lesson' | 'class_session';
   title: string | null;
   body: string | null;
   attachments: StreamAttachment[];
@@ -453,6 +459,9 @@ export interface StreamPost {
   teacher_name?: string;
   topic_id?: string | null;
   position?: number;
+  scheduled_at?: string | null;
+  duration_minutes?: number | null;
+  recurrence?: Recurrence | null;
 }
 
 export interface StreamTopic {
@@ -469,7 +478,7 @@ export function getStream() {
 }
 
 export function createPost(data: {
-  type: 'material' | 'word_list' | 'lesson';
+  type: 'material' | 'word_list' | 'lesson' | 'class_session';
   title: string;
   body?: string;
   attachments?: StreamAttachment[];
@@ -477,6 +486,9 @@ export function createPost(data: {
   target_language?: string;
   lesson_items?: LessonItem[];
   topic_id?: string | null;
+  scheduled_at?: string;
+  duration_minutes?: number;
+  recurrence?: Recurrence | null;
 }) {
   return request<StreamPost>('/stream/posts', { method: 'POST', body: data });
 }
@@ -637,4 +649,38 @@ export function addVideo(url: string, language: string) {
 
 export function retryVideoTranscript(id: string) {
   return request<VideoDetail>(`/videos/${id}/transcript/retry`, { method: 'POST' });
+}
+
+// ---- Group Classes --------------------------------------------------------
+
+export interface UpcomingClass {
+  id: string;
+  title: string | null;
+  teacher_name: string;
+  teacher_id: string;
+  scheduled_at: string | null;
+  duration_minutes: number | null;
+  time: string | null;
+}
+
+export interface GroupCallParticipant {
+  userId: string;
+  displayName: string;
+  username: string;
+}
+
+export function getClassesToday() {
+  return request<{ classes: UpcomingClass[] }>('/classes/today');
+}
+
+export function joinGroupCall(postId: string) {
+  return request<{ groupCallId: string; participants: GroupCallParticipant[] }>(`/group-call/${postId}/join`, { method: 'POST' });
+}
+
+export function leaveGroupCall(postId: string) {
+  return request<void>(`/group-call/${postId}/leave`, { method: 'POST' });
+}
+
+export function getGroupCallParticipants(postId: string) {
+  return request<{ participants: GroupCallParticipant[] }>(`/group-call/${postId}/participants`);
 }

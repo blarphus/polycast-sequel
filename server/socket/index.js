@@ -6,6 +6,7 @@ import { handleSignaling } from './signaling.js';
 import { handleCalls } from './calls.js';
 import { handleTranscription } from './transcription.js';
 import { handleMessaging } from './messaging.js';
+import { handleGroupCall, handleGroupCallDisconnect } from './groupCall.js';
 import pool from '../db.js';
 import redisClient from '../redis.js';
 
@@ -93,10 +94,14 @@ export function setupSocket(server) {
     // Register messaging handlers
     handleMessaging(io, socket);
 
+    // Register group call handlers
+    handleGroupCall(io, socket);
+
     // Handle disconnection
     socket.on('disconnect', () => {
       console.log(`Socket disconnected: ${socket.id} (user: ${socket.userId})`);
       handleDisconnect(io, socket, redisClient);
+      handleGroupCallDisconnect(io, socket);
     });
   });
 

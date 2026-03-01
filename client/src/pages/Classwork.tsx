@@ -26,7 +26,7 @@ export default function Classwork() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingPost, setEditingPost] = useState<StreamPost | null>(null);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
-  const [createType, setCreateType] = useState<'material' | 'lesson' | 'word_list' | null>(null);
+  const [createType, setCreateType] = useState<'material' | 'lesson' | 'word_list' | 'class_session' | null>(null);
   const [creatingTopic, setCreatingTopic] = useState(false);
   const [newTopicTitle, setNewTopicTitle] = useState('');
   const [dragItem, setDragItem] = useState<{ id: string; kind: 'post' | 'topic' } | null>(null);
@@ -151,7 +151,7 @@ export default function Classwork() {
     }
   };
 
-  const handleCreateMenuSelect = (type: 'material' | 'lesson' | 'word_list' | 'topic') => {
+  const handleCreateMenuSelect = (type: 'material' | 'lesson' | 'word_list' | 'class_session' | 'topic') => {
     if (type === 'topic') {
       setCreatingTopic(true);
     } else {

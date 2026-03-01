@@ -1,0 +1,286 @@
+/* ---------------------------------------------------------------------------
+   groupCall.css — Group video call styles
+   --------------------------------------------------------------------------- */
+
+/* Full-screen page */
+.gc-page {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary, #111);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+}
+
+/* Video grid */
+.gc-grid {
+  flex: 1;
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  overflow: hidden;
+}
+
+.gc-grid--1 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+.gc-grid--2 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+.gc-grid--4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.gc-grid--many {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-auto-rows: 1fr;
+}
+
+/* Individual video tile */
+.gc-tile {
+  position: relative;
+  background: #1a1a2e;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.gc-tile--waiting {
+  color: var(--text-muted, #888);
+  font-size: 0.95rem;
+}
+
+.gc-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+/* Name label overlay */
+.gc-tile-label {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gc-mute-indicator {
+  font-size: 0.75rem;
+}
+
+/* Live subtitle overlay */
+.gc-subtitle {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  max-width: 80%;
+  text-align: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.gc-subtitle-text {
+  line-height: 1.4;
+}
+
+/* Error state */
+.gc-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: var(--text-secondary, #ccc);
+}
+
+/* ---------------------------------------------------------------------------
+   Class session card styles (classwork)
+   --------------------------------------------------------------------------- */
+
+.class-session-card {
+  border-left: 3px solid var(--accent, #6366f1);
+}
+
+.stream-post-type-badge--class {
+  background: var(--accent, #6366f1);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.class-session-details {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0 0.5rem;
+  color: var(--text-secondary, #666);
+  font-size: 0.85rem;
+}
+
+.class-session-schedule {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.class-session-duration {
+  color: var(--text-muted, #999);
+}
+
+.class-session-action-btn {
+  margin-top: 0.75rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Class session creation toggle + day picker
+   --------------------------------------------------------------------------- */
+
+.class-session-toggle {
+  display: flex;
+  gap: 0;
+  margin: 0.75rem 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.class-session-toggle-btn {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  background: var(--bg-secondary, #f8f9fa);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+  transition: background 0.15s, color 0.15s;
+}
+
+.class-session-toggle-btn.active {
+  background: var(--accent, #6366f1);
+  color: #fff;
+}
+
+.class-session-days {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.class-session-day-btn {
+  width: 44px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-secondary, #f8f9fa);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.class-session-day-btn.active {
+  background: var(--accent, #6366f1);
+  color: #fff;
+  border-color: var(--accent, #6366f1);
+}
+
+/* ---------------------------------------------------------------------------
+   Upcoming classes (home screen)
+   --------------------------------------------------------------------------- */
+
+.upcoming-classes {
+  margin-bottom: 1.25rem;
+}
+
+.upcoming-classes-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary, #1a1a2e);
+}
+
+.upcoming-classes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.upcoming-class-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-left: 3px solid var(--accent, #6366f1);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+.upcoming-class-card:hover {
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.08));
+}
+
+.upcoming-class-icon {
+  color: var(--accent, #6366f1);
+  flex-shrink: 0;
+}
+
+.upcoming-class-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.upcoming-class-name {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary, #1a1a2e);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upcoming-class-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted, #999);
+}
+
+.upcoming-class-join {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent, #6366f1);
+  flex-shrink: 0;
+}

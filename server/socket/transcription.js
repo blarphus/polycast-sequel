@@ -20,6 +20,17 @@ export function handleTranscription(io, socket) {
   // Cached speaker info (populated on transcription:start)
   let speakerName = '';
 
+  /**
+   * Check if this socket is in a group call room.
+   * Returns the room name (e.g. "group:abc") or null.
+   */
+  function getGroupRoom() {
+    for (const room of socket.rooms) {
+      if (room.startsWith('group:')) return room;
+    }
+    return null;
+  }
+
   function emitTranscript(text) {
     const transcriptData = {
       text,
@@ -27,13 +38,17 @@ export function handleTranscription(io, socket) {
       userId: socket.userId,
     };
 
-    // Send to the originating client
-    socket.emit('transcript', transcriptData);
-
-    // Send to peer
-    const peerSocketId = userToSocket.get(peerId);
-    if (peerSocketId) {
-      io.to(peerSocketId).emit('transcript', transcriptData);
+    const groupRoom = getGroupRoom();
+    if (groupRoom) {
+      // Broadcast to entire group room (including self)
+      io.to(groupRoom).emit('transcript', transcriptData);
+    } else {
+      // 1-on-1: send to self and peer
+      socket.emit('transcript', transcriptData);
+      const peerSocketId = userToSocket.get(peerId);
+      if (peerSocketId) {
+        io.to(peerSocketId).emit('transcript', transcriptData);
+      }
     }
 
     // Auto-clear after 4s of silence so stale text doesn't linger
@@ -59,13 +74,17 @@ export function handleTranscription(io, socket) {
       lang: detectedLang,
     };
 
-    // Emit to speaker
-    socket.emit('transcript:entry', entry);
-
-    // Emit to peer
-    const peerSocketId = userToSocket.get(peerId);
-    if (peerSocketId) {
-      io.to(peerSocketId).emit('transcript:entry', entry);
+    const groupRoom = getGroupRoom();
+    if (groupRoom) {
+      // Broadcast to entire group room
+      io.to(groupRoom).emit('transcript:entry', entry);
+    } else {
+      // 1-on-1: emit to speaker and peer
+      socket.emit('transcript:entry', entry);
+      const peerSocketId = userToSocket.get(peerId);
+      if (peerSocketId) {
+        io.to(peerSocketId).emit('transcript:entry', entry);
+      }
     }
   }
 

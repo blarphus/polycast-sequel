@@ -21,6 +21,7 @@ import Students from './pages/Students';
 import StudentDetail from './pages/StudentDetail';
 import Classwork from './pages/Classwork';
 import Watch from './pages/Watch';
+import GroupCall from './pages/GroupCall';
 import IncomingCall from './components/IncomingCall';
 import BottomToolbar from './components/BottomToolbar';
 
@@ -57,7 +58,7 @@ function AuthenticatedShell() {
   const { pathname } = useLocation();
   useSocket(); // Keep socket connected for ALL authenticated pages
 
-  const hideToolbar = pathname.startsWith('/chat/') || pathname.startsWith('/call/');
+  const hideToolbar = pathname.startsWith('/chat/') || pathname.startsWith('/call/') || pathname.startsWith('/group-call/');
 
   useEffect(() => {
     if (!user) return;
@@ -182,6 +183,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Watch />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/group-call/:postId"
+          element={
+            <ProtectedRoute>
+              <GroupCall />
             </ProtectedRoute>
           }
         />

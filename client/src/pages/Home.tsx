@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getNewToday, getVideos, SavedWord, VideoSummary } from '../api';
 import FriendRequests from '../components/FriendRequests';
 import PendingClasswork from '../components/PendingClasswork';
+import UpcomingClasses from '../components/UpcomingClasses';
 import AddVideoModal from '../components/AddVideoModal';
 import { FrequencyDots } from '../components/FrequencyDots';
 
@@ -86,6 +87,9 @@ export default function Home() {
     <div className="home-page">
       {/* Pending friend requests */}
       <FriendRequests />
+
+      {/* Classes today (both roles) */}
+      <UpcomingClasses />
 
       {/* Pending classwork (students only) */}
       {user?.account_type === 'student' && <PendingClasswork />}

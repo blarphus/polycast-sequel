@@ -182,7 +182,7 @@ export function TeacherPostCard({
     }
   };
 
-  const badgeLabel = post.type === 'material' ? 'Material' : post.type === 'lesson' ? 'Lesson' : 'Word List';
+  const badgeLabel = post.type === 'material' ? 'Material' : post.type === 'lesson' ? 'Lesson' : post.type === 'class_session' ? 'Class Session' : 'Word List';
 
   return (
     <div

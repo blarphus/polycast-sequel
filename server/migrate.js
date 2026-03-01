@@ -286,6 +286,49 @@ export async function migrate(pool) {
       WHERE transcript IS NOT NULL AND transcript_status = 'missing';
     `);
 
+    // Class session scheduling columns on stream_posts
+    await client.query(`ALTER TABLE stream_posts ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ DEFAULT NULL;`);
+    await client.query(`ALTER TABLE stream_posts ADD COLUMN IF NOT EXISTS duration_minutes INTEGER DEFAULT NULL;`);
+    await client.query(`ALTER TABLE stream_posts ADD COLUMN IF NOT EXISTS recurrence JSONB DEFAULT NULL;`);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_stream_posts_scheduled_at
+        ON stream_posts (scheduled_at) WHERE type = 'class_session';
+    `);
+
+    // Group calls table (one active call per post+date)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS group_calls (
+        id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id      UUID NOT NULL REFERENCES stream_posts(id) ON DELETE CASCADE,
+        session_date DATE NOT NULL,
+        status       VARCHAR(10) NOT NULL DEFAULT 'active',
+        started_at   TIMESTAMPTZ DEFAULT NOW(),
+        ended_at     TIMESTAMPTZ
+      );
+    `);
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_group_calls_active
+        ON group_calls (post_id, session_date) WHERE status = 'active';
+    `);
+
+    // Group call participants
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS group_call_participants (
+        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        group_call_id UUID NOT NULL REFERENCES group_calls(id) ON DELETE CASCADE,
+        user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        joined_at     TIMESTAMPTZ DEFAULT NOW(),
+        left_at       TIMESTAMPTZ
+      );
+    `);
+
+    await client.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_group_call_participants_unique
+        ON group_call_participants (group_call_id, user_id) WHERE left_at IS NULL;
+    `);
+
     // Seed default English videos (only if table is empty)
     const { rows: existingVideos } = await client.query('SELECT 1 FROM videos LIMIT 1');
     if (existingVideos.length === 0) {

@@ -674,10 +674,10 @@ router.post('/api/stream/words/lookup', authMiddleware, requireTeacher, async (r
 // ---------------------------------------------------------------------------
 
 router.post('/api/stream/posts', authMiddleware, requireTeacher, async (req, res) => {
-  const { type, title, body, attachments, words, target_language, lesson_items, topic_id } = req.body;
+  const { type, title, body, attachments, words, target_language, lesson_items, topic_id, scheduled_at, duration_minutes, recurrence } = req.body;
 
-  if (!type || !['material', 'word_list', 'lesson'].includes(type)) {
-    return res.status(400).json({ error: 'type must be material, word_list, or lesson' });
+  if (!type || !['material', 'word_list', 'lesson', 'class_session'].includes(type)) {
+    return res.status(400).json({ error: 'type must be material, word_list, lesson, or class_session' });
   }
 
   try {
@@ -688,8 +688,8 @@ router.post('/api/stream/posts', authMiddleware, requireTeacher, async (req, res
       await client.query('BEGIN');
 
       const { rows: postRows } = await client.query(
-        `INSERT INTO stream_posts (teacher_id, type, title, body, attachments, target_language, lesson_items, topic_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO stream_posts (teacher_id, type, title, body, attachments, target_language, lesson_items, topic_id, scheduled_at, duration_minutes, recurrence)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING *`,
         [
           req.userId,
@@ -700,6 +700,9 @@ router.post('/api/stream/posts', authMiddleware, requireTeacher, async (req, res
           target_language || user.target_language || null,
           JSON.stringify(lesson_items || []),
           topic_id || null,
+          scheduled_at || null,
+          duration_minutes || null,
+          recurrence ? JSON.stringify(recurrence) : null,
         ],
       );
       const post = postRows[0];
