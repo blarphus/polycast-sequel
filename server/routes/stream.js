@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord, fetchWordImage, callGemini } from '../enrichWord.js';
+import { enrichWord, fetchWordImage, callGemini, fetchWiktSenses } from '../enrichWord.js';
 import { applyEnglishFrequency } from '../lib/englishFrequency.js';
 
 const router = Router();
@@ -463,28 +463,22 @@ router.post('/api/stream/words/batch-translate', authMiddleware, requireTeacher,
   if (!nativeLang) return res.status(400).json({ error: 'nativeLang is required' });
 
   try {
-    const wordList = words.map((w, i) => `${i}. ${w.word} — ${w.definition}`).join('\n');
-
-    const prompt = `For each English word below, provide a ${nativeLang} translation and a brief ${nativeLang} definition. Return a JSON array of objects in the same order.
-
-${wordList}
-
-Return ONLY a JSON array like: [{"translation":"...","definition":"..."},...]
-
-- translation: standard ${nativeLang} translation, 1-3 words max
-- definition: brief explanation in ${nativeLang}, 12 words max, no markdown`;
-
-    const raw = await callGemini(prompt, {
-      thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: words.length * 40,
-      responseMimeType: 'application/json',
-    });
-    const results = JSON.parse(raw);
-
-    if (!Array.isArray(results) || results.length !== words.length) {
-      console.error('batch-translate: expected', words.length, 'results, got', results?.length);
-      return res.status(500).json({ error: 'Translation count mismatch' });
-    }
+    // Fetch Wiktionary senses in the teacher's native language for each word
+    const results = await Promise.all(
+      words.map(async (w) => {
+        try {
+          const senses = await fetchWiktSenses(w.word, 'en', nativeLang);
+          if (senses.length > 0) {
+            // Use the first (most common) sense gloss as both translation and definition
+            return { translation: senses[0].gloss, definition: senses[0].gloss };
+          }
+        } catch (err) {
+          console.error(`Wikt lookup failed for "${w.word}":`, err);
+        }
+        // No senses found — keep English as-is
+        return null;
+      }),
+    );
 
     return res.json({ translations: results });
   } catch (err) {
