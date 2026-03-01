@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord, fetchWordImage, callGemini, fetchWiktSenses } from '../enrichWord.js';
+import { enrichWord, fetchWordImage, callGemini, fetchWiktSenses, fetchWiktTranslations } from '../enrichWord.js';
 import { applyEnglishFrequency } from '../lib/englishFrequency.js';
 
 const router = Router();
@@ -463,42 +463,87 @@ router.post('/api/stream/words/batch-translate', authMiddleware, requireTeacher,
   if (!nativeLang) return res.status(400).json({ error: 'nativeLang is required' });
 
   try {
-    // 1. Fetch Wiktionary senses for each word
-    const sensesPerWord = await Promise.all(
+    // 1. Fetch translations from English Wiktionary for each word
+    const translationsPerWord = await Promise.all(
       words.map(async (w) => {
         try {
-          return await fetchWiktSenses(w.word, 'en', nativeLang);
+          return await fetchWiktTranslations(w.word, nativeLang);
         } catch (err) {
-          console.error(`Wikt lookup failed for "${w.word}":`, err);
+          console.error(`Wikt translations failed for "${w.word}":`, err);
           return [];
         }
       }),
     );
 
-    // 2. Build initial results: single-sense words use that sense directly
-    const results = sensesPerWord.map((senses) => {
-      if (senses.length === 1) {
-        return { translation: senses[0].gloss, definition: senses[0].gloss };
-      }
-      return null; // will be resolved by Gemini or left null
-    });
-
-    // 3. Collect ambiguous words (multiple senses) that need Gemini disambiguation
-    const unitWordList = Array.isArray(allWords) && allWords.length > 0
-      ? allWords
-      : words.map(w => w.word);
-
-    const ambiguous = [];
+    // 2. For words with no translations, fall back to native-edition glosses
+    const needsFallback = [];
     for (let i = 0; i < words.length; i++) {
-      if (sensesPerWord[i].length > 1) {
-        ambiguous.push({ index: i, word: words[i].word, definition: words[i].definition, senses: sensesPerWord[i] });
+      if (translationsPerWord[i].length === 0) needsFallback.push(i);
+    }
+
+    const fallbackSensesMap = {};
+    if (needsFallback.length > 0) {
+      const fallbackResults = await Promise.all(
+        needsFallback.map(async (i) => {
+          try {
+            return await fetchWiktSenses(words[i].word, 'en', nativeLang);
+          } catch (err) {
+            console.error(`Wikt fallback failed for "${words[i].word}":`, err);
+            return [];
+          }
+        }),
+      );
+      for (let j = 0; j < needsFallback.length; j++) {
+        fallbackSensesMap[needsFallback[j]] = fallbackResults[j];
+      }
+    }
+
+    // 3. Build results + collect ambiguous words for Gemini
+    const results = new Array(words.length).fill(null);
+    const ambiguous = [];
+
+    for (let i = 0; i < words.length; i++) {
+      const txns = translationsPerWord[i];
+      if (txns.length === 1) {
+        // Single sense — use directly
+        results[i] = { translation: txns[0].words[0], definition: txns[0].sense };
+      } else if (txns.length > 1) {
+        // Multiple senses — need disambiguation
+        ambiguous.push({
+          index: i, word: words[i].word, definition: words[i].definition,
+          senses: txns.map(t => ({
+            label: `[${t.pos}] ${t.sense} → ${t.words.join(', ')}`,
+            translation: t.words[0],
+            definition: t.sense,
+          })),
+        });
+      } else {
+        // No translations — use fallback glosses
+        const senses = fallbackSensesMap[i] || [];
+        if (senses.length === 1) {
+          results[i] = { translation: senses[0].gloss, definition: senses[0].gloss };
+        } else if (senses.length > 1) {
+          ambiguous.push({
+            index: i, word: words[i].word, definition: words[i].definition,
+            senses: senses.map(s => ({
+              label: `[${s.pos}] ${s.gloss}`,
+              translation: s.gloss,
+              definition: s.gloss,
+            })),
+          });
+        }
+        // senses.length === 0 → results[i] stays null
       }
     }
 
     // 4. If there are ambiguous words, use ONE Gemini call to disambiguate all of them
+    const unitWordList = Array.isArray(allWords) && allWords.length > 0
+      ? allWords
+      : words.map(w => w.word);
+
     if (ambiguous.length > 0) {
       const wordEntries = ambiguous.map((a, entryIdx) => {
-        const senseList = a.senses.map((s, si) => `  ${si}: [${s.pos}] ${s.gloss}`).join('\n');
+        const senseList = a.senses.map((s, si) => `  ${si}: ${s.label}`).join('\n');
         return `WORD ${entryIdx}: "${a.word}" (English definition: "${a.definition}")\n${senseList}`;
       }).join('\n\n');
 
@@ -529,13 +574,12 @@ Each sense_index must be a valid index from the senses listed for that word.`;
           const pick = picks[j];
           const si = typeof pick?.sense_index === 'number' ? pick.sense_index : 0;
           const sense = a.senses[si] || a.senses[0];
-          results[a.index] = { translation: sense.gloss, definition: sense.gloss };
+          results[a.index] = { translation: sense.translation, definition: sense.definition };
         }
       } catch (err) {
         console.error('Gemini disambiguation failed, falling back to first sense:', err);
-        // Fallback: use first sense for each ambiguous word
         for (const a of ambiguous) {
-          results[a.index] = { translation: a.senses[0].gloss, definition: a.senses[0].gloss };
+          results[a.index] = { translation: a.senses[0].translation, definition: a.senses[0].definition };
         }
       }
     }

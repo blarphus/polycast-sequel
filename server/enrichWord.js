@@ -122,6 +122,36 @@ export async function fetchWiktSenses(word, targetLang, nativeLang) {
   return senses;
 }
 
+export async function fetchWiktTranslations(word, nativeLang) {
+  const url = `https://api.wiktapi.dev/v1/en/word/${encodeURIComponent(word)}/translations?lang=en`;
+  const response = await fetch(url, { headers: API_HEADERS });
+
+  if (response.status === 404) return [];
+  if (!response.ok) {
+    console.error('WiktApi translations error:', response.status, await response.text().catch(() => ''));
+    return [];
+  }
+
+  const data = await response.json();
+
+  const sensesMap = new Map();
+  for (const posGroup of data.translations || []) {
+    const pos = posGroup.pos || '';
+    for (const entry of posGroup.translations || []) {
+      if (entry.code !== nativeLang) continue;
+      const key = entry.sense || '';
+      if (!sensesMap.has(key)) {
+        sensesMap.set(key, { sense: key, pos, words: [] });
+      }
+      if (entry.word) {
+        sensesMap.get(key).words.push(entry.word);
+      }
+    }
+  }
+
+  return Array.from(sensesMap.values()).filter(s => s.words.length > 0);
+}
+
 /**
  * Full word enrichment: translation, definition, POS, frequency, example,
  * image_url, lemma, forms.
