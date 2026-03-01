@@ -234,7 +234,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
     const ytUrl =
       `https://www.googleapis.com/youtube/v3/videos` +
       `?part=snippet,contentDetails&chart=mostPopular` +
-      `&regionCode=${regionCode}&maxResults=20&key=${apiKey}`;
+      `&regionCode=${regionCode}&maxResults=50&key=${apiKey}`;
 
     const ytRes = await fetch(ytUrl);
     if (!ytRes.ok) {
@@ -244,15 +244,17 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
     }
 
     const ytData = await ytRes.json();
-    const items = (ytData.items || []).map((item) => ({
-      youtube_id: item.id,
-      title: item.snippet.title,
-      channel: item.snippet.channelTitle,
-      thumbnail: item.snippet.thumbnails?.medium?.url ||
-                 `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`,
-      duration_seconds: parseDuration(item.contentDetails.duration),
-      published_at: item.snippet.publishedAt,
-    }));
+    const items = (ytData.items || [])
+      .filter((item) => item.contentDetails.caption === 'true')
+      .map((item) => ({
+        youtube_id: item.id,
+        title: item.snippet.title,
+        channel: item.snippet.channelTitle,
+        thumbnail: item.snippet.thumbnails?.medium?.url ||
+                   `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`,
+        duration_seconds: parseDuration(item.contentDetails.duration),
+        published_at: item.snippet.publishedAt,
+      }));
 
     // Cache in Redis for 6 hours
     try {
