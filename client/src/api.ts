@@ -539,6 +539,27 @@ export function lookupPostWords(words: string[], nativeLang: string, targetLang:
   });
 }
 
+// ---- Templates (Textbook Word Lists) ---------------------------------------
+
+export interface TemplateUnitSummary {
+  id: string; title: string; description: string; wordCount: number;
+}
+export interface TemplateSummary {
+  id: string; title: string; publisher: string; language: string;
+  level: string; units: TemplateUnitSummary[];
+}
+export interface TemplateUnitDetail {
+  textbook: { id: string; title: string; language: string };
+  unit: { id: string; title: string; description: string; words: string[] };
+}
+
+export function getTemplates() {
+  return request<{ templates: TemplateSummary[] }>('/templates');
+}
+export function getTemplateUnit(textbookId: string, unitId: string) {
+  return request<TemplateUnitDetail>(`/templates/${textbookId}/${unitId}`);
+}
+
 // ---- Pending Classwork (Student) -------------------------------------------
 
 export interface PendingWordList {

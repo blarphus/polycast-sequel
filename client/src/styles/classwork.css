@@ -977,3 +977,123 @@
   color: var(--text-primary);
   background: var(--bg-elevated);
 }
+
+/* ---- Template Picker ------------------------------------------------------ */
+
+.template-picker-modal {
+  max-width: 560px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.template-picker-list {
+  padding: 0.75rem;
+}
+
+.template-textbook-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0 0.6rem;
+}
+
+.template-textbook-header > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.template-textbook-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.template-textbook-level {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.template-textbook-publisher {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.template-unit-list {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.template-unit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.6rem 0.85rem;
+  background: var(--bg-surface);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font);
+  transition: background var(--transition);
+}
+
+.template-unit-row:last-child {
+  border-bottom: none;
+}
+
+.template-unit-row:hover {
+  background: var(--bg-elevated);
+}
+
+.template-unit-row:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.template-unit-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.template-unit-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.template-unit-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-unit-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.loading-spinner--small {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+  flex-shrink: 0;
+}

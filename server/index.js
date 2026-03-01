@@ -20,6 +20,7 @@ import classroomRoutes from './routes/classroom.js';
 import iceServersRoutes from './routes/iceServers.js';
 import streamRoutes from './routes/stream.js';
 import videosRoutes from './routes/videos.js';
+import templatesRoutes from './routes/templates.js';
 import { startTranscriptWorker, backfillCefrLevels } from './services/videoTranscriptQueue.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -87,6 +88,7 @@ async function main() {
   app.use(iceServersRoutes);
   app.use(streamRoutes);
   app.use(videosRoutes);
+  app.use(templatesRoutes);
 
   // ------ SPA fallback ------
   app.get('*', (req, res) => {

@@ -3,6 +3,7 @@ import * as api from '../../api';
 import type { StreamPostWord, WordOverride } from '../../api';
 import ImagePicker from '../ImagePicker';
 import WordLookupModal from '../WordLookupModal';
+import TemplatePicker from './TemplatePicker';
 import { renderTildeHighlight } from '../../utils/tildeMarkup';
 import { LANGUAGES } from './languages';
 
@@ -29,6 +30,16 @@ export default function WordListTab({
   const [submitError, setSubmitError] = useState('');
   const [imagePickerIdx, setImagePickerIdx] = useState<number | null>(null);
   const [defPickerIdx, setDefPickerIdx] = useState<number | null>(null);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+
+  const handleTemplateSelect = (data: { title: string; words: string[]; language: string }) => {
+    setTitle(data.title);
+    setWordsText(data.words.join('\n'));
+    setTargetLang(data.language);
+    setPreview(null);
+    setLookedUp(false);
+    setShowTemplatePicker(false);
+  };
 
   const wordLines = wordsText.split('\n').map((w) => w.trim()).filter(Boolean);
 
@@ -111,6 +122,15 @@ export default function WordListTab({
           <option key={l.code} value={l.code}>{l.name}</option>
         ))}
       </select>
+      {!isEditMode && (
+        <button
+          className="btn btn-secondary btn-block"
+          onClick={() => setShowTemplatePicker(true)}
+          style={{ marginBottom: '0.5rem' }}
+        >
+          Browse Templates
+        </button>
+      )}
       <label className="form-label">{isEditMode ? 'Add More Words (one per line)' : 'Words (one per line)'}</label>
       <textarea
         className="form-input stream-textarea"
@@ -226,6 +246,12 @@ export default function WordListTab({
       )}
       {lookedUp && preview && preview.length === 0 && (
         <p className="classwork-empty">All words were removed. Add more words above.</p>
+      )}
+      {showTemplatePicker && (
+        <TemplatePicker
+          onSelect={handleTemplateSelect}
+          onClose={() => setShowTemplatePicker(false)}
+        />
       )}
     </div>
   );
