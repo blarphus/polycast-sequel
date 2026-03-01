@@ -134,22 +134,22 @@ export async function fetchWiktTranslations(word, nativeLang) {
 
   const data = await response.json();
 
+  // Collect ALL unique senses; words[] only populated for native language
   const sensesMap = new Map();
   for (const posGroup of data.translations || []) {
     const pos = posGroup.pos || '';
     for (const entry of posGroup.translations || []) {
-      if (entry.code !== nativeLang) continue;
       const key = entry.sense || '';
       if (!sensesMap.has(key)) {
         sensesMap.set(key, { sense: key, pos, words: [] });
       }
-      if (entry.word) {
+      if (entry.code === nativeLang && entry.word) {
         sensesMap.get(key).words.push(entry.word);
       }
     }
   }
 
-  return Array.from(sensesMap.values()).filter(s => s.words.length > 0);
+  return Array.from(sensesMap.values());
 }
 
 /**

@@ -475,7 +475,7 @@ router.post('/api/stream/words/batch-translate', authMiddleware, requireTeacher,
       }),
     );
 
-    // 2. For words with no translations, fall back to native-edition glosses
+    // 2. For words with NO senses at all, fall back to native-edition glosses
     const needsFallback = [];
     for (let i = 0; i < words.length; i++) {
       if (translationsPerWord[i].length === 0) needsFallback.push(i);
@@ -504,21 +504,34 @@ router.post('/api/stream/words/batch-translate', authMiddleware, requireTeacher,
 
     for (let i = 0; i < words.length; i++) {
       const txns = translationsPerWord[i];
-      if (txns.length === 1) {
-        // Single sense — use directly
-        results[i] = { translation: txns[0].words[0], definition: txns[0].sense };
-      } else if (txns.length > 1) {
-        // Multiple senses — need disambiguation
+      const withWords = txns.filter(t => t.words.length > 0);
+
+      if (withWords.length === 1) {
+        // Single sense with native translation — use directly
+        results[i] = { translation: withWords[0].words[0], definition: withWords[0].sense };
+      } else if (withWords.length > 1) {
+        // Multiple senses with native translations — Gemini picks sense
         ambiguous.push({
           index: i, word: words[i].word, definition: words[i].definition,
-          senses: txns.map(t => ({
+          senses: withWords.map(t => ({
             label: `[${t.pos}] ${t.sense} → ${t.words.join(', ')}`,
             translation: t.words[0],
             definition: t.sense,
           })),
         });
+      } else if (txns.length > 0) {
+        // Senses exist but no native translations — Gemini picks sense AND translates
+        ambiguous.push({
+          index: i, word: words[i].word, definition: words[i].definition,
+          needsTranslation: true,
+          senses: txns.map(t => ({
+            label: `[${t.pos}] ${t.sense}`,
+            translation: null,
+            definition: t.sense,
+          })),
+        });
       } else {
-        // No translations — use fallback glosses
+        // No senses at all — use fallback glosses
         const senses = fallbackSensesMap[i] || [];
         if (senses.length === 1) {
           results[i] = { translation: senses[0].gloss, definition: senses[0].gloss };
@@ -536,35 +549,48 @@ router.post('/api/stream/words/batch-translate', authMiddleware, requireTeacher,
       }
     }
 
-    // 4. If there are ambiguous words, use ONE Gemini call to disambiguate all of them
+    // 4. If there are ambiguous words, use ONE Gemini call to disambiguate
+    //    (and translate entries that have no native-language words)
     const unitWordList = Array.isArray(allWords) && allWords.length > 0
       ? allWords
       : words.map(w => w.word);
 
     if (ambiguous.length > 0) {
+      const anyNeedTranslation = ambiguous.some(a => a.needsTranslation);
+
       const wordEntries = ambiguous.map((a, entryIdx) => {
         const senseList = a.senses.map((s, si) => `  ${si}: ${s.label}`).join('\n');
-        return `WORD ${entryIdx}: "${a.word}" (English definition: "${a.definition}")\n${senseList}`;
+        const tag = a.needsTranslation ? ' [TRANSLATE]' : '';
+        return `WORD ${entryIdx}: "${a.word}" (English definition: "${a.definition}")${tag}\n${senseList}`;
       }).join('\n\n');
+
+      const translateInstruction = anyNeedTranslation
+        ? `\nFor words marked [TRANSLATE], no dictionary translations exist for ${nativeLang} — also provide a concise ${nativeLang} translation (1-3 words) in the "translation" field.\nFor other words, omit the "translation" field.`
+        : '';
+
+      const responseFormat = anyNeedTranslation
+        ? '{"sense_index": <int>} or {"sense_index": <int>, "translation": "..."} for [TRANSLATE] words'
+        : '{"sense_index": <int>}';
 
       const prompt = `You are a vocabulary-list translation assistant.
 
 A teacher is translating an English vocabulary unit into ${nativeLang}.
 The unit contains these words: ${unitWordList.join(', ')}
 
-For each ambiguous word below, pick the dictionary sense index that best matches the word's intended meaning in this thematic unit.
+For each word below, pick the dictionary sense index that best matches the word's intended meaning in this thematic unit.
+${translateInstruction}
 
 ${wordEntries}
 
 Respond with ONLY a JSON array of objects, one per word above, in order:
-[{"sense_index": <int>}, ...]
+[${responseFormat}, ...]
 
 Each sense_index must be a valid index from the senses listed for that word.`;
 
       try {
         const raw = await callGemini(prompt, {
           thinkingConfig: { thinkingBudget: 0 },
-          maxOutputTokens: 200,
+          maxOutputTokens: 400,
           responseMimeType: 'application/json',
         });
         const picks = JSON.parse(raw);
@@ -574,12 +600,16 @@ Each sense_index must be a valid index from the senses listed for that word.`;
           const pick = picks[j];
           const si = typeof pick?.sense_index === 'number' ? pick.sense_index : 0;
           const sense = a.senses[si] || a.senses[0];
-          results[a.index] = { translation: sense.translation, definition: sense.definition };
+          const translation = sense.translation || pick?.translation || '';
+          results[a.index] = { translation, definition: sense.definition };
         }
       } catch (err) {
         console.error('Gemini disambiguation failed, falling back to first sense:', err);
         for (const a of ambiguous) {
-          results[a.index] = { translation: a.senses[0].translation, definition: a.senses[0].definition };
+          const sense = a.senses[0];
+          results[a.index] = sense.translation
+            ? { translation: sense.translation, definition: sense.definition }
+            : null;
         }
       }
     }
