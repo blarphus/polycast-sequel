@@ -144,7 +144,7 @@ async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
   // Step 1: Player API — get caption tracks
   const playerUrl = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_API_KEY}`;
   const playerBody = JSON.stringify({
-    context: { client: { clientName: 'WEB', clientVersion: '2.20241126.01.00' } },
+    context: { client: { clientName: 'IOS', clientVersion: '20.10.4' } },
     videoId: youtubeId,
   });
 
