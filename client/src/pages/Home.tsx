@@ -165,9 +165,11 @@ export default function Home() {
         <div className="home-section-header">
           <div>
             <h2 className="home-section-title">
-              {targetLang ? `Trending in ${langName}` : 'Videos for you'}
+              {!targetLang ? 'Videos for you' : targetLang === 'en' ? 'Free Movies & TV' : `Trending in ${langName}`}
             </h2>
-            <p className="home-section-subtitle">watch and learn new words</p>
+            <p className="home-section-subtitle">
+              {targetLang === 'en' ? 'full-length films with captions' : 'watch and learn new words'}
+            </p>
           </div>
           <button className="home-add-video-btn" onClick={() => setShowAddVideo(true)}>+</button>
         </div>

@@ -6,6 +6,10 @@ import { enqueueTranscriptJob } from '../services/videoTranscriptQueue.js';
 
 const router = Router();
 
+// YouTube Movies & TV channel — free full-length films with professional captions
+const MOVIES_TV_CHANNEL_ID = 'UCuVPpxrm2VAgpH3Ktln4HXg';
+const MOVIES_TV_UPLOADS_PLAYLIST = 'UUuVPpxrm2VAgpH3Ktln4HXg'; // UC → UU = uploads playlist
+
 const LANG_TO_REGION = {
   en: 'US', es: 'ES', fr: 'FR', de: 'DE', it: 'IT', pt: 'BR',
   ru: 'RU', zh: 'TW', ja: 'JP', ko: 'KR', ar: 'EG', hi: 'IN',
@@ -200,15 +204,70 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
 });
 
 /**
+ * Fetch free movies & TV from YouTube's dedicated channel (English only).
+ * Step 1: playlistItems.list to get video IDs (1 quota unit)
+ * Step 2: videos.list for details + caption filtering (1 quota unit)
+ */
+async function fetchMoviesAndTV(apiKey) {
+  const plUrl =
+    `https://www.googleapis.com/youtube/v3/playlistItems` +
+    `?part=contentDetails&playlistId=${MOVIES_TV_UPLOADS_PLAYLIST}` +
+    `&maxResults=50&key=${apiKey}`;
+
+  const plRes = await fetch(plUrl);
+  if (!plRes.ok) {
+    const body = await plRes.text();
+    console.error('YouTube Movies & TV playlist API error:', plRes.status, body);
+    throw new Error('Failed to fetch Movies & TV playlist from YouTube');
+  }
+
+  const plData = await plRes.json();
+  const videoIds = (plData.items || [])
+    .map((item) => item.contentDetails.videoId)
+    .filter(Boolean);
+
+  if (videoIds.length === 0) {
+    throw new Error('Movies & TV playlist returned no videos');
+  }
+
+  const detailUrl =
+    `https://www.googleapis.com/youtube/v3/videos` +
+    `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
+    `&key=${apiKey}`;
+
+  const detailRes = await fetch(detailUrl);
+  if (!detailRes.ok) {
+    const body = await detailRes.text();
+    console.error('YouTube video details API error:', detailRes.status, body);
+    throw new Error('Failed to fetch video details from YouTube');
+  }
+
+  const detailData = await detailRes.json();
+  return (detailData.items || [])
+    .filter((item) => item.contentDetails.caption === 'true')
+    .map((item) => ({
+      youtube_id: item.id,
+      title: item.snippet.title,
+      channel: item.snippet.channelTitle,
+      thumbnail: item.snippet.thumbnails?.medium?.url ||
+                 `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`,
+      duration_seconds: parseDuration(item.contentDetails.duration),
+      published_at: item.snippet.publishedAt,
+    }));
+}
+
+/**
  * GET /api/videos/trending
  * Return top trending YouTube videos for a language-region.
+ * For English: returns free Movies & TV with captions instead.
  * Cached in Redis for 6 hours.
  */
 router.get('/api/videos/trending', authMiddleware, async (req, res) => {
   try {
     const lang = (req.query.lang || 'en').toString().toLowerCase();
     const regionCode = LANG_TO_REGION[lang] || 'US';
-    const cacheKey = `trending:${lang}`;
+    const isEnglish = lang === 'en';
+    const cacheKey = isEnglish ? 'trending:en:movies' : `trending:${lang}`;
 
     // Try Redis cache first
     let cached = null;
@@ -231,30 +290,36 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
-    const ytUrl =
-      `https://www.googleapis.com/youtube/v3/videos` +
-      `?part=snippet,contentDetails&chart=mostPopular` +
-      `&regionCode=${regionCode}&maxResults=50&key=${apiKey}`;
+    let items;
 
-    const ytRes = await fetch(ytUrl);
-    if (!ytRes.ok) {
-      const body = await ytRes.text();
-      console.error('YouTube trending API error:', ytRes.status, body);
-      return res.status(502).json({ error: 'Failed to fetch trending videos from YouTube' });
+    if (isEnglish) {
+      items = await fetchMoviesAndTV(apiKey);
+    } else {
+      const ytUrl =
+        `https://www.googleapis.com/youtube/v3/videos` +
+        `?part=snippet,contentDetails&chart=mostPopular` +
+        `&regionCode=${regionCode}&maxResults=50&key=${apiKey}`;
+
+      const ytRes = await fetch(ytUrl);
+      if (!ytRes.ok) {
+        const body = await ytRes.text();
+        console.error('YouTube trending API error:', ytRes.status, body);
+        return res.status(502).json({ error: 'Failed to fetch trending videos from YouTube' });
+      }
+
+      const ytData = await ytRes.json();
+      items = (ytData.items || [])
+        .filter((item) => item.contentDetails.caption === 'true')
+        .map((item) => ({
+          youtube_id: item.id,
+          title: item.snippet.title,
+          channel: item.snippet.channelTitle,
+          thumbnail: item.snippet.thumbnails?.medium?.url ||
+                     `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`,
+          duration_seconds: parseDuration(item.contentDetails.duration),
+          published_at: item.snippet.publishedAt,
+        }));
     }
-
-    const ytData = await ytRes.json();
-    const items = (ytData.items || [])
-      .filter((item) => item.contentDetails.caption === 'true')
-      .map((item) => ({
-        youtube_id: item.id,
-        title: item.snippet.title,
-        channel: item.snippet.channelTitle,
-        thumbnail: item.snippet.thumbnails?.medium?.url ||
-                   `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`,
-        duration_seconds: parseDuration(item.contentDetails.duration),
-        published_at: item.snippet.publishedAt,
-      }));
 
     // Cache in Redis for 6 hours
     try {
