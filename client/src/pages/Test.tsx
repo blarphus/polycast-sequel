@@ -56,8 +56,10 @@ export default function Test() {
         <CallControls
           isMuted={isMuted}
           isCameraOff={isCameraOff}
+          isScreenSharing={false}
           onToggleMute={toggleMute}
           onToggleCamera={toggleCamera}
+          onToggleScreenShare={() => {}}
           primaryAction={{
             label: 'End Test',
             icon: <PhoneOffIcon />,

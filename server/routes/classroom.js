@@ -9,7 +9,7 @@ const router = Router();
  * GET /api/classroom/students
  * List the teacher's classroom students with online status.
  */
-router.get('/api/classroom/students', authMiddleware, async (req, res) => {
+router.get('/api/classroom/students', authMiddleware, requireTeacher, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT cs.id AS classroom_id, cs.created_at AS added_at,

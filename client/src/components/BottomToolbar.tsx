@@ -32,6 +32,13 @@ export default function BottomToolbar() {
   const isClasswork = location.pathname === '/classwork' || location.pathname.startsWith('/classwork/');
   const isStudents = location.pathname === '/students' || location.pathname.startsWith('/students/');
 
+  const ClassworkIcon = () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+      <path d="M6 12v5c3 3 9 3 12 0v-5" />
+    </svg>
+  );
+
   return (
     <nav className="bottom-toolbar">
       <div className="sidebar-brand">
@@ -72,10 +79,7 @@ export default function BottomToolbar() {
           onClick={() => navigate('/classwork')}
         >
           <span className="toolbar-tab-icon-wrap">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-              <path d="M6 12v5c3 3 9 3 12 0v-5" />
-            </svg>
+            <ClassworkIcon />
             {pendingCount > 0 && <span className="toolbar-badge">{pendingCount}</span>}
           </span>
           <span className="toolbar-label">Classwork</span>
@@ -96,10 +100,7 @@ export default function BottomToolbar() {
             className={`toolbar-tab toolbar-tab--teal${isClasswork ? ' active' : ''}`}
             onClick={() => navigate('/classwork')}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-              <path d="M6 12v5c3 3 9 3 12 0v-5" />
-            </svg>
+            <ClassworkIcon />
             <span className="toolbar-label">Classwork</span>
           </button>
           <button

@@ -280,14 +280,23 @@ export async function backfillCefrLevels(pool) {
   if (rows.length === 0) return;
 
   console.log(`[cefr-backfill] Scoring ${rows.length} video(s)...`);
-  let updated = 0;
+  const ids = [];
+  const levels = [];
   for (const row of rows) {
     const segments = typeof row.transcript === 'string' ? JSON.parse(row.transcript) : row.transcript;
     const level = estimateCefrLevel(segments, row.language);
     if (level) {
-      await pool.query('UPDATE videos SET cefr_level = $2 WHERE id = $1', [row.id, level]);
-      updated++;
+      ids.push(row.id);
+      levels.push(level);
     }
   }
-  console.log(`[cefr-backfill] Done — ${updated}/${rows.length} video(s) scored`);
+  if (ids.length > 0) {
+    await pool.query(
+      `UPDATE videos SET cefr_level = t.level
+       FROM unnest($1::uuid[], $2::text[]) AS t(id, level)
+       WHERE videos.id = t.id`,
+      [ids, levels],
+    );
+  }
+  console.log(`[cefr-backfill] Done — ${ids.length}/${rows.length} video(s) scored`);
 }
