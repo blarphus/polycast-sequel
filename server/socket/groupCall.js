@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 
 import { userToSocket } from './presence.js';
-import { getUserDisplayInfo } from '../lib/getUserDisplayInfo.js';
 import pool from '../db.js';
+import { markParticipantLeft } from '../lib/groupCallDb.js';
 
 /**
  * Register group call event handlers on a socket.
@@ -21,21 +21,31 @@ export function handleGroupCall(io, socket) {
     // Join the Socket.IO room
     socket.join(socketRoom);
 
-    // Get display info for the joiner
-    const info = await getUserDisplayInfo(socket.userId);
-    const displayName = info?.display_name || info?.username || 'Unknown';
-
     // Get existing participants in the room (other sockets)
     const roomSockets = await io.in(socketRoom).fetchSockets();
-    const existing = [];
+    const otherUserIds = [];
     for (const s of roomSockets) {
-      if (s.id === socket.id) continue;
-      const pInfo = await getUserDisplayInfo(s.userId);
-      existing.push({
-        userId: s.userId,
-        displayName: pInfo?.display_name || pInfo?.username || 'Unknown',
-      });
+      if (s.id !== socket.id) otherUserIds.push(s.userId);
     }
+
+    // Batch-fetch display info for joiner + all existing participants
+    const allIds = [socket.userId, ...otherUserIds];
+    const { rows: userRows } = await pool.query(
+      `SELECT id, display_name, username FROM users WHERE id = ANY($1)`,
+      [allIds],
+    );
+    const userMap = new Map(userRows.map((r) => [r.id, r]));
+
+    const joinerInfo = userMap.get(socket.userId);
+    const displayName = joinerInfo?.display_name || joinerInfo?.username || 'Unknown';
+
+    const existing = otherUserIds.map((uid) => {
+      const info = userMap.get(uid);
+      return {
+        userId: uid,
+        displayName: info?.display_name || info?.username || 'Unknown',
+      };
+    });
 
     // Send existing participants to the new joiner
     socket.emit('group:existing-participants', { roomId, participants: existing });
@@ -65,14 +75,7 @@ export function handleGroupCall(io, socket) {
     // DB cleanup: mark participant as left
     const today = new Date().toISOString().slice(0, 10);
     try {
-      await pool.query(
-        `UPDATE group_call_participants SET left_at = NOW()
-         WHERE user_id = $1 AND left_at IS NULL
-           AND group_call_id IN (
-             SELECT id FROM group_calls WHERE post_id = $2 AND session_date = $3 AND status = 'active'
-           )`,
-        [socket.userId, roomId, today],
-      );
+      await markParticipantLeft(socket.userId, roomId, today);
     } catch (err) {
       console.error('[group-call] DB leave error:', err.message);
     }
@@ -136,25 +139,7 @@ export async function handleGroupCallDisconnect(io, socket) {
     // DB cleanup
     const today = new Date().toISOString().slice(0, 10);
     try {
-      await pool.query(
-        `UPDATE group_call_participants SET left_at = NOW()
-         WHERE user_id = $1 AND left_at IS NULL
-           AND group_call_id IN (
-             SELECT id FROM group_calls WHERE post_id = $2 AND session_date = $3 AND status = 'active'
-           )`,
-        [socket.userId, roomId, today],
-      );
-
-      // End call if no active participants
-      await pool.query(
-        `UPDATE group_calls SET status = 'ended', ended_at = NOW()
-         WHERE post_id = $1 AND session_date = $2 AND status = 'active'
-           AND NOT EXISTS (
-             SELECT 1 FROM group_call_participants
-             WHERE group_call_id = group_calls.id AND left_at IS NULL
-           )`,
-        [roomId, today],
-      );
+      await markParticipantLeft(socket.userId, roomId, today);
     } catch (err) {
       console.error('[group-call] Disconnect DB cleanup error:', err.message);
     }

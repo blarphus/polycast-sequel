@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
+import { markParticipantLeft } from '../lib/groupCallDb.js';
 
 const router = Router();
 
@@ -61,18 +62,20 @@ router.get('/api/classes/today', authMiddleware, async (req, res) => {
 
     // Filter recurring classes: only include if today's weekday matches and date is within range
     const todayStr = now.toISOString().slice(0, 10);
-    const classes = rows.filter((row) => {
-      if (!row.recurrence) {
+    const classes = rows.reduce((acc, row) => {
+      const rec = row.recurrence
+        ? (typeof row.recurrence === 'string' ? JSON.parse(row.recurrence) : row.recurrence)
+        : null;
+
+      if (!rec) {
         // One-off: already filtered by SQL (scheduled_at::date = CURRENT_DATE)
-        return row.scheduled_at && row.scheduled_at.toISOString().slice(0, 10) === todayStr;
+        if (!row.scheduled_at || row.scheduled_at.toISOString().slice(0, 10) !== todayStr) return acc;
+      } else {
+        if (!rec.days || !rec.days.includes(isoDay)) return acc;
+        if (rec.until && todayStr > rec.until) return acc;
       }
-      const rec = typeof row.recurrence === 'string' ? JSON.parse(row.recurrence) : row.recurrence;
-      if (!rec.days || !rec.days.includes(isoDay)) return false;
-      if (rec.until && todayStr > rec.until) return false;
-      return true;
-    }).map((row) => {
-      const rec = row.recurrence ? (typeof row.recurrence === 'string' ? JSON.parse(row.recurrence) : row.recurrence) : null;
-      return {
+
+      acc.push({
         id: row.id,
         title: row.title,
         teacher_name: row.teacher_name || 'Teacher',
@@ -80,8 +83,9 @@ router.get('/api/classes/today', authMiddleware, async (req, res) => {
         scheduled_at: row.scheduled_at,
         duration_minutes: row.duration_minutes,
         time: rec ? rec.time : (row.scheduled_at ? new Date(row.scheduled_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : null),
-      };
-    });
+      });
+      return acc;
+    }, []);
 
     return res.json({ classes });
   } catch (err) {
@@ -190,27 +194,7 @@ router.post('/api/group-call/:postId/leave', authMiddleware, async (req, res) =>
 
   try {
     const today = new Date().toISOString().slice(0, 10);
-
-    // Update left_at for this participant
-    await pool.query(
-      `UPDATE group_call_participants SET left_at = NOW()
-       WHERE user_id = $1 AND left_at IS NULL
-         AND group_call_id IN (
-           SELECT id FROM group_calls WHERE post_id = $2 AND session_date = $3 AND status = 'active'
-         )`,
-      [userId, postId, today],
-    );
-
-    // End the group_call if no active participants remain
-    await pool.query(
-      `UPDATE group_calls SET status = 'ended', ended_at = NOW()
-       WHERE post_id = $1 AND session_date = $2 AND status = 'active'
-         AND NOT EXISTS (
-           SELECT 1 FROM group_call_participants
-           WHERE group_call_id = group_calls.id AND left_at IS NULL
-         )`,
-      [postId, today],
-    );
+    await markParticipantLeft(userId, postId, today);
 
     return res.status(204).send();
   } catch (err) {

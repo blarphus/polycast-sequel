@@ -681,6 +681,4 @@ export function leaveGroupCall(postId: string) {
   return request<void>(`/group-call/${postId}/leave`, { method: 'POST' });
 }
 
-export function getGroupCallParticipants(postId: string) {
-  return request<{ participants: GroupCallParticipant[] }>(`/group-call/${postId}/participants`);
-}
+

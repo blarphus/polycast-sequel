@@ -198,8 +198,11 @@ export function TopicSection({
                   <div
                     key={post.id}
                     className={dragOverId === post.id && dragItem?.kind === 'post' ? 'stream-post-drop-indicator' : ''}
+                    draggable={true}
+                    onDragStart={(e) => onDragStartPost(e, post)}
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragItem?.kind === 'post') onDragOverPost(post.id); }}
                     onDrop={(e) => { e.stopPropagation(); onDropPost(e, post.id, topicId); }}
+                    onDragEnd={onDragEndPost}
                   >
                     <TeacherClassSessionCard post={post} />
                   </div>

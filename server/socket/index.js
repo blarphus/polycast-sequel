@@ -98,10 +98,10 @@ export function setupSocket(server) {
     handleGroupCall(io, socket);
 
     // Handle disconnection
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       console.log(`Socket disconnected: ${socket.id} (user: ${socket.userId})`);
       handleDisconnect(io, socket, redisClient);
-      handleGroupCallDisconnect(io, socket);
+      await handleGroupCallDisconnect(io, socket);
     });
   });
 

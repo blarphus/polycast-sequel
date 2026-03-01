@@ -248,7 +248,7 @@ export function useGroupCall(postId: string) {
     return () => {
       if (joinedRef.current) {
         socket.emit('group:leave', { roomId: postId });
-        leaveGroupCall(postId).catch(() => {});
+        leaveGroupCall(postId).catch((err) => console.error('[group-call] REST leave error:', err));
       }
       for (const [, entry] of peersRef.current) {
         closePeerConnection(entry.pc);

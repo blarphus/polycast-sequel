@@ -21,11 +21,7 @@
   overflow: hidden;
 }
 
-.gc-grid--1 {
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr;
-}
-
+.gc-grid--1,
 .gc-grid--2 {
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr;

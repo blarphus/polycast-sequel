@@ -2,11 +2,12 @@
 // components/classwork/ClassSessionCard.tsx — Class session post cards
 // ---------------------------------------------------------------------------
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { StreamPost, Recurrence } from '../../api';
+import { DAY_LABELS } from './languages';
 
-const DAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_NAMES = ['', ...DAY_LABELS];
 
 function formatRecurrence(rec: Recurrence): string {
   const dayStr = rec.days.map((d) => DAY_NAMES[d]).join(', ');
@@ -50,6 +51,17 @@ function isJoinable(post: StreamPost): boolean {
 // Teacher card
 // ---------------------------------------------------------------------------
 
+export function CalendarIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+
 export function TeacherClassSessionCard({ post }: { post: StreamPost }) {
   const navigate = useNavigate();
 
@@ -57,12 +69,7 @@ export function TeacherClassSessionCard({ post }: { post: StreamPost }) {
     <div className="stream-post-card class-session-card">
       <div className="stream-post-header">
         <span className="stream-post-type-badge stream-post-type-badge--class">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
+          <CalendarIcon />
           Class Session
         </span>
         <span className="stream-post-date">{new Date(post.created_at).toLocaleDateString()}</span>
@@ -105,12 +112,7 @@ export function StudentClassSessionCard({ post }: { post: StreamPost }) {
     <div className="stream-post-card class-session-card">
       <div className="stream-post-header">
         <span className="stream-post-type-badge stream-post-type-badge--class">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
+          <CalendarIcon />
           Class Session
         </span>
         {post.teacher_name && (

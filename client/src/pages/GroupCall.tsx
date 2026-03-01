@@ -10,13 +10,6 @@ import { useMediaToggles } from '../hooks/useMediaToggles';
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
 import socket from '../socket';
 
-interface TranscriptEntry {
-  userId: string;
-  displayName: string;
-  text: string;
-  lang: string;
-}
-
 export default function GroupCall() {
   const { postId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
@@ -39,7 +32,6 @@ export default function GroupCall() {
 
   // Transcription state
   const [liveSubtitle, setLiveSubtitle] = useState<{ text: string; userId: string } | null>(null);
-  const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
   const subtitleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Local video ref
@@ -69,16 +61,10 @@ export default function GroupCall() {
       subtitleTimerRef.current = setTimeout(() => setLiveSubtitle(null), 5000);
     };
 
-    const onTranscriptEntry = (entry: TranscriptEntry) => {
-      setTranscriptEntries((prev) => [...prev.slice(-49), entry]);
-    };
-
     socket.on('transcript', onTranscript);
-    socket.on('transcript:entry', onTranscriptEntry);
 
     return () => {
       socket.off('transcript', onTranscript);
-      socket.off('transcript:entry', onTranscriptEntry);
       if (subtitleTimerRef.current) clearTimeout(subtitleTimerRef.current);
     };
   }, []);

@@ -8,6 +8,7 @@ import type { StreamPost, StreamTopic, StreamAttachment, LessonItem, WordOverrid
 
 import WordListTab from './WordListTab';
 
+import { DAY_LABELS, DAY_VALUES } from './languages';
 export { LANGUAGES } from './languages';
 
 // ---------------------------------------------------------------------------
@@ -260,9 +261,6 @@ function LessonTab({
 // ---------------------------------------------------------------------------
 // ClassSessionTab
 // ---------------------------------------------------------------------------
-
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const DAY_VALUES = [1, 2, 3, 4, 5, 6, 7]; // ISO weekdays
 
 function ClassSessionTab({
   onSubmit,
