@@ -578,6 +578,7 @@ export interface VideoSummary {
   duration_seconds: number | null;
   transcript_status: 'missing' | 'processing' | 'ready' | 'failed';
   transcript_source?: 'manual' | 'auto' | 'none';
+  cefr_level: string | null;
 }
 
 export interface TranscriptSegment {

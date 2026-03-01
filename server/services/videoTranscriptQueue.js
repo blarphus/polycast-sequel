@@ -1,4 +1,5 @@
 import { fetchYouTubeTranscript, TranscriptFetchError } from './videoTranscriptFetcher.js';
+import { estimateCefrLevel } from '../lib/cefrDifficulty.js';
 
 const QUEUE_KEY = 'queue:video_transcripts';
 const DELAYED_KEY = 'queue:video_transcripts:delayed';
@@ -93,7 +94,8 @@ async function markProcessing(pool, videoId, attempt) {
   );
 }
 
-async function markReady(pool, videoId, segments, source, attempt) {
+async function markReady(pool, videoId, segments, source, attempt, language) {
+  const cefrLevel = estimateCefrLevel(segments, language);
   await pool.query(
     `UPDATE videos
      SET transcript = $2,
@@ -101,9 +103,10 @@ async function markReady(pool, videoId, segments, source, attempt) {
          transcript_source = $3,
          transcript_last_error = NULL,
          transcript_attempts = $4,
-         transcript_updated_at = NOW()
+         transcript_updated_at = NOW(),
+         cefr_level = $5
      WHERE id = $1`,
-    [videoId, JSON.stringify(segments), source, attempt],
+    [videoId, JSON.stringify(segments), source, attempt, cefrLevel],
   );
 }
 
@@ -195,7 +198,7 @@ export async function startTranscriptWorker({ redisClient, pool }) {
 
       const { segments, source } = await fetchYouTubeTranscript(job.youtubeId, job.language);
 
-      await markReady(pool, job.videoId, segments, source, job.attempt);
+      await markReady(pool, job.videoId, segments, source, job.attempt, job.language);
       await redisClient.del(key);
 
       console.log(
@@ -257,4 +260,24 @@ export async function startTranscriptWorker({ redisClient, pool }) {
       console.log('[transcript-queue] Worker stopped');
     },
   };
+}
+
+export async function backfillCefrLevels(pool) {
+  const { rows } = await pool.query(
+    `SELECT id, transcript, language FROM videos
+     WHERE transcript_status = 'ready' AND cefr_level IS NULL AND transcript IS NOT NULL`,
+  );
+  if (rows.length === 0) return;
+
+  console.log(`[cefr-backfill] Scoring ${rows.length} video(s)...`);
+  let updated = 0;
+  for (const row of rows) {
+    const segments = typeof row.transcript === 'string' ? JSON.parse(row.transcript) : row.transcript;
+    const level = estimateCefrLevel(segments, row.language);
+    if (level) {
+      await pool.query('UPDATE videos SET cefr_level = $2 WHERE id = $1', [row.id, level]);
+      updated++;
+    }
+  }
+  console.log(`[cefr-backfill] Done — ${updated}/${rows.length} video(s) scored`);
 }

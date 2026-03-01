@@ -20,7 +20,7 @@ import classroomRoutes from './routes/classroom.js';
 import iceServersRoutes from './routes/iceServers.js';
 import streamRoutes from './routes/stream.js';
 import videosRoutes from './routes/videos.js';
-import { startTranscriptWorker } from './services/videoTranscriptQueue.js';
+import { startTranscriptWorker, backfillCefrLevels } from './services/videoTranscriptQueue.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,6 +48,7 @@ async function main() {
   try {
     await redisClient.connect();
     transcriptWorker = await startTranscriptWorker({ redisClient, pool });
+    backfillCefrLevels(pool).catch((err) => console.error('[cefr-backfill] Error:', err.message));
   } catch (err) {
     console.error('Failed to connect to Redis (will retry in background):', err.message);
   }

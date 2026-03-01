@@ -179,6 +179,11 @@ export default function Home() {
                       alt={v.title}
                       className="home-carousel-thumb-img"
                     />
+                    {v.cefr_level && (
+                      <span className="home-carousel-cefr" style={{ background: DIFFICULTY_COLORS[v.cefr_level] }}>
+                        {v.cefr_level}
+                      </span>
+                    )}
                     {v.duration_seconds != null && (
                       <span className="home-carousel-duration">{formatVideoDuration(v.duration_seconds)}</span>
                     )}

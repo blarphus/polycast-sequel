@@ -432,6 +432,18 @@
   border-radius: 4px;
 }
 
+.home-carousel-cefr {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+}
+
 .home-carousel-channel {
   font-size: 0.72rem;
   color: var(--text-muted);
