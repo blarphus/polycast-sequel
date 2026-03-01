@@ -18,7 +18,6 @@ export default function TemplatePicker({ onSelect, onClose }: Props) {
     api.getTemplates()
       .then((res) => {
         setTemplates(res.templates);
-        // Start with all levels collapsed except the first
         const initial: Record<string, boolean> = {};
         res.templates.forEach((book, i) => { initial[book.id] = i > 0; });
         setCollapsed(initial);
@@ -103,21 +102,26 @@ export default function TemplatePicker({ onSelect, onClose }: Props) {
                         onClick={() => handleUnitClick(book.id, unit.id)}
                         disabled={loadingUnit !== null}
                       >
-                        {unit.previewImages && unit.previewImages.length > 0 && (
-                          <div className="template-unit-thumbs">
-                            {unit.previewImages.map((url, j) => (
-                              <img key={j} src={url} alt="" className="template-unit-thumb" />
-                            ))}
-                          </div>
-                        )}
                         <div className="template-unit-info">
-                          <span className="template-unit-title">{unit.title}</span>
+                          <div className="template-unit-title-row">
+                            <span className="template-unit-title">{unit.title}</span>
+                            {loadingUnit === unit.id ? (
+                              <div className="loading-spinner loading-spinner--small" />
+                            ) : (
+                              <span className="template-unit-count">{unit.wordCount} words</span>
+                            )}
+                          </div>
                           <span className="template-unit-desc">{unit.description}</span>
                         </div>
-                        {loadingUnit === unit.id ? (
-                          <div className="loading-spinner loading-spinner--small" />
-                        ) : (
-                          <span className="template-unit-count">{unit.wordCount} words</span>
+                        {unit.previews && unit.previews.length > 0 && (
+                          <div className="template-unit-thumbs">
+                            {unit.previews.map((p, j) => (
+                              <div key={j} className="template-unit-thumb-item">
+                                <img src={p.image} alt={p.word} className="template-unit-thumb" />
+                                <span className="template-unit-thumb-label">{p.word}</span>
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </button>
                     ))}

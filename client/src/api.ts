@@ -550,7 +550,7 @@ export function batchTranslateWords(words: { word: string; definition: string }[
 
 export interface TemplateUnitSummary {
   id: string; title: string; description: string; wordCount: number;
-  previewImages?: string[];
+  previews?: { image: string; word: string }[];
 }
 export interface TemplateSummary {
   id: string; title: string; publisher: string; language: string;

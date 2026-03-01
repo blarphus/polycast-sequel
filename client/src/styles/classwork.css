@@ -981,8 +981,9 @@
 /* ---- Template Picker ------------------------------------------------------ */
 
 .template-picker-modal {
-  max-width: 560px;
-  max-height: 80vh;
+  max-width: 700px;
+  width: 95vw;
+  max-height: 90vh;
   overflow-y: auto;
 }
 
@@ -1078,10 +1079,10 @@
 
 .template-unit-row {
   display: flex;
-  align-items: center;
-  gap: 0.65rem;
+  flex-direction: column;
+  gap: 0.5rem;
   width: 100%;
-  padding: 0.55rem 0.85rem;
+  padding: 0.7rem 0.85rem;
   background: var(--bg-surface);
   border: none;
   border-bottom: 1px solid var(--border);
@@ -1104,45 +1105,25 @@
   opacity: 0.6;
 }
 
-/* --- Thumbnail previews --- */
-
-.template-unit-thumbs {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-.template-unit-thumb {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  object-fit: cover;
-}
-
-.template-unit-thumb:first-child {
-  border-radius: 4px 0 0 4px;
-}
-
-.template-unit-thumb:last-child {
-  border-radius: 0 4px 4px 0;
-}
-
-.template-unit-thumb:only-child {
-  border-radius: 4px;
-}
-
 /* --- Unit info & count --- */
 
 .template-unit-info {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
-  flex: 1;
+  width: 100%;
   min-width: 0;
 }
 
+.template-unit-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .template-unit-title {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -1165,6 +1146,40 @@
   color: var(--text-muted);
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+/* --- Thumbnail previews with word labels --- */
+
+.template-unit-thumbs {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.template-unit-thumb-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.template-unit-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.template-unit-thumb-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
 }
 
 .loading-spinner--small {

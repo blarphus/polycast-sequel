@@ -40,11 +40,13 @@ router.get('/api/templates', authMiddleware, requireTeacher, (_req, res) => {
       units: book.units
         .filter((u) => u.words.length > 0)
         .map((u) => {
-          // Pick up to 4 preview images from enriched words
-          const previewImages = [];
+          // Pick up to 4 preview words with images
+          const previews = [];
           if (typeof u.words[0] === 'object') {
             for (const w of u.words) {
-              if (w.image_url && previewImages.length < 4) previewImages.push(w.image_url);
+              if (w.image_url && previews.length < 4) {
+                previews.push({ image: w.image_url, word: w.word });
+              }
             }
           }
           return {
@@ -52,7 +54,7 @@ router.get('/api/templates', authMiddleware, requireTeacher, (_req, res) => {
             title: u.title,
             description: u.description,
             wordCount: u.words.length,
-            previewImages,
+            previews,
           };
         }),
     };
