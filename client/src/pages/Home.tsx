@@ -5,7 +5,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getNewToday, getVideos, SavedWord, VideoSummary } from '../api';
+import { getNewToday, getTrendingVideos, addVideo, SavedWord, TrendingVideo } from '../api';
+import { LANGUAGES } from '../components/classwork/languages';
 import FriendRequests from '../components/FriendRequests';
 import PendingClasswork from '../components/PendingClasswork';
 import UpcomingClasses from '../components/UpcomingClasses';
@@ -40,11 +41,15 @@ export default function Home() {
   const [newWords, setNewWords] = useState<SavedWord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [videos, setVideos] = useState<VideoSummary[]>([]);
-  const [videosLoading, setVideosLoading] = useState(true);
+  const [trending, setTrending] = useState<TrendingVideo[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
   const [showAddVideo, setShowAddVideo] = useState(false);
   const videosCarouselRef = useRef<HTMLDivElement | null>(null);
   const newsCarouselRef = useRef<HTMLDivElement | null>(null);
+
+  const targetLang = user?.target_language;
+  const langName = LANGUAGES.find((l) => l.code === targetLang)?.name || targetLang || '';
 
   useEffect(() => {
     let cancelled = false;
@@ -55,19 +60,28 @@ export default function Home() {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
-    getVideos()
-      .then((v) => { if (!cancelled) setVideos(v); })
-      .catch((err) => console.error('Failed to fetch videos:', err))
-      .finally(() => { if (!cancelled) setVideosLoading(false); });
+    if (targetLang) {
+      getTrendingVideos(targetLang)
+        .then((v) => { if (!cancelled) setTrending(v); })
+        .catch((err) => console.error('Failed to fetch trending videos:', err))
+        .finally(() => { if (!cancelled) setTrendingLoading(false); });
+    } else {
+      setTrendingLoading(false);
+    }
     return () => { cancelled = true; };
-  }, []);
+  }, [targetLang]);
 
-  function refreshVideos() {
-    setVideosLoading(true);
-    getVideos()
-      .then((v) => setVideos(v))
-      .catch((err) => console.error('Failed to fetch videos:', err))
-      .finally(() => setVideosLoading(false));
+  async function handleTrendingClick(video: TrendingVideo) {
+    if (addingVideoId) return;
+    setAddingVideoId(video.youtube_id);
+    try {
+      const url = `https://www.youtube.com/watch?v=${video.youtube_id}`;
+      const added = await addVideo(url, targetLang || 'en');
+      navigate(`/watch/${added.id}`);
+    } catch (err) {
+      console.error('Failed to add trending video:', err);
+      setAddingVideoId(null);
+    }
   }
 
   function scrollCarousel(ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') {
@@ -146,68 +160,75 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Section 2: Videos for you */}
+      {/* Section 2: Trending videos */}
       <section className="home-section">
         <div className="home-section-header">
           <div>
-            <h2 className="home-section-title">Videos for you</h2>
+            <h2 className="home-section-title">
+              {targetLang ? `Trending in ${langName}` : 'Videos for you'}
+            </h2>
             <p className="home-section-subtitle">watch and learn new words</p>
           </div>
           <button className="home-add-video-btn" onClick={() => setShowAddVideo(true)}>+</button>
         </div>
-        <div className="home-carousel-shell">
-          <button
-            className="home-carousel-arrow home-carousel-arrow--left"
-            aria-label="Scroll videos left"
-            onClick={() => scrollCarousel(videosCarouselRef, 'left')}
-          >
-            ‹
-          </button>
-          <div className="home-carousel" ref={videosCarouselRef}>
-            {videosLoading ? (
-              Array.from({ length: 3 }, (_, i) => (
-                <div key={i} className="home-carousel-card home-carousel-card--skeleton">
-                  <div className="home-carousel-thumb home-carousel-thumb--skeleton" />
-                  <div className="home-carousel-info">
-                    <div className="home-skeleton-line" style={{ width: '80%' }} />
-                    <div className="home-skeleton-line" style={{ width: '50%' }} />
-                  </div>
-                </div>
-              ))
-            ) : (
-              videos.map((v) => (
-                <div key={v.id} className="home-carousel-card home-carousel-card--clickable" onClick={() => navigate(`/watch/${v.id}`)}>
-                  <div className="home-carousel-thumb home-carousel-thumb--video">
-                    <img
-                      src={`https://img.youtube.com/vi/${v.youtube_id}/mqdefault.jpg`}
-                      alt={v.title}
-                      className="home-carousel-thumb-img"
-                    />
-                    {v.cefr_level && (
-                      <span className="home-carousel-cefr" style={{ background: DIFFICULTY_COLORS[v.cefr_level] }}>
-                        {v.cefr_level}
-                      </span>
-                    )}
-                    {v.duration_seconds != null && (
-                      <span className="home-carousel-duration">{formatVideoDuration(v.duration_seconds)}</span>
-                    )}
-                  </div>
-                  <div className="home-carousel-info">
-                    <span className="home-carousel-title">{v.title}</span>
-                    <span className="home-carousel-channel">{v.channel}</span>
-                  </div>
-                </div>
-              ))
-            )}
+        {!targetLang ? (
+          <div className="home-empty-state">
+            <p>Set a target language in Settings to see trending videos.</p>
           </div>
-          <button
-            className="home-carousel-arrow home-carousel-arrow--right"
-            aria-label="Scroll videos right"
-            onClick={() => scrollCarousel(videosCarouselRef, 'right')}
-          >
-            ›
-          </button>
-        </div>
+        ) : (
+          <div className="home-carousel-shell">
+            <button
+              className="home-carousel-arrow home-carousel-arrow--left"
+              aria-label="Scroll videos left"
+              onClick={() => scrollCarousel(videosCarouselRef, 'left')}
+            >
+              ‹
+            </button>
+            <div className="home-carousel" ref={videosCarouselRef}>
+              {trendingLoading ? (
+                Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="home-carousel-card home-carousel-card--skeleton">
+                    <div className="home-carousel-thumb home-carousel-thumb--skeleton" />
+                    <div className="home-carousel-info">
+                      <div className="home-skeleton-line" style={{ width: '80%' }} />
+                      <div className="home-skeleton-line" style={{ width: '50%' }} />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                trending.map((v) => (
+                  <div
+                    key={v.youtube_id}
+                    className={`home-carousel-card home-carousel-card--clickable${addingVideoId === v.youtube_id ? ' home-carousel-card--loading' : ''}`}
+                    onClick={() => handleTrendingClick(v)}
+                  >
+                    <div className="home-carousel-thumb home-carousel-thumb--video">
+                      <img
+                        src={v.thumbnail}
+                        alt={v.title}
+                        className="home-carousel-thumb-img"
+                      />
+                      {v.duration_seconds != null && (
+                        <span className="home-carousel-duration">{formatVideoDuration(v.duration_seconds)}</span>
+                      )}
+                    </div>
+                    <div className="home-carousel-info">
+                      <span className="home-carousel-title">{v.title}</span>
+                      <span className="home-carousel-channel">{v.channel}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <button
+              className="home-carousel-arrow home-carousel-arrow--right"
+              aria-label="Scroll videos right"
+              onClick={() => scrollCarousel(videosCarouselRef, 'right')}
+            >
+              ›
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Section 3: News for you (placeholder) */}
@@ -253,7 +274,7 @@ export default function Home() {
       </section>
 
       {showAddVideo && (
-        <AddVideoModal onClose={() => setShowAddVideo(false)} onAdded={refreshVideos} />
+        <AddVideoModal onClose={() => setShowAddVideo(false)} onAdded={() => {}} />
       )}
     </div>
   );

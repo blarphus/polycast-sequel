@@ -403,6 +403,11 @@
   pointer-events: none;
 }
 
+.home-carousel-card--loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 .home-carousel-thumb--skeleton {
   background: var(--bg-elevated);
   animation: skeleton-pulse 1.2s ease-in-out infinite;

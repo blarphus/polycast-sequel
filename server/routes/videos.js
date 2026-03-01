@@ -6,6 +6,13 @@ import { enqueueTranscriptJob } from '../services/videoTranscriptQueue.js';
 
 const router = Router();
 
+const LANG_TO_REGION = {
+  en: 'US', es: 'ES', fr: 'FR', de: 'DE', it: 'IT', pt: 'BR',
+  ru: 'RU', zh: 'TW', ja: 'JP', ko: 'KR', ar: 'EG', hi: 'IN',
+  tr: 'TR', pl: 'PL', nl: 'NL', sv: 'SE', da: 'DK', fi: 'FI',
+  uk: 'UA', vi: 'VN',
+};
+
 /**
  * Extract a YouTube video ID from common URL formats.
  */
@@ -189,6 +196,77 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('POST /api/videos failed:', err);
     res.status(500).json({ error: 'Failed to add video' });
+  }
+});
+
+/**
+ * GET /api/videos/trending
+ * Return top trending YouTube videos for a language-region.
+ * Cached in Redis for 6 hours.
+ */
+router.get('/api/videos/trending', authMiddleware, async (req, res) => {
+  try {
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    const regionCode = LANG_TO_REGION[lang] || 'US';
+    const cacheKey = `trending:${lang}`;
+
+    // Try Redis cache first
+    let cached = null;
+    try {
+      if (redisClient.isReady) {
+        cached = await redisClient.get(cacheKey);
+      }
+    } catch (cacheErr) {
+      console.warn('Redis read failed for trending cache:', cacheErr.message);
+    }
+
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
+
+    // Cache miss — fetch from YouTube Data API
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.error('GET /api/videos/trending: YOUTUBE_API_KEY not set');
+      return res.status(500).json({ error: 'YouTube API key not configured' });
+    }
+
+    const ytUrl =
+      `https://www.googleapis.com/youtube/v3/videos` +
+      `?part=snippet,contentDetails&chart=mostPopular` +
+      `&regionCode=${regionCode}&maxResults=20&key=${apiKey}`;
+
+    const ytRes = await fetch(ytUrl);
+    if (!ytRes.ok) {
+      const body = await ytRes.text();
+      console.error('YouTube trending API error:', ytRes.status, body);
+      return res.status(502).json({ error: 'Failed to fetch trending videos from YouTube' });
+    }
+
+    const ytData = await ytRes.json();
+    const items = (ytData.items || []).map((item) => ({
+      youtube_id: item.id,
+      title: item.snippet.title,
+      channel: item.snippet.channelTitle,
+      thumbnail: item.snippet.thumbnails?.medium?.url ||
+                 `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`,
+      duration_seconds: parseDuration(item.contentDetails.duration),
+      published_at: item.snippet.publishedAt,
+    }));
+
+    // Cache in Redis for 6 hours
+    try {
+      if (redisClient.isReady) {
+        await redisClient.set(cacheKey, JSON.stringify(items), { EX: 21600 });
+      }
+    } catch (cacheErr) {
+      console.warn('Redis write failed for trending cache:', cacheErr.message);
+    }
+
+    res.json(items);
+  } catch (err) {
+    console.error('GET /api/videos/trending failed:', err);
+    res.status(500).json({ error: 'Failed to fetch trending videos' });
   }
 });
 

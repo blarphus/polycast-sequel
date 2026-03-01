@@ -647,6 +647,19 @@ export function addVideo(url: string, language: string) {
   return request<VideoDetail>('/videos', { method: 'POST', body: { url, language } });
 }
 
+export interface TrendingVideo {
+  youtube_id: string;
+  title: string;
+  channel: string;
+  thumbnail: string;
+  duration_seconds: number | null;
+  published_at: string;
+}
+
+export function getTrendingVideos(lang: string) {
+  return request<TrendingVideo[]>(`/videos/trending?lang=${encodeURIComponent(lang)}`);
+}
+
 export function retryVideoTranscript(id: string) {
   return request<VideoDetail>(`/videos/${id}/transcript/retry`, { method: 'POST' });
 }
