@@ -39,6 +39,16 @@ async function enrichAndInsertWords(client, postId, words, nativeLang, targetLan
     }),
   );
 
+  // Deduplicate images: if multiple words got the same image_url, re-fetch alternatives
+  const usedUrls = new Set();
+  for (const w of enriched) {
+    if (w.image_url && usedUrls.has(w.image_url)) {
+      const alt = await fetchWordImage(w.image_term || w.word, usedUrls);
+      w.image_url = alt;
+    }
+    if (w.image_url) usedUrls.add(w.image_url);
+  }
+
   for (const w of enriched) {
     await client.query(
       `INSERT INTO stream_post_words
@@ -641,6 +651,16 @@ router.post('/api/stream/words/lookup', authMiddleware, requireTeacher, async (r
         return { id: `preview-${i}`, word: word.trim(), position: i, ...enriched };
       }),
     );
+
+    // Deduplicate images: if multiple words got the same image_url, re-fetch alternatives
+    const usedUrls = new Set();
+    for (const w of results) {
+      if (w.image_url && usedUrls.has(w.image_url)) {
+        const alt = await fetchWordImage(w.image_term || w.word, usedUrls);
+        w.image_url = alt;
+      }
+      if (w.image_url) usedUrls.add(w.image_url);
+    }
 
     return res.json({ words: results });
   } catch (err) {

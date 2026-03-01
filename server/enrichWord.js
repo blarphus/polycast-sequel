@@ -19,7 +19,7 @@ export async function searchPixabay(query, perPage = 3) {
     q: query,
     image_type: 'photo',
     per_page: String(perPage),
-    safesearch: 'false',
+    safesearch: 'true',
   });
   const res = await fetch(`https://pixabay.com/api/?${params}`);
   if (!res.ok) {
@@ -30,9 +30,59 @@ export async function searchPixabay(query, perPage = 3) {
   return (data.hits || []).map(h => h.webformatURL);
 }
 
-export async function fetchWordImage(searchTerm) {
+export async function searchWikimedia(query, limit = 5) {
+  const params = new URLSearchParams({
+    action: 'query',
+    generator: 'search',
+    gsrsearch: `${query} filetype:bitmap`,
+    gsrnamespace: '6',
+    gsrlimit: String(limit),
+    prop: 'imageinfo',
+    iiprop: 'url',
+    iiurlwidth: '640',
+    format: 'json',
+    origin: '*',
+  });
   try {
-    const urls = await searchPixabay(searchTerm);
+    const res = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, {
+      headers: API_HEADERS,
+    });
+    if (!res.ok) {
+      console.error('Wikimedia search failed:', res.status);
+      return [];
+    }
+    const data = await res.json();
+    const pages = data.query?.pages || {};
+    return Object.values(pages)
+      .map(p => p.imageinfo?.[0]?.thumburl)
+      .filter(Boolean);
+  } catch (err) {
+    console.error('Wikimedia search error:', err);
+    return [];
+  }
+}
+
+export async function searchAllImages(query, perPage = 5) {
+  const [pixabay, wikimedia] = await Promise.all([
+    searchPixabay(query, perPage),
+    searchWikimedia(query, perPage),
+  ]);
+  // Interleave results from both sources
+  const images = [];
+  const maxLen = Math.max(pixabay.length, wikimedia.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (i < pixabay.length) images.push(pixabay[i]);
+    if (i < wikimedia.length) images.push(wikimedia[i]);
+  }
+  return images;
+}
+
+export async function fetchWordImage(searchTerm, excludeUrls = null) {
+  try {
+    const urls = await searchAllImages(searchTerm, 5);
+    if (excludeUrls) {
+      return urls.find(u => !excludeUrls.has(u)) || null;
+    }
     return urls[0] || null;
   } catch (err) {
     console.error('fetchWordImage error:', err);

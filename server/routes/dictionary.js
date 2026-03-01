@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord as enrichWordHelper, callGemini, searchPixabay, fetchWiktSenses } from '../enrichWord.js';
+import { enrichWord as enrichWordHelper, callGemini, searchPixabay, searchAllImages, fetchWiktSenses } from '../enrichWord.js';
 
 const router = Router();
 
@@ -246,7 +246,7 @@ router.get('/api/dictionary/image-search', authMiddleware, async (req, res) => {
   if (!q) return res.status(400).json({ error: 'q is required' });
 
   try {
-    const images = await searchPixabay(q, 20);
+    const images = await searchAllImages(q, 12);
     return res.json({ images });
   } catch (err) {
     console.error('Image search error:', err);
