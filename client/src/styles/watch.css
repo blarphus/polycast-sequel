@@ -107,6 +107,7 @@
 /* ---- Transcript panel ---- */
 
 .watch-transcript {
+  position: relative;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
