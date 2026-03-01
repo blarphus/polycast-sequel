@@ -12,6 +12,7 @@ const YOUTUBE_TRANSCRIPT_REQUEST_TIMEOUT_MS =
 const YOUTUBE_TRANSCRIPT_USER_AGENT = process.env.YOUTUBE_TRANSCRIPT_USER_AGENT ||
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const INNERTUBE_API_KEY = process.env.INNERTUBE_API_KEY || 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
 
 export class TranscriptFetchError extends Error {
   constructor(message, code, transient = false) {
@@ -97,6 +98,95 @@ function mapTranscriptPlusError(err) {
   return new TranscriptFetchError(err?.message || 'Transcript fetch temporarily failed.', 'TRANSIENT_FETCH_ERROR', true);
 }
 
+function parseTranscriptXml(xml) {
+  const segments = [];
+  const regex = /<text start="([^"]*)" dur="([^"]*)">([^<]*)<\/text>/g;
+  let match;
+  while ((match = regex.exec(xml)) !== null) {
+    const text = decodeEntities(match[3]).replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+
+    const offsetSeconds = Number(match[1]);
+    const durationSeconds = Number(match[2]);
+    if (!Number.isFinite(offsetSeconds) || !Number.isFinite(durationSeconds)) continue;
+
+    segments.push({
+      text,
+      offset: Math.max(0, Math.round(offsetSeconds * 1000)),
+      duration: Math.max(0, Math.round(durationSeconds * 1000)),
+    });
+  }
+  return segments;
+}
+
+async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
+  // Step 1: Player API — get caption tracks
+  const playerUrl = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_API_KEY}`;
+  const playerBody = JSON.stringify({
+    context: { client: { clientName: 'ANDROID', clientVersion: '20.10.38' } },
+    videoId: youtubeId,
+  });
+
+  let playerData;
+  try {
+    const playerRes = await fetchWithTimeout({
+      url: playerUrl,
+      method: 'POST',
+      body: playerBody,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!playerRes.ok) {
+      const code = playerRes.status === 429 ? 'BLOCKED_OR_RATE_LIMITED' : 'TRANSIENT_FETCH_ERROR';
+      throw new TranscriptFetchError(`Player API returned ${playerRes.status}`, code, true);
+    }
+    playerData = await playerRes.json();
+  } catch (err) {
+    if (err instanceof TranscriptFetchError) throw err;
+    if (err?.name === 'AbortError') {
+      throw new TranscriptFetchError('Player API request timed out.', 'TRANSIENT_FETCH_ERROR', true);
+    }
+    throw new TranscriptFetchError(`Player API request failed: ${err.message}`, 'TRANSIENT_FETCH_ERROR', true);
+  }
+
+  const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  if (!captionTracks || captionTracks.length === 0) {
+    throw new TranscriptFetchError('No YouTube captions available for this video.', 'NO_CAPTIONS', false);
+  }
+
+  if (onProgress) onProgress(30);
+
+  // Find matching language track, fall back to first track
+  const track = captionTracks.find(t => t.languageCode === language) || captionTracks[0];
+  // Strip &fmt= param to get raw XML
+  const baseUrl = track.baseUrl.replace(/&fmt=[^&]*/, '');
+
+  // Step 2: Timedtext XML — fetch and parse transcript
+  let xmlText;
+  try {
+    const xmlRes = await fetchWithTimeout({ url: baseUrl });
+    if (!xmlRes.ok) {
+      const code = xmlRes.status === 429 ? 'BLOCKED_OR_RATE_LIMITED' : 'TRANSIENT_FETCH_ERROR';
+      throw new TranscriptFetchError(`Timedtext request returned ${xmlRes.status}`, code, true);
+    }
+    xmlText = await xmlRes.text();
+  } catch (err) {
+    if (err instanceof TranscriptFetchError) throw err;
+    if (err?.name === 'AbortError') {
+      throw new TranscriptFetchError('Timedtext request timed out.', 'TRANSIENT_FETCH_ERROR', true);
+    }
+    throw new TranscriptFetchError(`Timedtext request failed: ${err.message}`, 'TRANSIENT_FETCH_ERROR', true);
+  }
+
+  const segments = parseTranscriptXml(xmlText);
+  if (segments.length === 0) {
+    throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
+  }
+
+  if (onProgress) onProgress(80);
+
+  return { segments, source: 'innertube' };
+}
+
 async function fetchViaTranscriptPlus(youtubeId, language, onProgress) {
   const lang = (language || '').trim().toLowerCase();
 
@@ -145,5 +235,14 @@ async function fetchViaTranscriptPlus(youtubeId, language, onProgress) {
 
 export async function fetchYouTubeTranscript(youtubeId, language = 'en', onProgress) {
   const normalizedLang = (language || 'en').trim().toLowerCase();
+
+  // Primary: direct Innertube API (no watch page scrape)
+  try {
+    return await fetchViaInnertubeDirect(youtubeId, normalizedLang, onProgress);
+  } catch (directErr) {
+    console.warn(`[transcript] Direct Innertube failed for ${youtubeId}:`, directErr.message);
+  }
+
+  // Fallback: full youtube-transcript-plus flow
   return fetchViaTranscriptPlus(youtubeId, normalizedLang, onProgress);
 }
