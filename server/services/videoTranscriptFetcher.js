@@ -257,13 +257,33 @@ async function fetchViaTranscriptPlus(youtubeId, language, onProgress) {
 export async function fetchYouTubeTranscript(youtubeId, language = 'en', onProgress) {
   const normalizedLang = (language || 'en').trim().toLowerCase();
 
-  // Primary: direct Innertube API (no watch page scrape)
   try {
-    return await fetchViaInnertubeDirect(youtubeId, normalizedLang, onProgress);
-  } catch (directErr) {
-    console.warn(`[transcript] Direct Innertube failed for ${youtubeId}:`, directErr.message);
-  }
+    return await Promise.any([
+      fetchViaInnertubeDirect(youtubeId, normalizedLang, onProgress),
+      fetchViaTranscriptPlus(youtubeId, normalizedLang, onProgress),
+    ]);
+  } catch (aggregateErr) {
+    // Promise.any rejects with AggregateError when ALL promises reject
+    const errors = aggregateErr.errors || [];
+    console.error(
+      `[transcript] All methods failed for ${youtubeId}:`,
+      errors.map((e) => e.message).join('; '),
+    );
 
-  // Fallback: full youtube-transcript-plus flow
-  return fetchViaTranscriptPlus(youtubeId, normalizedLang, onProgress);
+    // Prefer non-transient errors (definitive answers like NO_CAPTIONS)
+    const nonTransient = errors.find(
+      (e) => e instanceof TranscriptFetchError && !e.transient,
+    );
+    if (nonTransient) throw nonTransient;
+
+    // Otherwise throw the first TranscriptFetchError
+    const firstFetchErr = errors.find((e) => e instanceof TranscriptFetchError);
+    if (firstFetchErr) throw firstFetchErr;
+
+    throw errors[0] || new TranscriptFetchError(
+      'All transcript methods failed.',
+      'TRANSIENT_FETCH_ERROR',
+      true,
+    );
+  }
 }
