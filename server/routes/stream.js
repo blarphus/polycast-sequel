@@ -1,10 +1,58 @@
 import { Router } from 'express';
-import { authMiddleware } from '../auth.js';
+import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
 import { enrichWord, fetchWordImage, callGemini } from '../enrichWord.js';
 import { getEnglishFrequency, getEnglishFrequencyCount } from '../lib/englishFrequency.js';
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// enrichAndInsertWords — shared helper for POST + PATCH word list routes
+// ---------------------------------------------------------------------------
+
+async function enrichAndInsertWords(client, postId, words, nativeLang, targetLang) {
+  const enriched = await Promise.all(
+    words.map(async (word, i) => {
+      const wordStr = typeof word === 'string' ? word.trim() : word.word;
+      if (typeof word === 'object' && word.translation) {
+        return {
+          word: wordStr, position: i,
+          translation: word.translation,
+          definition: word.definition ?? '',
+          part_of_speech: word.part_of_speech ?? null,
+          frequency: word.frequency ?? null,
+          frequency_count: word.frequency_count ?? null,
+          example_sentence: word.example_sentence ?? null,
+          image_url: word.image_url ?? null,
+          lemma: word.lemma ?? null,
+          forms: word.forms ?? null,
+          image_term: word.image_term ?? null,
+        };
+      }
+      const result = await enrichWord(wordStr, '', nativeLang, targetLang);
+      if (typeof word === 'object') {
+        if (word.image_url !== undefined) result.image_url = word.image_url;
+        if (word.definition !== undefined) result.definition = word.definition;
+        if (word.example_sentence !== undefined) result.example_sentence = word.example_sentence;
+      }
+      return { word: wordStr, position: i, ...result };
+    }),
+  );
+
+  for (const w of enriched) {
+    await client.query(
+      `INSERT INTO stream_post_words
+         (post_id, word, translation, definition, part_of_speech, position,
+          frequency, frequency_count, example_sentence, image_url, lemma, forms, image_term)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [
+        postId, w.word, w.translation, w.definition, w.part_of_speech, w.position,
+        w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
+        w.image_url ?? null, w.lemma ?? null, w.forms ?? null, w.image_term ?? null,
+      ],
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 // GET /api/stream
@@ -188,19 +236,11 @@ router.get('/api/stream/pending', authMiddleware, async (req, res) => {
 // POST /api/stream/topics — create a topic (teacher only)
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/topics', authMiddleware, async (req, res) => {
+router.post('/api/stream/topics', authMiddleware, requireTeacher, async (req, res) => {
   const { title } = req.body;
   if (!title || !title.trim()) return res.status(400).json({ error: 'title is required' });
 
   try {
-    const { rows: userRows } = await pool.query(
-      'SELECT account_type FROM users WHERE id = $1',
-      [req.userId],
-    );
-    if (userRows[0]?.account_type !== 'teacher') {
-      return res.status(403).json({ error: 'Only teachers can create topics' });
-    }
-
     const { rows: maxRows } = await pool.query(
       'SELECT COALESCE(MAX(position), -1) AS max_pos FROM stream_topics WHERE teacher_id = $1',
       [req.userId],
@@ -274,21 +314,13 @@ router.delete('/api/stream/topics/:id', authMiddleware, async (req, res) => {
 // PATCH /api/stream/reorder — bulk reorder posts and/or topics (teacher only)
 // ---------------------------------------------------------------------------
 
-router.patch('/api/stream/reorder', authMiddleware, async (req, res) => {
+router.patch('/api/stream/reorder', authMiddleware, requireTeacher, async (req, res) => {
   const { items } = req.body;
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'items array is required' });
   }
 
   try {
-    const { rows: userRows } = await pool.query(
-      'SELECT account_type FROM users WHERE id = $1',
-      [req.userId],
-    );
-    if (userRows[0]?.account_type !== 'teacher') {
-      return res.status(403).json({ error: 'Only teachers can reorder' });
-    }
-
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -403,20 +435,12 @@ Respond with ONLY the JSON object, no other text.`;
 // POST /api/stream/words/example — generate a single example sentence (teacher)
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/words/example', authMiddleware, async (req, res) => {
+router.post('/api/stream/words/example', authMiddleware, requireTeacher, async (req, res) => {
   const { word, targetLang, definition } = req.body;
   if (!word) return res.status(400).json({ error: 'word is required' });
   if (!targetLang) return res.status(400).json({ error: 'targetLang is required' });
 
   try {
-    const { rows: userRows } = await pool.query(
-      'SELECT account_type FROM users WHERE id = $1',
-      [req.userId],
-    );
-    if (userRows[0]?.account_type !== 'teacher') {
-      return res.status(403).json({ error: 'Only teachers can generate example sentences' });
-    }
-
     const defHint = definition ? ` with the meaning "${definition}"` : '';
     const prompt = `Write a short example sentence in ${targetLang} using the word "${word}"${defHint}. Wrap the word with tildes like ~word~. 15 words max.
 
@@ -437,7 +461,7 @@ Respond with ONLY the JSON object, no other text.`;
 // POST /api/stream/words/lookup — preview word translations (teacher only)
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/words/lookup', authMiddleware, async (req, res) => {
+router.post('/api/stream/words/lookup', authMiddleware, requireTeacher, async (req, res) => {
   const { words, nativeLang, targetLang } = req.body;
 
   if (!Array.isArray(words) || words.length === 0) {
@@ -447,14 +471,6 @@ router.post('/api/stream/words/lookup', authMiddleware, async (req, res) => {
   if (!targetLang) return res.status(400).json({ error: 'targetLang is required' });
 
   try {
-    const { rows: userRows } = await pool.query(
-      'SELECT account_type FROM users WHERE id = $1',
-      [req.userId],
-    );
-    if (userRows[0]?.account_type !== 'teacher') {
-      return res.status(403).json({ error: 'Only teachers can look up words' });
-    }
-
     const results = await Promise.all(
       words.map(async (word, i) => {
         const enriched = await lookupWordForPost(word.trim(), nativeLang, targetLang);
@@ -473,7 +489,7 @@ router.post('/api/stream/words/lookup', authMiddleware, async (req, res) => {
 // POST /api/stream/posts — create a post (teacher only)
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/posts', authMiddleware, async (req, res) => {
+router.post('/api/stream/posts', authMiddleware, requireTeacher, async (req, res) => {
   const { type, title, body, attachments, words, target_language, lesson_items, topic_id } = req.body;
 
   if (!type || !['material', 'word_list', 'lesson'].includes(type)) {
@@ -481,14 +497,7 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
   }
 
   try {
-    const { rows: userRows } = await pool.query(
-      'SELECT account_type, native_language, target_language FROM users WHERE id = $1',
-      [req.userId],
-    );
-    const user = userRows[0];
-    if (!user || user.account_type !== 'teacher') {
-      return res.status(403).json({ error: 'Only teachers can create posts' });
-    }
+    const user = req.userRecord;
 
     const client = await pool.connect();
     try {
@@ -520,49 +529,7 @@ router.post('/api/stream/posts', authMiddleware, async (req, res) => {
           return res.status(400).json({ error: 'Teacher must set native_language in settings before creating word lists' });
         }
 
-        const enriched = await Promise.all(
-          words.map(async (word, i) => {
-            const wordStr = typeof word === 'string' ? word.trim() : word.word;
-            if (typeof word === 'object' && word.translation) {
-              // Already enriched from lookup — use preview data directly
-              return {
-                word: wordStr, position: i,
-                translation: word.translation,
-                definition: word.definition ?? '',
-                part_of_speech: word.part_of_speech ?? null,
-                frequency: word.frequency ?? null,
-                frequency_count: word.frequency_count ?? null,
-                example_sentence: word.example_sentence ?? null,
-                image_url: word.image_url ?? null,
-                lemma: word.lemma ?? null,
-                forms: word.forms ?? null,
-                image_term: word.image_term ?? null,
-              };
-            }
-            // No preview data — enrich now (posted without lookup)
-            const result = await enrichWord(wordStr, '', nativeLang, targetLang);
-            if (typeof word === 'object') {
-              if (word.image_url !== undefined) result.image_url = word.image_url;
-              if (word.definition !== undefined) result.definition = word.definition;
-              if (word.example_sentence !== undefined) result.example_sentence = word.example_sentence;
-            }
-            return { word: wordStr, position: i, ...result };
-          }),
-        );
-
-        for (const w of enriched) {
-          await client.query(
-            `INSERT INTO stream_post_words
-               (post_id, word, translation, definition, part_of_speech, position,
-                frequency, frequency_count, example_sentence, image_url, lemma, forms, image_term)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-            [
-              post.id, w.word, w.translation, w.definition, w.part_of_speech, w.position,
-              w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
-              w.image_url ?? null, w.lemma ?? null, w.forms ?? null, w.image_term ?? null,
-            ],
-          );
-        }
+        await enrichAndInsertWords(client, post.id, words, nativeLang, targetLang);
       }
 
       await client.query('COMMIT');
@@ -699,54 +666,14 @@ router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
           [req.params.id],
         );
 
-        // Insert new words (same pattern as POST creation)
+        // Insert new words
         const { rows: userRows } = await client.query(
           'SELECT native_language FROM users WHERE id = $1', [req.userId],
         );
         const nativeLang = userRows[0]?.native_language;
         const targetLang = target_language || existing[0].target_language;
 
-        const enriched = await Promise.all(
-          words.map(async (word, i) => {
-            const wordStr = typeof word === 'string' ? word.trim() : word.word;
-            if (typeof word === 'object' && word.translation) {
-              return {
-                word: wordStr, position: i,
-                translation: word.translation,
-                definition: word.definition ?? '',
-                part_of_speech: word.part_of_speech ?? null,
-                frequency: word.frequency ?? null,
-                frequency_count: word.frequency_count ?? null,
-                example_sentence: word.example_sentence ?? null,
-                image_url: word.image_url ?? null,
-                lemma: word.lemma ?? null,
-                forms: word.forms ?? null,
-                image_term: word.image_term ?? null,
-              };
-            }
-            const result = await enrichWord(wordStr, '', nativeLang, targetLang);
-            if (typeof word === 'object') {
-              if (word.image_url !== undefined) result.image_url = word.image_url;
-              if (word.definition !== undefined) result.definition = word.definition;
-              if (word.example_sentence !== undefined) result.example_sentence = word.example_sentence;
-            }
-            return { word: wordStr, position: i, ...result };
-          }),
-        );
-
-        for (const w of enriched) {
-          await client.query(
-            `INSERT INTO stream_post_words
-               (post_id, word, translation, definition, part_of_speech, position,
-                frequency, frequency_count, example_sentence, image_url, lemma, forms, image_term)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-            [
-              req.params.id, w.word, w.translation, w.definition, w.part_of_speech, w.position,
-              w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
-              w.image_url ?? null, w.lemma ?? null, w.forms ?? null, w.image_term ?? null,
-            ],
-          );
-        }
+        await enrichAndInsertWords(client, req.params.id, words, nativeLang, targetLang);
 
         await client.query('COMMIT');
 

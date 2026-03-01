@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../db.js';
-import { authMiddleware } from '../auth.js';
+import { authMiddleware, requireTeacher } from '../auth.js';
 import { userToSocket } from '../socket/presence.js';
 
 const router = Router();
@@ -42,21 +42,12 @@ router.get('/api/classroom/students', authMiddleware, async (req, res) => {
  * Add a student to the teacher's classroom.
  * Body: { studentId }
  */
-router.post('/api/classroom/students', authMiddleware, async (req, res) => {
+router.post('/api/classroom/students', authMiddleware, requireTeacher, async (req, res) => {
   try {
     const { studentId } = req.body;
 
     if (!studentId) {
       return res.status(400).json({ error: 'studentId is required' });
-    }
-
-    // Verify requester is a teacher
-    const teacherCheck = await pool.query(
-      `SELECT account_type FROM users WHERE id = $1`,
-      [req.userId],
-    );
-    if (teacherCheck.rows[0]?.account_type !== 'teacher') {
-      return res.status(403).json({ error: 'Only teachers can add students to a classroom' });
     }
 
     // Verify target is a student

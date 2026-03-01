@@ -280,7 +280,7 @@
   max-width: 480px;
   max-height: 85vh;
   overflow-y: auto;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-lg);
 }
 
 .stream-modal-title {
@@ -833,7 +833,7 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14);
+  box-shadow: var(--shadow-md);
   min-width: 148px;
   padding: 0.3rem 0;
   overflow: visible;
@@ -877,7 +877,7 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14);
+  box-shadow: var(--shadow-md);
   min-width: 148px;
   padding: 0.3rem 0;
 }
@@ -904,7 +904,7 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14);
+  box-shadow: var(--shadow-md);
   min-width: 160px;
   padding: 0.3rem 0;
 }

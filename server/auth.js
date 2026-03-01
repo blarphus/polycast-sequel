@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import pool from './db.js';
 
 if (!process.env.JWT_SECRET) {
   console.warn('JWT_SECRET not set — using insecure dev-secret (development only)');
@@ -74,6 +75,22 @@ export async function hashPassword(password) {
  */
 export async function comparePassword(password, hash) {
   return bcrypt.compare(password, hash);
+}
+
+/**
+ * Middleware that verifies the authenticated user is a teacher.
+ * Must be used after authMiddleware. Stashes the user row on req.userRecord.
+ */
+export async function requireTeacher(req, res, next) {
+  const { rows } = await pool.query(
+    'SELECT account_type, native_language, target_language FROM users WHERE id = $1',
+    [req.userId],
+  );
+  if (!rows[0] || rows[0].account_type !== 'teacher') {
+    return res.status(403).json({ error: 'Teacher account required' });
+  }
+  req.userRecord = rows[0];
+  next();
 }
 
 export { COOKIE_OPTIONS };

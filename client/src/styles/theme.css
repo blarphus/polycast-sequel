@@ -58,6 +58,9 @@
   --success: #2ecc71;
   --success-dim: rgba(46, 204, 113, 0.25);
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.4);
 }
 
 /* ---- Button hover glows -------------------------------------------------- */
@@ -131,7 +134,7 @@
 }
 
 [data-theme="dark"] .incoming-call-modal {
-  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lg);
 }
 
 /* ---- Bottom toolbar ------------------------------------------------------ */
@@ -176,12 +179,12 @@
 /* ---- Dictionary shadows -------------------------------------------------- */
 
 [data-theme="dark"] .dict-item {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 [data-theme="dark"] .dict-item:hover,
 [data-theme="dark"] .dict-item.open {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2), 0 1px 3px rgba(0,0,0,0.15);
+  box-shadow: var(--shadow);
 }
 
 /* ---- Dictionary highlight ------------------------------------------------ */
@@ -219,7 +222,7 @@
 }
 
 [data-theme="dark"] .lookup-modal {
-  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-lg);
 }
 
 [data-theme="dark"] .imgpicker-thumb {
@@ -245,13 +248,13 @@
 [data-theme="dark"] .flashcard-front {
   background: linear-gradient(135deg, #1e1e2e, #3f3969);
   border-color: rgba(108, 99, 255, 0.35);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
 }
 
 [data-theme="dark"] .flashcard-back {
   background: linear-gradient(135deg, #1a1a2e, #2d2d44);
   border-color: rgba(46, 204, 113, 0.35);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
 }
 
 /* ---- Flashcard highlighted/buttons/feedback ------------------------------ */

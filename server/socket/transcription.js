@@ -10,7 +10,7 @@ const VOXTRAL_URL =
  * Maintains a Voxtral WebSocket per active transcription session and relays
  * accumulated text back to the originating client AND to their call peer.
  */
-export function handleTranscription(io, socket, pool) {
+export function handleTranscription(io, socket) {
   let voxtralWs = null;
   let peerId = null;
   let transcriptBuffer = '';
@@ -19,7 +19,6 @@ export function handleTranscription(io, socket, pool) {
 
   // Cached speaker info (populated on transcription:start)
   let speakerName = '';
-  let callId = null;
 
   function emitTranscript(text) {
     const transcriptData = {
@@ -48,7 +47,7 @@ export function handleTranscription(io, socket, pool) {
   }
 
   /**
-   * Emit a completed sentence to both users and persist to DB.
+   * Emit a completed sentence to both users.
    */
   function emitTranscriptEntry(text) {
     if (!text || !text.trim()) return;
@@ -68,16 +67,6 @@ export function handleTranscription(io, socket, pool) {
     if (peerSocketId) {
       io.to(peerSocketId).emit('transcript:entry', entry);
     }
-
-    // Persist to DB (fire and forget)
-    if (callId) {
-      pool.query(
-        `INSERT INTO transcript_entries (call_id, user_id, text, language) VALUES ($1, $2, $3, $4)`,
-        [callId, socket.userId, text.trim(), detectedLang],
-      ).catch((err) => {
-        console.error(`[transcription] Failed to save transcript entry:`, err.message);
-      });
-    }
   }
 
   function cleanup() {
@@ -96,7 +85,6 @@ export function handleTranscription(io, socket, pool) {
     peerId = null;
     transcriptBuffer = '';
     speakerName = '';
-    callId = null;
   }
 
   /**
@@ -127,20 +115,6 @@ export function handleTranscription(io, socket, pool) {
         console.error(`[transcription] Speaker user not found in DB for userId=${socket.userId}`);
       }
       speakerName = row?.display_name || row?.username || 'Unknown';
-
-      // Find the active call between this user and the peer
-      const callResult = await pool.query(
-        `SELECT id FROM calls
-         WHERE status = 'active'
-           AND ((caller_id = $1 AND callee_id = $2) OR (caller_id = $2 AND callee_id = $1))
-           AND ended_at IS NULL
-         ORDER BY started_at DESC LIMIT 1`,
-        [socket.userId, peerId],
-      );
-      callId = callResult.rows[0]?.id || null;
-      if (!callId) {
-        console.warn(`[transcription] No active call found between ${socket.userId} and ${peerId} — transcripts will not be persisted`);
-      }
     } catch (err) {
       console.error(`[transcription] Failed to fetch speaker info:`, err.message);
     }

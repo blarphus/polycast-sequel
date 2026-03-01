@@ -504,7 +504,7 @@
   background: var(--bg-surface);
   padding: 2.5rem 2.5rem 2rem;
   border-radius: var(--radius-lg);
-  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
   min-width: 320px;
   animation: slideUp 0.3s ease;
 }

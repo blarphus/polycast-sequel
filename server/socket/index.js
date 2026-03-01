@@ -88,7 +88,7 @@ export function setupSocket(server) {
     handleCalls(io, socket, pool, redisClient);
 
     // Register transcription handlers
-    handleTranscription(io, socket, pool);
+    handleTranscription(io, socket);
 
     // Register messaging handlers
     handleMessaging(io, socket);
