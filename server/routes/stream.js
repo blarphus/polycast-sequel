@@ -396,7 +396,7 @@ Return a JSON object with exactly these keys:
 - frequency: integer 1-10 how common this word is (1-2 rare, 3-4 uncommon, 5-6 moderate, 7-8 common everyday, 9-10 essential top-500)
 - lemma: dictionary/base form (infinitive for verbs, singular for nouns). Same as word if already base form. Empty string for particles/prepositions.
 - forms: comma-separated inflected forms of the lemma (e.g. "run, runs, ran, running"). Empty string if uninflected.
-- image_term: a 1-4 word English phrase describing a concrete, photographable subject that captures THIS SPECIFIC meaning of the word. Works as a stock-photo search query. Concrete nouns → the object itself. Abstract words → a vivid scene or tangible symbol. Do NOT repeat the word itself unless it is already a concrete noun.
+- image_term: an English search term for finding a photo of this word. Return an empty string if the word itself is already a clear, concrete, unambiguous noun that would return good image results (e.g. "cat", "bridge", "apple" → empty string). Only provide a custom term when: the word has multiple meanings and might return wrong images, the word is abstract/unlikely to have good photos, or it's a verb/adjective needing visual representation. Keep it 1-4 words.
 
 Respond with ONLY the JSON object, no other text.`;
 

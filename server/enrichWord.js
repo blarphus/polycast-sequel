@@ -248,12 +248,7 @@ TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA // FORMS
   7-8: Common everyday words important for conversation
   9-10: Essential high-frequency words (top 500 most used)
 - EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
-- IMAGE_TERM: A 1-4 word English phrase describing a concrete, photographable subject that captures THIS SPECIFIC meaning of the word. The term must work as a stock-photo search query.
-  Concrete nouns → the object itself: "cat" → "cat", "bridge" → "bridge"
-  Abstract adjectives → a vivid scene embodying the quality: "stupendous" → "mountain landscape", "fragile" → "cracked glass"
-  Verbs → a snapshot of the action in context: "screwing" (fastening) → "screwdriver", "screwing" (slang) → "couple in bed"
-  Abstract nouns → a tangible symbol: "freedom" → "open bird cage", "justice" → "courthouse"
-  Do NOT repeat the word itself unless it is already a concrete, photographable noun.
+- IMAGE_TERM: An English search term for finding a photo of this word. Return an empty string if the word itself is already a clear, concrete, unambiguous noun that would return good image results (e.g. "cat", "bridge", "apple" → empty string). Only provide a custom term when: (1) the word has multiple common meanings and the image search might return the wrong one (e.g. "bat" in a sports unit → "baseball bat"), (2) the word is abstract/unlikely to have good photo results (e.g. "freedom" → "open bird cage"), or (3) the word is a verb/adjective that needs a visual representation (e.g. "fragile" → "cracked glass"). Keep it 1-4 words.
 - LEMMA: The dictionary/base form of this word in the target language.
   For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
   For nouns: the singular (e.g. "cat" not "cats").
@@ -308,12 +303,7 @@ TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEF
   7-8: Common everyday words important for conversation
   9-10: Essential high-frequency words (top 500 most used)
 - EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
-- IMAGE_TERM: A 1-4 word English phrase describing a concrete, photographable subject that captures THIS SPECIFIC meaning of the word. The term must work as a stock-photo search query.
-  Concrete nouns → the object itself: "cat" → "cat", "bridge" → "bridge"
-  Abstract adjectives → a vivid scene embodying the quality: "stupendous" → "mountain landscape", "fragile" → "cracked glass"
-  Verbs → a snapshot of the action in context: "screwing" (fastening) → "screwdriver", "screwing" (slang) → "couple in bed"
-  Abstract nouns → a tangible symbol: "freedom" → "open bird cage", "justice" → "courthouse"
-  Do NOT repeat the word itself unless it is already a concrete, photographable noun.
+- IMAGE_TERM: An English search term for finding a photo of this word. Return an empty string if the word itself is already a clear, concrete, unambiguous noun that would return good image results (e.g. "cat", "bridge", "apple" → empty string). Only provide a custom term when: (1) the word has multiple common meanings and the image search might return the wrong one (e.g. "bat" in a sports unit → "baseball bat"), (2) the word is abstract/unlikely to have good photo results (e.g. "freedom" → "open bird cage"), or (3) the word is a verb/adjective that needs a visual representation (e.g. "fragile" → "cracked glass"). Keep it 1-4 words.
 - FALLBACK_DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown. Only used if SENSE_INDEX is invalid.
 - LEMMA: The dictionary/base form of this word in the target language.
   For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
@@ -371,12 +361,7 @@ TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TER
   7-8: Common everyday words important for conversation
   9-10: Essential high-frequency words (top 500 most used)
 - EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
-- IMAGE_TERM: A 1-4 word English phrase describing a concrete, photographable subject that captures THIS SPECIFIC meaning of the word. The term must work as a stock-photo search query.
-  Concrete nouns → the object itself: "cat" → "cat", "bridge" → "bridge"
-  Abstract adjectives → a vivid scene embodying the quality: "stupendous" → "mountain landscape", "fragile" → "cracked glass"
-  Verbs → a snapshot of the action in context: "screwing" (fastening) → "screwdriver", "screwing" (slang) → "couple in bed"
-  Abstract nouns → a tangible symbol: "freedom" → "open bird cage", "justice" → "courthouse"
-  Do NOT repeat the word itself unless it is already a concrete, photographable noun.
+- IMAGE_TERM: An English search term for finding a photo of this word. Return an empty string if the word itself is already a clear, concrete, unambiguous noun that would return good image results (e.g. "cat", "bridge", "apple" → empty string). Only provide a custom term when: (1) the word has multiple common meanings and the image search might return the wrong one (e.g. "bat" in a sports unit → "baseball bat"), (2) the word is abstract/unlikely to have good photo results (e.g. "freedom" → "open bird cage"), or (3) the word is a verb/adjective that needs a visual representation (e.g. "fragile" → "cracked glass"). Keep it 1-4 words.
 - LEMMA: The dictionary/base form of this word in the target language.
   For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
   For nouns: the singular (e.g. "cat" not "cats").
