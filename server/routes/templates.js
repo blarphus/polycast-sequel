@@ -39,12 +39,22 @@ router.get('/api/templates', authMiddleware, requireTeacher, (_req, res) => {
       level: book.level,
       units: book.units
         .filter((u) => u.words.length > 0)
-        .map((u) => ({
-          id: u.id,
-          title: u.title,
-          description: u.description,
-          wordCount: u.words.length,
-        })),
+        .map((u) => {
+          // Pick up to 4 preview images from enriched words
+          const previewImages = [];
+          if (typeof u.words[0] === 'object') {
+            for (const w of u.words) {
+              if (w.image_url && previewImages.length < 4) previewImages.push(w.image_url);
+            }
+          }
+          return {
+            id: u.id,
+            title: u.title,
+            description: u.description,
+            wordCount: u.words.length,
+            previewImages,
+          };
+        }),
     };
   });
 
