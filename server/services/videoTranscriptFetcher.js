@@ -15,6 +15,8 @@ const YOUTUBE_TRANSCRIPT_USER_AGENT = process.env.YOUTUBE_TRANSCRIPT_USER_AGENT 
 const INNERTUBE_API_KEY = process.env.INNERTUBE_API_KEY || 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
 const VCYON_API_KEY = process.env.VCYON_API_KEY || '';
 const VCYON_BASE_URL = 'https://api.vcyon.com/v1/youtube/transcript';
+const CF_TRANSCRIPT_WORKER_URL = process.env.CF_TRANSCRIPT_WORKER_URL || '';
+const CF_TRANSCRIPT_WORKER_SECRET = process.env.CF_TRANSCRIPT_WORKER_SECRET || '';
 
 export class TranscriptFetchError extends Error {
   constructor(message, code, transient = false) {
@@ -140,6 +142,76 @@ function parseTranscriptJson3(json3) {
     });
   }
   return segments;
+}
+
+async function fetchViaCfWorker(youtubeId, language, onProgress) {
+  if (!CF_TRANSCRIPT_WORKER_URL || !CF_TRANSCRIPT_WORKER_SECRET) {
+    throw new TranscriptFetchError('CF Worker not configured.', 'TRANSIENT_FETCH_ERROR', true);
+  }
+
+  const url = `${CF_TRANSCRIPT_WORKER_URL}?videoId=${youtubeId}&lang=${language}`;
+
+  let data;
+  try {
+    const res = await fetchWithTimeout({
+      url,
+      headers: {
+        'Authorization': `Bearer ${CF_TRANSCRIPT_WORKER_SECRET}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (onProgress) onProgress(50);
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error(`[cf-worker] HTTP ${res.status}: ${body.slice(0, 200)}`);
+      if (res.status === 404) {
+        throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
+      }
+      if (res.status === 401) {
+        throw new TranscriptFetchError('CF Worker auth misconfigured.', 'TRANSIENT_FETCH_ERROR', true);
+      }
+      const code = res.status === 429 ? 'BLOCKED_OR_RATE_LIMITED' : 'TRANSIENT_FETCH_ERROR';
+      throw new TranscriptFetchError(`CF Worker returned ${res.status}`, code, true);
+    }
+
+    data = await res.json();
+  } catch (err) {
+    if (err instanceof TranscriptFetchError) throw err;
+    if (err?.name === 'AbortError') {
+      throw new TranscriptFetchError('CF Worker request timed out.', 'TRANSIENT_FETCH_ERROR', true);
+    }
+    throw new TranscriptFetchError(`CF Worker request failed: ${err.message}`, 'TRANSIENT_FETCH_ERROR', true);
+  }
+
+  if (!data?.success || !data?.segments || data.segments.length === 0) {
+    throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
+  }
+
+  const segments = [];
+  for (const seg of data.segments) {
+    const text = String(seg.text || '').replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+
+    const startSeconds = Number(seg.start);
+    const durSeconds = Number(seg.dur);
+    if (!Number.isFinite(startSeconds) || !Number.isFinite(durSeconds)) continue;
+
+    segments.push({
+      text,
+      offset: Math.max(0, Math.round(startSeconds * 1000)),
+      duration: Math.max(0, Math.round(durSeconds * 1000)),
+    });
+  }
+
+  if (segments.length === 0) {
+    throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
+  }
+
+  if (onProgress) onProgress(80);
+
+  return { segments, source: 'cf_worker' };
 }
 
 async function fetchViaVcyon(youtubeId, language, onProgress) {
@@ -332,6 +404,7 @@ export async function fetchYouTubeTranscript(youtubeId, language = 'en', onProgr
 
   try {
     return await Promise.any([
+      fetchViaCfWorker(youtubeId, normalizedLang, onProgress),
       fetchViaVcyon(youtubeId, normalizedLang, onProgress),
       fetchViaInnertubeDirect(youtubeId, normalizedLang, onProgress),
       fetchViaTranscriptPlus(youtubeId, normalizedLang, onProgress),
