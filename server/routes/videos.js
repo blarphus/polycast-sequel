@@ -233,7 +233,7 @@ async function fetchMoviesAndTV(apiKey) {
 
   const detailUrl =
     `https://www.googleapis.com/youtube/v3/videos` +
-    `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
+    `?part=snippet,contentDetails,status&id=${videoIds.join(',')}` +
     `&key=${apiKey}`;
 
   const detailRes = await fetch(detailUrl);
@@ -246,6 +246,8 @@ async function fetchMoviesAndTV(apiKey) {
   const detailData = await detailRes.json();
   return (detailData.items || [])
     .filter((item) => item.contentDetails.caption === 'true')
+    .filter((item) => item.contentDetails.contentRating?.ytRating !== 'ytAgeRestricted')
+    .filter((item) => item.status?.embeddable !== false)
     .map((item) => ({
       youtube_id: item.id,
       title: item.snippet.title,
@@ -298,7 +300,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
     } else {
       const ytUrl =
         `https://www.googleapis.com/youtube/v3/videos` +
-        `?part=snippet,contentDetails&chart=mostPopular` +
+        `?part=snippet,contentDetails,status&chart=mostPopular` +
         `&regionCode=${regionCode}&maxResults=50&key=${apiKey}`;
 
       const ytRes = await fetch(ytUrl);
@@ -311,6 +313,8 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
       const ytData = await ytRes.json();
       items = (ytData.items || [])
         .filter((item) => item.contentDetails.caption === 'true')
+        .filter((item) => item.contentDetails.contentRating?.ytRating !== 'ytAgeRestricted')
+        .filter((item) => item.status?.embeddable !== false)
         .map((item) => ({
           youtube_id: item.id,
           title: item.snippet.title,
