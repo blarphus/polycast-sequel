@@ -94,7 +94,7 @@ async function markProcessing(pool, videoId, attempt) {
   );
 }
 
-async function markReady(pool, videoId, segments, source, attempt, language) {
+export async function markReady(pool, videoId, segments, source, attempt, language) {
   const cefrLevel = estimateCefrLevel(segments, language);
   await pool.query(
     `UPDATE videos
@@ -123,6 +123,11 @@ async function markFailed(pool, videoId, message, attempt) {
      WHERE id = $1`,
     [videoId, message, attempt],
   );
+}
+
+export async function clearTranscriptDedupe(redisClient, videoId, language) {
+  if (!redisClient?.isOpen) return;
+  await redisClient.del(dedupeKey(videoId, language));
 }
 
 async function scheduleRetry(redisClient, job) {

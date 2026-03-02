@@ -664,6 +664,35 @@ export function retryVideoTranscript(id: string) {
   return request<VideoDetail>(`/videos/${id}/transcript/retry`, { method: 'POST' });
 }
 
+// CF Worker URL (not secret -- just proxies YouTube's public API)
+const CF_WORKER_URL = 'https://polycast-transcript-worker.polycast-app.workers.dev';
+
+export async function fetchTranscriptFromWorker(youtubeId: string, lang: string): Promise<TranscriptSegment[]> {
+  const url = `${CF_WORKER_URL}?videoId=${encodeURIComponent(youtubeId)}&lang=${encodeURIComponent(lang)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(body.error || `Worker returned ${res.status}`);
+  }
+  const data = await res.json();
+  if (!data.success || !Array.isArray(data.segments)) {
+    throw new Error(data.error || 'No segments returned');
+  }
+  // Worker returns seconds (start/dur) -- convert to milliseconds (offset/duration)
+  return data.segments.map((seg: { text: string; start: number; dur: number }) => ({
+    text: seg.text,
+    offset: Math.round(seg.start * 1000),
+    duration: Math.round(seg.dur * 1000),
+  }));
+}
+
+export function uploadTranscript(videoId: string, segments: TranscriptSegment[]): Promise<VideoDetail> {
+  return request<VideoDetail>(`/videos/${videoId}/transcript`, {
+    method: 'PUT',
+    body: { segments },
+  });
+}
+
 // ---- Group Classes --------------------------------------------------------
 
 export interface UpcomingClass {

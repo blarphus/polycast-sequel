@@ -6,7 +6,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
-import { getVideo, retryVideoTranscript, VideoDetail } from '../api';
+import { getVideo, retryVideoTranscript, fetchTranscriptFromWorker, uploadTranscript, VideoDetail } from '../api';
 import TokenizedText from '../components/TokenizedText';
 import WordPopup from '../components/WordPopup';
 import { PopupState } from '../textTokens';
@@ -61,6 +61,7 @@ export default function Watch() {
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [retryingTranscript, setRetryingTranscript] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [clientFetching, setClientFetching] = useState(false);
 
   const playerRef = useRef<YT.Player | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -112,6 +113,35 @@ export default function Watch() {
     }, 4000);
 
     return () => clearInterval(timer);
+  }, [id, video?.transcript_status]);
+
+  // Client-side transcript fetch via CF Worker (browser has residential IP).
+  useEffect(() => {
+    if (!video || !id) return;
+    const hasTranscript = Array.isArray(video.transcript) && video.transcript.length > 0;
+    if (hasTranscript || video.transcript_status === 'ready') return;
+    if (clientFetching) return;
+
+    let cancelled = false;
+    setClientFetching(true);
+
+    fetchTranscriptFromWorker(video.youtube_id, video.language)
+      .then((segments) => {
+        if (cancelled) return;
+        return uploadTranscript(id, segments);
+      })
+      .then((updated) => {
+        if (cancelled || !updated) return;
+        setVideo(updated);
+      })
+      .catch((err) => {
+        console.error('[client-fetch] CF Worker transcript fetch failed:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setClientFetching(false);
+      });
+
+    return () => { cancelled = true; };
   }, [id, video?.transcript_status]);
 
   // Load YouTube IFrame API
@@ -363,8 +393,18 @@ export default function Watch() {
             )}
           </div>
         )}
-        {!hasTranscript && video.transcript_status !== 'processing' && video.transcript_status !== 'failed' && (
-          <div className="watch-transcript watch-transcript--empty" />
+        {!hasTranscript && video.transcript_status === 'missing' && (
+          <div className="watch-transcript-progress">
+            <div className="watch-transcript-progress-bar">
+              <div
+                className="watch-transcript-progress-fill"
+                style={{ width: '0%' }}
+              />
+            </div>
+            <p className="watch-transcript-progress-text">
+              Fetching captions...
+            </p>
+          </div>
         )}
       </div>
 

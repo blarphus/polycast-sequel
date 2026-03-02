@@ -2,7 +2,7 @@ import { Router } from 'express';
 import pool from '../db.js';
 import redisClient from '../redis.js';
 import { authMiddleware } from '../auth.js';
-import { enqueueTranscriptJob } from '../services/videoTranscriptQueue.js';
+import { enqueueTranscriptJob, markReady, clearTranscriptDedupe } from '../services/videoTranscriptQueue.js';
 import { fetchYouTubeTranscript } from '../services/videoTranscriptFetcher.js';
 
 const router = Router();
@@ -399,6 +399,58 @@ router.post('/api/videos/:id/transcript/retry', authMiddleware, async (req, res)
   } catch (err) {
     console.error('POST /api/videos/:id/transcript/retry failed:', err);
     res.status(500).json({ error: 'Failed to retry transcript extraction' });
+  }
+});
+
+/**
+ * PUT /api/videos/:id/transcript
+ * Accept a client-uploaded transcript (fetched via CF Worker in the browser).
+ */
+router.put('/api/videos/:id/transcript', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const video = await fetchVideoById(id);
+    if (!video) return res.status(404).json({ error: 'Video not found' });
+
+    // If already ready with transcript, return as-is (idempotent)
+    const hasTranscript = Array.isArray(video.transcript) && video.transcript.length > 0;
+    if (video.transcript_status === 'ready' && hasTranscript) {
+      return res.json(attachTranscriptError(video));
+    }
+
+    // Validate segments
+    const { segments } = req.body;
+    if (!Array.isArray(segments) || segments.length === 0 || segments.length > 10000) {
+      return res.status(400).json({ error: 'segments must be a non-empty array (max 10,000 items)' });
+    }
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      if (!seg || typeof seg.text !== 'string' || !seg.text.trim() || seg.text.length > 2000) {
+        return res.status(400).json({ error: `segments[${i}].text must be a non-empty string (max 2000 chars)` });
+      }
+      if (typeof seg.offset !== 'number' || !Number.isFinite(seg.offset) || seg.offset < 0) {
+        return res.status(400).json({ error: `segments[${i}].offset must be a finite number >= 0` });
+      }
+      if (typeof seg.duration !== 'number' || !Number.isFinite(seg.duration) || seg.duration < 0) {
+        return res.status(400).json({ error: `segments[${i}].duration must be a finite number >= 0` });
+      }
+    }
+
+    // Normalize
+    const normalized = segments.map((seg) => ({
+      text: seg.text.trim(),
+      offset: Math.round(seg.offset),
+      duration: Math.round(seg.duration),
+    }));
+
+    await markReady(pool, video.id, normalized, 'client_upload', video.transcript_attempts || 1, video.language);
+    await clearTranscriptDedupe(redisClient, video.id, video.language);
+
+    const updated = await fetchVideoById(id);
+    res.json(attachTranscriptError(updated));
+  } catch (err) {
+    console.error('PUT /api/videos/:id/transcript failed:', err);
+    res.status(500).json({ error: 'Failed to upload transcript' });
   }
 });
 
