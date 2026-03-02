@@ -656,8 +656,24 @@ export interface TrendingVideo {
   published_at: string;
 }
 
+/** Detect the user's country code from their browser locale (e.g. "en-US" → "US"). */
+function detectUserRegion(): string {
+  try {
+    const locale = Intl.DateTimeFormat().resolvedOptions().locale;
+    const parts = locale.split('-');
+    if (parts.length >= 2) {
+      const region = parts[parts.length - 1].toUpperCase();
+      if (region.length === 2) return region;
+    }
+  } catch { /* ignore */ }
+  return '';
+}
+
 export function getTrendingVideos(lang: string) {
-  return request<TrendingVideo[]>(`/videos/trending?lang=${encodeURIComponent(lang)}`);
+  const region = detectUserRegion();
+  const params = new URLSearchParams({ lang });
+  if (region) params.set('userRegion', region);
+  return request<TrendingVideo[]>(`/videos/trending?${params}`);
 }
 
 export function retryVideoTranscript(id: string) {

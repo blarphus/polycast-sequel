@@ -205,60 +205,27 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
 });
 
 /**
- * Check which video IDs are age-restricted using YouTube's innertube API.
- * Returns a Set of video IDs that are age-restricted (LOGIN_REQUIRED).
- */
-async function getAgeRestrictedIds(videoIds) {
-  const results = await Promise.allSettled(
-    videoIds.map(async (id) => {
-      const res = await fetch('https://www.youtube.com/youtubei/v1/player', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoId: id,
-          context: {
-            client: { clientName: 'WEB', clientVersion: '2.20240101.00.00' },
-          },
-        }),
-      });
-      const data = await res.json();
-      return { id, status: data.playabilityStatus?.status };
-    }),
-  );
-  const restricted = new Set();
-  for (const r of results) {
-    if (r.status === 'fulfilled' && r.value.status === 'LOGIN_REQUIRED') {
-      restricted.add(r.value.id);
-    }
-  }
-  // If innertube flags most videos as restricted, the check is unreliable
-  // (datacenter IP getting blanket LOGIN_REQUIRED) — skip filtering entirely
-  if (restricted.size > 0 && restricted.size >= videoIds.length * 0.5) {
-    console.warn(`Age-restriction check unreliable: ${restricted.size}/${videoIds.length} flagged — skipping`);
-    return new Set();
-  }
-  return restricted;
-}
-
-/**
  * Filter YouTube items to captioned, non-region-restricted, non-age-restricted,
  * then map to the normalized trending response shape.
+ *
+ * Both checks use fields already present in the YouTube Data API response
+ * (contentDetails.regionRestriction + contentDetails.contentRating.ytRating),
+ * so no extra API calls are needed.
+ *
+ * @param {Array} items - YouTube Data API video items
+ * @param {string} userRegion - the user's actual country code for geo-restriction checks
  */
-async function filterAndMapTrendingItems(items, regionCode) {
-  const captioned = (items || [])
+function filterAndMapTrendingItems(items, userRegion) {
+  return (items || [])
     .filter((item) => item.contentDetails.caption === 'true')
     .filter((item) => {
       const rr = item.contentDetails.regionRestriction;
       if (!rr) return true;
-      if (rr.allowed) return rr.allowed.includes(regionCode);
-      if (rr.blocked) return !rr.blocked.includes(regionCode);
+      if (rr.allowed) return rr.allowed.includes(userRegion);
+      if (rr.blocked) return !rr.blocked.includes(userRegion);
       return true;
-    });
-
-  const restricted = await getAgeRestrictedIds(captioned.map((i) => i.id));
-
-  return captioned
-    .filter((item) => !restricted.has(item.id))
+    })
+    .filter((item) => item.contentDetails.contentRating?.ytRating !== 'ytAgeRestricted')
     .map((item) => ({
       youtube_id: item.id,
       title: item.snippet.title,
@@ -275,7 +242,7 @@ async function filterAndMapTrendingItems(items, regionCode) {
  * Step 1: playlistItems.list to get video IDs (1 quota unit)
  * Step 2: videos.list for details + caption filtering (1 quota unit)
  */
-async function fetchMoviesAndTV(apiKey, regionCode) {
+async function fetchMoviesAndTV(apiKey, userRegion) {
   const plUrl =
     `https://www.googleapis.com/youtube/v3/playlistItems` +
     `?part=contentDetails&playlistId=${MOVIES_TV_UPLOADS_PLAYLIST}` +
@@ -310,7 +277,7 @@ async function fetchMoviesAndTV(apiKey, regionCode) {
   }
 
   const detailData = await detailRes.json();
-  return filterAndMapTrendingItems(detailData.items, regionCode);
+  return filterAndMapTrendingItems(detailData.items, userRegion);
 }
 
 /**
@@ -322,9 +289,11 @@ async function fetchMoviesAndTV(apiKey, regionCode) {
 router.get('/api/videos/trending', authMiddleware, async (req, res) => {
   try {
     const lang = (req.query.lang || 'en').toString().toLowerCase();
-    const regionCode = LANG_TO_REGION[lang] || 'US';
+    const trendingRegion = LANG_TO_REGION[lang] || 'US';
+    // userRegion = the user's actual country (for filtering geo-restricted content)
+    const userRegion = (req.query.userRegion || trendingRegion).toString().toUpperCase();
     const isEnglish = lang === 'en';
-    const cacheKey = isEnglish ? 'trending:en:movies' : `trending:${lang}`;
+    const cacheKey = isEnglish ? `trending:en:movies:${userRegion}` : `trending:${lang}:${userRegion}`;
 
     // Try Redis cache first
     let cached = null;
@@ -350,12 +319,12 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
     let items;
 
     if (isEnglish) {
-      items = await fetchMoviesAndTV(apiKey, 'US');
+      items = await fetchMoviesAndTV(apiKey, userRegion);
     } else {
       const ytUrl =
         `https://www.googleapis.com/youtube/v3/videos` +
         `?part=snippet,contentDetails&chart=mostPopular` +
-        `&regionCode=${regionCode}&maxResults=50&key=${apiKey}`;
+        `&regionCode=${trendingRegion}&maxResults=50&key=${apiKey}`;
 
       const ytRes = await fetch(ytUrl);
       if (!ytRes.ok) {
@@ -365,7 +334,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
       }
 
       const ytData = await ytRes.json();
-      items = await filterAndMapTrendingItems(ytData.items, regionCode);
+      items = filterAndMapTrendingItems(ytData.items, userRegion);
     }
 
     // Cache in Redis for 6 hours (skip empty results to avoid poisoning cache)
