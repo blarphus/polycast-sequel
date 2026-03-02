@@ -3,6 +3,7 @@ import pool from '../db.js';
 import redisClient from '../redis.js';
 import { authMiddleware } from '../auth.js';
 import { enqueueTranscriptJob } from '../services/videoTranscriptQueue.js';
+import { fetchYouTubeTranscript } from '../services/videoTranscriptFetcher.js';
 
 const router = Router();
 
@@ -398,6 +399,58 @@ router.post('/api/videos/:id/transcript/retry', authMiddleware, async (req, res)
   } catch (err) {
     console.error('POST /api/videos/:id/transcript/retry failed:', err);
     res.status(500).json({ error: 'Failed to retry transcript extraction' });
+  }
+});
+
+/**
+ * GET /api/videos/debug-transcript/:youtubeId
+ * Diagnostic endpoint — runs transcript fetch directly and returns detailed results.
+ */
+router.get('/api/videos/debug-transcript/:youtubeId', authMiddleware, async (req, res) => {
+  const { youtubeId } = req.params;
+  const lang = req.query.lang || 'en';
+  const start = Date.now();
+
+  // Also test raw YouTube connectivity
+  const diagnostics = {};
+  try {
+    const homeRes = await fetch('https://www.youtube.com/', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' },
+    });
+    const homeHtml = await homeRes.text();
+    const visitorMatch = homeHtml.match(/"VISITOR_DATA":"([^"]+)"/);
+    const cookies = homeRes.headers.getSetCookie?.();
+    diagnostics.youtubeHome = {
+      status: homeRes.status,
+      htmlLength: homeHtml.length,
+      hasVisitorData: Boolean(visitorMatch),
+      cookieCount: cookies?.length || 0,
+      getSetCookieExists: typeof homeRes.headers.getSetCookie === 'function',
+    };
+  } catch (err) {
+    diagnostics.youtubeHome = { error: err.message };
+  }
+
+  try {
+    const result = await fetchYouTubeTranscript(youtubeId, lang);
+    res.json({
+      success: true,
+      source: result.source,
+      segments: result.segments.length,
+      elapsed: Date.now() - start,
+      diagnostics,
+      nodeVersion: process.version,
+    });
+  } catch (err) {
+    res.json({
+      success: false,
+      code: err.code,
+      message: err.message,
+      transient: err.transient,
+      elapsed: Date.now() - start,
+      diagnostics,
+      nodeVersion: process.version,
+    });
   }
 });
 
