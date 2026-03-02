@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Polycast — YouTube & Netflix Word Saver",
-  "version": "1.0.0",
-  "description": "Click words in YouTube and Netflix subtitles to look them up and save to your Polycast dictionary.",
+  "name": "Polycast — Video Subtitle Word Saver",
+  "version": "1.1.0",
+  "description": "Click words in video subtitles to look them up and save to your Polycast dictionary. Works on YouTube, Netflix, and any site with a video player.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -30,6 +30,14 @@
       "js": ["content/shared.js", "content/netflix.js"],
       "css": ["overlay.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "exclude_matches": ["*://*.youtube.com/*", "https://*.netflix.com/*"],
+      "js": ["content/shared.js", "content/generic.js"],
+      "css": ["overlay.css"],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
   "action": {
