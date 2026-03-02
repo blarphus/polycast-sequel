@@ -510,13 +510,94 @@ router.get('/api/videos/debug-transcript/:youtubeId', authMiddleware, async (req
     results.sessionedIOS = { error: err.message };
   }
 
-  // Test 4: Full fetchYouTubeTranscript (all methods racing)
+  // Test 4: Watch page — extract player data and try timedtext with cookies
   try {
     const t = Date.now();
-    const result = await fetchYouTubeTranscript(youtubeId, lang);
-    results.fullFetch = { success: true, source: result.source, segments: result.segments.length, elapsed: Date.now() - t };
+    const watchRes = await fetch(`https://www.youtube.com/watch?v=${youtubeId}`, {
+      headers: {
+        'User-Agent': UA,
+        'Accept': 'text/html',
+        'Accept-Language': `${lang},en;q=0.9`,
+      },
+    });
+    const watchHtml = await watchRes.text();
+    const watchCookies = (watchRes.headers.getSetCookie?.() || []).map(c => c.split(';')[0]).join('; ');
+    const marker = 'var ytInitialPlayerResponse = ';
+    const startIdx = watchHtml.indexOf(marker);
+
+    const wpResult = { status: watchRes.status, htmlLength: watchHtml.length, elapsed: Date.now() - t };
+
+    if (startIdx !== -1) {
+      let depth = 0, end = -1;
+      for (let i = startIdx + marker.length; i < watchHtml.length; i++) {
+        if (watchHtml[i] === '{') depth++;
+        else if (watchHtml[i] === '}') { depth--; if (depth === 0) { end = i + 1; break; } }
+      }
+      const wpData = JSON.parse(watchHtml.slice(startIdx + marker.length, end));
+      const wpTracks = wpData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      const wpPlay = wpData?.playabilityStatus;
+      wpResult.playability = wpPlay ? `${wpPlay.status}: ${wpPlay.reason || 'ok'}` : 'none';
+      wpResult.trackCount = wpTracks?.length || 0;
+
+      if (wpTracks && wpTracks.length > 0) {
+        const track = wpTracks.find(tr => tr.languageCode === lang) || wpTracks[0];
+        // Test timedtext with session cookies
+        const ttUrl = track.baseUrl.replace(/&fmt=[^&]*/, '') + '&fmt=json3';
+        const ttRes = await fetch(ttUrl, {
+          headers: { 'User-Agent': UA, 'Cookie': watchCookies },
+        });
+        const ttBody = await ttRes.text();
+        wpResult.timedtext = { status: ttRes.status, bodyLength: ttBody.length };
+
+        // Also try XML format without cookies
+        const xmlUrl = track.baseUrl.replace(/&fmt=[^&]*/, '');
+        const xmlRes = await fetch(xmlUrl, { headers: { 'User-Agent': UA } });
+        const xmlBody = await xmlRes.text();
+        wpResult.timedtextXml = { status: xmlRes.status, bodyLength: xmlBody.length, preview: xmlBody.slice(0, 100) };
+      }
+    } else {
+      wpResult.error = 'No ytInitialPlayerResponse found';
+    }
+    results.watchPage = wpResult;
   } catch (err) {
-    results.fullFetch = { success: false, code: err.code, message: err.message, transient: err.transient };
+    results.watchPage = { error: err.message };
+  }
+
+  // Test 5: IOS with mobile User-Agent
+  try {
+    const IOS_UA = 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)';
+    const t = Date.now();
+    const r = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': IOS_UA,
+        ...(sessionCookies ? { 'Cookie': sessionCookies } : {}),
+      },
+      body: JSON.stringify({
+        context: {
+          client: {
+            clientName: 'IOS',
+            clientVersion: '20.10.4',
+            ...(visitorData ? { visitorData } : {}),
+          },
+        },
+        videoId: youtubeId,
+      }),
+    });
+    const body = await r.text();
+    let parsed = null;
+    try { parsed = JSON.parse(body); } catch {}
+    const tracks = parsed?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    const playability = parsed?.playabilityStatus;
+    results.iosMobileUA = {
+      status: r.status,
+      elapsed: Date.now() - t,
+      playability: playability ? `${playability.status}: ${playability.reason || 'ok'}` : 'none',
+      trackCount: tracks?.length || 0,
+    };
+  } catch (err) {
+    results.iosMobileUA = { error: err.message };
   }
 
   res.json(results);
