@@ -235,6 +235,36 @@ async function getAgeRestrictedIds(videoIds) {
 }
 
 /**
+ * Filter YouTube items to captioned, non-region-restricted, non-age-restricted,
+ * then map to the normalized trending response shape.
+ */
+async function filterAndMapTrendingItems(items, regionCode) {
+  const captioned = (items || [])
+    .filter((item) => item.contentDetails.caption === 'true')
+    .filter((item) => {
+      const rr = item.contentDetails.regionRestriction;
+      if (!rr) return true;
+      if (rr.allowed) return rr.allowed.includes(regionCode);
+      if (rr.blocked) return !rr.blocked.includes(regionCode);
+      return true;
+    });
+
+  const restricted = await getAgeRestrictedIds(captioned.map((i) => i.id));
+
+  return captioned
+    .filter((item) => !restricted.has(item.id))
+    .map((item) => ({
+      youtube_id: item.id,
+      title: item.snippet.title,
+      channel: item.snippet.channelTitle,
+      thumbnail: item.snippet.thumbnails?.medium?.url ||
+                 `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`,
+      duration_seconds: parseDuration(item.contentDetails.duration),
+      published_at: item.snippet.publishedAt,
+    }));
+}
+
+/**
  * Fetch free movies & TV from YouTube's dedicated channel (English only).
  * Step 1: playlistItems.list to get video IDs (1 quota unit)
  * Step 2: videos.list for details + caption filtering (1 quota unit)
@@ -274,29 +304,7 @@ async function fetchMoviesAndTV(apiKey, regionCode) {
   }
 
   const detailData = await detailRes.json();
-  const captioned = (detailData.items || [])
-    .filter((item) => item.contentDetails.caption === 'true')
-    .filter((item) => {
-      const rr = item.contentDetails.regionRestriction;
-      if (!rr) return true;
-      if (rr.allowed) return rr.allowed.includes(regionCode);
-      if (rr.blocked) return !rr.blocked.includes(regionCode);
-      return true;
-    });
-
-  const restricted = await getAgeRestrictedIds(captioned.map((i) => i.id));
-
-  return captioned
-    .filter((item) => !restricted.has(item.id))
-    .map((item) => ({
-      youtube_id: item.id,
-      title: item.snippet.title,
-      channel: item.snippet.channelTitle,
-      thumbnail: item.snippet.thumbnails?.medium?.url ||
-                 `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`,
-      duration_seconds: parseDuration(item.contentDetails.duration),
-      published_at: item.snippet.publishedAt,
-    }));
+  return filterAndMapTrendingItems(detailData.items, regionCode);
 }
 
 /**
@@ -351,29 +359,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
       }
 
       const ytData = await ytRes.json();
-      const captioned = (ytData.items || [])
-        .filter((item) => item.contentDetails.caption === 'true')
-        .filter((item) => {
-          const rr = item.contentDetails.regionRestriction;
-          if (!rr) return true;
-          if (rr.allowed) return rr.allowed.includes(regionCode);
-          if (rr.blocked) return !rr.blocked.includes(regionCode);
-          return true;
-        });
-
-      const restricted = await getAgeRestrictedIds(captioned.map((i) => i.id));
-
-      items = captioned
-        .filter((item) => !restricted.has(item.id))
-        .map((item) => ({
-          youtube_id: item.id,
-          title: item.snippet.title,
-          channel: item.snippet.channelTitle,
-          thumbnail: item.snippet.thumbnails?.medium?.url ||
-                     `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`,
-          duration_seconds: parseDuration(item.contentDetails.duration),
-          published_at: item.snippet.publishedAt,
-        }));
+      items = await filterAndMapTrendingItems(ytData.items, regionCode);
     }
 
     // Cache in Redis for 6 hours

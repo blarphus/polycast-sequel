@@ -102,27 +102,6 @@ function mapTranscriptPlusError(err) {
   return new TranscriptFetchError(err?.message || 'Transcript fetch temporarily failed.', 'TRANSIENT_FETCH_ERROR', true);
 }
 
-function parseTranscriptXml(xml) {
-  const segments = [];
-  const regex = /<text start="([^"]*)" dur="([^"]*)">([^<]*)<\/text>/g;
-  let match;
-  while ((match = regex.exec(xml)) !== null) {
-    const text = decodeEntities(match[3]).replace(/\s+/g, ' ').trim();
-    if (!text) continue;
-
-    const offsetSeconds = Number(match[1]);
-    const durationSeconds = Number(match[2]);
-    if (!Number.isFinite(offsetSeconds) || !Number.isFinite(durationSeconds)) continue;
-
-    segments.push({
-      text,
-      offset: Math.max(0, Math.round(offsetSeconds * 1000)),
-      duration: Math.max(0, Math.round(durationSeconds * 1000)),
-    });
-  }
-  return segments;
-}
-
 function parseTranscriptJson3(json3) {
   const segments = [];
   for (const event of json3?.events || []) {

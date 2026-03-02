@@ -202,6 +202,59 @@ export async function fetchWiktTranslations(word, nativeLang) {
   return Array.from(sensesMap.values());
 }
 
+// Shared field descriptions used by all enrichment prompts
+const FIELD_TRANSLATION = (nativeLang) =>
+  `- TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.`;
+const FIELD_FREQUENCY = `- FREQUENCY: An integer 1-10 rating how common this word is for a language learner:
+  1-2: Rare/specialized words most learners won't encounter
+  3-4: Uncommon words that appear in specific contexts
+  5-6: Moderately common words useful for intermediate learners
+  7-8: Common everyday words important for conversation
+  9-10: Essential high-frequency words (top 500 most used)`;
+const FIELD_EXAMPLE = (targetLang) =>
+  `- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.`;
+const FIELD_IMAGE_TERM = `- IMAGE_TERM: An English search term for finding a photo of this word. Return an empty string if the word itself is already a clear, concrete, unambiguous noun that would return good image results (e.g. "cat", "bridge", "apple" → empty string). Only provide a custom term when: (1) the word has multiple common meanings and the image search might return the wrong one (e.g. "bat" in a sports unit → "baseball bat"), (2) the word is abstract/unlikely to have good photo results (e.g. "freedom" → "open bird cage"), or (3) the word is a verb/adjective that needs a visual representation (e.g. "fragile" → "cracked glass"). Keep it 1-4 words.`;
+const FIELD_LEMMA = `- LEMMA: The dictionary/base form of this word in the target language.
+  For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
+  For nouns: the singular (e.g. "cat" not "cats").
+  For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
+  If the word is already its base form, return it unchanged. Leave empty for
+  particles, prepositions, conjunctions, and other uninflected words.`;
+const FIELD_FORMS = `- FORMS: Comma-separated list of all inflected forms of the LEMMA.
+  Verbs: all conjugations (e.g. "run, runs, ran, running").
+  Nouns: singular and plural (e.g. "cat, cats").
+  Adjectives/adverbs: all degrees (e.g. "big, bigger, biggest").
+  Leave empty for particles, prepositions, conjunctions, and other uninflected words.`;
+
+/**
+ * Build a Gemini enrichment prompt from shared + path-specific parts.
+ *
+ * @param {object} opts
+ * @param {string} opts.word
+ * @param {string} opts.sentence
+ * @param {string} opts.nativeLang
+ * @param {string|null} opts.targetLang
+ * @param {string} opts.fieldNames - e.g. "TRANSLATION // FREQUENCY // ..."
+ * @param {string} opts.extraFieldDescs - path-specific field description lines
+ * @param {string} opts.contextLine - extra context after the header (e.g. definition for Path C)
+ * @param {string} opts.senseListBlock - sense list block for Path A (empty for others)
+ */
+function buildEnrichPrompt({ word, sentence, nativeLang, targetLang, fieldNames, extraFieldDescs, contextLine, senseListBlock }) {
+  return `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
+${targetLang ? `The sentence is in ${targetLang}.` : ''}
+The user's native language is ${nativeLang}.
+${contextLine}${senseListBlock}
+Respond in EXACTLY this format (${fieldNames.split('//').length} parts separated by " // "):
+${fieldNames}
+
+${FIELD_TRANSLATION(nativeLang)}
+${extraFieldDescs}${FIELD_FREQUENCY}
+${FIELD_EXAMPLE(targetLang)}
+${FIELD_IMAGE_TERM}
+${FIELD_LEMMA}
+${FIELD_FORMS}`;
+}
+
 /**
  * Full word enrichment: translation, definition, POS, frequency, example,
  * image_url, lemma, forms.
@@ -232,34 +285,13 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     definition = wiktSenses[senseIndex].gloss;
     part_of_speech = wiktSenses[senseIndex].pos || null;
 
-    const prompt = `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
-${targetLang ? `The sentence is in ${targetLang}.` : ''}
-The user's native language is ${nativeLang}.
-The word means: "${definition}" (${part_of_speech || 'unknown POS'}).
-
-Respond in EXACTLY this format (six parts separated by " // "):
-TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA // FORMS
-
-- TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
-- FREQUENCY: An integer 1-10 rating how common this word is for a language learner:
-  1-2: Rare/specialized words most learners won't encounter
-  3-4: Uncommon words that appear in specific contexts
-  5-6: Moderately common words useful for intermediate learners
-  7-8: Common everyday words important for conversation
-  9-10: Essential high-frequency words (top 500 most used)
-- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
-- IMAGE_TERM: An English search term for finding a photo of this word. Return an empty string if the word itself is already a clear, concrete, unambiguous noun that would return good image results (e.g. "cat", "bridge", "apple" → empty string). Only provide a custom term when: (1) the word has multiple common meanings and the image search might return the wrong one (e.g. "bat" in a sports unit → "baseball bat"), (2) the word is abstract/unlikely to have good photo results (e.g. "freedom" → "open bird cage"), or (3) the word is a verb/adjective that needs a visual representation (e.g. "fragile" → "cracked glass"). Keep it 1-4 words.
-- LEMMA: The dictionary/base form of this word in the target language.
-  For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
-  For nouns: the singular (e.g. "cat" not "cats").
-  For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
-  If the word is already its base form, return it unchanged. Leave empty for
-  particles, prepositions, conjunctions, and other uninflected words.
-- FORMS: Comma-separated list of all inflected forms of the LEMMA.
-  Verbs: all conjugations (e.g. "run, runs, ran, running").
-  Nouns: singular and plural (e.g. "cat, cats").
-  Adjectives/adverbs: all degrees (e.g. "big, bigger, biggest").
-  Leave empty for particles, prepositions, conjunctions, and other uninflected words.`;
+    const prompt = buildEnrichPrompt({
+      word, sentence, nativeLang, targetLang,
+      fieldNames: 'TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA // FORMS',
+      extraFieldDescs: '',
+      contextLine: `The word means: "${definition}" (${part_of_speech || 'unknown POS'}).`,
+      senseListBlock: '',
+    });
 
     const raw = await callGemini(prompt);
     const parts = raw.split('//').map((s) => s.trim());
@@ -284,38 +316,13 @@ TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA // FORMS
       // Path A: Wiktionary senses available — ask Gemini to pick the best one
       const senseList = wiktSenses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n');
 
-      const prompt = `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
-${targetLang ? `The sentence is in ${targetLang}.` : ''}
-The user's native language is ${nativeLang}.
-
-Here are the dictionary senses for "${word}":
-${senseList}
-
-Respond in EXACTLY this format (eight parts separated by " // "):
-TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA // FORMS
-
-- TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
-- SENSE_INDEX: The integer index (0-${wiktSenses.length - 1}) of the sense that best matches how "${word}" is used in the sentence.
-- FREQUENCY: An integer 1-10 rating how common this word is for a language learner:
-  1-2: Rare/specialized words most learners won't encounter
-  3-4: Uncommon words that appear in specific contexts
-  5-6: Moderately common words useful for intermediate learners
-  7-8: Common everyday words important for conversation
-  9-10: Essential high-frequency words (top 500 most used)
-- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
-- IMAGE_TERM: An English search term for finding a photo of this word. Return an empty string if the word itself is already a clear, concrete, unambiguous noun that would return good image results (e.g. "cat", "bridge", "apple" → empty string). Only provide a custom term when: (1) the word has multiple common meanings and the image search might return the wrong one (e.g. "bat" in a sports unit → "baseball bat"), (2) the word is abstract/unlikely to have good photo results (e.g. "freedom" → "open bird cage"), or (3) the word is a verb/adjective that needs a visual representation (e.g. "fragile" → "cracked glass"). Keep it 1-4 words.
-- FALLBACK_DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown. Only used if SENSE_INDEX is invalid.
-- LEMMA: The dictionary/base form of this word in the target language.
-  For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
-  For nouns: the singular (e.g. "cat" not "cats").
-  For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
-  If the word is already its base form, return it unchanged. Leave empty for
-  particles, prepositions, conjunctions, and other uninflected words.
-- FORMS: Comma-separated list of all inflected forms of the LEMMA.
-  Verbs: all conjugations (e.g. "run, runs, ran, running").
-  Nouns: singular and plural (e.g. "cat, cats").
-  Adjectives/adverbs: all degrees (e.g. "big, bigger, biggest").
-  Leave empty for particles, prepositions, conjunctions, and other uninflected words.`;
+      const prompt = buildEnrichPrompt({
+        word, sentence, nativeLang, targetLang,
+        fieldNames: 'TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA // FORMS',
+        extraFieldDescs: `- SENSE_INDEX: The integer index (0-${wiktSenses.length - 1}) of the sense that best matches how "${word}" is used in the sentence.\n- FALLBACK_DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown. Only used if SENSE_INDEX is invalid.\n`,
+        contextLine: '',
+        senseListBlock: `\nHere are the dictionary senses for "${word}":\n${senseList}\n`,
+      });
 
       const raw = await callGemini(prompt);
 
@@ -344,35 +351,13 @@ TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEF
       geminiFormsRaw = parts[7]?.trim() || null;
     } else {
       // Path B: No Wiktionary senses — full Gemini generation
-      const prompt = `You are a language-learning assistant. A user clicked the word "${word}" in: "${sentence}".
-${targetLang ? `The sentence is in ${targetLang}.` : ''}
-The user's native language is ${nativeLang}.
-
-Respond in EXACTLY this format (eight parts separated by " // "):
-TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA // FORMS
-
-- TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.
-- DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.
-- PART_OF_SPEECH: One of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle. Lowercase English.
-- FREQUENCY: An integer 1-10 rating how common this word is for a language learner:
-  1-2: Rare/specialized words most learners won't encounter
-  3-4: Uncommon words that appear in specific contexts
-  5-6: Moderately common words useful for intermediate learners
-  7-8: Common everyday words important for conversation
-  9-10: Essential high-frequency words (top 500 most used)
-- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.
-- IMAGE_TERM: An English search term for finding a photo of this word. Return an empty string if the word itself is already a clear, concrete, unambiguous noun that would return good image results (e.g. "cat", "bridge", "apple" → empty string). Only provide a custom term when: (1) the word has multiple common meanings and the image search might return the wrong one (e.g. "bat" in a sports unit → "baseball bat"), (2) the word is abstract/unlikely to have good photo results (e.g. "freedom" → "open bird cage"), or (3) the word is a verb/adjective that needs a visual representation (e.g. "fragile" → "cracked glass"). Keep it 1-4 words.
-- LEMMA: The dictionary/base form of this word in the target language.
-  For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
-  For nouns: the singular (e.g. "cat" not "cats").
-  For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
-  If the word is already its base form, return it unchanged. Leave empty for
-  particles, prepositions, conjunctions, and other uninflected words.
-- FORMS: Comma-separated list of all inflected forms of the LEMMA.
-  Verbs: all conjugations (e.g. "run, runs, ran, running").
-  Nouns: singular and plural (e.g. "cat, cats").
-  Adjectives/adverbs: all degrees (e.g. "big, bigger, biggest").
-  Leave empty for particles, prepositions, conjunctions, and other uninflected words.`;
+      const prompt = buildEnrichPrompt({
+        word, sentence, nativeLang, targetLang,
+        fieldNames: 'TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA // FORMS',
+        extraFieldDescs: `- DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.\n- PART_OF_SPEECH: One of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle. Lowercase English.\n`,
+        contextLine: '',
+        senseListBlock: '',
+      });
 
       const raw = await callGemini(prompt);
 

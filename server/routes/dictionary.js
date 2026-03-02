@@ -31,26 +31,28 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
       }
     }
 
-    let prompt;
+    const hasSenses = wiktSenses.length > 0;
+    const senseBlock = hasSenses
+      ? `\nHere are the dictionary senses for "${word}":\n${wiktSenses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n')}\n`
+      : '';
+    const jsonKeys = hasSenses
+      ? `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","sense_index":N,"lemma":"..."}`
+      : `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","lemma":"..."}`;
+    const senseIndexDesc = hasSenses
+      ? `\n- "sense_index": the integer index (0-${wiktSenses.length - 1}) of the sense above that best matches how "${word}" is used in the sentence. Use -1 if none match.`
+      : '';
 
-    if (wiktSenses.length > 0) {
-      const senseList = wiktSenses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n');
-
-      prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". Use the surrounding sentence to determine the correct sense: "${sentence}". The user's native language is ${nativeLang}.
+    const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". Use the surrounding sentence to determine the correct sense: "${sentence}". The user's native language is ${nativeLang}.
 
 If this word is not a recognized word in ${targetLang || 'the target language'}, set valid to false and leave other fields empty.
-
-Here are the dictionary senses for "${word}":
-${senseList}
-
+${senseBlock}
 Return a JSON object with exactly these keys:
-{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","sense_index":N,"lemma":"..."}
+${jsonKeys}
 
 - "valid": true if this is a real word in ${targetLang || 'the target language'}, false otherwise (numbers, gibberish, fragments, etc.)
 - "translation": the standard ${nativeLang} translation of "${word}" in this sense — give the general-purpose dictionary translation, not a sentence-specific paraphrase, 1-3 words max
 - "definition": what this word means in ${nativeLang}, 12 words max, no markdown — define the word itself, not its role in the sentence
-- "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
-- "sense_index": the integer index (0-${wiktSenses.length - 1}) of the sense above that best matches how "${word}" is used in the sentence. Use -1 if none match.
+- "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle${senseIndexDesc}
 - "lemma": The dictionary/base form of this word in the target language.
   For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
   For nouns: the singular form (e.g. "cat" not "cats").
@@ -58,26 +60,6 @@ Return a JSON object with exactly these keys:
   If the word is already in its base form, return it unchanged.
 
 Respond with ONLY the JSON object, no other text.`;
-    } else {
-      prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". Use the surrounding sentence to determine the correct sense: "${sentence}". The user's native language is ${nativeLang}.
-
-If this word is not a recognized word in ${targetLang || 'the target language'}, set valid to false and leave other fields empty.
-
-Return a JSON object with exactly these keys:
-{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","lemma":"..."}
-
-- "valid": true if this is a real word in ${targetLang || 'the target language'}, false otherwise (numbers, gibberish, fragments, etc.)
-- "translation": the standard ${nativeLang} translation of "${word}" in this sense — give the general-purpose dictionary translation, not a sentence-specific paraphrase, 1-3 words max
-- "definition": what this word means in ${nativeLang}, 12 words max, no markdown — define the word itself, not its role in the sentence
-- "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
-- "lemma": The dictionary/base form of this word in the target language.
-  For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
-  For nouns: the singular form (e.g. "cat" not "cats").
-  For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
-  If the word is already in its base form, return it unchanged.
-
-Respond with ONLY the JSON object, no other text.`;
-    }
 
     const raw = await callGemini(prompt, {
       thinkingConfig: { thinkingBudget: 0 },
