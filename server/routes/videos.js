@@ -4,6 +4,7 @@ import redisClient from '../redis.js';
 import { authMiddleware } from '../auth.js';
 import { enqueueTranscriptJob } from '../services/videoTranscriptQueue.js';
 import { fetchYouTubeTranscript } from '../services/videoTranscriptFetcher.js';
+import { Innertube } from 'youtubei.js';
 
 const router = Router();
 
@@ -563,23 +564,32 @@ router.get('/api/videos/debug-transcript/:youtubeId', authMiddleware, async (req
     results.watchPage = { error: err.message };
   }
 
-  // Test 5: IOS with mobile User-Agent
+  // Test 5: youtubei.js session + manual IOS API
   try {
-    const IOS_UA = 'com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)';
     const t = Date.now();
-    const r = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${API_KEY}`, {
+    const yt = await Innertube.create();
+    const ytVisitorData = yt.session?.context?.client?.visitorData || '';
+    const ytApiKey = yt.session?.api_key || API_KEY;
+    results.youtubeijsSession = {
+      hasVisitorData: Boolean(ytVisitorData),
+      elapsed: Date.now() - t,
+    };
+
+    const t2 = Date.now();
+    const r = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${ytApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': IOS_UA,
-        ...(sessionCookies ? { 'Cookie': sessionCookies } : {}),
+        'User-Agent': UA,
+        'Origin': 'https://www.youtube.com',
+        'Referer': 'https://www.youtube.com/',
       },
       body: JSON.stringify({
         context: {
           client: {
             clientName: 'IOS',
             clientVersion: '20.10.4',
-            ...(visitorData ? { visitorData } : {}),
+            visitorData: ytVisitorData,
           },
         },
         videoId: youtubeId,
@@ -590,14 +600,22 @@ router.get('/api/videos/debug-transcript/:youtubeId', authMiddleware, async (req
     try { parsed = JSON.parse(body); } catch {}
     const tracks = parsed?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
     const playability = parsed?.playabilityStatus;
-    results.iosMobileUA = {
+    results.youtubeijsIOS = {
       status: r.status,
-      elapsed: Date.now() - t,
+      elapsed: Date.now() - t2,
       playability: playability ? `${playability.status}: ${playability.reason || 'ok'}` : 'none',
       trackCount: tracks?.length || 0,
     };
+
+    if (tracks && tracks.length > 0) {
+      const track = tracks.find(tr => tr.languageCode === lang) || tracks[0];
+      const ttUrl = track.baseUrl.replace(/&fmt=[^&]*/, '') + '&fmt=json3';
+      const ttRes = await fetch(ttUrl, { headers: { 'User-Agent': UA } });
+      const ttBody = await ttRes.text();
+      results.youtubeijsTimedtext = { status: ttRes.status, bodyLength: ttBody.length };
+    }
   } catch (err) {
-    results.iosMobileUA = { error: err.message };
+    results.youtubeijsIOS = { error: err.message };
   }
 
   res.json(results);
