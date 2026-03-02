@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // generic.js — Subtitle detection for any video player (JWPlayer, Video.js,
-// Plyr, MediaElement.js, Flowplayer, Dailymotion, Vidstack, and heuristic)
+// Plyr, MediaElement.js, Flowplayer, Dailymotion, Vidstack, and TextTrack API)
 // ---------------------------------------------------------------------------
 
 (function initGeneric() {
@@ -16,16 +16,12 @@
     '.fp-subtitle',              // Flowplayer
     '.dmp_SubtitleText',         // Dailymotion
     '[data-media-captions]',     // Vidstack
+    '.shaka-text-container',     // Shaka Player
   ];
-
-  // Elements that are never subtitles
-  const IGNORE_TAGS = new Set([
-    'INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A', 'NAV',
-    'SCRIPT', 'STYLE', 'NOSCRIPT', 'SVG', 'CANVAS', 'VIDEO', 'AUDIO',
-  ]);
 
   let subtitleObserver = null;
   let removalObserver = null;
+  let processing = false;
 
   // --- Phase 1: Video detection ---------------------------------------------
 
@@ -70,18 +66,22 @@
     return largest;
   }
 
-  // --- Phase 2: Subtitle container discovery --------------------------------
+  // --- Phase 2: Subtitle source discovery -----------------------------------
 
   function phase2() {
-    // Strategy A: check known selectors
+    // Strategy A: Known CSS selectors
     const known = findKnownContainer();
     if (known) {
       phase3(known);
       return;
     }
 
-    // Strategy B: heuristic detection
-    heuristicDetection();
+    // Strategy B: TextTrack API (renders our own overlay from track cues)
+    const video = findLargestVideo();
+    if (video && tryTextTracks(video)) return;
+
+    // Strategy C: Wait for selectors or text tracks to appear
+    waitForSubtitles();
   }
 
   function findKnownContainer() {
@@ -92,108 +92,164 @@
     return null;
   }
 
-  function heuristicDetection() {
-    const video = findLargestVideo();
-    if (!video) return;
+  // --- Strategy B: TextTrack API --------------------------------------------
 
-    // Walk up to find the player container (first positioned ancestor)
-    let container = video.parentElement;
-    for (let i = 0; i < 5 && container && container !== document.body; i++) {
-      const pos = getComputedStyle(container).position;
-      if (pos === 'relative' || pos === 'absolute' || pos === 'fixed') break;
-      container = container.parentElement;
-    }
-    if (!container || container === document.body) {
-      container = video.parentElement;
-    }
+  function tryTextTracks(video) {
+    const tracks = video.textTracks;
+    if (!tracks || tracks.length === 0) return false;
 
-    // Track text-change counts per element to identify subtitle containers
-    const changeCounts = new WeakMap();
-    const timeout = setTimeout(() => {
-      heuristicWatcher.disconnect();
-    }, DETECTION_TIMEOUT);
+    for (const track of tracks) {
+      if (
+        (track.kind === 'subtitles' || track.kind === 'captions') &&
+        track.mode !== 'disabled'
+      ) {
+        // Verify we can access cues (cross-origin tracks block access)
+        try {
+          if (track.cues === null) continue;
+        } catch {
+          continue;
+        }
 
-    // Periodically re-check known selectors (some players add them lazily)
-    const selectorCheck = setInterval(() => {
-      const known = findKnownContainer();
-      if (known) {
-        clearInterval(selectorCheck);
-        clearTimeout(timeout);
-        heuristicWatcher.disconnect();
-        phase3(known);
+        setupCueOverlay(video, track);
+        return true;
       }
-    }, 2000);
+    }
+    return false;
+  }
 
-    const heuristicWatcher = new MutationObserver((mutations) => {
-      // Check known selectors on each batch of mutations
+  function setupCueOverlay(video, track) {
+    // Create overlay positioned over the video
+    const overlay = document.createElement('div');
+    overlay.className = 'pc-cue-overlay';
+    overlay.style.cssText = [
+      'position:absolute',
+      'bottom:10%',
+      'left:50%',
+      'transform:translateX(-50%)',
+      'text-align:center',
+      'pointer-events:auto',
+      'z-index:999999',
+      'max-width:80%',
+      'color:white',
+      'font-size:clamp(16px, 2.5vw, 28px)',
+      'text-shadow:0 0 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)',
+      'line-height:1.4',
+    ].join(';');
+
+    let wrapper = video.parentElement;
+    if (!wrapper) return;
+    if (getComputedStyle(wrapper).position === 'static') {
+      wrapper.style.position = 'relative';
+    }
+    wrapper.appendChild(overlay);
+
+    // Hide native subtitle rendering to prevent double display
+    track.mode = 'hidden';
+
+    function renderCues() {
+      overlay.textContent = '';
+      const cues = track.activeCues;
+      if (!cues || cues.length === 0) return;
+
+      for (const cue of cues) {
+        const line = document.createElement('div');
+        line.style.cssText =
+          'background:rgba(0,0,0,0.7);padding:2px 8px;margin:2px 0;display:inline-block;border-radius:3px;';
+        // VTTCue text may contain HTML-like tags — strip them
+        line.textContent = cue.text.replace(/<[^>]*>/g, '');
+        overlay.appendChild(line);
+        tokenizeElement(line);
+      }
+    }
+
+    track.addEventListener('cuechange', renderCues);
+
+    // Handle user switching subtitle tracks
+    video.textTracks.addEventListener('change', () => {
+      for (const t of video.textTracks) {
+        if (t === track) continue;
+        if (
+          (t.kind === 'subtitles' || t.kind === 'captions') &&
+          t.mode === 'showing'
+        ) {
+          // Swap to the newly-enabled track
+          track.removeEventListener('cuechange', renderCues);
+          track = t;
+          track.mode = 'hidden';
+          track.addEventListener('cuechange', renderCues);
+          renderCues();
+          return;
+        }
+      }
+    });
+
+    // Render any cues that are already active
+    renderCues();
+  }
+
+  // --- Strategy C: Wait for selectors or tracks to appear -------------------
+
+  function waitForSubtitles() {
+    const video = findLargestVideo();
+    let settled = false;
+
+    function cleanup() {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      clearInterval(poll);
+      domWatcher.disconnect();
+      if (video && video.textTracks) {
+        video.textTracks.removeEventListener('addtrack', onAddTrack);
+      }
+    }
+
+    const timeout = setTimeout(cleanup, DETECTION_TIMEOUT);
+
+    // Periodically check known selectors and text tracks
+    const poll = setInterval(() => {
       const known = findKnownContainer();
       if (known) {
-        clearInterval(selectorCheck);
-        clearTimeout(timeout);
-        heuristicWatcher.disconnect();
+        cleanup();
         phase3(known);
         return;
       }
+      if (video && tryTextTracks(video)) {
+        cleanup();
+      }
+    }, 2000);
 
-      for (const m of mutations) {
-        const targets = [];
-
-        if (m.type === 'characterData' && m.target.parentElement) {
-          targets.push(m.target.parentElement);
-        } else if (m.type === 'childList') {
-          for (const node of m.addedNodes) {
-            if (node.nodeType === 1) targets.push(node);
-          }
-          if (targets.length === 0 && m.target.nodeType === 1) {
-            targets.push(m.target);
-          }
-        }
-
-        for (const el of targets) {
-          if (IGNORE_TAGS.has(el.tagName)) continue;
-          const text = el.textContent;
-          if (!text || text.length > 300 || !text.trim()) continue;
-
-          // Walk up to find the nearest container that holds this text
-          let candidate = el;
-          while (
-            candidate.parentElement &&
-            candidate.parentElement !== container &&
-            candidate.parentElement.children.length === 1
-          ) {
-            candidate = candidate.parentElement;
-          }
-
-          const count = (changeCounts.get(candidate) || 0) + 1;
-          changeCounts.set(candidate, count);
-
-          if (count >= 2) {
-            clearInterval(selectorCheck);
-            clearTimeout(timeout);
-            heuristicWatcher.disconnect();
-            // Use the parent as the observation target for broader coverage
-            const observeTarget = candidate.parentElement || candidate;
-            phase3(observeTarget);
-            return;
-          }
-        }
+    // Watch DOM for known selector containers appearing
+    const domWatcher = new MutationObserver(() => {
+      const known = findKnownContainer();
+      if (known) {
+        cleanup();
+        phase3(known);
       }
     });
+    domWatcher.observe(document.documentElement, { childList: true, subtree: true });
 
-    heuristicWatcher.observe(container, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
+    // Listen for text tracks being added dynamically
+    function onAddTrack() {
+      if (video && tryTextTracks(video)) {
+        cleanup();
+      }
+    }
+    if (video && video.textTracks) {
+      video.textTracks.addEventListener('addtrack', onAddTrack);
+    }
   }
 
-  // --- Phase 3: Subtitle observation ----------------------------------------
+  // --- Phase 3: Subtitle observation (for known selector containers) --------
 
   function phase3(container) {
     if (subtitleObserver) subtitleObserver.disconnect();
     if (removalObserver) removalObserver.disconnect();
 
     function processSubtitles() {
+      if (processing) return;
+      processing = true;
+
       // Find leaf text elements (no child elements, has text content)
       const walker = document.createTreeWalker(
         container,
@@ -212,6 +268,8 @@
       while ((node = walker.nextNode())) {
         tokenizeElement(node);
       }
+
+      processing = false;
     }
 
     subtitleObserver = new MutationObserver(() => {
