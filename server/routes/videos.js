@@ -205,6 +205,36 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
 });
 
 /**
+ * Check which video IDs are age-restricted using YouTube's innertube API.
+ * Returns a Set of video IDs that are age-restricted (LOGIN_REQUIRED).
+ */
+async function getAgeRestrictedIds(videoIds) {
+  const results = await Promise.allSettled(
+    videoIds.map(async (id) => {
+      const res = await fetch('https://www.youtube.com/youtubei/v1/player', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoId: id,
+          context: {
+            client: { clientName: 'WEB', clientVersion: '2.20240101.00.00' },
+          },
+        }),
+      });
+      const data = await res.json();
+      return { id, status: data.playabilityStatus?.status };
+    }),
+  );
+  const restricted = new Set();
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value.status === 'LOGIN_REQUIRED') {
+      restricted.add(r.value.id);
+    }
+  }
+  return restricted;
+}
+
+/**
  * Fetch free movies & TV from YouTube's dedicated channel (English only).
  * Step 1: playlistItems.list to get video IDs (1 quota unit)
  * Step 2: videos.list for details + caption filtering (1 quota unit)
@@ -233,7 +263,7 @@ async function fetchMoviesAndTV(apiKey) {
 
   const detailUrl =
     `https://www.googleapis.com/youtube/v3/videos` +
-    `?part=snippet,contentDetails,status&id=${videoIds.join(',')}` +
+    `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
     `&key=${apiKey}`;
 
   const detailRes = await fetch(detailUrl);
@@ -244,10 +274,13 @@ async function fetchMoviesAndTV(apiKey) {
   }
 
   const detailData = await detailRes.json();
-  return (detailData.items || [])
-    .filter((item) => item.contentDetails.caption === 'true')
-    .filter((item) => item.contentDetails.contentRating?.ytRating !== 'ytAgeRestricted')
-    .filter((item) => item.status?.embeddable !== false)
+  const captioned = (detailData.items || [])
+    .filter((item) => item.contentDetails.caption === 'true');
+
+  const restricted = await getAgeRestrictedIds(captioned.map((i) => i.id));
+
+  return captioned
+    .filter((item) => !restricted.has(item.id))
     .map((item) => ({
       youtube_id: item.id,
       title: item.snippet.title,
@@ -300,7 +333,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
     } else {
       const ytUrl =
         `https://www.googleapis.com/youtube/v3/videos` +
-        `?part=snippet,contentDetails,status&chart=mostPopular` +
+        `?part=snippet,contentDetails&chart=mostPopular` +
         `&regionCode=${regionCode}&maxResults=50&key=${apiKey}`;
 
       const ytRes = await fetch(ytUrl);
@@ -311,10 +344,13 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
       }
 
       const ytData = await ytRes.json();
-      items = (ytData.items || [])
-        .filter((item) => item.contentDetails.caption === 'true')
-        .filter((item) => item.contentDetails.contentRating?.ytRating !== 'ytAgeRestricted')
-        .filter((item) => item.status?.embeddable !== false)
+      const captioned = (ytData.items || [])
+        .filter((item) => item.contentDetails.caption === 'true');
+
+      const restricted = await getAgeRestrictedIds(captioned.map((i) => i.id));
+
+      items = captioned
+        .filter((item) => !restricted.has(item.id))
         .map((item) => ({
           youtube_id: item.id,
           title: item.snippet.title,
