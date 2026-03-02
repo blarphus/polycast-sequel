@@ -49,6 +49,12 @@ async function main() {
   // ------ Redis connection ------
   try {
     await redisClient.connect();
+    // Flush stale trending cache so new filters take effect immediately
+    const trendingKeys = await redisClient.keys('trending:*');
+    if (trendingKeys.length > 0) {
+      await redisClient.del(trendingKeys);
+      console.log(`Flushed ${trendingKeys.length} trending cache key(s) on startup`);
+    }
     transcriptWorker = await startTranscriptWorker({ redisClient, pool });
     backfillCefrLevels(pool).catch((err) => console.error('[cefr-backfill] Error:', err.message));
   } catch (err) {
