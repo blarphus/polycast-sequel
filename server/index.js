@@ -72,7 +72,7 @@ async function main() {
     credentials: true,
   }));
 
-  app.use(express.json());
+  app.use(express.json({ limit: '2mb' }));
   app.use(cookieParser());
 
   // Serve client build assets
