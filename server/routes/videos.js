@@ -239,7 +239,7 @@ async function getAgeRestrictedIds(videoIds) {
  * Step 1: playlistItems.list to get video IDs (1 quota unit)
  * Step 2: videos.list for details + caption filtering (1 quota unit)
  */
-async function fetchMoviesAndTV(apiKey) {
+async function fetchMoviesAndTV(apiKey, regionCode) {
   const plUrl =
     `https://www.googleapis.com/youtube/v3/playlistItems` +
     `?part=contentDetails&playlistId=${MOVIES_TV_UPLOADS_PLAYLIST}` +
@@ -275,7 +275,14 @@ async function fetchMoviesAndTV(apiKey) {
 
   const detailData = await detailRes.json();
   const captioned = (detailData.items || [])
-    .filter((item) => item.contentDetails.caption === 'true');
+    .filter((item) => item.contentDetails.caption === 'true')
+    .filter((item) => {
+      const rr = item.contentDetails.regionRestriction;
+      if (!rr) return true;
+      if (rr.allowed) return rr.allowed.includes(regionCode);
+      if (rr.blocked) return !rr.blocked.includes(regionCode);
+      return true;
+    });
 
   const restricted = await getAgeRestrictedIds(captioned.map((i) => i.id));
 
@@ -329,7 +336,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
     let items;
 
     if (isEnglish) {
-      items = await fetchMoviesAndTV(apiKey);
+      items = await fetchMoviesAndTV(apiKey, 'US');
     } else {
       const ytUrl =
         `https://www.googleapis.com/youtube/v3/videos` +
@@ -345,7 +352,14 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
 
       const ytData = await ytRes.json();
       const captioned = (ytData.items || [])
-        .filter((item) => item.contentDetails.caption === 'true');
+        .filter((item) => item.contentDetails.caption === 'true')
+        .filter((item) => {
+          const rr = item.contentDetails.regionRestriction;
+          if (!rr) return true;
+          if (rr.allowed) return rr.allowed.includes(regionCode);
+          if (rr.blocked) return !rr.blocked.includes(regionCode);
+          return true;
+        });
 
       const restricted = await getAgeRestrictedIds(captioned.map((i) => i.id));
 
