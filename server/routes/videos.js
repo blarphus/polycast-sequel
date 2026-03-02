@@ -404,54 +404,122 @@ router.post('/api/videos/:id/transcript/retry', authMiddleware, async (req, res)
 
 /**
  * GET /api/videos/debug-transcript/:youtubeId
- * Diagnostic endpoint — runs transcript fetch directly and returns detailed results.
+ * Diagnostic endpoint — tests each method individually with detailed results.
  */
 router.get('/api/videos/debug-transcript/:youtubeId', authMiddleware, async (req, res) => {
   const { youtubeId } = req.params;
   const lang = req.query.lang || 'en';
-  const start = Date.now();
+  const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+  const API_KEY = process.env.INNERTUBE_API_KEY || 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
+  const results = { nodeVersion: process.version };
 
-  // Also test raw YouTube connectivity
-  const diagnostics = {};
+  // Test 1: YouTube homepage visit
+  let visitorData = '';
+  let sessionCookies = '';
   try {
     const homeRes = await fetch('https://www.youtube.com/', {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36' },
+      headers: { 'User-Agent': UA, 'Accept': 'text/html' },
     });
     const homeHtml = await homeRes.text();
     const visitorMatch = homeHtml.match(/"VISITOR_DATA":"([^"]+)"/);
-    const cookies = homeRes.headers.getSetCookie?.();
-    diagnostics.youtubeHome = {
+    visitorData = visitorMatch?.[1] || '';
+    sessionCookies = (homeRes.headers.getSetCookie?.() || []).map(c => c.split(';')[0]).join('; ');
+    results.homepage = {
       status: homeRes.status,
       htmlLength: homeHtml.length,
-      hasVisitorData: Boolean(visitorMatch),
-      cookieCount: cookies?.length || 0,
-      getSetCookieExists: typeof homeRes.headers.getSetCookie === 'function',
+      hasVisitorData: Boolean(visitorData),
+      cookieLength: sessionCookies.length,
     };
   } catch (err) {
-    diagnostics.youtubeHome = { error: err.message };
+    results.homepage = { error: err.message };
   }
 
+  // Test 2: Bare IOS Innertube API (no session)
   try {
-    const result = await fetchYouTubeTranscript(youtubeId, lang);
-    res.json({
-      success: true,
-      source: result.source,
-      segments: result.segments.length,
-      elapsed: Date.now() - start,
-      diagnostics,
-      nodeVersion: process.version,
+    const t = Date.now();
+    const r = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'User-Agent': UA },
+      body: JSON.stringify({
+        context: { client: { clientName: 'IOS', clientVersion: '20.10.4' } },
+        videoId: youtubeId,
+      }),
     });
+    const body = await r.text();
+    let parsed = null;
+    try { parsed = JSON.parse(body); } catch {}
+    const tracks = parsed?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    const playability = parsed?.playabilityStatus;
+    results.bareIOS = {
+      status: r.status,
+      elapsed: Date.now() - t,
+      bodyLength: body.length,
+      playability: playability ? `${playability.status}: ${playability.reason || 'no reason'}` : 'no playability',
+      trackCount: tracks?.length || 0,
+      bodyPreview: body.length < 300 ? body : undefined,
+    };
   } catch (err) {
-    res.json({
-      success: false,
-      code: err.code,
-      message: err.message,
-      transient: err.transient,
-      elapsed: Date.now() - start,
-      diagnostics,
-      nodeVersion: process.version,
-    });
+    results.bareIOS = { error: err.message };
   }
+
+  // Test 3: Sessioned IOS Innertube API (with homepage session)
+  try {
+    const t = Date.now();
+    const r = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': UA,
+        ...(sessionCookies ? { 'Cookie': sessionCookies } : {}),
+        'Origin': 'https://www.youtube.com',
+        'Referer': 'https://www.youtube.com/',
+      },
+      body: JSON.stringify({
+        context: {
+          client: {
+            clientName: 'IOS',
+            clientVersion: '20.10.4',
+            ...(visitorData ? { visitorData } : {}),
+          },
+        },
+        videoId: youtubeId,
+      }),
+    });
+    const body = await r.text();
+    let parsed = null;
+    try { parsed = JSON.parse(body); } catch {}
+    const tracks = parsed?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    const playability = parsed?.playabilityStatus;
+    results.sessionedIOS = {
+      status: r.status,
+      elapsed: Date.now() - t,
+      bodyLength: body.length,
+      playability: playability ? `${playability.status}: ${playability.reason || 'no reason'}` : 'no playability',
+      trackCount: tracks?.length || 0,
+    };
+
+    // If tracks found, try timedtext
+    if (tracks && tracks.length > 0) {
+      const track = tracks.find(tr => tr.languageCode === lang) || tracks[0];
+      const ttUrl = track.baseUrl.replace(/&fmt=[^&]*/, '') + '&fmt=json3';
+      const ttRes = await fetch(ttUrl, { headers: { 'User-Agent': UA } });
+      const ttBody = await ttRes.text();
+      results.timedtext = { status: ttRes.status, bodyLength: ttBody.length };
+    }
+  } catch (err) {
+    results.sessionedIOS = { error: err.message };
+  }
+
+  // Test 4: Full fetchYouTubeTranscript (all methods racing)
+  try {
+    const t = Date.now();
+    const result = await fetchYouTubeTranscript(youtubeId, lang);
+    results.fullFetch = { success: true, source: result.source, segments: result.segments.length, elapsed: Date.now() - t };
+  } catch (err) {
+    results.fullFetch = { success: false, code: err.code, message: err.message, transient: err.transient };
+  }
+
+  res.json(results);
 });
 
 export default router;
