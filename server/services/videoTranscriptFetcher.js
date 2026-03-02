@@ -140,6 +140,111 @@ function parseTranscriptJson3(json3) {
   return segments;
 }
 
+async function fetchViaSessionedInnertube(youtubeId, language, onProgress) {
+  // Step 1: Visit YouTube to establish a visitor session (looks like a browser)
+  let visitorData = '';
+  let sessionCookies = '';
+  try {
+    const homeRes = await fetchWithTimeout({
+      url: 'https://www.youtube.com/',
+      headers: {
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': `${language},en;q=0.9`,
+      },
+    });
+    if (homeRes.ok) {
+      const homeHtml = await homeRes.text();
+      const visitorMatch = homeHtml.match(/"VISITOR_DATA":"([^"]+)"/);
+      visitorData = visitorMatch?.[1] || '';
+      sessionCookies = (homeRes.headers.getSetCookie?.() || []).map(c => c.split(';')[0]).join('; ');
+    }
+  } catch {
+    // Session setup failed — continue without it, Innertube may still work
+  }
+
+  if (onProgress) onProgress(15);
+
+  // Step 2: Call IOS Innertube Player API with session context
+  const playerUrl = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_API_KEY}`;
+  const playerBody = JSON.stringify({
+    context: {
+      client: {
+        clientName: 'IOS',
+        clientVersion: '20.10.4',
+        ...(visitorData ? { visitorData } : {}),
+      },
+    },
+    videoId: youtubeId,
+  });
+
+  let playerData;
+  try {
+    const playerRes = await fetchWithTimeout({
+      url: playerUrl,
+      method: 'POST',
+      body: playerBody,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(sessionCookies ? { 'Cookie': sessionCookies } : {}),
+        'Origin': 'https://www.youtube.com',
+        'Referer': 'https://www.youtube.com/',
+      },
+    });
+    if (!playerRes.ok) {
+      const body = await playerRes.text().catch(() => '');
+      console.error(`[sessioned-innertube] Player API HTTP ${playerRes.status}: ${body.slice(0, 200)}`);
+      const code = playerRes.status === 429 ? 'BLOCKED_OR_RATE_LIMITED' : 'TRANSIENT_FETCH_ERROR';
+      throw new TranscriptFetchError(`Player API returned ${playerRes.status}`, code, true);
+    }
+    playerData = await playerRes.json();
+  } catch (err) {
+    if (err instanceof TranscriptFetchError) throw err;
+    if (err?.name === 'AbortError') {
+      throw new TranscriptFetchError('Player API request timed out.', 'TRANSIENT_FETCH_ERROR', true);
+    }
+    throw new TranscriptFetchError(`Player API request failed: ${err.message}`, 'TRANSIENT_FETCH_ERROR', true);
+  }
+
+  const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  if (!captionTracks || captionTracks.length === 0) {
+    const playability = playerData?.playabilityStatus;
+    console.error(`[sessioned-innertube] No caption tracks. Playability: ${playability?.status} - ${playability?.reason || 'no reason'}`);
+    throw new TranscriptFetchError('No YouTube captions available for this video.', 'NO_CAPTIONS', false);
+  }
+
+  if (onProgress) onProgress(30);
+
+  // Step 3: Find matching language track, fall back to first track
+  const track = captionTracks.find(t => t.languageCode === language) || captionTracks[0];
+  const baseUrl = track.baseUrl.replace(/&fmt=[^&]*/, '') + '&fmt=json3';
+
+  // Step 4: Fetch and parse the timedtext
+  let json3;
+  try {
+    const ttRes = await fetchWithTimeout({ url: baseUrl });
+    if (!ttRes.ok) {
+      const code = ttRes.status === 429 ? 'BLOCKED_OR_RATE_LIMITED' : 'TRANSIENT_FETCH_ERROR';
+      throw new TranscriptFetchError(`Timedtext request returned ${ttRes.status}`, code, true);
+    }
+    json3 = await ttRes.json();
+  } catch (err) {
+    if (err instanceof TranscriptFetchError) throw err;
+    if (err?.name === 'AbortError') {
+      throw new TranscriptFetchError('Timedtext request timed out.', 'TRANSIENT_FETCH_ERROR', true);
+    }
+    throw new TranscriptFetchError(`Timedtext request failed: ${err.message}`, 'TRANSIENT_FETCH_ERROR', true);
+  }
+
+  const segments = parseTranscriptJson3(json3);
+  if (segments.length === 0) {
+    throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
+  }
+
+  if (onProgress) onProgress(80);
+
+  return { segments, source: 'sessioned_innertube' };
+}
+
 async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
   // Step 1: Player API — get caption tracks
   const playerUrl = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_API_KEY}`;
@@ -157,6 +262,8 @@ async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
       headers: { 'Content-Type': 'application/json' },
     });
     if (!playerRes.ok) {
+      const body = await playerRes.text().catch(() => '');
+      console.error(`[innertube-direct] Player API HTTP ${playerRes.status}: ${body.slice(0, 200)}`);
       const code = playerRes.status === 429 ? 'BLOCKED_OR_RATE_LIMITED' : 'TRANSIENT_FETCH_ERROR';
       throw new TranscriptFetchError(`Player API returned ${playerRes.status}`, code, true);
     }
@@ -169,8 +276,10 @@ async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
     throw new TranscriptFetchError(`Player API request failed: ${err.message}`, 'TRANSIENT_FETCH_ERROR', true);
   }
 
+  const playability = playerData?.playabilityStatus;
   const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
   if (!captionTracks || captionTracks.length === 0) {
+    console.error(`[innertube-direct] No caption tracks. Playability: ${playability?.status} - ${playability?.reason || 'no reason'}`);
     throw new TranscriptFetchError('No YouTube captions available for this video.', 'NO_CAPTIONS', false);
   }
 
@@ -259,6 +368,7 @@ export async function fetchYouTubeTranscript(youtubeId, language = 'en', onProgr
 
   try {
     return await Promise.any([
+      fetchViaSessionedInnertube(youtubeId, normalizedLang, onProgress),
       fetchViaInnertubeDirect(youtubeId, normalizedLang, onProgress),
       fetchViaTranscriptPlus(youtubeId, normalizedLang, onProgress),
     ]);
