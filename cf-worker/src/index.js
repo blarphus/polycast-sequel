@@ -70,10 +70,19 @@ export default {
       return Response.json({ success: false, error: `Player API request failed: ${err.message}` }, { status: 502 });
     }
 
+    const playability = playerData?.playabilityStatus?.status;
+    // LOGIN_REQUIRED / ERROR = YouTube is blocking this request (not a caption issue)
+    if (playability === 'LOGIN_REQUIRED' || playability === 'ERROR') {
+      console.error(`[cf-worker] YouTube blocked: ${playability} - ${playerData?.playabilityStatus?.reason || 'none'}`);
+      return Response.json(
+        { success: false, error: `YouTube blocked request: ${playability}` },
+        { status: 503 },
+      );
+    }
+
     const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
     if (!captionTracks || captionTracks.length === 0) {
-      const status = playerData?.playabilityStatus;
-      console.error(`[cf-worker] No captions. Playability: ${status?.status} - ${status?.reason || 'none'}`);
+      console.error(`[cf-worker] No captions. Playability: ${playability} - ${playerData?.playabilityStatus?.reason || 'none'}`);
       return Response.json({ success: false, error: 'No captions available for this video' }, { status: 404 });
     }
 
