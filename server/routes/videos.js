@@ -231,6 +231,12 @@ async function getAgeRestrictedIds(videoIds) {
       restricted.add(r.value.id);
     }
   }
+  // If innertube flags most videos as restricted, the check is unreliable
+  // (datacenter IP getting blanket LOGIN_REQUIRED) — skip filtering entirely
+  if (restricted.size > 0 && restricted.size >= videoIds.length * 0.5) {
+    console.warn(`Age-restriction check unreliable: ${restricted.size}/${videoIds.length} flagged — skipping`);
+    return new Set();
+  }
   return restricted;
 }
 
@@ -362,13 +368,15 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
       items = await filterAndMapTrendingItems(ytData.items, regionCode);
     }
 
-    // Cache in Redis for 6 hours
-    try {
-      if (redisClient.isReady) {
-        await redisClient.set(cacheKey, JSON.stringify(items), { EX: 21600 });
+    // Cache in Redis for 6 hours (skip empty results to avoid poisoning cache)
+    if (items.length > 0) {
+      try {
+        if (redisClient.isReady) {
+          await redisClient.set(cacheKey, JSON.stringify(items), { EX: 21600 });
+        }
+      } catch (cacheErr) {
+        console.warn('Redis write failed for trending cache:', cacheErr.message);
       }
-    } catch (cacheErr) {
-      console.warn('Redis write failed for trending cache:', cacheErr.message);
     }
 
     res.json(items);
