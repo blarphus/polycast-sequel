@@ -340,6 +340,12 @@
     linear-gradient(90deg, rgba(108,99,255,0.1) 1px, transparent 1px) 0 0 / 20px 20px;
 }
 
+/* ---- Read article level loading ------------------------------------------ */
+
+[data-theme="dark"] .read-level-loading {
+  background: rgba(15, 15, 15, 0.85);
+}
+
 /* ---- Watch page active segment ------------------------------------------- */
 
 [data-theme="dark"] .watch-segment--active {

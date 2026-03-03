@@ -755,6 +755,22 @@ export function getNews(lang: string, level?: string | null): Promise<NewsArticl
   return request(`/news?${params}`);
 }
 
+export interface ArticleDetail {
+  title: string;
+  source: string;
+  link: string;
+  body: string | null;
+  level: string | null;
+  extractionFailed?: boolean;
+  rewriteFailed?: boolean;
+}
+
+export function getNewsArticle(lang: string, index: number, level?: string | null): Promise<ArticleDetail> {
+  const params = new URLSearchParams({ lang, index: String(index) });
+  if (level && level !== 'Original') params.set('level', level);
+  return request(`/news/article?${params}`);
+}
+
 // ---- Group Classes --------------------------------------------------------
 
 export interface UpcomingClass {

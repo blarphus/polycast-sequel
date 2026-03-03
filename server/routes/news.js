@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { extract } from '@extractus/article-extractor';
 import redisClient from '../redis.js';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
@@ -171,6 +172,187 @@ Return ONLY the JSON array, no other text.`;
   } catch (err) {
     console.error('GET /api/news failed:', err);
     res.status(500).json({ error: 'Failed to fetch news' });
+  }
+});
+
+const LANG_NAMES = {
+  es: 'Spanish', pt: 'Portuguese', fr: 'French', de: 'German', it: 'Italian',
+  ja: 'Japanese', ko: 'Korean', zh: 'Chinese', en: 'English', ru: 'Russian',
+  ar: 'Arabic', hi: 'Hindi', tr: 'Turkish', pl: 'Polish', nl: 'Dutch',
+  sv: 'Swedish', da: 'Danish', fi: 'Finnish', uk: 'Ukrainian', vi: 'Vietnamese',
+};
+
+/**
+ * Truncate text at ~3000 chars on the last sentence boundary.
+ */
+function truncateAtSentence(text, maxChars = 3000) {
+  if (text.length <= maxChars) return text;
+  const cut = text.slice(0, maxChars);
+  const lastPeriod = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('.\n'));
+  if (lastPeriod > maxChars * 0.5) return cut.slice(0, lastPeriod + 1);
+  return cut;
+}
+
+/**
+ * GET /api/news/article
+ * Extract full article text and optionally rewrite at a CEFR level.
+ */
+router.get('/api/news/article', authMiddleware, async (req, res) => {
+  try {
+    const lang = (req.query.lang || '').toString().toLowerCase();
+    const index = parseInt(req.query.index, 10);
+    const level = (req.query.level || '').toString().toUpperCase() || null;
+
+    if (!lang || isNaN(index) || index < 0 || index > 9) {
+      return res.status(400).json({ error: 'lang and index (0-9) are required' });
+    }
+
+    // Look up user's native language
+    const { rows: userRows } = await pool.query(
+      'SELECT native_language, cefr_level FROM users WHERE id = $1',
+      [req.userId],
+    );
+    const nativeLang = userRows[0]?.native_language || 'en';
+
+    // Find the cached news list — try with user's cefr_level, then raw
+    let newsListJson = null;
+    const cachePatterns = [
+      `news:${lang}:${userRows[0]?.cefr_level || 'raw'}:${nativeLang}`,
+      `news:${lang}:raw:${nativeLang}`,
+    ];
+    for (const key of cachePatterns) {
+      try {
+        if (redisClient.isReady) {
+          newsListJson = await redisClient.get(key);
+          if (newsListJson) break;
+        }
+      } catch (cacheErr) {
+        console.warn('Redis read failed for news list:', cacheErr.message);
+      }
+    }
+
+    if (!newsListJson) {
+      return res.status(404).json({ error: 'News list not cached. Go back to Home to load news first.' });
+    }
+
+    const newsList = JSON.parse(newsListJson);
+    if (index >= newsList.length) {
+      return res.status(404).json({ error: 'Article index out of range' });
+    }
+
+    const article = newsList[index];
+    const title = article.simplified_title || article.original_title || '';
+    const source = article.source || '';
+    const link = article.link || '';
+
+    // Step 1: Extract raw article text (cached 6h)
+    const rawCacheKey = `article:raw:${lang}:${index}`;
+    let rawBody = null;
+
+    try {
+      if (redisClient.isReady) {
+        rawBody = await redisClient.get(rawCacheKey);
+      }
+    } catch (cacheErr) {
+      console.warn('Redis read failed for raw article:', cacheErr.message);
+    }
+
+    let extractionFailed = false;
+
+    if (rawBody === null) {
+      try {
+        const extracted = await extract(link, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Polycast/1.0)' },
+        });
+        if (extracted && extracted.content) {
+          // Strip HTML tags and clean up
+          rawBody = extracted.content
+            .replace(/<[^>]+>/g, '')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+          rawBody = truncateAtSentence(rawBody);
+
+          try {
+            if (redisClient.isReady) {
+              await redisClient.set(rawCacheKey, rawBody, { EX: 21600 });
+            }
+          } catch (cacheErr) {
+            console.warn('Redis write failed for raw article:', cacheErr.message);
+          }
+        } else {
+          extractionFailed = true;
+        }
+      } catch (extractErr) {
+        console.error('Article extraction failed:', extractErr.message);
+        extractionFailed = true;
+      }
+    }
+
+    if (extractionFailed || !rawBody) {
+      return res.json({ title, source, link, body: null, level: null, extractionFailed: true });
+    }
+
+    // Step 2: If a CEFR level is requested, rewrite via Gemini (cached 6h)
+    if (level && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(level)) {
+      const levelCacheKey = `article:${lang}:${level}:${index}`;
+      let rewrittenBody = null;
+
+      try {
+        if (redisClient.isReady) {
+          rewrittenBody = await redisClient.get(levelCacheKey);
+        }
+      } catch (cacheErr) {
+        console.warn('Redis read failed for rewritten article:', cacheErr.message);
+      }
+
+      if (rewrittenBody) {
+        return res.json({ title, source, link, body: rewrittenBody, level });
+      }
+
+      // Gemini rewrite
+      const langName = LANG_NAMES[lang] || lang;
+      const prompt = `You are a language teacher. Rewrite the following ${langName} article at CEFR ${level} level.
+
+Rules:
+- Keep the article in ${langName} (do NOT translate to another language)
+- Adapt vocabulary and grammar complexity to ${level} level
+- Keep the same meaning and key information
+- Preserve paragraph breaks (use double newlines between paragraphs)
+- Do NOT add any commentary, headers, or labels — return ONLY the rewritten article text
+
+Article:
+${rawBody}`;
+
+      try {
+        const rewritten = await callGemini(prompt);
+        rewrittenBody = rewritten.trim();
+
+        try {
+          if (redisClient.isReady) {
+            await redisClient.set(levelCacheKey, rewrittenBody, { EX: 21600 });
+          }
+        } catch (cacheErr) {
+          console.warn('Redis write failed for rewritten article:', cacheErr.message);
+        }
+
+        return res.json({ title, source, link, body: rewrittenBody, level });
+      } catch (geminiErr) {
+        console.error('Gemini rewrite failed:', geminiErr.message);
+        return res.json({ title, source, link, body: rawBody, level: null, rewriteFailed: true });
+      }
+    }
+
+    // No level requested — return original
+    return res.json({ title, source, link, body: rawBody, level: null });
+  } catch (err) {
+    console.error('GET /api/news/article failed:', err);
+    res.status(500).json({ error: 'Failed to fetch article' });
   }
 });
 

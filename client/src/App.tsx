@@ -23,6 +23,7 @@ import StudentDetail from './pages/StudentDetail';
 import Classwork from './pages/Classwork';
 import Watch from './pages/Watch';
 import GroupCall from './pages/GroupCall';
+import ReadArticle from './pages/ReadArticle';
 import IncomingCall from './components/IncomingCall';
 import BottomToolbar from './components/BottomToolbar';
 
@@ -204,6 +205,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <GroupCall />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/read/:lang/:index"
+          element={
+            <ProtectedRoute>
+              <ReadArticle />
             </ProtectedRoute>
           }
         />

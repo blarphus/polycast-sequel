@@ -283,8 +283,7 @@ export default function Home() {
                   <div
                     key={i}
                     className="home-carousel-card home-carousel-card--clickable"
-                    onClick={() => window.open(n.link, '_blank', 'noopener')}
-                    title={n.original_title}
+                    onClick={() => navigate(`/read/${targetLang}/${i}`)}
                   >
                     <div className="home-carousel-thumb home-carousel-thumb--news">
                       <span className="home-news-source">{n.source}</span>
