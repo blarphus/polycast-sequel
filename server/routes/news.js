@@ -319,8 +319,13 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Polycast/1.0)' },
         });
         if (extracted && extracted.content) {
-          // Strip HTML tags and clean up
+          // Convert block-level HTML to newlines, then strip remaining tags
           rawBody = extracted.content
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n\n')
+            .replace(/<\/div>/gi, '\n\n')
+            .replace(/<\/h[1-6]>/gi, '\n\n')
+            .replace(/<\/li>/gi, '\n')
             .replace(/<[^>]+>/g, '')
             .replace(/&nbsp;/g, ' ')
             .replace(/&amp;/g, '&')
