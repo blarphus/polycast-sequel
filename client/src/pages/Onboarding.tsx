@@ -112,7 +112,7 @@ export default function Onboarding() {
           onChange={(e) => setNativeLang(e.target.value)}
         >
           <option value="">Select...</option>
-          {LANGUAGES.map((l) => (
+          {LANGUAGES.filter((l) => l.code !== targetLang).map((l) => (
             <option key={l.code} value={l.code}>{l.name}</option>
           ))}
         </select>
@@ -124,7 +124,7 @@ export default function Onboarding() {
           onChange={(e) => setTargetLang(e.target.value)}
         >
           <option value="">Select...</option>
-          {LANGUAGES.map((l) => (
+          {LANGUAGES.filter((l) => l.code !== nativeLang).map((l) => (
             <option key={l.code} value={l.code}>{l.name}</option>
           ))}
         </select>
