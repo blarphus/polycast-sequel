@@ -12,10 +12,7 @@ const MOVIES_TV_CHANNEL_ID = 'UCuVPpxrm2VAgpH3Ktln4HXg';
 const MOVIES_TV_UPLOADS_PLAYLIST = 'UUuVPpxrm2VAgpH3Ktln4HXg'; // UC → UU = uploads playlist
 
 const LANG_TO_REGION = {
-  en: 'US', es: 'ES', fr: 'FR', de: 'DE', it: 'IT', pt: 'BR',
-  ru: 'RU', zh: 'TW', ja: 'JP', ko: 'KR', ar: 'EG', hi: 'IN',
-  tr: 'TR', pl: 'PL', nl: 'NL', sv: 'SE', da: 'DK', fi: 'FI',
-  uk: 'UA', vi: 'VN',
+  en: 'US', es: 'ES', pt: 'BR', fr: 'FR', de: 'DE', ja: 'JP',
 };
 
 /**

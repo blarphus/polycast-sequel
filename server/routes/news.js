@@ -8,38 +8,24 @@ import { callGemini } from '../enrichWord.js';
 const router = Router();
 
 const LANG_FEEDS = {
-  es: [
-    { url: 'https://rss.dw.com/rdf/rss-es-all', source: 'DW' },
-    { url: 'https://feeds.bbci.co.uk/mundo/rss.xml', source: 'BBC Mundo' },
-  ],
-  pt: [{ url: 'https://rss.dw.com/rdf/rss-pt-all', source: 'DW' }],
-  fr: [{ url: 'https://rss.dw.com/rdf/rss-fr-all', source: 'DW' }],
-  de: [{ url: 'https://rss.dw.com/rdf/rss-de-all', source: 'DW' }],
-  it: [{ url: 'https://www.ansa.it/sito/ansait_rss.xml', source: 'ANSA' }],
-  ja: [{ url: 'https://www3.nhk.or.jp/rss/news/cat0.xml', source: 'NHK' }],
-  ko: [{ url: 'https://feeds.bbci.co.uk/korean/rss.xml', source: 'BBC Korean' }],
-  zh: [{ url: 'https://rss.dw.com/rdf/rss-zh-all', source: 'DW' }],
   en: [
     { url: 'https://rss.dw.com/rdf/rss-en-all', source: 'DW' },
     { url: 'https://feeds.bbci.co.uk/news/rss.xml', source: 'BBC' },
   ],
-  ru: [
-    { url: 'https://rss.dw.com/rdf/rss-ru-all', source: 'DW' },
-    { url: 'https://feeds.bbci.co.uk/russian/rss.xml', source: 'BBC Russian' },
+  es: [
+    { url: 'https://feeds.bbci.co.uk/mundo/rss.xml', source: 'BBC Mundo' },
+    { url: 'https://www.france24.com/es/rss', source: 'France 24' },
   ],
-  ar: [
-    { url: 'https://rss.dw.com/rdf/rss-ar-all', source: 'DW' },
-    { url: 'https://feeds.bbci.co.uk/arabic/rss.xml', source: 'BBC Arabic' },
+  pt: [
+    { url: 'https://feeds.folha.uol.com.br/emcimadahora/rss091.xml', source: 'Folha' },
+    { url: 'https://g1.globo.com/rss/g1/', source: 'G1' },
   ],
-  hi: [{ url: 'https://rss.dw.com/rdf/rss-hi-all', source: 'DW' }],
-  tr: [{ url: 'https://rss.dw.com/rdf/rss-tr-all', source: 'DW' }],
-  pl: [{ url: 'https://rss.dw.com/rdf/rss-pl-all', source: 'DW' }],
-  nl: [{ url: 'https://feeds.nos.nl/nosnieuwsalgemeen', source: 'NOS' }],
-  sv: [{ url: 'https://www.svt.se/nyheter/rss.xml', source: 'SVT' }],
-  da: [{ url: 'https://www.dr.dk/nyheder/service/feeds/senestenyt', source: 'DR' }],
-  fi: [{ url: 'https://feeds.yle.fi/uutiset/v1/majorHeadlines/YLE_UUTISET.rss', source: 'YLE' }],
-  uk: [{ url: 'https://rss.dw.com/rdf/rss-uk-all', source: 'DW' }],
-  vi: [{ url: 'https://vnexpress.net/rss/thoi-su.rss', source: 'VnExpress' }],
+  fr: [
+    { url: 'https://www.france24.com/fr/rss', source: 'France 24' },
+    { url: 'https://www.lemonde.fr/rss/une.xml', source: 'Le Monde' },
+  ],
+  ja: [{ url: 'https://www3.nhk.or.jp/rss/news/cat0.xml', source: 'NHK' }],
+  de: [{ url: 'https://rss.dw.com/rdf/rss-de-all', source: 'DW' }],
 };
 
 /**
@@ -251,10 +237,8 @@ Return ONLY the JSON array, no other text.`;
 });
 
 const LANG_NAMES = {
-  es: 'Spanish', pt: 'Portuguese', fr: 'French', de: 'German', it: 'Italian',
-  ja: 'Japanese', ko: 'Korean', zh: 'Chinese', en: 'English', ru: 'Russian',
-  ar: 'Arabic', hi: 'Hindi', tr: 'Turkish', pl: 'Polish', nl: 'Dutch',
-  sv: 'Swedish', da: 'Danish', fi: 'Finnish', uk: 'Ukrainian', vi: 'Vietnamese',
+  en: 'English', es: 'Spanish', pt: 'Portuguese',
+  fr: 'French', ja: 'Japanese', de: 'German',
 };
 
 /**
