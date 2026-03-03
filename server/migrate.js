@@ -157,6 +157,16 @@ export async function migrate(pool) {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS cefr_level VARCHAR(2) DEFAULT NULL;`);
     await client.query(`UPDATE users SET account_type = 'teacher' WHERE account_type IS NULL;`);
 
+    // Per-language CEFR levels stored as JSONB map (e.g. {"es":"B1","pt":"A2"})
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS cefr_levels JSONB DEFAULT '{}';`);
+    await client.query(`
+      UPDATE users
+      SET cefr_levels = jsonb_set('{}', ARRAY[target_language], to_jsonb(cefr_level))
+      WHERE cefr_level IS NOT NULL
+        AND target_language IS NOT NULL
+        AND (cefr_levels IS NULL OR cefr_levels = '{}');
+    `);
+
     // Classroom students table (teacher → student relationship)
     await client.query(`
       CREATE TABLE IF NOT EXISTS classroom_students (

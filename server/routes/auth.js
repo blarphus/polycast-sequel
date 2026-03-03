@@ -35,11 +35,12 @@ router.post('/api/signup', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO users (username, password_hash, display_name)
        VALUES ($1, $2, $3)
-       RETURNING id, username, display_name, created_at, native_language, target_language, account_type, cefr_level`,
+       RETURNING id, username, display_name, created_at, native_language, target_language, account_type, cefr_levels`,
       [username.trim(), passwordHash, display_name?.trim() || null],
     );
 
     const user = result.rows[0];
+    const cefr_level = (user.cefr_levels && user.target_language) ? (user.cefr_levels[user.target_language] || null) : null;
     const token = signToken(user.id);
 
     res.cookie('token', token, COOKIE_OPTIONS);
@@ -53,7 +54,7 @@ router.post('/api/signup', async (req, res) => {
       native_language: user.native_language,
       target_language: user.target_language,
       account_type: user.account_type,
-      cefr_level: user.cefr_level,
+      cefr_level,
     });
   } catch (err) {
     // Unique constraint violation on username
@@ -79,7 +80,7 @@ router.post('/api/login', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, account_type, cefr_level FROM users WHERE LOWER(username) = LOWER($1)',
+      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, account_type, cefr_levels FROM users WHERE LOWER(username) = LOWER($1)',
       [username.trim()],
     );
 
@@ -95,6 +96,7 @@ router.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
+    const cefr_level = (user.cefr_levels && user.target_language) ? (user.cefr_levels[user.target_language] || null) : null;
     const token = signToken(user.id);
 
     res.cookie('token', token, COOKIE_OPTIONS);
@@ -108,7 +110,7 @@ router.post('/api/login', async (req, res) => {
       native_language: user.native_language,
       target_language: user.target_language,
       account_type: user.account_type,
-      cefr_level: user.cefr_level,
+      cefr_level,
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -133,7 +135,7 @@ router.post('/api/logout', (_req, res) => {
 router.get('/api/me', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_level FROM users WHERE id = $1',
+      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_levels FROM users WHERE id = $1',
       [req.userId],
     );
 
@@ -143,7 +145,19 @@ router.get('/api/me', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    return res.json(user);
+    const cefr_level = (user.cefr_levels && user.target_language) ? (user.cefr_levels[user.target_language] || null) : null;
+
+    return res.json({
+      id: user.id,
+      username: user.username,
+      display_name: user.display_name,
+      created_at: user.created_at,
+      native_language: user.native_language,
+      target_language: user.target_language,
+      daily_new_limit: user.daily_new_limit,
+      account_type: user.account_type,
+      cefr_level,
+    });
   } catch (err) {
     console.error('Get current user error:', err);
     return res.status(500).json({ error: 'Internal server error' });
@@ -167,10 +181,34 @@ router.patch('/api/me/settings', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'cefr_level must be one of A1, A2, B1, B2, C1, C2' });
     }
 
+    // Build SET clauses and params dynamically
+    const sets = ['native_language = $1', 'target_language = $2'];
+    const params = [native_language || null, target_language || null, req.userId];
+    let idx = 4;
+
+    if (daily_new_limit != null) {
+      sets.push(`daily_new_limit = $${idx}`);
+      params.push(daily_new_limit);
+      idx++;
+    }
+    if (account_type) {
+      sets.push(`account_type = $${idx}`);
+      params.push(account_type);
+      idx++;
+    }
+
+    // Store cefr_level into per-language cefr_levels JSONB map
+    const effectiveTarget = (target_language || null);
+    if (cefr_level !== undefined && effectiveTarget) {
+      sets.push(`cefr_levels = jsonb_set(COALESCE(cefr_levels, '{}'), ARRAY[$${idx}], $${idx + 1}::jsonb)`);
+      params.push(effectiveTarget, JSON.stringify(cefr_level));
+      idx += 2;
+    }
+
     const result = await pool.query(
-      `UPDATE users SET native_language = $1, target_language = $2, daily_new_limit = COALESCE($4, daily_new_limit), account_type = COALESCE($5, account_type), cefr_level = COALESCE($6, cefr_level) WHERE id = $3
-       RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_level`,
-      [native_language || null, target_language || null, req.userId, daily_new_limit != null ? daily_new_limit : null, account_type || null, cefr_level !== undefined ? cefr_level : null],
+      `UPDATE users SET ${sets.join(', ')} WHERE id = $3
+       RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_levels`,
+      params,
     );
 
     const user = result.rows[0];
@@ -179,7 +217,19 @@ router.patch('/api/me/settings', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    return res.json(user);
+    const derivedCefrLevel = (user.cefr_levels && user.target_language) ? (user.cefr_levels[user.target_language] || null) : null;
+
+    return res.json({
+      id: user.id,
+      username: user.username,
+      display_name: user.display_name,
+      created_at: user.created_at,
+      native_language: user.native_language,
+      target_language: user.target_language,
+      daily_new_limit: user.daily_new_limit,
+      account_type: user.account_type,
+      cefr_level: derivedCefrLevel,
+    });
   } catch (err) {
     console.error('Update settings error:', err);
     return res.status(500).json({ error: 'Internal server error' });

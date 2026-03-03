@@ -132,12 +132,13 @@ router.get('/api/classroom/students/:studentId/stats', authMiddleware, async (re
     }
     const student = studentResult.rows[0];
 
-    // Get all words for stats computation + word list
+    // Get all words for stats computation + word list (scoped to student's current target language)
     const wordsResult = await pool.query(
       `SELECT id, word, translation, part_of_speech, srs_interval, due_at,
               last_reviewed_at, correct_count, incorrect_count, learning_step, created_at
        FROM saved_words
        WHERE user_id = $1
+         AND target_language = (SELECT target_language FROM users WHERE id = $1)
        ORDER BY created_at DESC`,
       [studentId],
     );

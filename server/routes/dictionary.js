@@ -272,6 +272,7 @@ router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
       `SELECT sw.* FROM saved_words sw
        JOIN users u ON u.id = sw.user_id
        WHERE sw.user_id = $1
+         AND sw.target_language = u.target_language
          AND sw.due_at IS NULL
          AND sw.last_reviewed_at IS NULL
        ORDER BY CASE WHEN sw.priority = true THEN 0 ELSE 1 END ASC, sw.frequency DESC NULLS LAST, sw.created_at ASC
@@ -304,6 +305,7 @@ router.get('/api/dictionary/due', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT * FROM saved_words WHERE user_id = $1
+         AND target_language = (SELECT target_language FROM users WHERE id = $1)
          AND (due_at <= NOW() OR due_at IS NULL)
        ORDER BY
          CASE WHEN learning_step IS NOT NULL THEN 0
@@ -456,7 +458,9 @@ router.patch('/api/dictionary/words/:id/review', authMiddleware, async (req, res
 router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT * FROM saved_words WHERE user_id = $1 ORDER BY created_at DESC',
+      `SELECT * FROM saved_words WHERE user_id = $1
+         AND target_language = (SELECT target_language FROM users WHERE id = $1)
+       ORDER BY created_at DESC`,
       [req.userId],
     );
     return res.json(rows);
