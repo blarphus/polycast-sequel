@@ -760,6 +760,7 @@ export interface ArticleDetail {
   title: string;
   source: string;
   link: string;
+  image: string | null;
   body: string | null;
   level: string | null;
   extractionFailed?: boolean;

@@ -116,6 +116,13 @@ export default function ReadArticle() {
             )}
           </div>
 
+          {/* Hero image */}
+          {article.image && (
+            <div className="read-hero-image">
+              <img src={article.image} alt="" />
+            </div>
+          )}
+
           {/* Extraction failed */}
           {article.extractionFailed ? (
             <div className="read-extraction-failed">

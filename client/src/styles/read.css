@@ -61,6 +61,21 @@
   font-weight: 600;
 }
 
+/* ---- Hero image ---- */
+
+.read-hero-image {
+  margin-bottom: 1.25rem;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.read-hero-image img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  max-height: 360px;
+}
+
 /* ---- Body ---- */
 
 .read-body {

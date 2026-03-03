@@ -298,6 +298,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
     const title = article.simplified_title || article.original_title || '';
     const source = article.source || '';
     const link = article.link || '';
+    const image = article.image || null;
 
     // Step 1: Extract raw article text (cached 6h)
     const rawCacheKey = `article:raw:${lang}:${index}`;
@@ -354,7 +355,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
     }
 
     if (extractionFailed || !rawBody) {
-      return res.json({ title, source, link, body: null, level: null, extractionFailed: true });
+      return res.json({ title, source, link, image, body: null, level: null, extractionFailed: true });
     }
 
     // Step 2: If a CEFR level is requested, rewrite via Gemini (cached 6h)
@@ -371,7 +372,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
       }
 
       if (rewrittenBody) {
-        return res.json({ title, source, link, body: rewrittenBody, level });
+        return res.json({ title, source, link, image, body: rewrittenBody, level });
       }
 
       // Gemini rewrite
@@ -400,15 +401,15 @@ ${rawBody}`;
           console.warn('Redis write failed for rewritten article:', cacheErr.message);
         }
 
-        return res.json({ title, source, link, body: rewrittenBody, level });
+        return res.json({ title, source, link, image, body: rewrittenBody, level });
       } catch (geminiErr) {
         console.error('Gemini rewrite failed:', geminiErr.message);
-        return res.json({ title, source, link, body: rawBody, level: null, rewriteFailed: true });
+        return res.json({ title, source, link, image, body: rawBody, level: null, rewriteFailed: true });
       }
     }
 
     // No level requested — return original
-    return res.json({ title, source, link, body: rawBody, level: null });
+    return res.json({ title, source, link, image, body: rawBody, level: null });
   } catch (err) {
     console.error('GET /api/news/article failed:', err);
     res.status(500).json({ error: 'Failed to fetch article' });
