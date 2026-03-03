@@ -683,6 +683,13 @@ export function getTrendingVideos(lang: string) {
   return request<TrendingVideo[]>(`/videos/trending?${params}`);
 }
 
+export function searchVideos(query: string, lang: string) {
+  const region = detectUserRegion();
+  const params = new URLSearchParams({ q: query, lang });
+  if (region) params.set('userRegion', region);
+  return request<TrendingVideo[]>(`/videos/search?${params}`);
+}
+
 export function retryVideoTranscript(id: string) {
   return request<VideoDetail>(`/videos/${id}/transcript/retry`, { method: 'POST' });
 }

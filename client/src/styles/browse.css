@@ -1,0 +1,182 @@
+/* ==========================================================================
+   Browse Page (Watch tab)
+   ========================================================================== */
+
+.browse-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 7rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* ---- Search bar ---- */
+
+.browse-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1.5rem;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.browse-search-bar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.browse-search-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.browse-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.browse-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.browse-search-clear {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: var(--bg-elevated);
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.browse-search-clear:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
+/* ---- Section title ---- */
+
+.browse-section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+/* ---- Video grid ---- */
+
+.browse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+/* ---- Video card ---- */
+
+.browse-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.browse-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px rgba(108, 99, 255, 0.15);
+}
+
+.browse-card--loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.browse-card--skeleton {
+  pointer-events: none;
+}
+
+/* ---- Thumbnail ---- */
+
+.browse-card-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  overflow: hidden;
+}
+
+.browse-card-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.browse-card-thumb--skeleton {
+  background: var(--bg-elevated);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.browse-card-duration {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+/* ---- Card info ---- */
+
+.browse-card-info {
+  padding: 0.6rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.browse-card-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.browse-card-channel {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ---- Mobile ---- */
+
+@media (max-width: 600px) {
+  .browse-page {
+    padding: 1rem 1rem 7rem;
+  }
+
+  .browse-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+  }
+}

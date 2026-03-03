@@ -355,6 +355,106 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
 });
 
 /**
+ * GET /api/videos/search
+ * Search YouTube for captioned videos matching a query,
+ * filtered to the target language's region.
+ * Cached in Redis for 1 hour.
+ */
+router.get('/api/videos/search', authMiddleware, async (req, res) => {
+  try {
+    const query = (req.query.q || '').toString().trim();
+    if (!query) return res.status(400).json({ error: 'Query parameter "q" is required' });
+
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    const trendingRegion = LANG_TO_REGION[lang] || 'US';
+    const userRegion = (req.query.userRegion || trendingRegion).toString().toUpperCase();
+
+    const normalizedQuery = query.toLowerCase().replace(/\s+/g, ' ');
+    const cacheKey = `search:${lang}:${userRegion}:${normalizedQuery}`;
+
+    // Try Redis cache first
+    let cached = null;
+    try {
+      if (redisClient.isReady) {
+        cached = await redisClient.get(cacheKey);
+      }
+    } catch (cacheErr) {
+      console.warn('Redis read failed for search cache:', cacheErr.message);
+    }
+
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
+
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.error('GET /api/videos/search: YOUTUBE_API_KEY not set');
+      return res.status(500).json({ error: 'YouTube API key not configured' });
+    }
+
+    // Step 1: search.list to get video IDs (100 quota units)
+    const searchParams = new URLSearchParams({
+      part: 'snippet',
+      type: 'video',
+      videoCaption: 'closedCaption',
+      regionCode: trendingRegion,
+      relevanceLanguage: lang,
+      maxResults: '25',
+      q: query,
+      key: apiKey,
+    });
+
+    const searchRes = await fetch(`https://www.googleapis.com/youtube/v3/search?${searchParams}`);
+    if (!searchRes.ok) {
+      const body = await searchRes.text();
+      console.error('YouTube search API error:', searchRes.status, body);
+      return res.status(502).json({ error: 'Failed to search YouTube' });
+    }
+
+    const searchData = await searchRes.json();
+    const videoIds = (searchData.items || [])
+      .map((item) => item.id.videoId)
+      .filter(Boolean);
+
+    if (videoIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Step 2: videos.list for full details (1 quota unit)
+    const detailUrl =
+      `https://www.googleapis.com/youtube/v3/videos` +
+      `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
+      `&key=${apiKey}`;
+
+    const detailRes = await fetch(detailUrl);
+    if (!detailRes.ok) {
+      const body = await detailRes.text();
+      console.error('YouTube video details API error:', detailRes.status, body);
+      return res.status(502).json({ error: 'Failed to fetch video details from YouTube' });
+    }
+
+    const detailData = await detailRes.json();
+    const items = filterAndMapTrendingItems(detailData.items, userRegion);
+
+    // Cache in Redis for 1 hour (skip empty results)
+    if (items.length > 0) {
+      try {
+        if (redisClient.isReady) {
+          await redisClient.set(cacheKey, JSON.stringify(items), { EX: 3600 });
+        }
+      } catch (cacheErr) {
+        console.warn('Redis write failed for search cache:', cacheErr.message);
+      }
+    }
+
+    res.json(items);
+  } catch (err) {
+    console.error('GET /api/videos/search failed:', err);
+    res.status(500).json({ error: 'Failed to search videos' });
+  }
+});
+
+/**
  * GET /api/videos/:id
  * Return full video detail including transcript lifecycle status.
  */

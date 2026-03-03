@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getPendingClasswork } from '../api';
-import { HomeIcon, BookIcon, BoltIcon, ChatBubbleIcon, PeopleIcon, ClassworkIcon, SettingsIcon } from './icons';
+import { HomeIcon, PlayCircleIcon, BookIcon, BoltIcon, ChatBubbleIcon, PeopleIcon, ClassworkIcon, SettingsIcon } from './icons';
 
 export default function BottomToolbar() {
   const location = useLocation();
@@ -27,6 +27,7 @@ export default function BottomToolbar() {
   }, [isStudent]);
 
   const isHome = location.pathname === '/';
+  const isBrowse = location.pathname === '/browse';
   const isDictionary = location.pathname === '/dictionary';
   const isLearn = location.pathname === '/learn';
   const isChats = location.pathname === '/chats';
@@ -45,6 +46,13 @@ export default function BottomToolbar() {
       >
         <HomeIcon size={22} />
         <span className="toolbar-label">Home</span>
+      </button>
+      <button
+        className={`toolbar-tab toolbar-tab--orange${isBrowse ? ' active' : ''}`}
+        onClick={() => navigate('/browse')}
+      >
+        <PlayCircleIcon size={22} />
+        <span className="toolbar-label">Watch</span>
       </button>
       <button
         className={`toolbar-tab toolbar-tab--red${isDictionary ? ' active' : ''}`}

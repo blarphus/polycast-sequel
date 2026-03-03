@@ -22,6 +22,7 @@ import Students from './pages/Students';
 import StudentDetail from './pages/StudentDetail';
 import Classwork from './pages/Classwork';
 import Watch from './pages/Watch';
+import Browse from './pages/Browse';
 import GroupCall from './pages/GroupCall';
 import ReadArticle from './pages/ReadArticle';
 import IncomingCall from './components/IncomingCall';
@@ -109,6 +110,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Home />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/browse"
+          element={
+            <ProtectedRoute>
+              <Browse />
             </ProtectedRoute>
           }
         />

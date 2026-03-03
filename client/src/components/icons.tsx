@@ -404,6 +404,15 @@ export function SearchMinusIcon(props: IconProps = {}) {
   );
 }
 
+export function PlayCircleIcon(props: IconProps = {}) {
+  return (
+    <svg {...defaults(props)}>
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="10 8 16 12 10 16 10 8" />
+    </svg>
+  );
+}
+
 export function TapIcon(props: IconProps = {}) {
   return (
     <svg {...defaults(props)}>
