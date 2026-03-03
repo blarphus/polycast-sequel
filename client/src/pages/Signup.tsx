@@ -22,7 +22,7 @@ export default function Signup() {
     setSubmitting(true);
     try {
       await signup(username, password, displayName);
-      navigate('/');
+      navigate('/onboarding');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Signup failed');
     } finally {

@@ -15,6 +15,7 @@ import ChatView from './pages/ChatView';
 import Call from './pages/Call';
 import Test from './pages/Test';
 import Settings from './pages/Settings';
+import Onboarding from './pages/Onboarding';
 import Dictionary from './pages/Dictionary';
 import Learn from './pages/Learn';
 import Students from './pages/Students';
@@ -29,7 +30,7 @@ import BottomToolbar from './components/BottomToolbar';
 // ProtectedRoute -- redirects to /login when the user is not authenticated
 // ---------------------------------------------------------------------------
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children, skipLanguageCheck }: { children: React.ReactNode; skipLanguageCheck?: boolean }) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -42,6 +43,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!skipLanguageCheck && (!user.native_language || !user.target_language)) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return <>{children}</>;
@@ -90,6 +95,14 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute skipLanguageCheck>
+              <Onboarding />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/"
           element={
