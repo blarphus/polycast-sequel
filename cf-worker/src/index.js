@@ -6,7 +6,7 @@ function corsHeaders(origin, env) {
   if (!matched) return null;
   return {
     'Access-Control-Allow-Origin': matched,
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   };
 }
@@ -54,7 +54,7 @@ export default {
       return new Response(null, { status: 204, headers: cors });
     }
 
-    if (request.method !== 'GET') {
+    if (request.method !== 'GET' && request.method !== 'POST') {
       return jsonResponse({ success: false, error: 'Method not allowed' }, 405, cors);
     }
 
@@ -68,6 +68,58 @@ export default {
     }
 
     const url = new URL(request.url);
+    const action = url.searchParams.get('action');
+
+    // --- Batch playability check (POST ?action=check) ---
+    if (request.method === 'POST' && action === 'check') {
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return jsonResponse({ success: false, error: 'Invalid JSON body' }, 400, cors);
+      }
+
+      const videoIds = body?.videoIds;
+      if (!Array.isArray(videoIds) || videoIds.length === 0) {
+        return jsonResponse({ success: false, error: 'videoIds must be a non-empty array' }, 400, cors);
+      }
+      if (videoIds.length > 50) {
+        return jsonResponse({ success: false, error: 'Maximum 50 video IDs per request' }, 400, cors);
+      }
+
+      const checks = videoIds.map(async (id) => {
+        try {
+          const playerRes = await fetch(
+            `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_API_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                context: { client: { clientName: 'IOS', clientVersion: '20.10.4' } },
+                videoId: id,
+              }),
+            },
+          );
+          if (!playerRes.ok) return { id, status: 'ERROR' };
+          const data = await playerRes.json();
+          return { id, status: data?.playabilityStatus?.status || 'UNKNOWN' };
+        } catch {
+          return { id, status: 'ERROR' };
+        }
+      });
+
+      const settled = await Promise.allSettled(checks);
+      const results = {};
+      for (const outcome of settled) {
+        if (outcome.status === 'fulfilled') {
+          results[outcome.value.id] = outcome.value.status;
+        }
+      }
+
+      return jsonResponse({ success: true, results }, 200, cors);
+    }
+
+    // --- Transcript fetch (GET ?videoId=...) ---
     const videoId = url.searchParams.get('videoId');
     const lang = url.searchParams.get('lang') || 'en';
     if (!videoId) {

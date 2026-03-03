@@ -5,7 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getNewToday, getTrendingVideos, addVideo, SavedWord, TrendingVideo } from '../api';
+import { getNewToday, getTrendingVideos, addVideo, checkVideoPlayability, SavedWord, TrendingVideo } from '../api';
 import { LANGUAGES } from '../components/classwork/languages';
 import FriendRequests from '../components/FriendRequests';
 import PendingClasswork from '../components/PendingClasswork';
@@ -62,7 +62,21 @@ export default function Home() {
       .finally(() => { if (!cancelled) setLoading(false); });
     if (targetLang) {
       getTrendingVideos(targetLang)
-        .then((v) => { if (!cancelled) setTrending(v); })
+        .then((v) => {
+          if (cancelled) return;
+          setTrending(v);
+          // Two-phase: show immediately, then filter out age-restricted videos
+          const ids = v.map((vid) => vid.youtube_id);
+          if (ids.length > 0) {
+            checkVideoPlayability(ids)
+              .then((blocked) => {
+                if (!cancelled && blocked.size > 0) {
+                  setTrending((prev) => prev.filter((vid) => !blocked.has(vid.youtube_id)));
+                }
+              })
+              .catch((err) => console.error('Playability check failed:', err));
+          }
+        })
         .catch((err) => console.error('Failed to fetch trending videos:', err))
         .finally(() => { if (!cancelled) setTrendingLoading(false); });
     } else {

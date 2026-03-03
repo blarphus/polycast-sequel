@@ -683,6 +683,28 @@ export function retryVideoTranscript(id: string) {
 // CF Worker URL (not secret -- just proxies YouTube's public API)
 const CF_WORKER_URL = 'https://polycast-transcript-worker.polycast-app.workers.dev';
 
+export async function checkVideoPlayability(videoIds: string[]): Promise<Set<string>> {
+  const res = await fetch(`${CF_WORKER_URL}?action=check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ videoIds }),
+  });
+  if (!res.ok) {
+    console.error(`checkVideoPlayability failed: HTTP ${res.status}`);
+    return new Set();
+  }
+  const data = await res.json();
+  if (!data.success || !data.results) {
+    console.error('checkVideoPlayability: unexpected response', data);
+    return new Set();
+  }
+  const blocked = new Set<string>();
+  for (const [id, status] of Object.entries(data.results)) {
+    if (status !== 'OK') blocked.add(id);
+  }
+  return blocked;
+}
+
 export async function fetchTranscriptFromWorker(youtubeId: string, lang: string): Promise<TranscriptSegment[]> {
   const url = `${CF_WORKER_URL}?videoId=${encodeURIComponent(youtubeId)}&lang=${encodeURIComponent(lang)}`;
   const res = await fetch(url);

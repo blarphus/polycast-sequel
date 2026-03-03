@@ -205,12 +205,12 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
 });
 
 /**
- * Filter YouTube items to captioned, non-region-restricted, non-age-restricted,
+ * Filter YouTube items to captioned, non-region-restricted,
  * then map to the normalized trending response shape.
  *
- * Both checks use fields already present in the YouTube Data API response
- * (contentDetails.regionRestriction + contentDetails.contentRating.ytRating),
- * so no extra API calls are needed.
+ * Age-restriction filtering is handled client-side via the CF Worker's
+ * innertube playability check, since YouTube's Data API returns empty
+ * contentRating for many age-restricted videos (especially Movies & TV).
  *
  * @param {Array} items - YouTube Data API video items
  * @param {string} userRegion - the user's actual country code for geo-restriction checks
@@ -225,7 +225,6 @@ function filterAndMapTrendingItems(items, userRegion) {
       if (rr.blocked) return !rr.blocked.includes(userRegion);
       return true;
     })
-    .filter((item) => item.contentDetails.contentRating?.ytRating !== 'ytAgeRestricted')
     .map((item) => ({
       youtube_id: item.id,
       title: item.snippet.title,
