@@ -5,22 +5,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getNewToday, getTrendingVideos, addVideo, checkVideoPlayability, SavedWord, TrendingVideo } from '../api';
+import { getNewToday, getTrendingVideos, addVideo, checkVideoPlayability, getNews, SavedWord, TrendingVideo, NewsArticle } from '../api';
 import { LANGUAGES } from '../components/classwork/languages';
 import FriendRequests from '../components/FriendRequests';
 import PendingClasswork from '../components/PendingClasswork';
 import UpcomingClasses from '../components/UpcomingClasses';
 import AddVideoModal from '../components/AddVideoModal';
 import { FrequencyDots } from '../components/FrequencyDots';
-
-// Placeholder data for news cards
-const MOCK_NEWS = [
-  { source: 'El País', headline: 'Nuevas medidas para el turismo sostenible', difficulty: 'B1', words: ['turismo', 'medida'] },
-  { source: 'Le Monde', headline: 'Les jeunes et la technologie en 2026', difficulty: 'B2', words: ['jeune', 'technologie'] },
-  { source: 'Der Spiegel', headline: 'Klimawandel: Was können wir tun?', difficulty: 'B1', words: ['Klima', 'können'] },
-  { source: 'Corriere', headline: 'Il futuro dell\'intelligenza artificiale', difficulty: 'C1', words: ['futuro', 'intelligenza'] },
-  { source: 'NHK', headline: '新しい教育プログラムが開始', difficulty: 'B2', words: ['教育', '開始'] },
-];
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   A1: '#22a55e', A2: '#22a55e',
@@ -43,6 +34,8 @@ export default function Home() {
   const [error, setError] = useState('');
   const [trending, setTrending] = useState<TrendingVideo[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
+  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [newsLoading, setNewsLoading] = useState(true);
   const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
   const [showAddVideo, setShowAddVideo] = useState(false);
   const videosCarouselRef = useRef<HTMLDivElement | null>(null);
@@ -79,8 +72,14 @@ export default function Home() {
         })
         .catch((err) => console.error('Failed to fetch trending videos:', err))
         .finally(() => { if (!cancelled) setTrendingLoading(false); });
+
+      getNews(targetLang, user?.cefr_level)
+        .then((articles) => { if (!cancelled) setNews(articles); })
+        .catch((err) => console.error('Failed to fetch news:', err))
+        .finally(() => { if (!cancelled) setNewsLoading(false); });
     } else {
       setTrendingLoading(false);
+      setNewsLoading(false);
     }
     return () => { cancelled = true; };
   }, [targetLang]);
@@ -247,46 +246,73 @@ export default function Home() {
         )}
       </section>
 
-      {/* Section 3: News for you (placeholder) */}
+      {/* Section 3: News for you */}
       <section className="home-section">
         <h2 className="home-section-title">News for you</h2>
-        <p className="home-section-subtitle">articles with words you know</p>
-        <div className="home-carousel-shell">
-          <button
-            className="home-carousel-arrow home-carousel-arrow--left"
-            aria-label="Scroll news left"
-            onClick={() => scrollCarousel(newsCarouselRef, 'left')}
-          >
-            ‹
-          </button>
-          <div className="home-carousel" ref={newsCarouselRef}>
-            {MOCK_NEWS.map((n, i) => (
-              <div key={i} className="home-carousel-card">
-                <div className="home-carousel-thumb home-carousel-thumb--news">
-                  <span className="home-news-source">{n.source}</span>
-                </div>
-                <div className="home-carousel-info">
-                  <span className="home-carousel-title">{n.headline}</span>
-                  <div className="home-carousel-meta">
-                    <span className="home-difficulty-pill" style={{ background: DIFFICULTY_COLORS[n.difficulty] || '#3b82f6' }}>
-                      {n.difficulty}
-                    </span>
-                    {n.words.map((word) => (
-                      <span key={word} className="home-word-badge">{word}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
+        <p className="home-section-subtitle">simplified headlines in {langName || 'your target language'}</p>
+        {!targetLang ? (
+          <div className="home-empty-state">
+            <p>Set a target language in Settings to see news headlines.</p>
           </div>
-          <button
-            className="home-carousel-arrow home-carousel-arrow--right"
-            aria-label="Scroll news right"
-            onClick={() => scrollCarousel(newsCarouselRef, 'right')}
-          >
-            ›
-          </button>
-        </div>
+        ) : (
+          <div className="home-carousel-shell">
+            <button
+              className="home-carousel-arrow home-carousel-arrow--left"
+              aria-label="Scroll news left"
+              onClick={() => scrollCarousel(newsCarouselRef, 'left')}
+            >
+              ‹
+            </button>
+            <div className="home-carousel" ref={newsCarouselRef}>
+              {newsLoading ? (
+                Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="home-carousel-card home-carousel-card--skeleton">
+                    <div className="home-carousel-thumb home-carousel-thumb--news home-carousel-thumb--skeleton" />
+                    <div className="home-carousel-info">
+                      <div className="home-skeleton-line" style={{ width: '80%' }} />
+                      <div className="home-skeleton-line" style={{ width: '50%' }} />
+                    </div>
+                  </div>
+                ))
+              ) : news.length === 0 ? (
+                <div className="home-empty-state">
+                  <p>No news articles available right now.</p>
+                </div>
+              ) : (
+                news.map((n, i) => (
+                  <div
+                    key={i}
+                    className="home-carousel-card home-carousel-card--clickable"
+                    onClick={() => window.open(n.link, '_blank', 'noopener')}
+                    title={n.original_title}
+                  >
+                    <div className="home-carousel-thumb home-carousel-thumb--news">
+                      <span className="home-news-source">{n.source}</span>
+                    </div>
+                    <div className="home-carousel-info">
+                      <span className="home-carousel-title">{n.simplified_title}</span>
+                      <div className="home-carousel-meta">
+                        <span className="home-difficulty-pill" style={{ background: DIFFICULTY_COLORS[n.difficulty] || '#3b82f6' }}>
+                          {n.difficulty}
+                        </span>
+                        {n.words.map((w) => (
+                          <span key={w.word} className="home-word-badge">{w.word}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <button
+              className="home-carousel-arrow home-carousel-arrow--right"
+              aria-label="Scroll news right"
+              onClick={() => scrollCarousel(newsCarouselRef, 'right')}
+            >
+              ›
+            </button>
+          </div>
+        )}
       </section>
 
       {showAddVideo && (

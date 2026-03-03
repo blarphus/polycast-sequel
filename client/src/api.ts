@@ -738,6 +738,23 @@ export function uploadTranscript(videoId: string, segments: TranscriptSegment[])
   });
 }
 
+// ---- News -----------------------------------------------------------------
+
+export interface NewsArticle {
+  original_title: string;
+  simplified_title: string;
+  difficulty: string;
+  words: { word: string; translation: string }[];
+  source: string;
+  link: string;
+}
+
+export function getNews(lang: string, level?: string | null): Promise<NewsArticle[]> {
+  const params = new URLSearchParams({ lang });
+  if (level) params.set('level', level);
+  return request(`/news?${params}`);
+}
+
 // ---- Group Classes --------------------------------------------------------
 
 export interface UpcomingClass {
