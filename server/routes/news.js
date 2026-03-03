@@ -44,9 +44,13 @@ const LANG_FEEDS = {
 
 /**
  * Extract an image URL from an RSS item block.
- * Checks media:content, media:thumbnail, enclosure, then <img> in description.
+ * Checks dwsyn:imageURL, media:content, media:thumbnail, enclosure, then <img> in description.
  */
 function extractImage(block) {
+  // DW RDF: <dwsyn:imageURL>...</dwsyn:imageURL>
+  const dwImage = block.match(/<dwsyn:imageURL>([\s\S]*?)<\/dwsyn:imageURL>/)?.[1]?.trim();
+  if (dwImage) return dwImage;
+
   // <media:content url="...">
   const mediaContent = block.match(/<media:content[^>]+url=["']([^"']+)["']/)?.[1];
   if (mediaContent) return mediaContent;
@@ -70,12 +74,29 @@ function extractImage(block) {
 }
 
 /**
+ * Upscale known broadcaster thumbnail URLs to higher resolution.
+ * BBC: /240/ → /800/   DW: _302.jpg → _804.jpg
+ */
+function upscaleImage(url) {
+  if (!url) return null;
+  // BBC: replace /240/ with /800/ in ichef URLs
+  if (url.includes('ichef.bbci.co.uk')) {
+    return url.replace(/\/240\//, '/800/');
+  }
+  // DW: replace _302. with _804.
+  if (url.includes('static.dw.com')) {
+    return url.replace(/_302\./, '_804.');
+  }
+  return url;
+}
+
+/**
  * Parse RSS XML into an array of article objects.
  * feedSource is the broadcaster name (e.g. 'DW', 'BBC') since these aren't aggregators.
  */
 function parseRssItems(xml, feedSource) {
   const items = [];
-  const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+  const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/g;
   let match;
   while ((match = itemRegex.exec(xml)) !== null) {
     const block = match[1];
@@ -84,7 +105,7 @@ function parseRssItems(xml, feedSource) {
     const pubDate = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1]?.trim()
       || block.match(/<dc:date>([\s\S]*?)<\/dc:date>/)?.[1]?.trim()
       || '';
-    const image = extractImage(block);
+    const image = upscaleImage(extractImage(block));
     if (title) {
       items.push({ title, link, source: feedSource, pubDate, image });
     }
@@ -118,7 +139,7 @@ router.get('/api/news', authMiddleware, async (req, res) => {
     );
     const nativeLang = userRows[0]?.native_language || 'en';
 
-    const cacheKey = `news:${lang}:${level || 'raw'}:${nativeLang}`;
+    const cacheKey = `news2:${lang}:${level || 'raw'}:${nativeLang}`;
 
     // Try Redis cache first
     let cached = null;
@@ -271,8 +292,8 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
     // Find the cached news list — try with user's cefr_level, then raw
     let newsListJson = null;
     const cachePatterns = [
-      `news:${lang}:${userRows[0]?.cefr_level || 'raw'}:${nativeLang}`,
-      `news:${lang}:raw:${nativeLang}`,
+      `news2:${lang}:${userRows[0]?.cefr_level || 'raw'}:${nativeLang}`,
+      `news2:${lang}:raw:${nativeLang}`,
     ];
     for (const key of cachePatterns) {
       try {
@@ -301,7 +322,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
     const image = article.image || null;
 
     // Step 1: Extract raw article text (cached 6h)
-    const rawCacheKey = `article:raw:${lang}:${index}`;
+    const rawCacheKey = `article2:raw:${lang}:${index}`;
     let rawBody = null;
 
     try {
@@ -360,7 +381,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
 
     // Step 2: If a CEFR level is requested, rewrite via Gemini (cached 6h)
     if (level && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(level)) {
-      const levelCacheKey = `article:${lang}:${level}:${index}`;
+      const levelCacheKey = `article2:${lang}:${level}:${index}`;
       let rewrittenBody = null;
 
       try {
