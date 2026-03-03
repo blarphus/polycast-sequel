@@ -7,45 +7,86 @@ import { callGemini } from '../enrichWord.js';
 
 const router = Router();
 
-const LANG_TO_NEWS = {
-  es: { hl: 'es', gl: 'ES', ceid: 'ES:es' },
-  pt: { hl: 'pt-BR', gl: 'BR', ceid: 'BR:pt-419' },
-  fr: { hl: 'fr', gl: 'FR', ceid: 'FR:fr' },
-  de: { hl: 'de', gl: 'DE', ceid: 'DE:de' },
-  it: { hl: 'it', gl: 'IT', ceid: 'IT:it' },
-  ja: { hl: 'ja', gl: 'JP', ceid: 'JP:ja' },
-  ko: { hl: 'ko', gl: 'KR', ceid: 'KR:ko' },
-  zh: { hl: 'zh-CN', gl: 'CN', ceid: 'CN:zh-Hans' },
-  en: { hl: 'en', gl: 'US', ceid: 'US:en' },
-  ru: { hl: 'ru', gl: 'RU', ceid: 'RU:ru' },
-  ar: { hl: 'ar', gl: 'EG', ceid: 'EG:ar' },
-  hi: { hl: 'hi', gl: 'IN', ceid: 'IN:hi' },
-  tr: { hl: 'tr', gl: 'TR', ceid: 'TR:tr' },
-  pl: { hl: 'pl', gl: 'PL', ceid: 'PL:pl' },
-  nl: { hl: 'nl', gl: 'NL', ceid: 'NL:nl' },
-  sv: { hl: 'sv', gl: 'SE', ceid: 'SE:sv' },
-  da: { hl: 'da', gl: 'DK', ceid: 'DK:da' },
-  fi: { hl: 'fi', gl: 'FI', ceid: 'FI:fi' },
-  uk: { hl: 'uk', gl: 'UA', ceid: 'UA:uk' },
-  vi: { hl: 'vi', gl: 'VN', ceid: 'VN:vi' },
+const LANG_FEEDS = {
+  es: [
+    { url: 'https://rss.dw.com/rdf/rss-es-all', source: 'DW' },
+    { url: 'https://feeds.bbci.co.uk/mundo/rss.xml', source: 'BBC Mundo' },
+  ],
+  pt: [{ url: 'https://rss.dw.com/rdf/rss-pt-all', source: 'DW' }],
+  fr: [{ url: 'https://rss.dw.com/rdf/rss-fr-all', source: 'DW' }],
+  de: [{ url: 'https://rss.dw.com/rdf/rss-de-all', source: 'DW' }],
+  it: [{ url: 'https://www.ansa.it/sito/ansait_rss.xml', source: 'ANSA' }],
+  ja: [{ url: 'https://www3.nhk.or.jp/rss/news/cat0.xml', source: 'NHK' }],
+  ko: [{ url: 'https://feeds.bbci.co.uk/korean/rss.xml', source: 'BBC Korean' }],
+  zh: [{ url: 'https://rss.dw.com/rdf/rss-zh-all', source: 'DW' }],
+  en: [
+    { url: 'https://rss.dw.com/rdf/rss-en-all', source: 'DW' },
+    { url: 'https://feeds.bbci.co.uk/news/rss.xml', source: 'BBC' },
+  ],
+  ru: [
+    { url: 'https://rss.dw.com/rdf/rss-ru-all', source: 'DW' },
+    { url: 'https://feeds.bbci.co.uk/russian/rss.xml', source: 'BBC Russian' },
+  ],
+  ar: [
+    { url: 'https://rss.dw.com/rdf/rss-ar-all', source: 'DW' },
+    { url: 'https://feeds.bbci.co.uk/arabic/rss.xml', source: 'BBC Arabic' },
+  ],
+  hi: [{ url: 'https://rss.dw.com/rdf/rss-hi-all', source: 'DW' }],
+  tr: [{ url: 'https://rss.dw.com/rdf/rss-tr-all', source: 'DW' }],
+  pl: [{ url: 'https://rss.dw.com/rdf/rss-pl-all', source: 'DW' }],
+  nl: [{ url: 'https://feeds.nos.nl/nosnieuwsalgemeen', source: 'NOS' }],
+  sv: [{ url: 'https://www.svt.se/nyheter/rss.xml', source: 'SVT' }],
+  da: [{ url: 'https://www.dr.dk/nyheder/service/feeds/senestenyt', source: 'DR' }],
+  fi: [{ url: 'https://feeds.yle.fi/uutiset/v1/majorHeadlines/YLE_UUTISET.rss', source: 'YLE' }],
+  uk: [{ url: 'https://rss.dw.com/rdf/rss-uk-all', source: 'DW' }],
+  vi: [{ url: 'https://vnexpress.net/rss/thoi-su.rss', source: 'VnExpress' }],
 };
 
 /**
- * Parse Google News RSS XML into an array of article objects.
- * Uses simple regex — RSS structure is predictable.
+ * Extract an image URL from an RSS item block.
+ * Checks media:content, media:thumbnail, enclosure, then <img> in description.
  */
-function parseRssItems(xml) {
+function extractImage(block) {
+  // <media:content url="...">
+  const mediaContent = block.match(/<media:content[^>]+url=["']([^"']+)["']/)?.[1];
+  if (mediaContent) return mediaContent;
+
+  // <media:thumbnail url="...">
+  const mediaThumbnail = block.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/)?.[1];
+  if (mediaThumbnail) return mediaThumbnail;
+
+  // <enclosure url="..." type="image/...">
+  const enclosure = block.match(/<enclosure[^>]+type=["']image\/[^"']+["'][^>]+url=["']([^"']+)["']/)?.[1]
+    || block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']image\/[^"']+["']/)?.[1];
+  if (enclosure) return enclosure;
+
+  // <img src="..."> inside <description> HTML
+  const descBlock = block.match(/<description>([\s\S]*?)<\/description>/)?.[1] || '';
+  const imgSrc = descBlock.match(/<img[^>]+src=["']([^"']+)["']/)?.[1]
+    || descBlock.match(/&lt;img[^&]*src=(?:&quot;|&#34;)([^&]+)(?:&quot;|&#34;)/)?.[1];
+  if (imgSrc) return imgSrc;
+
+  return null;
+}
+
+/**
+ * Parse RSS XML into an array of article objects.
+ * feedSource is the broadcaster name (e.g. 'DW', 'BBC') since these aren't aggregators.
+ */
+function parseRssItems(xml, feedSource) {
   const items = [];
   const itemRegex = /<item>([\s\S]*?)<\/item>/g;
   let match;
   while ((match = itemRegex.exec(xml)) !== null) {
     const block = match[1];
-    const title = block.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.trim() || '';
+    const title = block.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, '$1')?.trim() || '';
     const link = block.match(/<link>([\s\S]*?)<\/link>/)?.[1]?.trim() || '';
-    const source = block.match(/<source[^>]*>([\s\S]*?)<\/source>/)?.[1]?.trim() || '';
-    const pubDate = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1]?.trim() || '';
+    const pubDate = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1]?.trim()
+      || block.match(/<dc:date>([\s\S]*?)<\/dc:date>/)?.[1]?.trim()
+      || '';
+    const image = extractImage(block);
     if (title) {
-      items.push({ title, link, source, pubDate });
+      items.push({ title, link, source: feedSource, pubDate, image });
     }
   }
   return items;
@@ -63,8 +104,8 @@ router.get('/api/news', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'lang query parameter is required' });
     }
 
-    const newsParams = LANG_TO_NEWS[lang];
-    if (!newsParams) {
+    const feeds = LANG_FEEDS[lang];
+    if (!feeds) {
       return res.status(400).json({ error: `Unsupported language: ${lang}` });
     }
 
@@ -93,25 +134,37 @@ router.get('/api/news', authMiddleware, async (req, res) => {
       return res.json(JSON.parse(cached));
     }
 
-    // Cache miss — fetch Google News RSS
-    const rssUrl = `https://news.google.com/rss?hl=${newsParams.hl}&gl=${newsParams.gl}&ceid=${newsParams.ceid}`;
-    const rssRes = await fetch(rssUrl, {
-      headers: { 'User-Agent': 'Polycast/1.0' },
+    // Cache miss — fetch all RSS feeds for this language in parallel
+    const feedResults = await Promise.all(
+      feeds.map(async (feed) => {
+        try {
+          const rssRes = await fetch(feed.url, {
+            headers: { 'User-Agent': 'Polycast/1.0' },
+          });
+          if (!rssRes.ok) {
+            console.error(`RSS fetch error for ${feed.source} (${feed.url}):`, rssRes.status);
+            return [];
+          }
+          const rssXml = await rssRes.text();
+          return parseRssItems(rssXml, feed.source);
+        } catch (fetchErr) {
+          console.error(`RSS fetch failed for ${feed.source} (${feed.url}):`, fetchErr.message);
+          return [];
+        }
+      }),
+    );
+
+    // Merge all items, sort by pubDate descending, take first 10
+    const allItems = feedResults.flat().sort((a, b) => {
+      const da = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+      const db = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+      return db - da;
     });
-
-    if (!rssRes.ok) {
-      console.error('Google News RSS error:', rssRes.status, await rssRes.text().catch(() => ''));
-      return res.status(502).json({ error: 'Failed to fetch news from Google News' });
-    }
-
-    const rssXml = await rssRes.text();
-    const allItems = parseRssItems(rssXml);
 
     if (allItems.length === 0) {
       return res.json([]);
     }
 
-    // Take first 10 articles
     const items = allItems.slice(0, 10);
     const headlines = items.map((item) => item.title);
 
@@ -155,6 +208,7 @@ Return ONLY the JSON array, no other text.`;
       words: Array.isArray(article.words) ? article.words.slice(0, 2) : [],
       source: items[i]?.source || '',
       link: items[i]?.link || '',
+      image: items[i]?.image || null,
     }));
 
     // Cache in Redis for 6 hours

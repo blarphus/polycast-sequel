@@ -747,6 +747,7 @@ export interface NewsArticle {
   words: { word: string; translation: string }[];
   source: string;
   link: string;
+  image: string | null;
 }
 
 export function getNews(lang: string, level?: string | null): Promise<NewsArticle[]> {

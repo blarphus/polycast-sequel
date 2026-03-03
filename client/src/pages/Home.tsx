@@ -286,7 +286,14 @@ export default function Home() {
                     onClick={() => navigate(`/read/${targetLang}/${i}`)}
                   >
                     <div className="home-carousel-thumb home-carousel-thumb--news">
-                      <span className="home-news-source">{n.source}</span>
+                      {n.image ? (
+                        <>
+                          <img src={n.image} alt="" className="home-carousel-thumb-img" />
+                          <span className="home-news-source-overlay">{n.source}</span>
+                        </>
+                      ) : (
+                        <span className="home-news-source">{n.source}</span>
+                      )}
                     </div>
                     <div className="home-carousel-info">
                       <span className="home-carousel-title">{n.simplified_title}</span>
