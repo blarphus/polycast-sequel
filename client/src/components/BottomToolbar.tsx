@@ -77,7 +77,7 @@ export default function BottomToolbar() {
         onClick={() => navigate('/chats')}
       >
         <ChatBubbleIcon size={22} />
-        <span className="toolbar-label">Chats</span>
+        <span className="toolbar-label">Friends</span>
       </button>
       {isTeacher && (
         <>
