@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { LANGUAGES } from '../components/classwork/languages';
+import PlacementTest from '../components/PlacementTest';
 
 export default function Settings() {
   const { user, updateSettings } = useAuth();
@@ -20,6 +21,21 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [showPlacement, setShowPlacement] = useState(false);
+
+  const PLACEMENT_LANGUAGES = ['en', 'es', 'pt'];
+  const canTakePlacement = PLACEMENT_LANGUAGES.includes(user?.target_language || '');
+
+  const handlePlacementComplete = async (level: string) => {
+    try {
+      await updateSettings(nativeLang || null, targetLang || null, undefined, undefined, level);
+      setSaved(true);
+    } catch (err) {
+      console.error('Settings: save cefr_level failed:', err);
+      setError(err instanceof Error ? err.message : String(err));
+    }
+    setShowPlacement(false);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -35,6 +51,18 @@ export default function Settings() {
       setSaving(false);
     }
   };
+
+  if (showPlacement && user?.target_language) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <h1 className="auth-title">Placement Test</h1>
+          <p className="auth-subtitle">Let's assess your vocabulary level</p>
+          <PlacementTest language={user.target_language} onComplete={handlePlacementComplete} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-page">
@@ -113,6 +141,21 @@ export default function Settings() {
             </button>
           </div>
         </div>
+
+        {canTakePlacement && (
+          <div className="theme-toggle-row">
+            <span className="form-label" style={{ marginBottom: 0 }}>
+              CEFR Level{user?.cefr_level ? `: ${user.cefr_level}` : ''}
+            </span>
+            <button
+              className="btn btn-small"
+              onClick={() => setShowPlacement(true)}
+              type="button"
+            >
+              {user?.cefr_level ? 'Retake Test' : 'Take Test'}
+            </button>
+          </div>
+        )}
 
         {error && <div className="auth-error">{error}</div>}
         {saved && <div className="settings-success">Settings saved!</div>}
