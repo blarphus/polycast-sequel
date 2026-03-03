@@ -322,7 +322,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
     const image = article.image || null;
 
     // Step 1: Extract raw article text (cached 6h)
-    const rawCacheKey = `article2:raw:${lang}:${index}`;
+    const rawCacheKey = `article3:raw:${lang}:${index}`;
     let rawBody = null;
 
     try {
@@ -341,13 +341,22 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Polycast/1.0)' },
         });
         if (extracted && extracted.content) {
-          // Convert block-level HTML to newlines, then strip remaining tags
+          // Clean extracted HTML into formatted plain text
           rawBody = extracted.content
+            // Remove figure blocks (images + captions — hero image shown separately)
+            .replace(/<figure[\s\S]*?<\/figure>/gi, '')
+            // Remove BBC metadata section (author, reading time)
+            .replace(/<section[\s\S]*?<\/section>/gi, '')
+            // Convert headings to ## markers before stripping tags
+            .replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, '\n\n## $1\n\n')
+            // Mark bold/strong lead text
+            .replace(/<(b|strong)>([\s\S]*?)<\/\1>/gi, '**$2**')
+            // Convert block-level HTML to newlines
             .replace(/<br\s*\/?>/gi, '\n')
             .replace(/<\/p>/gi, '\n\n')
             .replace(/<\/div>/gi, '\n\n')
-            .replace(/<\/h[1-6]>/gi, '\n\n')
             .replace(/<\/li>/gi, '\n')
+            // Strip remaining tags
             .replace(/<[^>]+>/g, '')
             .replace(/&nbsp;/g, ' ')
             .replace(/&amp;/g, '&')
@@ -381,7 +390,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
 
     // Step 2: If a CEFR level is requested, rewrite via Gemini (cached 6h)
     if (level && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(level)) {
-      const levelCacheKey = `article2:${lang}:${level}:${index}`;
+      const levelCacheKey = `article3:${lang}:${level}:${index}`;
       let rewrittenBody = null;
 
       try {

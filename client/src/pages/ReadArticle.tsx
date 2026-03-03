@@ -152,15 +152,37 @@ export default function ReadArticle() {
                 </p>
               )}
 
-              {paragraphs.map((p, i) => (
-                <p key={i} className="read-paragraph">
-                  <TokenizedText
-                    text={p}
-                    savedWords={savedWordsSet}
-                    onWordClick={handleWordClick}
-                  />
-                </p>
-              ))}
+              {paragraphs.map((p, i) => {
+                const trimmed = p.trim();
+                if (!trimmed) return null;
+
+                // ## heading
+                if (trimmed.startsWith('## ')) {
+                  return (
+                    <h2 key={i} className="read-subheading">
+                      <TokenizedText
+                        text={trimmed.slice(3)}
+                        savedWords={savedWordsSet}
+                        onWordClick={handleWordClick}
+                      />
+                    </h2>
+                  );
+                }
+
+                // **bold** lede paragraph
+                const isBold = trimmed.startsWith('**') && trimmed.endsWith('**');
+                const text = isBold ? trimmed.slice(2, -2) : trimmed;
+
+                return (
+                  <p key={i} className={`read-paragraph${isBold ? ' read-paragraph--lede' : ''}`}>
+                    <TokenizedText
+                      text={text}
+                      savedWords={savedWordsSet}
+                      onWordClick={handleWordClick}
+                    />
+                  </p>
+                );
+              })}
             </div>
           )}
         </>

@@ -83,6 +83,14 @@
   flex: 1;
 }
 
+.read-subheading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin: 1.5rem 0 0.75rem;
+}
+
 .read-paragraph {
   font-size: 1.1rem;
   line-height: 1.8;
@@ -90,17 +98,24 @@
   margin-bottom: 1rem;
 }
 
-.read-paragraph .subtitle-word {
+.read-paragraph--lede {
+  font-weight: 600;
+}
+
+.read-paragraph .subtitle-word,
+.read-subheading .subtitle-word {
   cursor: pointer;
   border-radius: 3px;
   transition: background var(--transition);
 }
 
-.read-paragraph .subtitle-word:hover {
+.read-paragraph .subtitle-word:hover,
+.read-subheading .subtitle-word:hover {
   background: var(--accent-light);
 }
 
-.read-paragraph .subtitle-word.saved {
+.read-paragraph .subtitle-word.saved,
+.read-subheading .subtitle-word.saved {
   background: var(--success-dim);
 }
 
