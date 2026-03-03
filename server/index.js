@@ -22,6 +22,7 @@ import streamRoutes from './routes/stream.js';
 import videosRoutes from './routes/videos.js';
 import templatesRoutes from './routes/templates.js';
 import groupClassRoutes from './routes/groupClass.js';
+import placementRoutes from './routes/placement.js';
 import { startTranscriptWorker, backfillCefrLevels } from './services/videoTranscriptQueue.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -97,6 +98,7 @@ async function main() {
   app.use(videosRoutes);
   app.use(templatesRoutes);
   app.use(groupClassRoutes);
+  app.use(placementRoutes);
 
   // ------ SPA fallback ------
   app.get('*', (req, res) => {

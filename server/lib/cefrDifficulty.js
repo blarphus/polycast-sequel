@@ -14,7 +14,7 @@ const cache = new Map();
  * Load the CEFR word map for a language from server/data/cefr/{language}.json.
  * Returns null if no file exists (unsupported language).
  */
-function loadCefrMap(language) {
+export function loadCefrMap(language) {
   if (cache.has(language)) return cache.get(language);
 
   const filePath = path.join(__dirname, '..', 'data', 'cefr', `${language}.json`);

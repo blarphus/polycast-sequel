@@ -152,6 +152,9 @@ export async function migrate(pool) {
 
     // Account type column (student or teacher)
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type VARCHAR(10) DEFAULT 'student';`);
+
+    // CEFR placement level (A1/A2/B1/B2/C1/C2)
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS cefr_level VARCHAR(2) DEFAULT NULL;`);
     await client.query(`UPDATE users SET account_type = 'teacher' WHERE account_type IS NULL;`);
 
     // Classroom students table (teacher → student relationship)

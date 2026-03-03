@@ -56,6 +56,7 @@ export interface AuthUser {
   target_language: string | null;
   daily_new_limit: number;
   account_type: 'student' | 'teacher';
+  cefr_level: string | null;
 }
 
 export function signup(username: string, password: string, displayName: string) {
@@ -80,14 +81,20 @@ export function getMe() {
   return request<AuthUser>('/me');
 }
 
-export function updateSettings(native_language: string | null, target_language: string | null, daily_new_limit?: number, account_type?: 'student' | 'teacher') {
+export function updateSettings(native_language: string | null, target_language: string | null, daily_new_limit?: number, account_type?: 'student' | 'teacher', cefr_level?: string | null) {
   const body: Record<string, unknown> = { native_language, target_language };
   if (daily_new_limit !== undefined) body.daily_new_limit = daily_new_limit;
   if (account_type !== undefined) body.account_type = account_type;
+  if (cefr_level !== undefined) body.cefr_level = cefr_level;
   return request<AuthUser>('/me/settings', {
     method: 'PATCH',
     body,
   });
+}
+
+export function getPlacementWords(language: string, level: string) {
+  const params = new URLSearchParams({ language, level });
+  return request<{ words: string[]; level: string }>(`/placement-test?${params}`);
 }
 
 export function getNewToday() {
