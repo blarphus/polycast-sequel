@@ -11,6 +11,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import https from 'https';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,15 +47,18 @@ if (!channels || !lessons) { console.error(`No data for language: ${lang}`); pro
 // Step 1: Fetch videos from YouTube
 // ---------------------------------------------------------------------------
 
-async function fetchPlaylistVideos(playlistId, maxPages = 3) {
+async function fetchPlaylistVideos(playlistId, channelName) {
   const videos = [];
   let pageToken = '';
+  let page = 0;
 
-  for (let page = 0; page < maxPages; page++) {
+  while (true) {
+    page++;
+    process.stdout.write(`\r  ${channelName}: fetching page ${page}...`);
     const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${YOUTUBE_API_KEY}${pageToken ? `&pageToken=${pageToken}` : ''}`;
     const res = await fetch(url);
     if (!res.ok) {
-      console.error(`YouTube API error for ${playlistId}: ${res.status} ${res.statusText}`);
+      console.error(`\n  YouTube API error for ${playlistId}: ${res.status} ${res.statusText}`);
       break;
     }
     const data = await res.json();
@@ -64,19 +68,21 @@ async function fetchPlaylistVideos(playlistId, maxPages = 3) {
         title: item.snippet.title,
       });
     }
+    process.stdout.write(`\r  ${channelName}: ${videos.length} videos (page ${page})...`);
     if (!data.nextPageToken) break;
     pageToken = data.nextPageToken;
   }
 
+  process.stdout.write(`\r  ${channelName}: ${videos.length} videos              \n`);
   return videos;
 }
 
 console.log(`Fetching videos for ${lang} (${channels.length} channels)...\n`);
 
 const allVideos = [];
-for (const ch of channels) {
-  const videos = await fetchPlaylistVideos(ch.uploadsPlaylist);
-  console.log(`  ${ch.name}: ${videos.length} videos`);
+for (let ci = 0; ci < channels.length; ci++) {
+  const ch = channels[ci];
+  const videos = await fetchPlaylistVideos(ch.uploadsPlaylist, ch.name);
   for (const v of videos) {
     allVideos.push({ ...v, channel: ch.name });
   }
@@ -85,14 +91,62 @@ for (const ch of channels) {
 console.log(`\nTotal: ${allVideos.length} videos\n`);
 
 // ---------------------------------------------------------------------------
-// Step 2: Build prompt and call Gemini
+// Step 2: Build prompts in batches and call Gemini
 // ---------------------------------------------------------------------------
 
-const videoList = allVideos.map((v, i) => `${i + 1}. "${v.title}" [${v.channel}]`).join('\n');
-
+const BATCH_SIZE = 100;
 const lessonList = lessons.map(l => `- ${l.id}: "${l.title}" (${l.level})`).join('\n');
+const lessonIdList = lessons.map(l => l.id);
+const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_API_KEY}`;
 
-const prompt = `You are categorizing YouTube language-learning videos into grammar/topic lessons.
+function callGemini(prompt) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: 65536,
+      },
+    });
+
+    const req = https.request(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      timeout: 0,
+    }, (res) => {
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('end', () => {
+        const text = Buffer.concat(chunks).toString();
+        if (res.statusCode !== 200) {
+          reject(new Error(`Gemini API error: ${res.statusCode}\n${text}`));
+          return;
+        }
+        resolve(JSON.parse(text));
+      });
+    });
+
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+const totalBatches = Math.ceil(allVideos.length / BATCH_SIZE);
+console.log(`Categorizing ${allVideos.length} videos in ${totalBatches} batches of ${BATCH_SIZE} via Gemini...\n`);
+
+const categorization = [];
+const overallStart = Date.now();
+
+for (let b = 0; b < totalBatches; b++) {
+  const start = b * BATCH_SIZE;
+  const end = Math.min(start + BATCH_SIZE, allVideos.length);
+  const batchVideos = allVideos.slice(start, end);
+  const batchSize = batchVideos.length;
+
+  const videoList = batchVideos.map((v, i) => `${i + 1}. "${v.title}" [${v.channel}]`).join('\n');
+
+  const prompt = `You are categorizing YouTube language-learning videos into grammar/topic lessons.
 
 Here are the lesson categories for ${lang === 'pt' ? 'Portuguese' : lang}:
 ${lessonList}
@@ -100,86 +154,135 @@ ${lessonList}
 Here are the videos (numbered, with channel name):
 ${videoList}
 
-For each lesson, identify which videos are relevant to that topic. A video is relevant if its title suggests it teaches or discusses that grammar point or topic. Be selective - only match videos that are clearly about the lesson topic, not just incidentally mentioning a word.
+For EVERY video, assign it to the single best-matching lesson from the list above. A video matches a lesson if its title suggests it teaches or discusses that grammar point or topic. Be selective - only match videos that are clearly about a lesson topic, not just incidentally mentioning a word. If a video does not clearly match any lesson, assign null.
 
-Return a JSON object where keys are lesson IDs and values are arrays of video numbers (the numbers from the list above). Only include lessons that have at least one matching video. Limit to the 10 MOST relevant videos per lesson. Use compact format:
-{"ser-estar":[3,15,42],"present-tense":[7,23]}
+Return a JSON array with exactly ${batchSize} elements. Each element is either a lesson ID string (e.g. "ser-estar") or null. The element at index 0 corresponds to video 1, index 1 to video 2, etc.
 
-Return ONLY the JSON object, no other text.`;
+Valid lesson IDs: ${JSON.stringify(lessonIdList)}
 
-console.log('Calling Gemini (gemini-3-pro-preview)...\n');
+Example format: ["ser-estar","present-tense",null,"greetings",null,...]
 
-const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=${GEMINI_API_KEY}`;
+Return ONLY the JSON array, no other text.`;
 
-const geminiRes = await fetch(geminiUrl, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      maxOutputTokens: 32768,
-    },
-  }),
-});
+  const batchStart = Date.now();
+  const spinner = ['|', '/', '-', '\\'];
+  let spinIdx = 0;
+  const spinnerInterval = setInterval(() => {
+    const elapsed = ((Date.now() - batchStart) / 1000).toFixed(0);
+    process.stdout.write(`\r  ${spinner[spinIdx++ % 4]} Batch ${b + 1}/${totalBatches} (videos ${start + 1}-${end})... ${elapsed}s`);
+  }, 250);
 
-if (!geminiRes.ok) {
-  const errText = await geminiRes.text();
-  console.error(`Gemini API error: ${geminiRes.status}\n${errText}`);
-  process.exit(1);
-}
+  const geminiData = await callGemini(prompt);
 
-const geminiData = await geminiRes.json();
-const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+  clearInterval(spinnerInterval);
+  const batchElapsed = ((Date.now() - batchStart) / 1000).toFixed(1);
+  const usage = geminiData.usageMetadata;
+  process.stdout.write(`\r  Batch ${b + 1}/${totalBatches} done in ${batchElapsed}s`);
+  if (usage) {
+    process.stdout.write(` (${usage.promptTokenCount?.toLocaleString()} in, ${usage.candidatesTokenCount?.toLocaleString()} out)`);
+  }
+  console.log('');
 
-if (!rawText) {
-  console.error('No response from Gemini:', JSON.stringify(geminiData, null, 2));
-  process.exit(1);
-}
-
-let categorization;
-try {
-  categorization = JSON.parse(rawText);
-} catch (e) {
-  // Try to extract JSON from markdown code block
-  const jsonMatch = rawText.match(/```json?\s*([\s\S]*?)```/);
-  if (jsonMatch) {
-    categorization = JSON.parse(jsonMatch[1].trim());
-  } else {
-    console.error('Failed to parse Gemini response. Raw text:');
-    console.error(rawText.slice(0, 2000));
+  const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!rawText) {
+    console.error(`\nNo response from Gemini for batch ${b + 1}:`, JSON.stringify(geminiData, null, 2));
     process.exit(1);
+  }
+
+  let batchResult;
+  try {
+    batchResult = JSON.parse(rawText);
+  } catch (e) {
+    const jsonMatch = rawText.match(/```json?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      batchResult = JSON.parse(jsonMatch[1].trim());
+    } else {
+      console.error(`\nFailed to parse Gemini response for batch ${b + 1}. Raw text:`);
+      console.error(rawText.slice(0, 2000));
+      process.exit(1);
+    }
+  }
+
+  if (!Array.isArray(batchResult)) {
+    console.error(`\nExpected array from Gemini batch ${b + 1}, got:`, typeof batchResult);
+    process.exit(1);
+  }
+
+  if (batchResult.length !== batchSize) {
+    console.warn(`  Warning: batch ${b + 1} returned ${batchResult.length} entries, expected ${batchSize}`);
+  }
+
+  categorization.push(...batchResult);
+}
+
+const totalElapsed = ((Date.now() - overallStart) / 1000).toFixed(1);
+console.log(`\nAll batches complete in ${totalElapsed}s\n`);
+
+// ---------------------------------------------------------------------------
+// Step 3: Validate and transform flat array → grouped results
+// ---------------------------------------------------------------------------
+
+if (!Array.isArray(categorization)) {
+  console.error('Expected a JSON array from Gemini, got:', typeof categorization);
+  process.exit(1);
+}
+
+if (categorization.length !== allVideos.length) {
+  console.warn(`Warning: Gemini returned ${categorization.length} entries, expected ${allVideos.length}`);
+}
+
+// Group videos by lesson ID
+const lessonToVideos = {};
+const uncategorized = [];
+let categorizedCount = 0;
+
+for (let i = 0; i < allVideos.length; i++) {
+  const lessonId = i < categorization.length ? categorization[i] : null;
+  const video = allVideos[i];
+  const entry = { num: i + 1, title: video.title, channel: video.channel };
+
+  if (lessonId && lessonIdList.includes(lessonId)) {
+    if (!lessonToVideos[lessonId]) lessonToVideos[lessonId] = [];
+    lessonToVideos[lessonId].push(entry);
+    categorizedCount++;
+  } else {
+    uncategorized.push(entry);
   }
 }
 
 // ---------------------------------------------------------------------------
-// Step 3: Print results table
+// Step 4: Print results
 // ---------------------------------------------------------------------------
 
-const matchedLessonIds = new Set(Object.keys(categorization));
+const matchedLessonIds = new Set(Object.keys(lessonToVideos));
 const unmatchedLessons = [];
 
 for (const lesson of lessons) {
-  const videoNums = categorization[lesson.id];
-  if (!videoNums || videoNums.length === 0) {
+  const videos = lessonToVideos[lesson.id];
+  if (!videos || videos.length === 0) {
     unmatchedLessons.push(lesson.title);
     continue;
   }
 
-  console.log(`=== ${lesson.title} (${lesson.level}) ===`);
-  for (const num of videoNums) {
-    const video = allVideos[num - 1]; // 1-indexed
-    if (video) {
-      console.log(`  ${num}. "${video.title}" -- ${video.channel}`);
-    }
+  console.log(`=== ${lesson.title} (${lesson.level}) — ${videos.length} videos ===`);
+  for (const v of videos) {
+    console.log(`  ${v.num}. "${v.title}" -- ${v.channel}`);
+  }
+  console.log('');
+}
+
+if (uncategorized.length > 0) {
+  console.log(`=== Uncategorized — ${uncategorized.length} videos ===`);
+  for (const v of uncategorized) {
+    console.log(`  ${v.num}. "${v.title}" -- ${v.channel}`);
   }
   console.log('');
 }
 
 if (unmatchedLessons.length > 0) {
-  console.log(`=== No matches ===`);
+  console.log(`=== Lessons with no matches ===`);
   console.log(`  ${unmatchedLessons.join(', ')}`);
   console.log('');
 }
 
-console.log(`Done. ${matchedLessonIds.size}/${lessons.length} lessons have matches.`);
+console.log(`Done. ${categorizedCount}/${allVideos.length} videos categorized. ${matchedLessonIds.size}/${lessons.length} lessons have matches.`);
