@@ -4,6 +4,7 @@ import redisClient from '../redis.js';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
 import { callGemini } from '../enrichWord.js';
+import { estimateCefrLevel } from '../lib/cefrDifficulty.js';
 
 const router = Router();
 
@@ -101,7 +102,7 @@ function parseRssItems(xml, feedSource) {
 
 /**
  * GET /api/news
- * Fetch simplified news headlines for a language + CEFR level.
+ * Fetch news headlines for a language with offline CEFR difficulty estimation.
  * Cached in Redis for 6 hours.
  */
 router.get('/api/news', authMiddleware, async (req, res) => {
@@ -116,16 +117,7 @@ router.get('/api/news', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: `Unsupported language: ${lang}` });
     }
 
-    const level = (req.query.level || '').toString().toUpperCase() || null;
-
-    // Look up the user's native language for translations
-    const { rows: userRows } = await pool.query(
-      'SELECT native_language FROM users WHERE id = $1',
-      [req.userId],
-    );
-    const nativeLang = userRows[0]?.native_language || 'en';
-
-    const cacheKey = `news2:${lang}:${level || 'raw'}:${nativeLang}`;
+    const cacheKey = `news:${lang}`;
 
     // Try Redis cache first
     let cached = null;
@@ -173,49 +165,16 @@ router.get('/api/news', authMiddleware, async (req, res) => {
     }
 
     const items = allItems.slice(0, 10);
-    const headlines = items.map((item) => item.title);
 
-    // Call Gemini to simplify headlines and extract vocabulary
-    const prompt = `You are a language learning assistant. I have ${headlines.length} news headlines in ${lang}.
-The learner's native language is ${nativeLang} and their CEFR level is ${level || 'unknown'}.
-
-For each headline, return a JSON array with objects containing:
-- "original_title": the original headline unchanged
-- "simplified_title": rewrite the headline at ${level || 'B1'} level (simpler vocabulary/grammar), same language
-- "difficulty": estimated CEFR level of the ORIGINAL headline (A1/A2/B1/B2/C1/C2)
-- "words": array of 2 key vocabulary words from the headline, each as { "word": "...", "translation": "..." } translated to ${nativeLang}
-
-Headlines:
-${headlines.map((h, i) => `${i + 1}. ${h}`).join('\n')}
-
-Return ONLY the JSON array, no other text.`;
-
-    const geminiRaw = await callGemini(prompt, { responseMimeType: 'application/json' });
-
-    let articles;
-    try {
-      // Strip markdown code fences if present
-      const cleaned = geminiRaw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-      articles = JSON.parse(cleaned);
-    } catch (parseErr) {
-      console.error('Failed to parse Gemini news response:', parseErr, geminiRaw.slice(0, 500));
-      return res.status(502).json({ error: 'Failed to process news articles' });
-    }
-
-    if (!Array.isArray(articles)) {
-      console.error('Gemini news response is not an array:', typeof articles);
-      return res.status(502).json({ error: 'Failed to process news articles' });
-    }
-
-    // Merge Gemini output with RSS metadata (source, link)
-    const result = articles.map((article, i) => ({
-      original_title: article.original_title || items[i]?.title || '',
-      simplified_title: article.simplified_title || article.original_title || items[i]?.title || '',
-      difficulty: article.difficulty || 'B1',
-      words: Array.isArray(article.words) ? article.words.slice(0, 2) : [],
-      source: items[i]?.source || '',
-      link: items[i]?.link || '',
-      image: items[i]?.image || null,
+    // Build response with offline CEFR estimation (no Gemini)
+    const result = items.map((item) => ({
+      original_title: item.title,
+      simplified_title: item.title,
+      difficulty: estimateCefrLevel([{ text: item.title }], lang),
+      words: [],
+      source: item.source,
+      link: item.link,
+      image: item.image,
     }));
 
     // Cache in Redis for 6 hours
@@ -273,9 +232,10 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
     );
     const nativeLang = userRows[0]?.native_language || 'en';
 
-    // Find the cached news list — try with user's cefr_level, then raw
+    // Find the cached news list — try new key first, then legacy patterns
     let newsListJson = null;
     const cachePatterns = [
+      `news:${lang}`,
       `news2:${lang}:${userRows[0]?.cefr_level || 'raw'}:${nativeLang}`,
       `news2:${lang}:raw:${nativeLang}`,
     ];
@@ -300,7 +260,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
     }
 
     const article = newsList[index];
-    const title = article.simplified_title || article.original_title || '';
+    const title = article.simplified_title || article.original_title || article.title || '';
     const source = article.source || '';
     const link = article.link || '';
     const image = article.image || null;

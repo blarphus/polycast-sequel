@@ -249,7 +249,7 @@ export default function Home() {
       {/* Section 3: News for you */}
       <section className="home-section">
         <h2 className="home-section-title">News for you</h2>
-        <p className="home-section-subtitle">simplified headlines in {langName || 'your target language'}</p>
+        <p className="home-section-subtitle">headlines in {langName || 'your target language'}</p>
         {!targetLang ? (
           <div className="home-empty-state">
             <p>Set a target language in Settings to see news headlines.</p>
@@ -298,9 +298,11 @@ export default function Home() {
                     <div className="home-carousel-info">
                       <span className="home-carousel-title">{n.simplified_title}</span>
                       <div className="home-carousel-meta">
-                        <span className="home-difficulty-pill" style={{ background: DIFFICULTY_COLORS[n.difficulty] || '#3b82f6' }}>
-                          {n.difficulty}
-                        </span>
+                        {n.difficulty && (
+                          <span className="home-difficulty-pill" style={{ background: DIFFICULTY_COLORS[n.difficulty] || '#3b82f6' }}>
+                            {n.difficulty}
+                          </span>
+                        )}
                         {n.words.map((w) => (
                           <span key={w.word} className="home-word-badge">{w.word}</span>
                         ))}

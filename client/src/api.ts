@@ -750,7 +750,7 @@ export function uploadTranscript(videoId: string, segments: TranscriptSegment[])
 export interface NewsArticle {
   original_title: string;
   simplified_title: string;
-  difficulty: string;
+  difficulty: string | null;
   words: { word: string; translation: string }[];
   source: string;
   link: string;
