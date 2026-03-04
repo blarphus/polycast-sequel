@@ -5,6 +5,7 @@
 import { userToSocket } from './presence.js';
 import pool from '../db.js';
 import { markParticipantLeft } from '../lib/groupCallDb.js';
+import logger from '../logger.js';
 
 /**
  * Register group call event handlers on a socket.
@@ -16,7 +17,7 @@ export function handleGroupCall(io, socket) {
   socket.on('group:join', async ({ roomId }) => {
     if (!roomId) return;
     const socketRoom = `group:${roomId}`;
-    console.log(`[group-call] ${socket.userId} joining room ${socketRoom}`);
+    logger.info(`[group-call] ${socket.userId} joining room ${socketRoom}`);
 
     // Join the Socket.IO room
     socket.join(socketRoom);
@@ -62,7 +63,7 @@ export function handleGroupCall(io, socket) {
   socket.on('group:leave', async ({ roomId }) => {
     if (!roomId) return;
     const socketRoom = `group:${roomId}`;
-    console.log(`[group-call] ${socket.userId} leaving room ${socketRoom}`);
+    logger.info(`[group-call] ${socket.userId} leaving room ${socketRoom}`);
 
     socket.leave(socketRoom);
 
@@ -77,7 +78,7 @@ export function handleGroupCall(io, socket) {
     try {
       await markParticipantLeft(socket.userId, roomId, today);
     } catch (err) {
-      console.error('[group-call] DB leave error:', err.message);
+      logger.error('[group-call] DB leave error: %s', err.message);
     }
   });
 
@@ -128,7 +129,7 @@ export async function handleGroupCallDisconnect(io, socket) {
     if (!room.startsWith('group:')) continue;
     const roomId = room.slice('group:'.length);
 
-    console.log(`[group-call] Disconnect cleanup: ${socket.userId} from ${room}`);
+    logger.info(`[group-call] Disconnect cleanup: ${socket.userId} from ${room}`);
 
     // Broadcast departure to remaining participants
     socket.to(room).emit('group:participant-left', {
@@ -141,7 +142,7 @@ export async function handleGroupCallDisconnect(io, socket) {
     try {
       await markParticipantLeft(socket.userId, roomId, today);
     } catch (err) {
-      console.error('[group-call] Disconnect DB cleanup error:', err.message);
+      logger.error('[group-call] Disconnect DB cleanup error: %s', err.message);
     }
   }
 }

@@ -1,5 +1,6 @@
 import { userToSocket } from './presence.js';
 import { getUserDisplayInfo } from '../lib/getUserDisplayInfo.js';
+import logger from '../logger.js';
 
 /**
  * Register call lifecycle event handlers on a socket.
@@ -12,13 +13,13 @@ export function handleCalls(io, socket, pool, redisClient) {
    * Payload: { peerId }
    */
   socket.on('call:initiate', async ({ peerId }) => {
-    console.log(`[call] call:initiate from ${socket.userId} to ${peerId}`);
+    logger.info(`[call] call:initiate from ${socket.userId} to ${peerId}`);
     try {
       // Check if callee is online
       const isOnline = await redisClient.exists(`online:${peerId}`);
 
       if (!isOnline) {
-        console.log(`[call] ${peerId} is offline (Redis)`);
+        logger.info(`[call] ${peerId} is offline (Redis)`);
         socket.emit('call:error', { message: 'User is offline' });
         return;
       }
@@ -26,7 +27,7 @@ export function handleCalls(io, socket, pool, redisClient) {
       const calleeSocketId = userToSocket.get(peerId);
 
       if (!calleeSocketId) {
-        console.log(`[call] ${peerId} not in userToSocket map`);
+        logger.info(`[call] ${peerId} not in userToSocket map`);
         socket.emit('call:error', { message: 'User is not available' });
         return;
       }
@@ -34,17 +35,17 @@ export function handleCalls(io, socket, pool, redisClient) {
       // Look up caller info
       const caller = await getUserDisplayInfo(socket.userId);
       if (!caller) {
-        console.error(`[call] Caller user not found in DB for userId=${socket.userId}`);
+        logger.error(`[call] Caller user not found in DB for userId=${socket.userId}`);
       }
 
-      console.log(`[call] Emitting call:incoming to socket ${calleeSocketId}`);
+      logger.info(`[call] Emitting call:incoming to socket ${calleeSocketId}`);
       io.to(calleeSocketId).emit('call:incoming', {
         callerId: socket.userId,
         callerUsername: caller?.username || 'Unknown',
         callerDisplayName: caller?.display_name || caller?.username || 'Unknown',
       });
     } catch (err) {
-      console.error('call:initiate error:', err);
+      logger.error({ err }, 'call:initiate error');
       socket.emit('call:error', { message: 'Failed to initiate call' });
     }
   });
@@ -54,17 +55,17 @@ export function handleCalls(io, socket, pool, redisClient) {
    * Payload: { callerId }
    */
   socket.on('call:accept', async ({ callerId }) => {
-    console.log(`[call] call:accept from ${socket.userId}, caller: ${callerId}`);
+    logger.info(`[call] call:accept from ${socket.userId}, caller: ${callerId}`);
     try {
       const callerSocketId = userToSocket.get(callerId);
 
       if (callerSocketId) {
-        console.log(`[call] Emitting call:accepted to socket ${callerSocketId}`);
+        logger.info(`[call] Emitting call:accepted to socket ${callerSocketId}`);
         io.to(callerSocketId).emit('call:accepted', {
           calleeId: socket.userId,
         });
       } else {
-        console.log(`[call] Caller ${callerId} not in userToSocket map`);
+        logger.info(`[call] Caller ${callerId} not in userToSocket map`);
       }
 
       // Insert call record with status 'active'
@@ -74,7 +75,7 @@ export function handleCalls(io, socket, pool, redisClient) {
         [callerId, socket.userId],
       );
     } catch (err) {
-      console.error('call:accept error:', err);
+      logger.error({ err }, 'call:accept error');
       socket.emit('call:error', { message: 'Failed to accept call' });
     }
   });
@@ -84,7 +85,7 @@ export function handleCalls(io, socket, pool, redisClient) {
    * Payload: { callerId }
    */
   socket.on('call:reject', ({ callerId }) => {
-    console.log(`[call] call:reject from ${socket.userId}, caller: ${callerId}`);
+    logger.info(`[call] call:reject from ${socket.userId}, caller: ${callerId}`);
     const callerSocketId = userToSocket.get(callerId);
 
     if (callerSocketId) {
@@ -99,7 +100,7 @@ export function handleCalls(io, socket, pool, redisClient) {
    * Payload: { peerId }
    */
   socket.on('call:end', async ({ peerId }) => {
-    console.log(`[call] call:end from ${socket.userId}, peer: ${peerId}`);
+    logger.info(`[call] call:end from ${socket.userId}, peer: ${peerId}`);
     try {
       const peerSocketId = userToSocket.get(peerId);
 
@@ -131,7 +132,7 @@ export function handleCalls(io, socket, pool, redisClient) {
         [socket.userId, peerId],
       );
     } catch (err) {
-      console.error('call:end error:', err);
+      logger.error({ err }, 'call:end error');
       socket.emit('call:error', { message: 'Failed to end call' });
     }
   });

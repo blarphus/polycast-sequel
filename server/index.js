@@ -1,11 +1,14 @@
 import 'dotenv/config';
 
+import crypto from 'crypto';
 import express from 'express';
 import http from 'http';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import pinoHttp from 'pino-http';
+import logger from './logger.js';
 
 import pool from './db.js';
 import redisClient from './redis.js';
@@ -18,7 +21,9 @@ import dictionaryRoutes from './routes/dictionary.js';
 import messagesRoutes from './routes/messages.js';
 import classroomRoutes from './routes/classroom.js';
 import iceServersRoutes from './routes/iceServers.js';
-import streamRoutes from './routes/stream.js';
+import streamPostsRoutes from './routes/stream-posts.js';
+import streamTopicsRoutes from './routes/stream-topics.js';
+import streamWordsRoutes from './routes/stream-words.js';
 import videosRoutes from './routes/videos.js';
 import templatesRoutes from './routes/templates.js';
 import groupClassRoutes from './routes/groupClass.js';
@@ -44,7 +49,7 @@ async function main() {
   try {
     await migrate(pool);
   } catch (err) {
-    console.error('Failed to run migrations. Exiting.', err);
+    logger.error({ err }, 'Failed to run migrations. Exiting.');
     process.exit(1);
   }
 
@@ -55,12 +60,12 @@ async function main() {
     const trendingKeys = await redisClient.keys('trending:*');
     if (trendingKeys.length > 0) {
       await redisClient.del(trendingKeys);
-      console.log(`Flushed ${trendingKeys.length} trending cache key(s) on startup`);
+      logger.info(`Flushed ${trendingKeys.length} trending cache key(s) on startup`);
     }
     transcriptWorker = await startTranscriptWorker({ redisClient, pool });
-    backfillCefrLevels(pool).catch((err) => console.error('[cefr-backfill] Error:', err.message));
+    backfillCefrLevels(pool).catch((err) => logger.error({ err }, '[cefr-backfill] Error'));
   } catch (err) {
-    console.error('Failed to connect to Redis (will retry in background):', err.message);
+    logger.error({ err }, 'Failed to connect to Redis (will retry in background)');
   }
 
   // ------ Express app ------
@@ -83,6 +88,22 @@ async function main() {
   app.use(express.json({ limit: '2mb' }));
   app.use(cookieParser());
 
+  // ------ Structured request logging ------
+  app.use(pinoHttp({
+    logger,
+    genReqId: () => crypto.randomUUID(),
+    autoLogging: {
+      ignore: (req) => {
+        const p = req.url || '';
+        return p.startsWith('/assets/') || p.endsWith('.js') || p.endsWith('.css');
+      },
+    },
+    serializers: {
+      req: (req) => ({ method: req.method, url: req.url }),
+      res: (res) => ({ statusCode: res.statusCode }),
+    },
+  }));
+
   // Serve client build assets
   const clientDist = path.resolve(__dirname, '..', 'client', 'dist');
   app.use(express.static(clientDist));
@@ -95,7 +116,9 @@ async function main() {
   app.use(messagesRoutes);
   app.use(classroomRoutes);
   app.use(iceServersRoutes);
-  app.use(streamRoutes);
+  app.use(streamPostsRoutes);
+  app.use(streamTopicsRoutes);
+  app.use(streamWordsRoutes);
   app.use(videosRoutes);
   app.use(templatesRoutes);
   app.use(groupClassRoutes);
@@ -111,8 +134,8 @@ async function main() {
   });
 
   // ------ Global error handler (always return JSON, never HTML) ------
-  app.use((err, _req, res, _next) => {
-    console.error('Unhandled server error:', err);
+  app.use((err, req, res, _next) => {
+    (req.log || logger).error({ err }, 'Unhandled server error');
     res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
   });
 
@@ -121,18 +144,18 @@ async function main() {
   const io = setupSocket(server);
 
   server.listen(PORT, () => {
-    console.log(`Polycast Sequel server listening on port ${PORT}`);
+    logger.info(`Polycast Sequel server listening on port ${PORT}`);
   });
 
   // ------ Graceful shutdown ------
   const shutdown = async () => {
-    console.log('\nShutting down...');
+    logger.info('Shutting down...');
     io.close();
-    try { await transcriptWorker?.stop(); } catch (err) { console.error('Transcript worker stop error during shutdown:', err); }
-    try { await redisClient.quit(); } catch (err) { console.error('Redis quit error during shutdown:', err); }
-    try { await pool.end(); } catch (err) { console.error('Pool end error during shutdown:', err); }
+    try { await transcriptWorker?.stop(); } catch (err) { logger.error({ err }, 'Transcript worker stop error during shutdown'); }
+    try { await redisClient.quit(); } catch (err) { logger.error({ err }, 'Redis quit error during shutdown'); }
+    try { await pool.end(); } catch (err) { logger.error({ err }, 'Pool end error during shutdown'); }
     server.close(() => {
-      console.log('Server closed');
+      logger.info('Server closed');
       process.exit(0);
     });
     setTimeout(() => { process.exit(1); }, 5000);
@@ -143,7 +166,7 @@ async function main() {
 }
 
 process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled rejection:', reason);
+  logger.error({ err: reason }, 'Unhandled rejection');
 });
 
 main();

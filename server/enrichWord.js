@@ -5,13 +5,14 @@
  */
 
 import { applyEnglishFrequency } from './lib/englishFrequency.js';
+import logger from './logger.js';
 
 export const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
 
 export async function searchPixabay(query, perPage = 3) {
   const pixabayKey = process.env.PIXABAY_API_KEY;
   if (!pixabayKey) {
-    console.error('PIXABAY_API_KEY is not set — skipping Pixabay search');
+    logger.error('PIXABAY_API_KEY is not set — skipping Pixabay search');
     return [];
   }
   const params = new URLSearchParams({
@@ -23,7 +24,7 @@ export async function searchPixabay(query, perPage = 3) {
   });
   const res = await fetch(`https://pixabay.com/api/?${params}`);
   if (!res.ok) {
-    console.error('Pixabay search failed:', res.status);
+    logger.error('Pixabay search failed: %d', res.status);
     return [];
   }
   const data = await res.json();
@@ -48,7 +49,7 @@ export async function searchWikimedia(query, limit = 5) {
       headers: API_HEADERS,
     });
     if (!res.ok) {
-      console.error('Wikimedia search failed:', res.status);
+      logger.error('Wikimedia search failed: %d', res.status);
       return [];
     }
     const data = await res.json();
@@ -57,7 +58,7 @@ export async function searchWikimedia(query, limit = 5) {
       .map(p => p.imageinfo?.[0]?.thumburl)
       .filter(Boolean);
   } catch (err) {
-    console.error('Wikimedia search error:', err);
+    logger.error({ err }, 'Wikimedia search error');
     return [];
   }
 }
@@ -85,7 +86,7 @@ export async function fetchWordImage(searchTerm, excludeUrls = null) {
     }
     return urls[0] || null;
   } catch (err) {
-    console.error('fetchWordImage error:', err);
+    logger.error({ err }, 'fetchWordImage error');
     return null;
   }
 }
@@ -94,7 +95,7 @@ function parseFrequency(str) {
   if (!str) return null;
   const n = parseInt(str, 10);
   if (isNaN(n)) {
-    console.error('Gemini enrich returned non-numeric frequency:', str);
+    logger.error('Gemini enrich returned non-numeric frequency: %s', str);
     return null;
   }
   return n;
@@ -117,15 +118,15 @@ export async function callGemini(prompt, generationConfig = {}) {
   );
 
   if (!response.ok) {
-    const err = await response.text();
-    console.error('Gemini API error:', err);
+    const errBody = await response.text();
+    logger.error('Gemini API error: %s', errBody);
     throw new Error('Gemini request failed');
   }
 
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) {
-    console.error('Gemini API returned no text content:', JSON.stringify(data).slice(0, 500));
+    logger.error('Gemini API returned no text content: %s', JSON.stringify(data).slice(0, 500));
     throw new Error('Gemini returned no text content');
   }
   return text;
@@ -143,7 +144,7 @@ export async function fetchWiktSenses(word, targetLang, nativeLang) {
 
   if (response.status === 404) return [];
   if (!response.ok) {
-    console.error('WiktApi error:', response.status, await response.text().catch(() => ''));
+    logger.error('WiktApi error: %d %s', response.status, await response.text().catch(() => ''));
     return [];
   }
 
@@ -178,7 +179,7 @@ export async function fetchWiktTranslations(word, nativeLang) {
 
   if (response.status === 404) return [];
   if (!response.ok) {
-    console.error('WiktApi translations error:', response.status, await response.text().catch(() => ''));
+    logger.error('WiktApi translations error: %d %s', response.status, await response.text().catch(() => ''));
     return [];
   }
 
@@ -273,7 +274,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     try {
       wiktSenses = await fetchWiktSenses(word, targetLang, nativeLang);
     } catch (err) {
-      console.error('fetchWiktSenses error in enrich:', err);
+      logger.error({ err }, 'fetchWiktSenses error in enrich');
     }
   }
 
@@ -296,7 +297,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     const raw = await callGemini(prompt);
     const parts = raw.split('//').map((s) => s.trim());
     if (parts.length < 6) {
-      console.error(`Gemini enrich (Path C) returned ${parts.length} parts instead of 6:`, raw.slice(0, 300));
+      logger.error('Gemini enrich (Path C) returned %d parts instead of 6: %s', parts.length, raw.slice(0, 300));
     }
 
     translation = parts[0] || '';
@@ -307,7 +308,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     geminiFormsRaw = parts[5]?.trim() || null;
   } else if (hasSenseIndex && (wiktSenses.length === 0 || senseIndex >= wiktSenses.length)) {
     // senseIndex provided but invalid (senses changed between lookup and enrich) — fall through
-    console.error('enrich: senseIndex', senseIndex, 'out of range for', wiktSenses.length, 'senses — falling through to Path A/B');
+    logger.error('enrich: senseIndex %d out of range for %d senses — falling through to Path A/B', senseIndex, wiktSenses.length);
   }
 
   // Path A/B: only run if Path C didn't set translation (i.e. it was skipped)
@@ -328,7 +329,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
       const parts = raw.split('//').map((s) => s.trim());
       if (parts.length < 8) {
-        console.error(`Gemini enrich (wikt) returned ${parts.length} parts instead of 8:`, raw.slice(0, 300));
+        logger.error('Gemini enrich (wikt) returned %d parts instead of 8: %s', parts.length, raw.slice(0, 300));
       }
 
       translation = parts[0] || '';
@@ -339,7 +340,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
         definition = wiktSenses[resolvedSenseIndex].gloss;
         part_of_speech = wiktSenses[resolvedSenseIndex].pos || null;
       } else {
-        console.error('Gemini returned invalid SENSE_INDEX:', parts[1], `(valid: 0-${wiktSenses.length - 1})`);
+        logger.error('Gemini returned invalid SENSE_INDEX: %s (valid: 0-%d)', parts[1], wiktSenses.length - 1);
         definition = parts[5] || '';
         part_of_speech = null;
       }
@@ -363,7 +364,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
       const parts = raw.split('//').map((s) => s.trim());
       if (parts.length < 8) {
-        console.error(`Gemini enrich returned ${parts.length} parts instead of 8:`, raw.slice(0, 300));
+        logger.error('Gemini enrich returned %d parts instead of 8: %s', parts.length, raw.slice(0, 300));
       }
       translation = parts[0] || '';
       definition = parts[1] || '';

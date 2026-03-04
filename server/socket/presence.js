@@ -1,3 +1,5 @@
+import logger from '../logger.js';
+
 /** Maps socket.id -> userId */
 const socketToUser = new Map();
 
@@ -19,7 +21,7 @@ export async function handleConnect(io, socket, redisClient) {
   try {
     await redisClient.set(`online:${userId}`, socket.id, { EX: PRESENCE_TTL });
   } catch (err) {
-    console.error('Redis SET error in handleConnect:', err);
+    logger.error({ err }, 'Redis SET error in handleConnect');
   }
 
   io.emit('user:online', { userId });
@@ -46,7 +48,7 @@ export async function handleDisconnect(io, socket, redisClient) {
     try {
       await redisClient.del(`online:${userId}`);
     } catch (err) {
-      console.error('Redis DEL error in handleDisconnect:', err);
+      logger.error({ err }, 'Redis DEL error in handleDisconnect');
     }
 
     io.emit('user:offline', { userId });
@@ -66,7 +68,7 @@ export function setupHeartbeat(io, socket, redisClient) {
     try {
       await redisClient.expire(`online:${userId}`, PRESENCE_TTL);
     } catch (err) {
-      console.error('Redis EXPIRE error in heartbeat:', err);
+      logger.error({ err }, 'Redis EXPIRE error in heartbeat');
     }
   });
 }

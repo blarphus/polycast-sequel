@@ -34,7 +34,7 @@ async function getMeteredTurnServers() {
   return cachedTurnServers;
 }
 
-router.get('/api/ice-servers', authMiddleware, async (_req, res) => {
+router.get('/api/ice-servers', authMiddleware, async (req, res) => {
   const iceServers = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
@@ -60,7 +60,7 @@ router.get('/api/ice-servers', authMiddleware, async (_req, res) => {
       iceServers.push(...metered);
     }
   } catch (err) {
-    console.error('[ice-servers] Failed to fetch Metered TURN credentials:', err.message);
+    req.log.error('[ice-servers] Failed to fetch Metered TURN credentials: %s', err.message);
   }
 
   res.json({ iceServers });

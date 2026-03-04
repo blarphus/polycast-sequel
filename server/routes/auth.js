@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import pool from '../db.js';
 import {
   hashPassword,
@@ -10,11 +11,27 @@ import {
 
 const router = Router();
 
+const loginLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please try again in a minute.' },
+});
+
+const signupLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many signup attempts. Please try again in a minute.' },
+});
+
 /**
  * POST /api/signup
  * Create a new user account, sign a JWT, and set the token cookie.
  */
-router.post('/api/signup', async (req, res) => {
+router.post('/api/signup', signupLimiter, async (req, res) => {
   try {
     const { username, password, display_name } = req.body;
 
@@ -62,7 +79,7 @@ router.post('/api/signup', async (req, res) => {
       return res.status(409).json({ error: 'Username already taken' });
     }
 
-    console.error('Signup error:', err);
+    req.log.error({ err }, 'Signup error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -71,7 +88,7 @@ router.post('/api/signup', async (req, res) => {
  * POST /api/login
  * Authenticate with username + password, sign a JWT, set the token cookie.
  */
-router.post('/api/login', async (req, res) => {
+router.post('/api/login', loginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -113,7 +130,7 @@ router.post('/api/login', async (req, res) => {
       cefr_level,
     });
   } catch (err) {
-    console.error('Login error:', err);
+    req.log.error({ err }, 'Login error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -159,7 +176,7 @@ router.get('/api/me', authMiddleware, async (req, res) => {
       cefr_level,
     });
   } catch (err) {
-    console.error('Get current user error:', err);
+    req.log.error({ err }, 'Get current user error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -231,7 +248,7 @@ router.patch('/api/me/settings', authMiddleware, async (req, res) => {
       cefr_level: derivedCefrLevel,
     });
   } catch (err) {
-    console.error('Update settings error:', err);
+    req.log.error({ err }, 'Update settings error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

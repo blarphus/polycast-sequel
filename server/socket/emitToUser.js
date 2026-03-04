@@ -4,11 +4,12 @@
 
 import { userToSocket } from './presence.js';
 import { getIO } from './index.js';
+import logger from '../logger.js';
 
 export function emitToUser(userId, eventName, data) {
   const socketId = userToSocket.get(userId);
   if (!socketId) {
-    console.warn(`[emitToUser] ${eventName} → user ${userId} not in presence map (offline or stale)`);
+    logger.warn('[emitToUser] %s -> user %s not in presence map (offline or stale)', eventName, userId);
     return;
   }
   const io = getIO();

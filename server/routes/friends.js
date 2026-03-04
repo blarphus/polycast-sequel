@@ -59,7 +59,7 @@ router.post('/api/friends/request', authMiddleware, async (req, res) => {
     // Look up requester info for the socket event
     const requester = await getUserDisplayInfo(req.userId);
     if (!requester) {
-      console.error(`[friends] Requester user not found in DB for userId=${req.userId}`);
+      req.log.error('[friends] Requester user not found in DB for userId=%s', req.userId);
     }
 
     // Emit socket event to recipient if they are online
@@ -73,7 +73,7 @@ router.post('/api/friends/request', authMiddleware, async (req, res) => {
 
     return res.status(201).json(friendship);
   } catch (err) {
-    console.error('POST /api/friends/request error:', err);
+    req.log.error({ err }, 'POST /api/friends/request error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -117,7 +117,7 @@ router.get('/api/friends', authMiddleware, async (req, res) => {
 
     return res.json(friends);
   } catch (err) {
-    console.error('GET /api/friends error:', err);
+    req.log.error({ err }, 'GET /api/friends error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -139,7 +139,7 @@ router.get('/api/friends/requests', authMiddleware, async (req, res) => {
 
     return res.json(result.rows);
   } catch (err) {
-    console.error('GET /api/friends/requests error:', err);
+    req.log.error({ err }, 'GET /api/friends/requests error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -168,7 +168,7 @@ router.post('/api/friends/:id/accept', authMiddleware, async (req, res) => {
     // Look up accepter info for the socket event
     const accepter = await getUserDisplayInfo(req.userId);
     if (!accepter) {
-      console.error(`[friends] Accepter user not found in DB for userId=${req.userId}`);
+      req.log.error('[friends] Accepter user not found in DB for userId=%s', req.userId);
     }
 
     // Emit socket event to the requester if they are online
@@ -181,7 +181,7 @@ router.post('/api/friends/:id/accept', authMiddleware, async (req, res) => {
 
     return res.json(friendship);
   } catch (err) {
-    console.error('POST /api/friends/:id/accept error:', err);
+    req.log.error({ err }, 'POST /api/friends/:id/accept error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -204,7 +204,7 @@ router.post('/api/friends/:id/reject', authMiddleware, async (req, res) => {
 
     return res.json({ message: 'Request rejected' });
   } catch (err) {
-    console.error('POST /api/friends/:id/reject error:', err);
+    req.log.error({ err }, 'POST /api/friends/:id/reject error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

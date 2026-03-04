@@ -1,5 +1,6 @@
 import { fetchYouTubeTranscript, TranscriptFetchError } from './videoTranscriptFetcher.js';
 import { estimateCefrLevel } from '../lib/cefrDifficulty.js';
+import logger from '../logger.js';
 
 const QUEUE_KEY = 'queue:video_transcripts';
 const DELAYED_KEY = 'queue:video_transcripts:delayed';
@@ -175,7 +176,7 @@ export async function enqueueTranscriptJob(redisClient, job, opts = {}) {
 
 export async function startTranscriptWorker({ redisClient, pool }) {
   if (!redisClient?.isOpen) {
-    console.warn('[transcript-queue] Redis is not connected; worker not started');
+    logger.warn('[transcript-queue] Redis is not connected; worker not started');
     return { stop: async () => {} };
   }
 
@@ -187,14 +188,14 @@ export async function startTranscriptWorker({ redisClient, pool }) {
   let running = true;
   const delayedTimer = setInterval(() => {
     moveDueDelayedJobs(schedulerClient).catch((err) => {
-      console.error('[transcript-queue] Failed to move delayed jobs:', err.message);
+      logger.error('[transcript-queue] Failed to move delayed jobs: %s', err.message);
     });
   }, 2000);
 
   const processRawJob = async (raw) => {
     const job = parseJob(raw);
     if (!job) {
-      console.warn('[transcript-queue] Dropping malformed job payload');
+      logger.warn('[transcript-queue] Dropping malformed job payload');
       return;
     }
 
@@ -216,7 +217,7 @@ export async function startTranscriptWorker({ redisClient, pool }) {
       await markReady(pool, job.videoId, segments, source, job.attempt, job.language);
       await redisClient.del(key);
 
-      console.log(
+      logger.info(
         `[transcript-queue] Ready video=${job.videoId} source=${source} lang=${job.language} segments=${segments.length}`,
       );
     } catch (err) {
@@ -235,7 +236,7 @@ export async function startTranscriptWorker({ redisClient, pool }) {
           [job.videoId, `${message} Retrying...`, job.attempt],
         );
 
-        console.warn(
+        logger.warn(
           `[transcript-queue] Retry scheduled video=${job.videoId} attempt=${job.attempt + 1} reason=${err?.code || 'unknown'}`,
         );
         return;
@@ -243,7 +244,7 @@ export async function startTranscriptWorker({ redisClient, pool }) {
 
       await markFailed(pool, job.videoId, message, job.attempt);
       await redisClient.del(key);
-      console.error(
+      logger.error(
         `[transcript-queue] Failed video=${job.videoId} attempts=${job.attempt} reason=${err?.code || 'unknown'} msg=${err?.message || err}`,
       );
     }
@@ -260,19 +261,19 @@ export async function startTranscriptWorker({ redisClient, pool }) {
         await processRawJob(item.element);
       } catch (err) {
         if (!running) break;
-        console.error('[transcript-queue] Worker loop error:', err.message);
+        logger.error('[transcript-queue] Worker loop error: %s', err.message);
       }
     }
   })();
 
-  console.log('[transcript-queue] Worker started');
+  logger.info('[transcript-queue] Worker started');
 
   return {
     stop: async () => {
       running = false;
       clearInterval(delayedTimer);
       await Promise.allSettled([blockingClient.quit(), schedulerClient.quit(), loopPromise]);
-      console.log('[transcript-queue] Worker stopped');
+      logger.info('[transcript-queue] Worker stopped');
     },
   };
 }
@@ -284,7 +285,7 @@ export async function backfillCefrLevels(pool) {
   );
   if (rows.length === 0) return;
 
-  console.log(`[cefr-backfill] Scoring ${rows.length} video(s)...`);
+  logger.info(`[cefr-backfill] Scoring ${rows.length} video(s)...`);
   const ids = [];
   const levels = [];
   for (const row of rows) {
@@ -303,5 +304,5 @@ export async function backfillCefrLevels(pool) {
       [ids, levels],
     );
   }
-  console.log(`[cefr-backfill] Done — ${ids.length}/${rows.length} video(s) scored`);
+  logger.info(`[cefr-backfill] Done — ${ids.length}/${rows.length} video(s) scored`);
 }

@@ -126,7 +126,7 @@ router.get('/api/news', authMiddleware, async (req, res) => {
         cached = await redisClient.get(cacheKey);
       }
     } catch (cacheErr) {
-      console.warn('Redis read failed for news cache:', cacheErr.message);
+      req.log.warn('Redis read failed for news cache: %s', cacheErr.message);
     }
 
     if (cached) {
@@ -141,7 +141,7 @@ router.get('/api/news', authMiddleware, async (req, res) => {
             headers: { 'User-Agent': 'Polycast/1.0' },
           });
           if (!rssRes.ok) {
-            console.error(`RSS fetch error for ${feed.source} (${feed.url}):`, rssRes.status);
+            req.log.error('RSS fetch error for %s (%s): %d', feed.source, feed.url, rssRes.status);
             return [];
           }
           // Decode using the feed's declared charset (some feeds use ISO-8859-1)
@@ -153,7 +153,7 @@ router.get('/api/news', authMiddleware, async (req, res) => {
           const rssXml = decoder.decode(buf);
           return parseRssItems(rssXml, feed.source);
         } catch (fetchErr) {
-          console.error(`RSS fetch failed for ${feed.source} (${feed.url}):`, fetchErr.message);
+          req.log.error('RSS fetch failed for %s (%s): %s', feed.source, feed.url, fetchErr.message);
           return [];
         }
       }),
@@ -190,13 +190,13 @@ router.get('/api/news', authMiddleware, async (req, res) => {
           await redisClient.set(cacheKey, JSON.stringify(result), { EX: 21600 });
         }
       } catch (cacheErr) {
-        console.warn('Redis write failed for news cache:', cacheErr.message);
+        req.log.warn('Redis write failed for news cache: %s', cacheErr.message);
       }
     }
 
     res.json(result);
   } catch (err) {
-    console.error('GET /api/news failed:', err);
+    req.log.error({ err }, 'GET /api/news failed');
     res.status(500).json({ error: 'Failed to fetch news' });
   }
 });
@@ -253,7 +253,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
           if (newsListJson) break;
         }
       } catch (cacheErr) {
-        console.warn('Redis read failed for news list:', cacheErr.message);
+        req.log.warn('Redis read failed for news list: %s', cacheErr.message);
       }
     }
 
@@ -281,7 +281,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
         rawBody = await redisClient.get(rawCacheKey);
       }
     } catch (cacheErr) {
-      console.warn('Redis read failed for raw article:', cacheErr.message);
+      req.log.warn('Redis read failed for raw article: %s', cacheErr.message);
     }
 
     let extractionFailed = false;
@@ -324,13 +324,13 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
               await redisClient.set(rawCacheKey, rawBody, { EX: 21600 });
             }
           } catch (cacheErr) {
-            console.warn('Redis write failed for raw article:', cacheErr.message);
+            req.log.warn('Redis write failed for raw article: %s', cacheErr.message);
           }
         } else {
           extractionFailed = true;
         }
       } catch (extractErr) {
-        console.error('Article extraction failed:', extractErr.message);
+        req.log.error('Article extraction failed: %s', extractErr.message);
         extractionFailed = true;
       }
     }
@@ -349,7 +349,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
           rewrittenBody = await redisClient.get(levelCacheKey);
         }
       } catch (cacheErr) {
-        console.warn('Redis read failed for rewritten article:', cacheErr.message);
+        req.log.warn('Redis read failed for rewritten article: %s', cacheErr.message);
       }
 
       if (rewrittenBody) {
@@ -379,12 +379,12 @@ ${rawBody}`;
             await redisClient.set(levelCacheKey, rewrittenBody, { EX: 21600 });
           }
         } catch (cacheErr) {
-          console.warn('Redis write failed for rewritten article:', cacheErr.message);
+          req.log.warn('Redis write failed for rewritten article: %s', cacheErr.message);
         }
 
         return res.json({ title, source, link, image, body: rewrittenBody, level });
       } catch (geminiErr) {
-        console.error('Gemini rewrite failed:', geminiErr.message);
+        req.log.error('Gemini rewrite failed: %s', geminiErr.message);
         return res.json({ title, source, link, image, body: rawBody, level: null, rewriteFailed: true });
       }
     }
@@ -392,7 +392,7 @@ ${rawBody}`;
     // No level requested — return original
     return res.json({ title, source, link, image, body: rawBody, level: null });
   } catch (err) {
-    console.error('GET /api/news/article failed:', err);
+    req.log.error({ err }, 'GET /api/news/article failed');
     res.status(500).json({ error: 'Failed to fetch article' });
   }
 });

@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import { userToSocket } from './presence.js';
 import { getUserDisplayInfo } from '../lib/getUserDisplayInfo.js';
+import logger from '../logger.js';
 
 const VOXTRAL_URL =
   'wss://api.mistral.ai/v1/audio/transcriptions/realtime?model=voxtral-mini-transcribe-realtime-2602';
@@ -111,14 +112,14 @@ export function handleTranscription(io, socket) {
    * Payload: { peerId }
    */
   socket.on('transcription:start', async (data) => {
-    console.log(`[transcription] transcription:start from user ${socket.userId}, peerId=${data.peerId}`);
+    logger.info(`[transcription] transcription:start from user ${socket.userId}, peerId=${data.peerId}`);
 
     // Close any existing session first
     cleanup();
 
     const apiKey = process.env.MISTRAL_API_KEY;
     if (!apiKey) {
-      console.error('[transcription] MISTRAL_API_KEY not set — cannot start Voxtral');
+      logger.error('[transcription] MISTRAL_API_KEY not set — cannot start Voxtral');
       socket.emit('transcription:error', {
         message: 'Transcription service not configured',
       });
@@ -131,11 +132,11 @@ export function handleTranscription(io, socket) {
     try {
       const row = await getUserDisplayInfo(socket.userId);
       if (!row) {
-        console.error(`[transcription] Speaker user not found in DB for userId=${socket.userId}`);
+        logger.error(`[transcription] Speaker user not found in DB for userId=${socket.userId}`);
       }
       speakerName = row?.display_name || row?.username || 'Unknown';
     } catch (err) {
-      console.error(`[transcription] Failed to fetch speaker info:`, err.message);
+      logger.error('[transcription] Failed to fetch speaker info: %s', err.message);
     }
 
     voxtralWs = new WebSocket(VOXTRAL_URL, {
@@ -145,7 +146,7 @@ export function handleTranscription(io, socket) {
     });
 
     voxtralWs.on('open', () => {
-      console.log(`[transcription] Voxtral WS opened for user ${socket.userId}`);
+      logger.info(`[transcription] Voxtral WS opened for user ${socket.userId}`);
 
       // Configure audio format
       voxtralWs.send(JSON.stringify({
@@ -193,23 +194,23 @@ export function handleTranscription(io, socket) {
           emitTranscriptEntry(transcriptBuffer);
           transcriptBuffer = '';
         } else if (msg.type === 'error') {
-          console.error(`[transcription] Voxtral error for user ${socket.userId}:`, JSON.stringify(msg));
+          logger.error('[transcription] Voxtral error for user %s: %s', socket.userId, JSON.stringify(msg));
         } else if (msg.type === 'session.created' || msg.type === 'session.updated') {
           // expected lifecycle events, no action needed
         } else {
-          console.warn(`[transcription] Unhandled Voxtral message type for user ${socket.userId}: ${msg.type}`);
+          logger.warn('[transcription] Unhandled Voxtral message type for user %s: %s', socket.userId, msg.type);
         }
       } catch (err) {
-        console.error(`[transcription] Error parsing Voxtral message for user ${socket.userId}:`, err, raw.toString());
+        logger.error({ err }, '[transcription] Error parsing Voxtral message for user %s: %s', socket.userId, raw.toString());
       }
     });
 
     voxtralWs.on('error', (err) => {
-      console.error(`[transcription] Voxtral WS error for user ${socket.userId}:`, err.message);
+      logger.error('[transcription] Voxtral WS error for user %s: %s', socket.userId, err.message);
     });
 
     voxtralWs.on('close', (code, reason) => {
-      console.log(`[transcription] Voxtral WS closed for user ${socket.userId}, code=${code}, reason=${reason}`);
+      logger.info(`[transcription] Voxtral WS closed for user ${socket.userId}, code=${code}, reason=${reason}`);
       voxtralWs = null;
     });
   });
@@ -233,7 +234,7 @@ export function handleTranscription(io, socket) {
    * transcription:stop — gracefully close the Voxtral WebSocket.
    */
   socket.on('transcription:stop', () => {
-    console.log(`[transcription] transcription:stop from user ${socket.userId}`);
+    logger.info(`[transcription] transcription:stop from user ${socket.userId}`);
     if (voxtralWs && voxtralWs.readyState === WebSocket.OPEN) {
       voxtralWs.send(JSON.stringify({ type: 'input_audio.end' }));
     }

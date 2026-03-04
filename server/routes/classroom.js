@@ -32,7 +32,7 @@ router.get('/api/classroom/students', authMiddleware, requireTeacher, async (req
 
     return res.json(rows);
   } catch (err) {
-    console.error('GET /api/classroom/students error:', err);
+    req.log.error({ err }, 'GET /api/classroom/students error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -75,7 +75,7 @@ router.post('/api/classroom/students', authMiddleware, requireTeacher, async (re
     if (err.code === '23505') {
       return res.status(409).json({ error: 'Student already in classroom' });
     }
-    console.error('POST /api/classroom/students error:', err);
+    req.log.error({ err }, 'POST /api/classroom/students error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -99,7 +99,7 @@ router.delete('/api/classroom/students/:studentId', authMiddleware, async (req, 
 
     return res.status(204).send();
   } catch (err) {
-    console.error('DELETE /api/classroom/students/:studentId error:', err);
+    req.log.error({ err }, 'DELETE /api/classroom/students/:studentId error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -182,7 +182,7 @@ router.get('/api/classroom/students/:studentId/stats', authMiddleware, async (re
       })),
     });
   } catch (err) {
-    console.error('GET /api/classroom/students/:studentId/stats error:', err);
+    req.log.error({ err }, 'GET /api/classroom/students/:studentId/stats error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

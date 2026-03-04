@@ -45,7 +45,7 @@ router.get('/api/users/search', authMiddleware, async (req, res) => {
 
     return res.json(rows);
   } catch (err) {
-    console.error('User search error:', err);
+    req.log.error({ err }, 'User search error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

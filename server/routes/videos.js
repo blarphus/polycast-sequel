@@ -7,6 +7,7 @@ import { fetchYouTubeTranscript } from '../services/videoTranscriptFetcher.js';
 import { MOVIES_TV_UPLOADS_PLAYLIST, CHANNELS_BY_LANG } from '../data/channels.js';
 import { LESSONS_BY_LANG, videoMatchesLesson } from '../data/lessons.js';
 import { cachedFetch } from '../lib/redisCache.js';
+import logger from '../logger.js';
 
 const router = Router();
 
@@ -54,7 +55,7 @@ async function fetchAllChannelVideos(lang, apiKey, userRegion) {
 
         return data.videos || [];
       } catch (err) {
-        console.error(`Failed to fetch videos for channel ${ch.handle}:`, err.message);
+        logger.error({ err }, 'Failed to fetch videos for channel %s', ch.handle);
         return [];
       }
     }),
@@ -169,7 +170,7 @@ async function queueTranscriptIfNeeded(video, opts = {}) {
  * GET /api/videos
  * List all videos (summary).
  */
-router.get('/api/videos', authMiddleware, async (_req, res) => {
+router.get('/api/videos', authMiddleware, async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, youtube_id, title, channel, language, duration_seconds,
@@ -178,7 +179,7 @@ router.get('/api/videos', authMiddleware, async (_req, res) => {
     );
     res.json(rows.map(attachTranscriptError));
   } catch (err) {
-    console.error('GET /api/videos failed:', err);
+    req.log.error({ err }, 'GET /api/videos failed');
     res.status(500).json({ error: 'Failed to fetch videos' });
   }
 });
@@ -212,7 +213,7 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
     // Fetch metadata from YouTube Data API.
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
-      console.error('POST /api/videos: YOUTUBE_API_KEY not set');
+      req.log.error('POST /api/videos: YOUTUBE_API_KEY not set');
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
@@ -220,7 +221,7 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
     const metaRes = await fetch(metaUrl);
     if (!metaRes.ok) {
       const body = await metaRes.text();
-      console.error('YouTube Data API error:', metaRes.status, body);
+      req.log.error('YouTube Data API error: %d %s', metaRes.status, body);
       return res.status(502).json({ error: 'Failed to fetch video metadata from YouTube' });
     }
 
@@ -244,7 +245,7 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
     const queued = await queueTranscriptIfNeeded(rows[0]);
     res.status(201).json(queued || attachTranscriptError(rows[0]));
   } catch (err) {
-    console.error('POST /api/videos failed:', err);
+    req.log.error({ err }, 'POST /api/videos failed');
     res.status(500).json({ error: 'Failed to add video' });
   }
 });
@@ -297,7 +298,7 @@ async function fetchMoviesAndTV(apiKey, userRegion) {
   const plRes = await fetch(plUrl);
   if (!plRes.ok) {
     const body = await plRes.text();
-    console.error('YouTube Movies & TV playlist API error:', plRes.status, body);
+    logger.error('YouTube Movies & TV playlist API error: %d %s', plRes.status, body);
     throw new Error('Failed to fetch Movies & TV playlist from YouTube');
   }
 
@@ -318,7 +319,7 @@ async function fetchMoviesAndTV(apiKey, userRegion) {
   const detailRes = await fetch(detailUrl);
   if (!detailRes.ok) {
     const body = await detailRes.text();
-    console.error('YouTube video details API error:', detailRes.status, body);
+    logger.error('YouTube video details API error: %d %s', detailRes.status, body);
     throw new Error('Failed to fetch video details from YouTube');
   }
 
@@ -343,7 +344,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
 
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
-      console.error('GET /api/videos/trending: YOUTUBE_API_KEY not set');
+      req.log.error('GET /api/videos/trending: YOUTUBE_API_KEY not set');
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
@@ -368,7 +369,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
         const ytRes = await fetch(ytUrl);
         if (!ytRes.ok) {
           const body = await ytRes.text();
-          console.error('YouTube trending API error:', ytRes.status, body);
+          req.log.error('YouTube trending API error: %d %s', ytRes.status, body);
           if (collected.length > 0) break;
           throw new Error('Failed to fetch trending videos from YouTube');
         }
@@ -384,7 +385,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
 
     res.json(items);
   } catch (err) {
-    console.error('GET /api/videos/trending failed:', err);
+    req.log.error({ err }, 'GET /api/videos/trending failed');
     res.status(500).json({ error: 'Failed to fetch trending videos' });
   }
 });
@@ -409,7 +410,7 @@ router.get('/api/videos/search', authMiddleware, async (req, res) => {
 
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
-      console.error('GET /api/videos/search: YOUTUBE_API_KEY not set');
+      req.log.error('GET /api/videos/search: YOUTUBE_API_KEY not set');
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
@@ -429,7 +430,7 @@ router.get('/api/videos/search', authMiddleware, async (req, res) => {
       const searchRes = await fetch(`https://www.googleapis.com/youtube/v3/search?${searchParams}`);
       if (!searchRes.ok) {
         const body = await searchRes.text();
-        console.error('YouTube search API error:', searchRes.status, body);
+        req.log.error('YouTube search API error: %d %s', searchRes.status, body);
         throw new Error('Failed to search YouTube');
       }
 
@@ -451,7 +452,7 @@ router.get('/api/videos/search', authMiddleware, async (req, res) => {
       const detailRes = await fetch(detailUrl);
       if (!detailRes.ok) {
         const body = await detailRes.text();
-        console.error('YouTube video details API error:', detailRes.status, body);
+        req.log.error('YouTube video details API error: %d %s', detailRes.status, body);
         throw new Error('Failed to fetch video details from YouTube');
       }
 
@@ -461,7 +462,7 @@ router.get('/api/videos/search', authMiddleware, async (req, res) => {
 
     res.json(items);
   } catch (err) {
-    console.error('GET /api/videos/search failed:', err);
+    req.log.error({ err }, 'GET /api/videos/search failed');
     res.status(500).json({ error: 'Failed to search videos' });
   }
 });
@@ -481,7 +482,7 @@ router.get('/api/videos/channels', authMiddleware, async (req, res) => {
 
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
-      console.error('GET /api/videos/channels: YOUTUBE_API_KEY not set');
+      req.log.error('GET /api/videos/channels: YOUTUBE_API_KEY not set');
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
@@ -513,7 +514,7 @@ router.get('/api/videos/channels', authMiddleware, async (req, res) => {
 
             return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails };
           } catch (err) {
-            console.error(`Failed to fetch thumbnails for channel ${ch.handle}:`, err.message);
+            req.log.error({ err }, 'Failed to fetch thumbnails for channel %s', ch.handle);
             return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
           }
         }),
@@ -522,7 +523,7 @@ router.get('/api/videos/channels', authMiddleware, async (req, res) => {
 
     res.json(results);
   } catch (err) {
-    console.error('GET /api/videos/channels failed:', err);
+    req.log.error({ err }, 'GET /api/videos/channels failed');
     res.status(500).json({ error: 'Failed to fetch channels' });
   }
 });
@@ -551,7 +552,7 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
 
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
-      console.error('GET /api/videos/channel/:handle: YOUTUBE_API_KEY not set');
+      req.log.error('GET /api/videos/channel/:handle: YOUTUBE_API_KEY not set');
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
@@ -564,7 +565,7 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
       const plRes = await fetch(plUrl);
       if (!plRes.ok) {
         const body = await plRes.text();
-        console.error('YouTube playlist API error:', plRes.status, body);
+        req.log.error('YouTube playlist API error: %d %s', plRes.status, body);
         throw new Error('Failed to fetch channel videos from YouTube');
       }
 
@@ -582,7 +583,7 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
       const detailRes = await fetch(detailUrl);
       if (!detailRes.ok) {
         const body = await detailRes.text();
-        console.error('YouTube video details API error:', detailRes.status, body);
+        req.log.error('YouTube video details API error: %d %s', detailRes.status, body);
         throw new Error('Failed to fetch video details from YouTube');
       }
 
@@ -595,7 +596,7 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error('GET /api/videos/channel/:handle failed:', err);
+    req.log.error({ err }, 'GET /api/videos/channel/:handle failed');
     res.status(500).json({ error: 'Failed to fetch channel videos' });
   }
 });
@@ -617,7 +618,7 @@ router.get('/api/videos/lessons', authMiddleware, async (req, res) => {
 
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
-      console.error('GET /api/videos/lessons: YOUTUBE_API_KEY not set');
+      req.log.error('GET /api/videos/lessons: YOUTUBE_API_KEY not set');
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
@@ -638,7 +639,7 @@ router.get('/api/videos/lessons', authMiddleware, async (req, res) => {
 
     res.json(results);
   } catch (err) {
-    console.error('GET /api/videos/lessons failed:', err);
+    req.log.error({ err }, 'GET /api/videos/lessons failed');
     res.status(500).json({ error: 'Failed to fetch lessons' });
   }
 });
@@ -664,7 +665,7 @@ router.get('/api/videos/lesson/:id', authMiddleware, async (req, res) => {
 
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
-      console.error('GET /api/videos/lesson/:id: YOUTUBE_API_KEY not set');
+      req.log.error('GET /api/videos/lesson/:id: YOUTUBE_API_KEY not set');
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
@@ -682,7 +683,7 @@ router.get('/api/videos/lesson/:id', authMiddleware, async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error('GET /api/videos/lesson/:id failed:', err);
+    req.log.error({ err }, 'GET /api/videos/lesson/:id failed');
     res.status(500).json({ error: 'Failed to fetch lesson videos' });
   }
 });
@@ -726,7 +727,7 @@ router.get('/api/videos/:id', authMiddleware, async (req, res) => {
 
     res.json(attachTranscriptError(video));
   } catch (err) {
-    console.error('GET /api/videos/:id failed:', err);
+    req.log.error({ err }, 'GET /api/videos/:id failed');
     res.status(500).json({ error: 'Failed to fetch video' });
   }
 });
@@ -746,7 +747,7 @@ router.post('/api/videos/:id/transcript/retry', authMiddleware, async (req, res)
 
     res.json(queued);
   } catch (err) {
-    console.error('POST /api/videos/:id/transcript/retry failed:', err);
+    req.log.error({ err }, 'POST /api/videos/:id/transcript/retry failed');
     res.status(500).json({ error: 'Failed to retry transcript extraction' });
   }
 });
@@ -798,7 +799,7 @@ router.put('/api/videos/:id/transcript', authMiddleware, async (req, res) => {
     const updated = await fetchVideoById(id);
     res.json(attachTranscriptError(updated));
   } catch (err) {
-    console.error('PUT /api/videos/:id/transcript failed:', err);
+    req.log.error({ err }, 'PUT /api/videos/:id/transcript failed');
     res.status(500).json({ error: 'Failed to upload transcript' });
   }
 });

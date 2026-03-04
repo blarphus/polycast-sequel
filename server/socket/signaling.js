@@ -1,4 +1,5 @@
 import { userToSocket } from './presence.js';
+import logger from '../logger.js';
 
 /**
  * Register WebRTC signaling event handlers on a socket.
@@ -9,12 +10,12 @@ export function handleSignaling(io, socket) {
    * Look up the target user's socket and relay an event to them.
    */
   function relay(eventName, peerId, payload, log) {
-    if (log) console.log(`[signal] ${log}`);
+    if (log) logger.info(`[signal] ${log}`);
     const targetSocketId = userToSocket.get(peerId);
     if (targetSocketId) {
       io.to(targetSocketId).emit(eventName, { fromUserId: socket.userId, ...payload });
     } else if (log) {
-      console.log(`[signal] ${eventName} target ${peerId} not found in userToSocket`);
+      logger.info(`[signal] ${eventName} target ${peerId} not found in userToSocket`);
     }
   }
 

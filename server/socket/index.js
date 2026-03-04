@@ -9,6 +9,7 @@ import { handleMessaging } from './messaging.js';
 import { handleGroupCall, handleGroupCallDisconnect } from './groupCall.js';
 import pool from '../db.js';
 import redisClient from '../redis.js';
+import logger from '../logger.js';
 
 let ioInstance = null;
 
@@ -74,7 +75,7 @@ export function setupSocket(server) {
 
   // ------- Connection handler -------
   io.on('connection', (socket) => {
-    console.log(`Socket connected: ${socket.id} (user: ${socket.userId})`);
+    logger.info(`Socket connected: ${socket.id} (user: ${socket.userId})`);
 
     // Register presence
     handleConnect(io, socket, redisClient);
@@ -99,7 +100,7 @@ export function setupSocket(server) {
 
     // Handle disconnection
     socket.on('disconnect', async () => {
-      console.log(`Socket disconnected: ${socket.id} (user: ${socket.userId})`);
+      logger.info(`Socket disconnected: ${socket.id} (user: ${socket.userId})`);
       handleDisconnect(io, socket, redisClient);
       await handleGroupCallDisconnect(io, socket);
     });

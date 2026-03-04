@@ -49,7 +49,7 @@ router.get('/api/conversations', authMiddleware, async (req, res) => {
 
     return res.json(conversations);
   } catch (err) {
-    console.error('GET /api/conversations error:', err);
+    req.log.error({ err }, 'GET /api/conversations error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -93,7 +93,7 @@ router.get('/api/messages/:friendId', authMiddleware, async (req, res) => {
 
     return res.json({ messages, has_more: hasMore });
   } catch (err) {
-    console.error('GET /api/messages/:friendId error:', err);
+    req.log.error({ err }, 'GET /api/messages/:friendId error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -138,7 +138,7 @@ router.post('/api/messages/:friendId', authMiddleware, async (req, res) => {
 
     return res.status(201).json(message);
   } catch (err) {
-    console.error('POST /api/messages/:friendId error:', err);
+    req.log.error({ err }, 'POST /api/messages/:friendId error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -166,7 +166,7 @@ router.post('/api/messages/:friendId/read', authMiddleware, async (req, res) => 
 
     return res.json({ updated });
   } catch (err) {
-    console.error('POST /api/messages/:friendId/read error:', err);
+    req.log.error({ err }, 'POST /api/messages/:friendId/read error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

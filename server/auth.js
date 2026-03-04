@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import pool from './db.js';
+import logger from './logger.js';
 
 if (!process.env.JWT_SECRET) {
-  console.warn('JWT_SECRET not set — using insecure dev-secret (development only)');
+  logger.warn('JWT_SECRET not set — using insecure dev-secret (development only)');
 }
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 const SALT_ROUNDS = 12;
@@ -29,7 +30,7 @@ export function verifyToken(token) {
   try {
     return jwt.verify(token, JWT_SECRET);
   } catch (err) {
-    console.warn('JWT verification failed:', err.name, err.message);
+    logger.warn('JWT verification failed: %s %s', err.name, err.message);
     return null;
   }
 }

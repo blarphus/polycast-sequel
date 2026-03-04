@@ -6,6 +6,7 @@ import {
   YoutubeTranscriptTooManyRequestError,
   YoutubeTranscriptVideoUnavailableError,
 } from 'youtube-transcript-plus';
+import logger from '../logger.js';
 
 const YOUTUBE_TRANSCRIPT_REQUEST_TIMEOUT_MS =
   Number(process.env.YOUTUBE_TRANSCRIPT_REQUEST_TIMEOUT_MS || 20000);
@@ -144,7 +145,7 @@ async function fetchViaCfWorker(youtubeId, language, onProgress) {
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      console.error(`[cf-worker] HTTP ${res.status}: ${body.slice(0, 200)}`);
+      logger.error('[cf-worker] HTTP %d: %s', res.status, body.slice(0, 200));
       if (res.status === 404) {
         throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
       }
@@ -214,7 +215,7 @@ async function fetchViaVcyon(youtubeId, language, onProgress) {
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      console.error(`[vcyon] HTTP ${res.status}: ${body.slice(0, 200)}`);
+      logger.error('[vcyon] HTTP %d: %s', res.status, body.slice(0, 200));
       if (res.status === 404 || res.status === 422) {
         throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
       }
@@ -278,7 +279,7 @@ async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
     });
     if (!playerRes.ok) {
       const body = await playerRes.text().catch(() => '');
-      console.error(`[innertube-direct] Player API HTTP ${playerRes.status}: ${body.slice(0, 200)}`);
+      logger.error('[innertube-direct] Player API HTTP %d: %s', playerRes.status, body.slice(0, 200));
       const code = playerRes.status === 429 ? 'BLOCKED_OR_RATE_LIMITED' : 'TRANSIENT_FETCH_ERROR';
       throw new TranscriptFetchError(`Player API returned ${playerRes.status}`, code, true);
     }
@@ -294,7 +295,7 @@ async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
   const playability = playerData?.playabilityStatus;
   const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
   if (!captionTracks || captionTracks.length === 0) {
-    console.error(`[innertube-direct] No caption tracks. Playability: ${playability?.status} - ${playability?.reason || 'no reason'}`);
+    logger.error('[innertube-direct] No caption tracks. Playability: %s - %s', playability?.status, playability?.reason || 'no reason');
     throw new TranscriptFetchError('No YouTube captions available for this video.', 'NO_CAPTIONS', false);
   }
 
@@ -391,8 +392,9 @@ export async function fetchYouTubeTranscript(youtubeId, language = 'en', onProgr
   } catch (aggregateErr) {
     // Promise.any rejects with AggregateError when ALL promises reject
     const errors = aggregateErr.errors || [];
-    console.error(
-      `[transcript] All methods failed for ${youtubeId}:`,
+    logger.error(
+      '[transcript] All methods failed for %s: %s',
+      youtubeId,
       errors.map((e) => e.message).join('; '),
     );
 

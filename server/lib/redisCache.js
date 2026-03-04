@@ -1,4 +1,5 @@
 import redisClient from '../redis.js';
+import logger from '../logger.js';
 
 /**
  * Try Redis cache first; on miss call fetchFn() and cache the result.
@@ -13,7 +14,7 @@ export async function cachedFetch(cacheKey, fetchFn, ttl) {
       cached = await redisClient.get(cacheKey);
     }
   } catch (err) {
-    console.warn(`Redis read failed for ${cacheKey}:`, err.message);
+    logger.warn('Redis read failed for %s: %s', cacheKey, err.message);
   }
 
   if (cached) {
@@ -29,7 +30,7 @@ export async function cachedFetch(cacheKey, fetchFn, ttl) {
         await redisClient.set(cacheKey, JSON.stringify(data), { EX: ttl });
       }
     } catch (err) {
-      console.warn(`Redis write failed for ${cacheKey}:`, err.message);
+      logger.warn('Redis write failed for %s: %s', cacheKey, err.message);
     }
   }
 

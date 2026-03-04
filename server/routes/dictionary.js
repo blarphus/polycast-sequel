@@ -27,7 +27,7 @@ router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
       try {
         wiktSenses = await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang);
       } catch (err) {
-        console.error('fetchWiktSenses error in lookup:', err);
+        req.log.error({ err }, 'fetchWiktSenses error in lookup');
       }
     }
 
@@ -70,7 +70,7 @@ Respond with ONLY the JSON object, no other text.`;
     const parsed = JSON.parse(raw);
     const valid = parsed.valid ?? true;
     if (valid && !parsed.definition) {
-      console.error('Gemini lookup returned incomplete JSON:', raw.slice(0, 300));
+      req.log.error('Gemini lookup returned incomplete JSON: %s', raw.slice(0, 300));
     }
     const translation = parsed.translation || '';
     const definition = parsed.definition || '';
@@ -90,7 +90,7 @@ Respond with ONLY the JSON object, no other text.`;
 
     return res.json({ word, valid, translation, definition, part_of_speech, sense_index, matched_gloss, lemma });
   } catch (err) {
-    console.error('Dictionary lookup error:', err);
+    req.log.error({ err }, 'Dictionary lookup error');
     return res.status(500).json({ error: err.message || 'Lookup failed' });
   }
 });
@@ -110,7 +110,7 @@ router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
     const senses = await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang);
     return res.json({ word, senses });
   } catch (err) {
-    console.error('WiktApi network error:', err);
+    req.log.error({ err }, 'WiktApi network error');
     return res.status(502).json({ error: 'WiktApi request failed' });
   }
 });
@@ -146,19 +146,19 @@ router.post('/api/dictionary/translate', authMiddleware, async (req, res) => {
 
     if (!response.ok) {
       const err = await response.text();
-      console.error('Google Translate API error:', err);
+      req.log.error('Google Translate API error: %s', err);
       throw new Error('Translation request failed');
     }
 
     const data = await response.json();
     const translation = data.data?.translations?.[0]?.translatedText;
     if (!translation) {
-      console.error('Google Translate returned unexpected structure:', JSON.stringify(data).slice(0, 500));
+      req.log.error('Google Translate returned unexpected structure: %s', JSON.stringify(data).slice(0, 500));
     }
 
     return res.json({ translation: translation || '' });
   } catch (err) {
-    console.error('Sentence translation error:', err);
+    req.log.error({ err }, 'Sentence translation error');
     return res.status(500).json({ error: err.message || 'Translation failed' });
   }
 });
@@ -179,7 +179,7 @@ router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
     const result = await enrichWordHelper(word, sentence, nativeLang, targetLang, senseIndex ?? null);
     return res.json(result);
   } catch (err) {
-    console.error('Dictionary enrich error:', err);
+    req.log.error({ err }, 'Dictionary enrich error');
     return res.status(500).json({ error: err.message || 'Enrichment failed' });
   }
 });
@@ -205,7 +205,7 @@ router.get('/api/dictionary/image-proxy', authMiddleware, async (req, res) => {
   try {
     const upstream = await fetch(url);
     if (!upstream.ok) {
-      console.error(`[image-proxy] Upstream returned ${upstream.status} for ${url}`);
+      req.log.error('[image-proxy] Upstream returned %d for %s', upstream.status, url);
       return res.status(upstream.status).end();
     }
     const contentType = upstream.headers.get('content-type') || 'image/jpeg';
@@ -214,7 +214,7 @@ router.get('/api/dictionary/image-proxy', authMiddleware, async (req, res) => {
     res.set('Cache-Control', 'public, max-age=31536000, immutable');
     return res.send(Buffer.from(buffer));
   } catch (err) {
-    console.error('[image-proxy] fetch error:', err);
+    req.log.error({ err }, '[image-proxy] fetch error');
     return res.status(502).end();
   }
 });
@@ -231,7 +231,7 @@ router.get('/api/dictionary/image-search', authMiddleware, async (req, res) => {
     const images = await searchAllImages(q, 12);
     return res.json({ images });
   } catch (err) {
-    console.error('Image search error:', err);
+    req.log.error({ err }, 'Image search error');
     return res.status(500).json({ error: 'Image search failed' });
   }
 });
@@ -254,7 +254,7 @@ router.patch('/api/dictionary/words/:id/image', authMiddleware, async (req, res)
     if (rows.length === 0) return res.status(404).json({ error: 'Word not found' });
     return res.json(rows[0]);
   } catch (err) {
-    console.error('Error updating word image:', err);
+    req.log.error({ err }, 'Error updating word image');
     return res.status(500).json({ error: 'Failed to update image' });
   }
 });
@@ -281,7 +281,7 @@ router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
     );
     return res.json(rows);
   } catch (err) {
-    console.error('Error fetching new-today words:', err);
+    req.log.error({ err }, 'Error fetching new-today words');
     return res.status(500).json({ error: 'Failed to fetch new words' });
   }
 });
@@ -319,7 +319,7 @@ router.get('/api/dictionary/due', authMiddleware, async (req, res) => {
     );
     return res.json(rows);
   } catch (err) {
-    console.error('Error fetching due words:', err);
+    req.log.error({ err }, 'Error fetching due words');
     return res.status(500).json({ error: 'Failed to fetch due words' });
   }
 });
@@ -443,7 +443,7 @@ router.patch('/api/dictionary/words/:id/review', authMiddleware, async (req, res
 
     return res.json(updated[0]);
   } catch (err) {
-    console.error('Error reviewing word:', err);
+    req.log.error({ err }, 'Error reviewing word');
     return res.status(500).json({ error: 'Failed to record review' });
   }
 });
@@ -465,7 +465,7 @@ router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
     );
     return res.json(rows);
   } catch (err) {
-    console.error('Error fetching saved words:', err);
+    req.log.error({ err }, 'Error fetching saved words');
     return res.status(500).json({ error: 'Failed to fetch saved words' });
   }
 });
@@ -500,7 +500,7 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
     );
     return res.status(201).json({ ...rows[0], _created: true });
   } catch (err) {
-    console.error('Error saving word:', err);
+    req.log.error({ err }, 'Error saving word');
     return res.status(500).json({ error: 'Failed to save word' });
   }
 });
@@ -520,7 +520,7 @@ router.delete('/api/dictionary/words/:id', authMiddleware, async (req, res) => {
     }
     return res.status(204).end();
   } catch (err) {
-    console.error('Error deleting saved word:', err);
+    req.log.error({ err }, 'Error deleting saved word');
     return res.status(500).json({ error: 'Failed to delete word' });
   }
 });

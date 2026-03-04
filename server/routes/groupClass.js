@@ -92,7 +92,7 @@ router.get('/api/classes/today', authMiddleware, async (req, res) => {
 
     return res.json({ classes });
   } catch (err) {
-    console.error('GET /api/classes/today error:', err);
+    req.log.error({ err }, 'GET /api/classes/today error');
     return res.status(500).json({ error: err.message || 'Failed to fetch classes' });
   }
 });
@@ -182,7 +182,7 @@ router.post('/api/group-call/:postId/join', authMiddleware, async (req, res) => 
 
     return res.json({ groupCallId, participants });
   } catch (err) {
-    console.error('POST /api/group-call/:postId/join error:', err);
+    req.log.error({ err }, 'POST /api/group-call/:postId/join error');
     return res.status(500).json({ error: err.message || 'Failed to join group call' });
   }
 });
@@ -201,7 +201,7 @@ router.post('/api/group-call/:postId/leave', authMiddleware, async (req, res) =>
 
     return res.status(204).send();
   } catch (err) {
-    console.error('POST /api/group-call/:postId/leave error:', err);
+    req.log.error({ err }, 'POST /api/group-call/:postId/leave error');
     return res.status(500).json({ error: err.message || 'Failed to leave group call' });
   }
 });
@@ -234,7 +234,7 @@ router.get('/api/group-call/:postId/participants', authMiddleware, async (req, r
 
     return res.json({ participants });
   } catch (err) {
-    console.error('GET /api/group-call/:postId/participants error:', err);
+    req.log.error({ err }, 'GET /api/group-call/:postId/participants error');
     return res.status(500).json({ error: err.message || 'Failed to get participants' });
   }
 });
