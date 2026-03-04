@@ -101,12 +101,12 @@ function parseFrequency(str) {
   return n;
 }
 
-export async function callGemini(prompt, generationConfig = {}, model = 'gemini-flash-latest') {
+export async function callGemini(prompt, generationConfig = {}) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
