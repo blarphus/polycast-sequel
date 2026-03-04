@@ -29,6 +29,7 @@ import GroupCall from './pages/GroupCall';
 import ReadArticle from './pages/ReadArticle';
 import IncomingCall from './components/IncomingCall';
 import BottomToolbar from './components/BottomToolbar';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // ---------------------------------------------------------------------------
 // ProtectedRoute -- redirects to /login when the user is not authenticated
@@ -96,6 +97,7 @@ export default function App() {
       {/* Global incoming-call modal (only when authenticated) */}
       <AuthenticatedShell />
 
+      <ErrorBoundary>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -246,6 +248,7 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ErrorBoundary>
       </DictionaryToastProvider>
     </AuthProvider>
   );

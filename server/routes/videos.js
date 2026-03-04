@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import pool from '../db.js';
 import redisClient from '../redis.js';
 import { authMiddleware } from '../auth.js';
@@ -8,8 +9,20 @@ import { MOVIES_TV_UPLOADS_PLAYLIST, CHANNELS_BY_LANG } from '../data/channels.j
 import { LESSONS_BY_LANG, videoMatchesLesson } from '../data/lessons.js';
 import { cachedFetch } from '../lib/redisCache.js';
 import logger from '../logger.js';
+import { validate } from '../lib/validate.js';
 
 const router = Router();
+
+const addVideoBody = z.object({
+  url: z.string().min(1, 'URL is required'),
+  language: z.string().optional(),
+});
+
+const videoSearchQuery = z.object({
+  q: z.string().min(1, 'Query parameter "q" is required'),
+  lang: z.string().optional(),
+  userRegion: z.string().optional(),
+});
 
 const LANG_TO_REGION = {
   en: 'US', es: 'ES', pt: 'BR', fr: 'FR', de: 'DE', ja: 'JP',
@@ -188,10 +201,9 @@ router.get('/api/videos', authMiddleware, async (req, res) => {
  * POST /api/videos
  * Create a new video from a YouTube URL, then queue transcript extraction.
  */
-router.post('/api/videos', authMiddleware, async (req, res) => {
+router.post('/api/videos', authMiddleware, validate({ body: addVideoBody }), async (req, res) => {
   try {
     const { url, language = 'en' } = req.body;
-    if (!url) return res.status(400).json({ error: 'URL is required' });
 
     const youtube_id = parseYouTubeId(url);
     if (!youtube_id) return res.status(400).json({ error: 'Invalid YouTube URL' });
@@ -396,10 +408,9 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
  * filtered to the target language's region.
  * Cached in Redis for 1 hour.
  */
-router.get('/api/videos/search', authMiddleware, async (req, res) => {
+router.get('/api/videos/search', authMiddleware, validate({ query: videoSearchQuery }), async (req, res) => {
   try {
-    const query = (req.query.q || '').toString().trim();
-    if (!query) return res.status(400).json({ error: 'Query parameter "q" is required' });
+    const query = req.query.q.trim();
 
     const lang = (req.query.lang || 'en').toString().toLowerCase();
     const trendingRegion = LANG_TO_REGION[lang] || 'US';

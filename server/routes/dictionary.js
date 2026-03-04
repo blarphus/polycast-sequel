@@ -1,24 +1,79 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
 import { enrichWord as enrichWordHelper, callGemini, searchPixabay, searchAllImages, fetchWiktSenses } from '../enrichWord.js';
+import { validate } from '../lib/validate.js';
 
 const router = Router();
+
+const uuidParam = z.object({ id: z.string().uuid('Invalid ID') });
+
+const lookupQuery = z.object({
+  word: z.string().min(1, 'word is required'),
+  sentence: z.string().min(1, 'sentence is required'),
+  nativeLang: z.string().min(1, 'nativeLang is required'),
+  targetLang: z.string().optional(),
+});
+
+const wiktLookupQuery = z.object({
+  word: z.string().min(1, 'word is required'),
+  targetLang: z.string().min(1, 'targetLang is required'),
+  nativeLang: z.string().min(1, 'nativeLang is required'),
+});
+
+const translateBody = z.object({
+  sentence: z.string().min(1, 'sentence is required'),
+  toLang: z.string().min(1, 'toLang is required'),
+  fromLang: z.string().optional(),
+});
+
+const enrichBody = z.object({
+  word: z.string().min(1, 'word is required'),
+  sentence: z.string().min(1, 'sentence is required'),
+  nativeLang: z.string().min(1, 'nativeLang is required'),
+  targetLang: z.string().optional(),
+  senseIndex: z.number().optional(),
+});
+
+const imageProxyQuery = z.object({
+  url: z.string().startsWith('https://pixabay.com/', 'Only Pixabay URLs are proxied'),
+});
+
+const imageSearchQuery = z.object({
+  q: z.string().min(1, 'q is required'),
+});
+
+const wordImageBody = z.object({
+  image_url: z.string().min(1, 'image_url is required'),
+});
+
+const reviewBody = z.object({
+  answer: z.enum(['again', 'hard', 'good', 'easy'], { message: 'answer must be again, hard, good, or easy' }),
+});
+
+const saveWordBody = z.object({
+  word: z.string().min(1, 'word is required'),
+  translation: z.string().optional(),
+  definition: z.string().optional(),
+  target_language: z.string().optional(),
+  sentence_context: z.string().optional(),
+  frequency: z.number().nullable().optional(),
+  frequency_count: z.number().nullable().optional(),
+  example_sentence: z.string().nullable().optional(),
+  part_of_speech: z.string().nullable().optional(),
+  image_url: z.string().nullable().optional(),
+  lemma: z.string().nullable().optional(),
+  forms: z.string().nullable().optional(),
+  image_term: z.string().nullable().optional(),
+});
 
 /**
  * GET /api/dictionary/lookup?word=X&sentence=Y&nativeLang=Z&targetLang=W
  * Uses Gemini to provide translation, definition, and POS.
  */
-router.get('/api/dictionary/lookup', authMiddleware, async (req, res) => {
+router.get('/api/dictionary/lookup', authMiddleware, validate({ query: lookupQuery }), async (req, res) => {
   const { word, sentence, nativeLang, targetLang } = req.query;
-
-  if (!word || !sentence) {
-    return res.status(400).json({ error: 'word and sentence are required' });
-  }
-
-  if (!nativeLang) {
-    return res.status(400).json({ error: 'nativeLang is required' });
-  }
 
   try {
     // Fetch Wiktionary senses when targetLang is available (for sense-aware picking)
@@ -99,12 +154,8 @@ Respond with ONLY the JSON object, no other text.`;
  * GET /api/dictionary/wikt-lookup?word=X&targetLang=Y&nativeLang=Z
  * Proxies to WiktApi for structured Wiktionary definitions.
  */
-router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
+router.get('/api/dictionary/wikt-lookup', authMiddleware, validate({ query: wiktLookupQuery }), async (req, res) => {
   const { word, targetLang, nativeLang } = req.query;
-
-  if (!word || !targetLang || !nativeLang) {
-    return res.status(400).json({ error: 'word, targetLang, and nativeLang are required' });
-  }
 
   try {
     const senses = await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang);
@@ -120,12 +171,8 @@ router.get('/api/dictionary/wikt-lookup', authMiddleware, async (req, res) => {
  * Translate a full sentence via Google Cloud Translation API (v2).
  * Used for transcript panel translations.
  */
-router.post('/api/dictionary/translate', authMiddleware, async (req, res) => {
+router.post('/api/dictionary/translate', authMiddleware, validate({ body: translateBody }), async (req, res) => {
   const { sentence, fromLang, toLang } = req.body;
-
-  if (!sentence || !toLang) {
-    return res.status(400).json({ error: 'sentence and toLang are required' });
-  }
 
   try {
     const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
@@ -168,12 +215,8 @@ router.post('/api/dictionary/translate', authMiddleware, async (req, res) => {
  * Full enrichment call (translation, definition, POS, frequency, example).
  * Called when the user saves a word — quality over speed.
  */
-router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
+router.post('/api/dictionary/enrich', authMiddleware, validate({ body: enrichBody }), async (req, res) => {
   const { word, sentence, nativeLang, targetLang, senseIndex } = req.body;
-
-  if (!word || !sentence || !nativeLang) {
-    return res.status(400).json({ error: 'word, sentence, and nativeLang are required' });
-  }
 
   try {
     const result = await enrichWordHelper(word, sentence, nativeLang, targetLang, senseIndex ?? null);
@@ -194,14 +237,8 @@ router.post('/api/dictionary/enrich', authMiddleware, async (req, res) => {
  * Avoids CDN rate-limiting (429) when many images load at once, and complies with
  * Pixabay's policy against hotlinking webformatURLs from end-user browsers.
  */
-router.get('/api/dictionary/image-proxy', authMiddleware, async (req, res) => {
+router.get('/api/dictionary/image-proxy', authMiddleware, validate({ query: imageProxyQuery }), async (req, res) => {
   const { url } = req.query;
-  if (!url || typeof url !== 'string') {
-    return res.status(400).json({ error: 'url is required' });
-  }
-  if (!url.startsWith('https://pixabay.com/')) {
-    return res.status(400).json({ error: 'Only Pixabay URLs are proxied' });
-  }
   try {
     const upstream = await fetch(url);
     if (!upstream.ok) {
@@ -223,9 +260,8 @@ router.get('/api/dictionary/image-proxy', authMiddleware, async (req, res) => {
  * GET /api/dictionary/image-search?q=TERM
  * Search Pixabay for stock photos.
  */
-router.get('/api/dictionary/image-search', authMiddleware, async (req, res) => {
+router.get('/api/dictionary/image-search', authMiddleware, validate({ query: imageSearchQuery }), async (req, res) => {
   const { q } = req.query;
-  if (!q) return res.status(400).json({ error: 'q is required' });
 
   try {
     const images = await searchAllImages(q, 12);
@@ -240,9 +276,8 @@ router.get('/api/dictionary/image-search', authMiddleware, async (req, res) => {
  * PATCH /api/dictionary/words/:id/image
  * Update the image_url on a saved word.
  */
-router.patch('/api/dictionary/words/:id/image', authMiddleware, async (req, res) => {
+router.patch('/api/dictionary/words/:id/image', authMiddleware, validate({ params: uuidParam, body: wordImageBody }), async (req, res) => {
   const { image_url } = req.body;
-  if (!image_url) return res.status(400).json({ error: 'image_url is required' });
 
   try {
     const { rows } = await pool.query(
@@ -328,12 +363,8 @@ router.get('/api/dictionary/due', authMiddleware, async (req, res) => {
  * PATCH /api/dictionary/words/:id/review -- Record an Anki-style SRS review
  * Body: { answer: 'again' | 'hard' | 'good' | 'easy' }
  */
-router.patch('/api/dictionary/words/:id/review', authMiddleware, async (req, res) => {
+router.patch('/api/dictionary/words/:id/review', authMiddleware, validate({ params: uuidParam, body: reviewBody }), async (req, res) => {
   const { answer } = req.body;
-
-  if (!answer || !['again', 'hard', 'good', 'easy'].includes(answer)) {
-    return res.status(400).json({ error: 'answer must be again, hard, good, or easy' });
-  }
 
   try {
     const { rows: existing } = await pool.query(
@@ -473,12 +504,8 @@ router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
 /**
  * POST /api/dictionary/words -- Save a word to the personal dictionary
  */
-router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
+router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBody }), async (req, res) => {
   const { word, translation, definition, target_language, sentence_context, frequency, frequency_count, example_sentence, part_of_speech, image_url, lemma, forms, image_term } = req.body;
-
-  if (!word) {
-    return res.status(400).json({ error: 'word is required' });
-  }
 
   try {
     // Check if this exact definition already exists
@@ -508,7 +535,7 @@ router.post('/api/dictionary/words', authMiddleware, async (req, res) => {
 /**
  * DELETE /api/dictionary/words/:id -- Remove a saved word
  */
-router.delete('/api/dictionary/words/:id', authMiddleware, async (req, res) => {
+router.delete('/api/dictionary/words/:id', authMiddleware, validate({ params: uuidParam }), async (req, res) => {
   try {
     const { rowCount } = await pool.query(
       'DELETE FROM saved_words WHERE id = $1 AND user_id = $2',

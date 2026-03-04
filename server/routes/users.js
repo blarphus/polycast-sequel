@@ -1,22 +1,25 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
 import { userToSocket } from '../socket/presence.js';
+import { validate } from '../lib/validate.js';
 
 const router = Router();
+
+const searchQuery = z.object({
+  q: z.string().min(1, 'Search query is required'),
+  account_type: z.string().optional(),
+});
 
 /**
  * GET /api/users/search?q=<query>
  * Search users by username (case-insensitive), excluding the current user.
  * Returns up to 20 results with id, username, display_name, and online status.
  */
-router.get('/api/users/search', authMiddleware, async (req, res) => {
+router.get('/api/users/search', authMiddleware, validate({ query: searchQuery }), async (req, res) => {
   try {
     const { q, account_type } = req.query;
-
-    if (!q || q.trim().length === 0) {
-      return res.json([]);
-    }
 
     const searchTerm = `%${q.trim()}%`;
     const params = [req.userId, searchTerm];

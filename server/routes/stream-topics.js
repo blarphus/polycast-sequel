@@ -1,16 +1,32 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
+import { validate } from '../lib/validate.js';
 
 const router = Router();
+
+const idParam = z.object({ id: z.string().uuid('Invalid topic ID') });
+
+const createTopicBody = z.object({
+  title: z.string().min(1, 'title is required').trim(),
+});
+
+const reorderBody = z.object({
+  items: z.array(z.object({
+    kind: z.enum(['post', 'topic']),
+    id: z.string().uuid(),
+    position: z.number().int(),
+    topic_id: z.string().uuid().nullable().optional(),
+  })).min(1, 'items array is required'),
+});
 
 // ---------------------------------------------------------------------------
 // POST /api/stream/topics — create a topic (teacher only)
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/topics', authMiddleware, requireTeacher, async (req, res) => {
+router.post('/api/stream/topics', authMiddleware, requireTeacher, validate({ body: createTopicBody }), async (req, res) => {
   const { title } = req.body;
-  if (!title || !title.trim()) return res.status(400).json({ error: 'title is required' });
 
   try {
     const { rows: maxRows } = await pool.query(
@@ -23,7 +39,7 @@ router.post('/api/stream/topics', authMiddleware, requireTeacher, async (req, re
       `INSERT INTO stream_topics (teacher_id, title, position)
        VALUES ($1, $2, $3)
        RETURNING *`,
-      [req.userId, title.trim(), nextPos],
+      [req.userId, title, nextPos],
     );
     return res.status(201).json(rows[0]);
   } catch (err) {
@@ -36,7 +52,7 @@ router.post('/api/stream/topics', authMiddleware, requireTeacher, async (req, re
 // PATCH /api/stream/topics/:id — rename a topic (teacher only, must own it)
 // ---------------------------------------------------------------------------
 
-router.patch('/api/stream/topics/:id', authMiddleware, async (req, res) => {
+router.patch('/api/stream/topics/:id', authMiddleware, validate({ params: idParam }), async (req, res) => {
   const { title } = req.body;
   try {
     const { rows: existing } = await pool.query(
@@ -63,7 +79,7 @@ router.patch('/api/stream/topics/:id', authMiddleware, async (req, res) => {
 // DELETE /api/stream/topics/:id — delete a topic; posts get topic_id = NULL
 // ---------------------------------------------------------------------------
 
-router.delete('/api/stream/topics/:id', authMiddleware, async (req, res) => {
+router.delete('/api/stream/topics/:id', authMiddleware, validate({ params: idParam }), async (req, res) => {
   try {
     const { rows: existing } = await pool.query(
       'SELECT teacher_id FROM stream_topics WHERE id = $1',
@@ -86,11 +102,8 @@ router.delete('/api/stream/topics/:id', authMiddleware, async (req, res) => {
 // PATCH /api/stream/reorder — bulk reorder posts and/or topics (teacher only)
 // ---------------------------------------------------------------------------
 
-router.patch('/api/stream/reorder', authMiddleware, requireTeacher, async (req, res) => {
+router.patch('/api/stream/reorder', authMiddleware, requireTeacher, validate({ body: reorderBody }), async (req, res) => {
   const { items } = req.body;
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'items array is required' });
-  }
 
   try {
     const client = await pool.connect();

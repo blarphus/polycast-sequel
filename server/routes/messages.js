@@ -1,10 +1,23 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
 import { userToSocket } from '../socket/presence.js';
 import { emitToUser } from '../socket/emitToUser.js';
+import { validate } from '../lib/validate.js';
 
 const router = Router();
+
+const friendIdParam = z.object({ friendId: z.string().uuid('Invalid friend ID') });
+
+const messagesQuery = z.object({
+  before: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+const sendMessageBody = z.object({
+  body: z.string().min(1, 'Message body is required').trim(),
+});
 
 /**
  * GET /api/conversations
@@ -59,10 +72,10 @@ router.get('/api/conversations', authMiddleware, async (req, res) => {
  * Cursor-paginated message history (both directions).
  * Query params: ?before=<uuid>&limit=50
  */
-router.get('/api/messages/:friendId', authMiddleware, async (req, res) => {
+router.get('/api/messages/:friendId', authMiddleware, validate({ params: friendIdParam, query: messagesQuery }), async (req, res) => {
   try {
     const { friendId } = req.params;
-    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+    const limit = req.query.limit || 50;
     const before = req.query.before || null;
 
     let query;
@@ -103,14 +116,10 @@ router.get('/api/messages/:friendId', authMiddleware, async (req, res) => {
  * Send a message (validates friendship). Emits message:new to recipient socket.
  * Body: { body }
  */
-router.post('/api/messages/:friendId', authMiddleware, async (req, res) => {
+router.post('/api/messages/:friendId', authMiddleware, validate({ params: friendIdParam, body: sendMessageBody }), async (req, res) => {
   try {
     const { friendId } = req.params;
     const { body } = req.body;
-
-    if (!body || !body.trim()) {
-      return res.status(400).json({ error: 'Message body is required' });
-    }
 
     // Validate friendship exists
     const friendship = await pool.query(
@@ -128,7 +137,7 @@ router.post('/api/messages/:friendId', authMiddleware, async (req, res) => {
       `INSERT INTO messages (sender_id, receiver_id, body)
        VALUES ($1, $2, $3)
        RETURNING *`,
-      [req.userId, friendId, body.trim()],
+      [req.userId, friendId, body],
     );
 
     const message = result.rows[0];
@@ -147,7 +156,7 @@ router.post('/api/messages/:friendId', authMiddleware, async (req, res) => {
  * POST /api/messages/:friendId/read
  * Mark all unread messages from friendId as read. Emits message:read to friend.
  */
-router.post('/api/messages/:friendId/read', authMiddleware, async (req, res) => {
+router.post('/api/messages/:friendId/read', authMiddleware, validate({ params: friendIdParam }), async (req, res) => {
   try {
     const { friendId } = req.params;
 

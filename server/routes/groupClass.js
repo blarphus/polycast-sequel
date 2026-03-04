@@ -3,11 +3,15 @@
 // ---------------------------------------------------------------------------
 
 import { Router } from 'express';
+import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
 import { markParticipantLeft } from '../lib/groupCallDb.js';
+import { validate } from '../lib/validate.js';
 
 const router = Router();
+
+const postIdParam = z.object({ postId: z.string().uuid('Invalid post ID') });
 
 // ---------------------------------------------------------------------------
 // GET /api/classes/today — classes scheduled for today (student or teacher)
@@ -101,7 +105,7 @@ router.get('/api/classes/today', authMiddleware, async (req, res) => {
 // POST /api/group-call/:postId/join — join a group call room
 // ---------------------------------------------------------------------------
 
-router.post('/api/group-call/:postId/join', authMiddleware, async (req, res) => {
+router.post('/api/group-call/:postId/join', authMiddleware, validate({ params: postIdParam }), async (req, res) => {
   const { postId } = req.params;
   const userId = req.userId;
 
@@ -191,7 +195,7 @@ router.post('/api/group-call/:postId/join', authMiddleware, async (req, res) => 
 // POST /api/group-call/:postId/leave — leave a group call
 // ---------------------------------------------------------------------------
 
-router.post('/api/group-call/:postId/leave', authMiddleware, async (req, res) => {
+router.post('/api/group-call/:postId/leave', authMiddleware, validate({ params: postIdParam }), async (req, res) => {
   const { postId } = req.params;
   const userId = req.userId;
 
@@ -210,7 +214,7 @@ router.post('/api/group-call/:postId/leave', authMiddleware, async (req, res) =>
 // GET /api/group-call/:postId/participants — list active participants
 // ---------------------------------------------------------------------------
 
-router.get('/api/group-call/:postId/participants', authMiddleware, async (req, res) => {
+router.get('/api/group-call/:postId/participants', authMiddleware, validate({ params: postIdParam }), async (req, res) => {
   const { postId } = req.params;
 
   try {

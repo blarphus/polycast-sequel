@@ -1,9 +1,14 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import pool from '../db.js';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import { userToSocket } from '../socket/presence.js';
+import { validate } from '../lib/validate.js';
 
 const router = Router();
+
+const studentIdParam = z.object({ studentId: z.string().uuid('Invalid student ID') });
+const addStudentBody = z.object({ studentId: z.string().uuid('Invalid student ID') });
 
 /**
  * GET /api/classroom/students
@@ -42,13 +47,9 @@ router.get('/api/classroom/students', authMiddleware, requireTeacher, async (req
  * Add a student to the teacher's classroom.
  * Body: { studentId }
  */
-router.post('/api/classroom/students', authMiddleware, requireTeacher, async (req, res) => {
+router.post('/api/classroom/students', authMiddleware, requireTeacher, validate({ body: addStudentBody }), async (req, res) => {
   try {
     const { studentId } = req.body;
-
-    if (!studentId) {
-      return res.status(400).json({ error: 'studentId is required' });
-    }
 
     // Verify target is a student
     const studentCheck = await pool.query(
@@ -84,7 +85,7 @@ router.post('/api/classroom/students', authMiddleware, requireTeacher, async (re
  * DELETE /api/classroom/students/:studentId
  * Remove a student from the teacher's classroom.
  */
-router.delete('/api/classroom/students/:studentId', authMiddleware, async (req, res) => {
+router.delete('/api/classroom/students/:studentId', authMiddleware, validate({ params: studentIdParam }), async (req, res) => {
   try {
     const { studentId } = req.params;
 
@@ -109,7 +110,7 @@ router.delete('/api/classroom/students/:studentId', authMiddleware, async (req, 
  * Get a student's info, aggregate stats, and full word list.
  * Requires the student to be in the teacher's classroom.
  */
-router.get('/api/classroom/students/:studentId/stats', authMiddleware, async (req, res) => {
+router.get('/api/classroom/students/:studentId/stats', authMiddleware, validate({ params: studentIdParam }), async (req, res) => {
   try {
     const { studentId } = req.params;
 

@@ -1,9 +1,27 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
 import { enrichWord, fetchWordImage } from '../enrichWord.js';
+import { validate } from '../lib/validate.js';
 
 const router = Router();
+
+const idParam = z.object({ id: z.string().uuid('Invalid post ID') });
+
+const createPostBody = z.object({
+  type: z.enum(['material', 'word_list', 'lesson', 'class_session'], { message: 'type must be material, word_list, lesson, or class_session' }),
+  title: z.string().optional(),
+  body: z.string().optional(),
+  attachments: z.array(z.any()).optional(),
+  words: z.array(z.any()).optional(),
+  target_language: z.string().optional(),
+  lesson_items: z.array(z.any()).optional(),
+  topic_id: z.string().uuid().nullable().optional(),
+  scheduled_at: z.string().optional(),
+  duration_minutes: z.number().optional(),
+  recurrence: z.any().optional(),
+});
 
 // ---------------------------------------------------------------------------
 // enrichAndInsertWords — shared helper for POST + PATCH word list routes
@@ -245,12 +263,8 @@ router.get('/api/stream/pending', authMiddleware, async (req, res) => {
 // POST /api/stream/posts — create a post (teacher only)
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/posts', authMiddleware, requireTeacher, async (req, res) => {
+router.post('/api/stream/posts', authMiddleware, requireTeacher, validate({ body: createPostBody }), async (req, res) => {
   const { type, title, body, attachments, words, target_language, lesson_items, topic_id, scheduled_at, duration_minutes, recurrence } = req.body;
-
-  if (!type || !['material', 'word_list', 'lesson', 'class_session'].includes(type)) {
-    return res.status(400).json({ error: 'type must be material, word_list, lesson, or class_session' });
-  }
 
   try {
     const user = req.userRecord;
@@ -315,7 +329,7 @@ router.post('/api/stream/posts', authMiddleware, requireTeacher, async (req, res
 // PATCH /api/stream/posts/:id — edit a post (teacher only, must own it)
 // ---------------------------------------------------------------------------
 
-router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
+router.patch('/api/stream/posts/:id', authMiddleware, validate({ params: idParam }), async (req, res) => {
   const { title, body, attachments, lesson_items, words, target_language } = req.body;
   const topicIdInBody = Object.prototype.hasOwnProperty.call(req.body, 'topic_id');
   const topicId = req.body.topic_id;
@@ -433,7 +447,7 @@ router.patch('/api/stream/posts/:id', authMiddleware, async (req, res) => {
 // DELETE /api/stream/posts/:id — delete a post (teacher only, must own it)
 // ---------------------------------------------------------------------------
 
-router.delete('/api/stream/posts/:id', authMiddleware, async (req, res) => {
+router.delete('/api/stream/posts/:id', authMiddleware, validate({ params: idParam }), async (req, res) => {
   try {
     const { rows: existing } = await pool.query(
       'SELECT teacher_id FROM stream_posts WHERE id = $1',

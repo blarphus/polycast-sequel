@@ -1,12 +1,34 @@
 import { Router } from 'express';
+import { XMLParser } from 'fast-xml-parser';
 import { extract } from '@extractus/article-extractor';
 import redisClient from '../redis.js';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
 import { callGemini } from '../enrichWord.js';
 import { estimateCefrLevel } from '../lib/cefrDifficulty.js';
+import { validate } from '../lib/validate.js';
+
+const rssParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: '@_',
+  isArray: (name) => name === 'item',
+  processEntities: true,
+  cdataPropName: '__cdata',
+});
+
+import { z } from 'zod';
 
 const router = Router();
+
+const newsQuery = z.object({
+  lang: z.string().min(1, 'lang query parameter is required'),
+});
+
+const articleQuery = z.object({
+  lang: z.string().min(1, 'lang is required'),
+  index: z.coerce.number().int().min(0).max(9, 'index must be 0-9'),
+  level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).optional(),
+});
 
 const LANG_FEEDS = {
   en: [
@@ -30,32 +52,40 @@ const LANG_FEEDS = {
 };
 
 /**
- * Extract an image URL from an RSS item block.
+ * Extract an image URL from a parsed RSS item object.
  * Checks dwsyn:imageURL, media:content, media:thumbnail, enclosure, then <img> in description.
  */
-function extractImage(block) {
-  // DW RDF: <dwsyn:imageURL>...</dwsyn:imageURL>
-  const dwImage = block.match(/<dwsyn:imageURL>([\s\S]*?)<\/dwsyn:imageURL>/)?.[1]?.trim();
-  if (dwImage) return dwImage;
+function extractImage(item) {
+  // DW RDF: <dwsyn:imageURL>
+  const dwImage = item['dwsyn:imageURL'];
+  if (dwImage) return typeof dwImage === 'object' ? dwImage.__cdata || dwImage['#text'] : String(dwImage).trim();
 
   // <media:content url="...">
-  const mediaContent = block.match(/<media:content[^>]+url=["']([^"']+)["']/)?.[1];
-  if (mediaContent) return mediaContent;
+  const mediaContent = item['media:content'];
+  if (mediaContent) {
+    const url = Array.isArray(mediaContent) ? mediaContent[0]?.['@_url'] : mediaContent['@_url'];
+    if (url) return url;
+  }
 
   // <media:thumbnail url="...">
-  const mediaThumbnail = block.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/)?.[1];
-  if (mediaThumbnail) return mediaThumbnail;
+  const mediaThumbnail = item['media:thumbnail'];
+  if (mediaThumbnail) {
+    const url = Array.isArray(mediaThumbnail) ? mediaThumbnail[0]?.['@_url'] : mediaThumbnail['@_url'];
+    if (url) return url;
+  }
 
   // <enclosure url="..." type="image/...">
-  const enclosure = block.match(/<enclosure[^>]+type=["']image\/[^"']+["'][^>]+url=["']([^"']+)["']/)?.[1]
-    || block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']image\/[^"']+["']/)?.[1];
-  if (enclosure) return enclosure;
+  const enclosure = item.enclosure;
+  if (enclosure) {
+    const enc = Array.isArray(enclosure) ? enclosure[0] : enclosure;
+    if (enc?.['@_type']?.startsWith('image/') && enc['@_url']) return enc['@_url'];
+  }
 
-  // <img src="..."> inside <description> HTML
-  const descBlock = block.match(/<description>([\s\S]*?)<\/description>/)?.[1] || '';
-  const imgSrc = descBlock.match(/<img[^>]+src=["']([^"']+)["']/)?.[1]
-    || descBlock.match(/&lt;img[^&]*src=(?:&quot;|&#34;)([^&]+)(?:&quot;|&#34;)/)?.[1];
-  if (imgSrc) return imgSrc;
+  // <img src="..."> inside <description> HTML (embedded HTML string, not XML structure)
+  const desc = typeof item.description === 'object' ? item.description.__cdata || item.description['#text'] || '' : String(item.description || '');
+  const imgMatch = desc.match(/<img[^>]+src=["']([^"']+)["']/)?.[1]
+    || desc.match(/&lt;img[^&]*src=(?:&quot;|&#34;)([^&]+)(?:&quot;|&#34;)/)?.[1];
+  if (imgMatch) return imgMatch;
 
   return null;
 }
@@ -78,26 +108,35 @@ function upscaleImage(url) {
 }
 
 /**
+ * Unwrap a parsed text node that may be a CDATA object or plain string.
+ */
+function textOf(node) {
+  if (node == null) return '';
+  if (typeof node === 'object') return (node.__cdata || node['#text'] || '').toString().trim();
+  return String(node).trim();
+}
+
+/**
  * Parse RSS XML into an array of article objects.
  * feedSource is the broadcaster name (e.g. 'DW', 'BBC') since these aren't aggregators.
  */
 function parseRssItems(xml, feedSource) {
-  const items = [];
-  const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/g;
-  let match;
-  while ((match = itemRegex.exec(xml)) !== null) {
-    const block = match[1];
-    const title = block.match(/<title>([\s\S]*?)<\/title>/)?.[1]?.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, '$1')?.trim() || '';
-    const link = block.match(/<link>([\s\S]*?)<\/link>/)?.[1]?.trim() || '';
-    const pubDate = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1]?.trim()
-      || block.match(/<dc:date>([\s\S]*?)<\/dc:date>/)?.[1]?.trim()
-      || '';
-    const image = upscaleImage(extractImage(block));
-    if (title) {
-      items.push({ title, link, source: feedSource, pubDate, image });
-    }
-  }
-  return items;
+  const parsed = rssParser.parse(xml);
+
+  // Standard RSS 2.0: rss.channel.item
+  // RDF (DW): rdf:RDF.item
+  const rawItems = parsed?.rss?.channel?.item || parsed?.['rdf:RDF']?.item || [];
+
+  return rawItems
+    .map((item) => {
+      const title = textOf(item.title);
+      if (!title) return null;
+      const link = textOf(item.link);
+      const pubDate = textOf(item.pubDate) || textOf(item['dc:date']);
+      const image = upscaleImage(extractImage(item));
+      return { title, link, source: feedSource, pubDate, image };
+    })
+    .filter(Boolean);
 }
 
 /**
@@ -105,12 +144,9 @@ function parseRssItems(xml, feedSource) {
  * Fetch news headlines for a language with offline CEFR difficulty estimation.
  * Cached in Redis for 6 hours.
  */
-router.get('/api/news', authMiddleware, async (req, res) => {
+router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (req, res) => {
   try {
-    const lang = (req.query.lang || '').toString().toLowerCase();
-    if (!lang) {
-      return res.status(400).json({ error: 'lang query parameter is required' });
-    }
+    const lang = req.query.lang.toLowerCase();
 
     const feeds = LANG_FEEDS[lang];
     if (!feeds) {
@@ -221,15 +257,11 @@ function truncateAtSentence(text, maxChars = 3000) {
  * GET /api/news/article
  * Extract full article text and optionally rewrite at a CEFR level.
  */
-router.get('/api/news/article', authMiddleware, async (req, res) => {
+router.get('/api/news/article', authMiddleware, validate({ query: articleQuery }), async (req, res) => {
   try {
-    const lang = (req.query.lang || '').toString().toLowerCase();
-    const index = parseInt(req.query.index, 10);
-    const level = (req.query.level || '').toString().toUpperCase() || null;
-
-    if (!lang || isNaN(index) || index < 0 || index > 9) {
-      return res.status(400).json({ error: 'lang and index (0-9) are required' });
-    }
+    const lang = req.query.lang.toLowerCase();
+    const index = req.query.index;
+    const level = req.query.level || null;
 
     // Look up user's native language
     const { rows: userRows } = await pool.query(
@@ -340,7 +372,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
     }
 
     // Step 2: If a CEFR level is requested, rewrite via Gemini (cached 6h)
-    if (level && ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(level)) {
+    if (level) {
       const levelCacheKey = `article3:${lang}:${level}:${index}`;
       let rewrittenBody = null;
 

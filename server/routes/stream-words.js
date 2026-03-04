@@ -1,10 +1,38 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
 import { enrichWord, fetchWordImage, callGemini, fetchWiktSenses, fetchWiktTranslations } from '../enrichWord.js';
 import { applyEnglishFrequency } from '../lib/englishFrequency.js';
+import { validate } from '../lib/validate.js';
 
 const router = Router();
+
+const postIdParam = z.object({ postId: z.string().uuid('Invalid post ID') });
+const idParam = z.object({ id: z.string().uuid('Invalid ID') });
+
+const exampleBody = z.object({
+  word: z.string().min(1, 'word is required'),
+  targetLang: z.string().min(1, 'targetLang is required'),
+  definition: z.string().optional(),
+});
+
+const batchTranslateBody = z.object({
+  words: z.array(z.any()).min(1, 'words array is required'),
+  nativeLang: z.string().min(1, 'nativeLang is required'),
+  allWords: z.array(z.string()).optional(),
+});
+
+const lookupBody = z.object({
+  words: z.array(z.any()).min(1, 'words array is required'),
+  nativeLang: z.string().min(1, 'nativeLang is required'),
+  targetLang: z.string().min(1, 'targetLang is required'),
+});
+
+const knownBody = z.object({
+  postWordId: z.string().uuid('Invalid post word ID'),
+  known: z.boolean(),
+});
 
 // ---------------------------------------------------------------------------
 // lookupWordForPost — quick translation/definition preview for word list creation
@@ -65,10 +93,8 @@ Respond with ONLY the JSON object, no other text.`;
 // POST /api/stream/words/example — generate a single example sentence (teacher)
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/words/example', authMiddleware, requireTeacher, async (req, res) => {
+router.post('/api/stream/words/example', authMiddleware, requireTeacher, validate({ body: exampleBody }), async (req, res) => {
   const { word, targetLang, definition } = req.body;
-  if (!word) return res.status(400).json({ error: 'word is required' });
-  if (!targetLang) return res.status(400).json({ error: 'targetLang is required' });
 
   try {
     const defHint = definition ? ` with the meaning "${definition}"` : '';
@@ -91,13 +117,8 @@ Respond with ONLY the JSON object, no other text.`;
 // POST /api/stream/words/batch-translate — translate pre-enriched template words
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/words/batch-translate', authMiddleware, requireTeacher, async (req, res) => {
+router.post('/api/stream/words/batch-translate', authMiddleware, requireTeacher, validate({ body: batchTranslateBody }), async (req, res) => {
   const { words, nativeLang, allWords } = req.body;
-
-  if (!Array.isArray(words) || words.length === 0) {
-    return res.status(400).json({ error: 'words array is required' });
-  }
-  if (!nativeLang) return res.status(400).json({ error: 'nativeLang is required' });
 
   try {
     // 1. Fetch translations from English Wiktionary for each word
@@ -262,14 +283,8 @@ Each sense_index must be a valid index from the senses listed for that word.`;
 // POST /api/stream/words/lookup — preview word translations (teacher only)
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/words/lookup', authMiddleware, requireTeacher, async (req, res) => {
+router.post('/api/stream/words/lookup', authMiddleware, requireTeacher, validate({ body: lookupBody }), async (req, res) => {
   const { words, nativeLang, targetLang } = req.body;
-
-  if (!Array.isArray(words) || words.length === 0) {
-    return res.status(400).json({ error: 'words array is required' });
-  }
-  if (!nativeLang) return res.status(400).json({ error: 'nativeLang is required' });
-  if (!targetLang) return res.status(400).json({ error: 'targetLang is required' });
 
   try {
     const results = await Promise.all(
@@ -300,7 +315,7 @@ router.post('/api/stream/words/lookup', authMiddleware, requireTeacher, async (r
 // GET /api/stream/posts/:id/enrich — SSE: enrich words that have no translation
 // ---------------------------------------------------------------------------
 
-router.get('/api/stream/posts/:id/enrich', authMiddleware, async (req, res) => {
+router.get('/api/stream/posts/:id/enrich', authMiddleware, validate({ params: idParam }), async (req, res) => {
   const postId = req.params.id;
 
   const { rows } = await pool.query(
@@ -357,12 +372,8 @@ router.get('/api/stream/posts/:id/enrich', authMiddleware, async (req, res) => {
 // POST /api/stream/posts/:postId/known — toggle known word (student)
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/posts/:postId/known', authMiddleware, async (req, res) => {
+router.post('/api/stream/posts/:postId/known', authMiddleware, validate({ params: postIdParam, body: knownBody }), async (req, res) => {
   const { postWordId, known } = req.body;
-
-  if (!postWordId || known === undefined) {
-    return res.status(400).json({ error: 'postWordId and known are required' });
-  }
 
   try {
     const { rows: postRows } = await pool.query(
@@ -404,7 +415,7 @@ router.post('/api/stream/posts/:postId/known', authMiddleware, async (req, res) 
 // POST /api/stream/posts/:postId/add-to-dictionary — student adds unknown words
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, async (req, res) => {
+router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, validate({ params: postIdParam }), async (req, res) => {
   try {
     const { rows: postRows } = await pool.query(
       'SELECT * FROM stream_posts WHERE id = $1',

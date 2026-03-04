@@ -1,11 +1,16 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
 import { userToSocket } from '../socket/presence.js';
 import { emitToUser } from '../socket/emitToUser.js';
 import { getUserDisplayInfo } from '../lib/getUserDisplayInfo.js';
+import { validate } from '../lib/validate.js';
 
 const router = Router();
+
+const friendRequestBody = z.object({ userId: z.string().uuid('Invalid user ID') });
+const idParam = z.object({ id: z.string().uuid('Invalid ID') });
 
 /** Find a pending friend request where `recipientId` is the recipient. Returns the row or null. */
 async function findPendingRequest(id, recipientId) {
@@ -21,13 +26,9 @@ async function findPendingRequest(id, recipientId) {
  * Send a friend request to another user.
  * Body: { userId }
  */
-router.post('/api/friends/request', authMiddleware, async (req, res) => {
+router.post('/api/friends/request', authMiddleware, validate({ body: friendRequestBody }), async (req, res) => {
   try {
     const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: 'userId is required' });
-    }
 
     // Cannot friend yourself
     if (userId === req.userId) {
@@ -148,7 +149,7 @@ router.get('/api/friends/requests', authMiddleware, async (req, res) => {
  * POST /api/friends/:id/accept
  * Accept a pending friend request.
  */
-router.post('/api/friends/:id/accept', authMiddleware, async (req, res) => {
+router.post('/api/friends/:id/accept', authMiddleware, validate({ params: idParam }), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -190,7 +191,7 @@ router.post('/api/friends/:id/accept', authMiddleware, async (req, res) => {
  * POST /api/friends/:id/reject
  * Reject a pending friend request.
  */
-router.post('/api/friends/:id/reject', authMiddleware, async (req, res) => {
+router.post('/api/friends/:id/reject', authMiddleware, validate({ params: idParam }), async (req, res) => {
   try {
     const { id } = req.params;
 

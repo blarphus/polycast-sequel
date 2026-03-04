@@ -1,10 +1,17 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import { loadCefrMap } from '../lib/cefrDifficulty.js';
+import { validate } from '../lib/validate.js';
 
 const router = Router();
 
 const VALID_LEVELS = ['A1', 'A2', 'B1', 'B2'];
+
+const placementQuery = z.object({
+  level: z.enum(['A1', 'A2', 'B1', 'B2'], { message: `level must be one of ${VALID_LEVELS.join(', ')}` }),
+  language: z.string().min(1, 'language query parameter is required'),
+});
 
 /** Cache: language → { level → words[] } */
 const levelWordsCache = new Map();
@@ -43,16 +50,8 @@ function shuffle(arr) {
  * GET /api/placement-test?level=A1&language=en
  * Returns 20 random words at the given CEFR level.
  */
-router.get('/api/placement-test', authMiddleware, (req, res) => {
+router.get('/api/placement-test', authMiddleware, validate({ query: placementQuery }), (req, res) => {
   const { level, language } = req.query;
-
-  if (!language || typeof language !== 'string') {
-    return res.status(400).json({ error: 'language query parameter is required' });
-  }
-
-  if (!level || !VALID_LEVELS.includes(level)) {
-    return res.status(400).json({ error: `level must be one of ${VALID_LEVELS.join(', ')}` });
-  }
 
   const words = getLevelWords(language, level);
   if (words === null) {

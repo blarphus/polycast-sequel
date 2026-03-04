@@ -101,6 +101,8 @@
   margin-bottom: 0.5rem;
 }
 
+/* ---- Post body & actions ------------------------------------------------ */
+
 .stream-post-body {
   font-size: 0.9rem;
   color: var(--text-secondary);
@@ -146,6 +148,8 @@
   border-color: var(--accent);
   text-decoration: none;
 }
+
+/* ---- Word count labels -------------------------------------------------- */
 
 .stream-word-count-label {
   font-size: 0.8rem;
@@ -1005,7 +1009,7 @@
   gap: 0.5rem;
 }
 
-/* --- Collapsible level header --- */
+/* ---- Collapsible level header ----------------------------------------- */
 
 .template-level-group {
   border: 1px solid var(--border);
@@ -1082,7 +1086,7 @@
   transform: rotate(90deg);
 }
 
-/* --- Unit rows --- */
+/* ---- Unit rows -------------------------------------------------------- */
 
 .template-unit-list {
   border-top: 1px solid var(--border);
@@ -1116,7 +1120,7 @@
   opacity: 0.6;
 }
 
-/* --- Unit info & count --- */
+/* ---- Unit info & count ------------------------------------------------ */
 
 .template-unit-info {
   display: flex;
@@ -1159,7 +1163,7 @@
   white-space: nowrap;
 }
 
-/* --- Carousel with thumbnail previews --- */
+/* ---- Carousel with thumbnail previews --------------------------------- */
 
 .template-carousel {
   display: flex;

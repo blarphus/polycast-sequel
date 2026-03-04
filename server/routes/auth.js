@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import pool from '../db.js';
 import {
@@ -8,6 +9,26 @@ import {
   authMiddleware,
   COOKIE_OPTIONS,
 } from '../auth.js';
+import { validate } from '../lib/validate.js';
+
+const signupSchema = z.object({
+  username: z.string().min(1, 'Username is required').max(40, 'Username must be 40 characters or fewer').trim(),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  display_name: z.string().trim().optional(),
+});
+
+const loginSchema = z.object({
+  username: z.string().min(1, 'Username is required').trim(),
+  password: z.string().min(1, 'Password is required'),
+});
+
+const settingsSchema = z.object({
+  native_language: z.string().optional(),
+  target_language: z.string().optional(),
+  daily_new_limit: z.number().optional(),
+  account_type: z.enum(['student', 'teacher']).optional(),
+  cefr_level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).nullable().optional(),
+});
 
 const router = Router();
 
@@ -31,21 +52,9 @@ const signupLimiter = rateLimit({
  * POST /api/signup
  * Create a new user account, sign a JWT, and set the token cookie.
  */
-router.post('/api/signup', signupLimiter, async (req, res) => {
+router.post('/api/signup', signupLimiter, validate({ body: signupSchema }), async (req, res) => {
   try {
     const { username, password, display_name } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
-    }
-
-    if (username.length > 40) {
-      return res.status(400).json({ error: 'Username must be 40 characters or fewer' });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
 
     const passwordHash = await hashPassword(password);
 
@@ -53,7 +62,7 @@ router.post('/api/signup', signupLimiter, async (req, res) => {
       `INSERT INTO users (username, password_hash, display_name)
        VALUES ($1, $2, $3)
        RETURNING id, username, display_name, created_at, native_language, target_language, account_type, cefr_levels`,
-      [username.trim(), passwordHash, display_name?.trim() || null],
+      [username, passwordHash, display_name || null],
     );
 
     const user = result.rows[0];
@@ -88,17 +97,13 @@ router.post('/api/signup', signupLimiter, async (req, res) => {
  * POST /api/login
  * Authenticate with username + password, sign a JWT, set the token cookie.
  */
-router.post('/api/login', loginLimiter, async (req, res) => {
+router.post('/api/login', loginLimiter, validate({ body: loginSchema }), async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
-    }
-
     const result = await pool.query(
       'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, account_type, cefr_levels FROM users WHERE LOWER(username) = LOWER($1)',
-      [username.trim()],
+      [username],
     );
 
     const user = result.rows[0];
@@ -185,18 +190,9 @@ router.get('/api/me', authMiddleware, async (req, res) => {
  * PATCH /api/me/settings
  * Update the current user's language preferences.
  */
-router.patch('/api/me/settings', authMiddleware, async (req, res) => {
+router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema }), async (req, res) => {
   try {
     const { native_language, target_language, daily_new_limit, account_type, cefr_level } = req.body;
-
-    if (account_type !== undefined && account_type !== 'student' && account_type !== 'teacher') {
-      return res.status(400).json({ error: 'account_type must be "student" or "teacher"' });
-    }
-
-    const validCefrLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-    if (cefr_level !== undefined && cefr_level !== null && !validCefrLevels.includes(cefr_level)) {
-      return res.status(400).json({ error: 'cefr_level must be one of A1, A2, B1, B2, C1, C2' });
-    }
 
     // Build SET clauses and params dynamically
     const sets = ['native_language = $1', 'target_language = $2'];
