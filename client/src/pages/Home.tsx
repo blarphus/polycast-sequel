@@ -285,17 +285,14 @@ export default function Home() {
                     className="home-carousel-card home-carousel-card--clickable"
                     onClick={() => navigate(`/read/${targetLang}/${i}`)}
                   >
-                    <div className="home-carousel-thumb home-carousel-thumb--news">
-                      {n.image ? (
-                        <>
-                          <img src={n.image} alt="" className="home-carousel-thumb-img" />
-                          <span className="home-news-source-overlay">{n.source}</span>
-                        </>
-                      ) : (
-                        <span className="home-news-source">{n.source}</span>
-                      )}
-                    </div>
+                    {n.image && (
+                      <div className="home-carousel-thumb home-carousel-thumb--news">
+                        <img src={n.image} alt="" className="home-carousel-thumb-img" />
+                        <span className="home-news-source-overlay">{n.source}</span>
+                      </div>
+                    )}
                     <div className="home-carousel-info">
+                      {!n.image && <span className="home-carousel-source">{n.source}</span>}
                       <span className="home-carousel-title">{n.simplified_title}</span>
                       <div className="home-carousel-meta">
                         {n.difficulty && (
