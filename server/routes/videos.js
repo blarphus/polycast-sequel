@@ -289,7 +289,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
     // userRegion = the user's actual country (for filtering geo-restricted content)
     const userRegion = (req.query.userRegion || trendingRegion).toString().toUpperCase();
     const isEnglish = lang === 'en';
-    const cacheKey = isEnglish ? `trending:en:movies:${userRegion}` : `trending:${lang}:${userRegion}`;
+    const cacheKey = isEnglish ? `trending:en:movies:${userRegion}` : `trending2:${lang}:${userRegion}`;
 
     // Try Redis cache first
     let cached = null;
@@ -317,20 +317,34 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
     if (isEnglish) {
       items = await fetchMoviesAndTV(apiKey, userRegion);
     } else {
-      const ytUrl =
-        `https://www.googleapis.com/youtube/v3/videos` +
-        `?part=snippet,contentDetails&chart=mostPopular` +
-        `&regionCode=${trendingRegion}&maxResults=50&key=${apiKey}`;
+      // Paginate through trending results until we have enough captioned videos.
+      // YouTube's mostPopular endpoint returns max 50 per page; most non-English
+      // trending videos lack captions, so one page often yields only ~3 results.
+      const TARGET = 20;
+      const MAX_PAGES = 4;
+      items = [];
+      let pageToken = undefined;
 
-      const ytRes = await fetch(ytUrl);
-      if (!ytRes.ok) {
-        const body = await ytRes.text();
-        console.error('YouTube trending API error:', ytRes.status, body);
-        return res.status(502).json({ error: 'Failed to fetch trending videos from YouTube' });
+      for (let page = 0; page < MAX_PAGES && items.length < TARGET; page++) {
+        const ytUrl =
+          `https://www.googleapis.com/youtube/v3/videos` +
+          `?part=snippet,contentDetails&chart=mostPopular` +
+          `&regionCode=${trendingRegion}&maxResults=50&key=${apiKey}` +
+          (pageToken ? `&pageToken=${pageToken}` : '');
+
+        const ytRes = await fetch(ytUrl);
+        if (!ytRes.ok) {
+          const body = await ytRes.text();
+          console.error('YouTube trending API error:', ytRes.status, body);
+          if (items.length > 0) break;
+          return res.status(502).json({ error: 'Failed to fetch trending videos from YouTube' });
+        }
+
+        const ytData = await ytRes.json();
+        items.push(...filterAndMapTrendingItems(ytData.items, userRegion));
+        pageToken = ytData.nextPageToken;
+        if (!pageToken) break;
       }
-
-      const ytData = await ytRes.json();
-      items = filterAndMapTrendingItems(ytData.items, userRegion);
     }
 
     // Cache in Redis for 6 hours (skip empty results to avoid poisoning cache)
