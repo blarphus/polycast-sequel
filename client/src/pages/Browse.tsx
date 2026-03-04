@@ -5,9 +5,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getTrendingVideos, searchVideos, addVideo, checkVideoPlayability, TrendingVideo } from '../api';
+import { getTrendingVideos, searchVideos, addVideo, checkVideoPlayability, getLessons, TrendingVideo, LessonSummary } from '../api';
 import { LANGUAGES } from '../components/classwork/languages';
 import { SearchIcon, CloseIcon } from '../components/icons';
+import Carousel from '../components/Carousel';
+
+const LEVEL_COLORS: Record<string, string> = {
+  A1: '#22a55e', A2: '#22a55e',
+  B1: '#3b82f6', B2: '#3b82f6',
+  C1: '#8b5cf6', C2: '#8b5cf6',
+};
 
 function formatDuration(seconds: number | null): string {
   if (seconds == null) return '';
@@ -28,6 +35,8 @@ export default function Browse() {
   const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
   const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
+  const [lessons, setLessons] = useState<LessonSummary[]>([]);
+  const [lessonsLoading, setLessonsLoading] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const targetLang = user?.target_language;
@@ -37,6 +46,7 @@ export default function Browse() {
   useEffect(() => {
     if (!targetLang) {
       setLoading(false);
+      setLessonsLoading(false);
       return;
     }
     let cancelled = false;
@@ -64,6 +74,13 @@ export default function Browse() {
         if (!cancelled) setError('Failed to load videos. Please try again.');
       })
       .finally(() => { if (!cancelled) setLoading(false); });
+
+    getLessons(targetLang)
+      .then((data) => {
+        if (!cancelled) setLessons(data.filter((l) => l.videoCount > 0));
+      })
+      .catch((err) => console.error('Failed to fetch lessons:', err))
+      .finally(() => { if (!cancelled) setLessonsLoading(false); });
 
     return () => { cancelled = true; };
   }, [targetLang]);
@@ -172,6 +189,60 @@ export default function Browse() {
           </button>
         )}
       </form>
+
+      {/* Lesson playlists carousel */}
+      {targetLang && (lessons.length > 0 || lessonsLoading) && (
+        <Carousel
+          title="Lesson Playlists"
+          subtitle="videos by grammar topic"
+          items={lessons}
+          loading={lessonsLoading}
+          skeletonCount={3}
+          maxVisible={10}
+          onOverflowClick={() => {/* future: navigate to full lessons list */}}
+          renderSkeleton={(i) => (
+            <div key={i} className="home-carousel-card lesson-card home-carousel-card--skeleton">
+              <div className="home-channel-stack home-carousel-thumb--skeleton" />
+              <div className="home-carousel-info">
+                <div className="home-skeleton-line" style={{ width: '70%' }} />
+                <div className="home-skeleton-line" style={{ width: '40%' }} />
+              </div>
+            </div>
+          )}
+          renderItem={(lesson) => (
+            <div
+              key={lesson.id}
+              className="home-carousel-card lesson-card home-carousel-card--clickable"
+              onClick={() => navigate(`/lesson/${lesson.id}`)}
+            >
+              <div className="home-channel-stack">
+                {lesson.thumbnails.slice(0, 3).reverse().map((thumb, i, arr) => (
+                  <img
+                    key={i}
+                    src={thumb}
+                    alt=""
+                    className={`home-channel-stack-img home-channel-stack-img--${arr.length - 1 - i}`}
+                  />
+                ))}
+              </div>
+              <div className="home-carousel-info">
+                <span className="home-carousel-title">{lesson.title}</span>
+                <div className="home-carousel-meta">
+                  <span
+                    className="lesson-card-level"
+                    style={{ background: LEVEL_COLORS[lesson.level] || '#3b82f6' }}
+                  >
+                    {lesson.level}
+                  </span>
+                  <span className="lesson-card-count">
+                    {lesson.videoCount} video{lesson.videoCount !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        />
+      )}
 
       {/* Section header */}
       <h2 className="browse-section-title">{sectionTitle}</h2>

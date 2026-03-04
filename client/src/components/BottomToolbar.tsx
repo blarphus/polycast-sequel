@@ -27,7 +27,7 @@ export default function BottomToolbar() {
   }, [isStudent]);
 
   const isHome = location.pathname === '/';
-  const isBrowse = location.pathname === '/browse' || location.pathname.startsWith('/channel/');
+  const isBrowse = location.pathname === '/browse' || location.pathname.startsWith('/channel/') || location.pathname.startsWith('/lesson/');
   const isDictionary = location.pathname === '/dictionary';
   const isLearn = location.pathname === '/learn';
   const isChats = location.pathname === '/chats';

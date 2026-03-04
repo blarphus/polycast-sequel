@@ -62,6 +62,132 @@ const CHANNELS_BY_LANG = {
   ],
 };
 
+const LESSONS_BY_LANG = {
+  pt: [
+    // A1
+    { id: 'noun-gender', title: 'Noun Gender & Plurals', level: 'A1', keywords: ['gender', 'genero', 'masculine', 'feminine', 'masculino', 'feminino', 'plural', 'plurais'] },
+    { id: 'ser-estar', title: 'Ser & Estar', level: 'A1', keywords: ['ser', 'estar', 'to be', 'ser e estar', 'ser vs estar', 'ser ou estar'] },
+    { id: 'present-tense', title: 'Present Tense', level: 'A1', keywords: ['present tense', 'presente', 'conjugation', 'conjugar', 'regular verbs', 'verbos regulares'] },
+    { id: 'articles', title: 'Articles & Contractions', level: 'A1', keywords: ['articles', 'artigos', 'contractions', 'do', 'da', 'no', 'na', 'pelo', 'pela'] },
+    { id: 'numbers-time', title: 'Numbers & Time', level: 'A1', keywords: ['numbers', 'numeros', 'time', 'horas', 'clock', 'counting'] },
+    { id: 'question-words', title: 'Question Words', level: 'A1', keywords: ['question', 'pergunta', 'como', 'onde', 'quando', 'por que', 'quanto', 'qual'] },
+    { id: 'greetings', title: 'Greetings & Introductions', level: 'A1', keywords: ['greetings', 'introductions', 'cumprimentos', 'ola', 'bom dia', 'como vai', 'tudo bem'] },
+    { id: 'possessives', title: 'Possessive Pronouns', level: 'A1', keywords: ['possessive', 'possessivo', 'meu', 'minha', 'seu', 'sua', 'nosso', 'nossa'] },
+    // A2
+    { id: 'past-preterite', title: 'Past Tense (Preterite)', level: 'A2', keywords: ['past tense', 'preterite', 'preterito', 'passado', 'perfeito'] },
+    { id: 'imperfect', title: 'Imperfect Tense', level: 'A2', keywords: ['imperfect', 'imperfeito', 'imperfecto', 'used to', 'costumava'] },
+    { id: 'reflexive-verbs', title: 'Reflexive Verbs', level: 'A2', keywords: ['reflexive', 'reflexivo', 'se', 'me', 'levantar-se', 'chamar-se'] },
+    { id: 'prepositions', title: 'Prepositions', level: 'A2', keywords: ['preposition', 'preposicao', 'em', 'de', 'para', 'por', 'com', 'entre'] },
+    { id: 'comparatives', title: 'Comparatives & Superlatives', level: 'A2', keywords: ['comparative', 'comparativo', 'superlative', 'superlativo', 'mais', 'menos', 'melhor', 'pior'] },
+    { id: 'direct-object', title: 'Direct Object Pronouns', level: 'A2', keywords: ['direct object', 'objeto direto', 'pronome', 'me', 'te', 'lo', 'la', 'nos'] },
+    { id: 'indirect-object', title: 'Indirect Object Pronouns', level: 'A2', keywords: ['indirect object', 'objeto indireto', 'lhe', 'lhes', 'pronome'] },
+    { id: 'demonstratives', title: 'Demonstrative Pronouns', level: 'A2', keywords: ['demonstrative', 'demonstrativo', 'este', 'esse', 'aquele', 'isto', 'isso', 'aquilo'] },
+    // B1
+    { id: 'subjunctive-present', title: 'Present Subjunctive', level: 'B1', keywords: ['subjunctive', 'subjuntivo', 'presente do subjuntivo', 'que eu'] },
+    { id: 'future-tense', title: 'Future Tense', level: 'B1', keywords: ['future', 'futuro', 'future tense', 'ir + infinitive', 'vou'] },
+    { id: 'conditional', title: 'Conditional Mood', level: 'B1', keywords: ['conditional', 'condicional', 'futuro do preterito', 'would', 'faria', 'iria'] },
+    { id: 'imperative', title: 'Imperative Mood', level: 'B1', keywords: ['imperative', 'imperativo', 'command', 'ordem', 'faca', 'venha', 'diga'] },
+    { id: 'relative-clauses', title: 'Relative Clauses', level: 'B1', keywords: ['relative', 'relativo', 'que', 'quem', 'cujo', 'onde', 'clause'] },
+    { id: 'por-para', title: 'Por vs Para', level: 'B1', keywords: ['por vs para', 'por ou para', 'por e para', 'para vs por'] },
+    { id: 'pronominal-placement', title: 'Pronoun Placement', level: 'B1', keywords: ['pronoun placement', 'colocacao pronominal', 'proclise', 'mesoclise', 'enclise'] },
+    { id: 'passive-voice', title: 'Passive Voice', level: 'B1', keywords: ['passive', 'passiva', 'voz passiva', 'ser + participle'] },
+    // B2
+    { id: 'subjunctive-imperfect', title: 'Imperfect Subjunctive', level: 'B2', keywords: ['imperfect subjunctive', 'imperfeito do subjuntivo', 'se eu fosse', 'se eu tivesse'] },
+    { id: 'subjunctive-future', title: 'Future Subjunctive', level: 'B2', keywords: ['future subjunctive', 'futuro do subjuntivo', 'quando eu', 'se eu'] },
+    { id: 'pluperfect', title: 'Pluperfect Tense', level: 'B2', keywords: ['pluperfect', 'mais-que-perfeito', 'had done', 'tinha feito', 'fizera'] },
+    { id: 'compound-tenses', title: 'Compound Tenses', level: 'B2', keywords: ['compound', 'composto', 'ter + participle', 'tenho feito', 'tinha ido'] },
+    { id: 'gerund-infinitive', title: 'Gerund vs Infinitive', level: 'B2', keywords: ['gerund', 'gerundio', 'infinitive', 'infinitivo', 'personal infinitive', 'infinitivo pessoal'] },
+    { id: 'discourse-markers', title: 'Discourse Markers', level: 'B2', keywords: ['discourse', 'discurso', 'connector', 'conector', 'portanto', 'entretanto', 'aliás', 'alias'] },
+    { id: 'idiomatic-expressions', title: 'Idiomatic Expressions', level: 'B2', keywords: ['idiom', 'expressao idiomatica', 'expression', 'slang', 'giria', 'dito popular'] },
+    { id: 'subjunctive-triggers', title: 'Subjunctive Triggers', level: 'B2', keywords: ['subjunctive trigger', 'espero que', 'embora', 'talvez', 'caso', 'antes que'] },
+    // C1
+    { id: 'formal-register', title: 'Formal Register', level: 'C1', keywords: ['formal', 'register', 'registro formal', 'academic', 'academico', 'escrita formal'] },
+    { id: 'literary-tenses', title: 'Literary Tenses', level: 'C1', keywords: ['literary', 'literario', 'simple pluperfect', 'mais-que-perfeito simples', 'fizera'] },
+    { id: 'nominalization', title: 'Nominalization', level: 'C1', keywords: ['nominalization', 'nominalização', 'nominalizacao', 'abstract noun', 'substantivo abstrato'] },
+    { id: 'cleft-sentences', title: 'Cleft Sentences', level: 'C1', keywords: ['cleft', 'clivada', 'e que', 'foi que', 'emphasis', 'enfase'] },
+    { id: 'pt-vs-br', title: 'European vs Brazilian', level: 'C1', keywords: ['european', 'brazilian', 'portugal', 'brasil', 'differences', 'diferencas', 'pt-pt', 'pt-br'] },
+    { id: 'collocations', title: 'Collocations', level: 'C1', keywords: ['collocation', 'colocacao', 'word combination', 'combinacao', 'fazer sentido'] },
+    { id: 'false-cognates', title: 'False Cognates', level: 'C1', keywords: ['false cognate', 'falso cognato', 'false friend', 'falso amigo'] },
+    { id: 'advanced-subjunctive', title: 'Advanced Subjunctive', level: 'C1', keywords: ['advanced subjunctive', 'subjuntivo avancado', 'quer que', 'onde quer que', 'por mais que'] },
+  ],
+};
+
+/**
+ * Check if a video title matches a lesson based on keyword matching.
+ */
+function videoMatchesLesson(videoTitle, lesson) {
+  const lower = videoTitle.toLowerCase();
+  return lesson.keywords.some((kw) => lower.includes(kw));
+}
+
+/**
+ * Fetch all channel videos for a language, reusing per-channel Redis cache.
+ */
+async function fetchAllChannelVideos(lang, apiKey, userRegion) {
+  const channels = CHANNELS_BY_LANG[lang];
+  if (!channels) return [];
+
+  const allVideos = await Promise.all(
+    channels.map(async (ch) => {
+      const cacheKey = `channel3:${ch.handle}:${userRegion}`;
+      let cached = null;
+      try {
+        if (redisClient.isReady) {
+          cached = await redisClient.get(cacheKey);
+        }
+      } catch (err) {
+        console.warn(`Redis read failed for ${cacheKey}:`, err.message);
+      }
+
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return parsed.videos || [];
+      }
+
+      // Cache miss — fetch from YouTube
+      try {
+        const plUrl =
+          `https://www.googleapis.com/youtube/v3/playlistItems` +
+          `?part=contentDetails&playlistId=${ch.uploadsPlaylist}` +
+          `&maxResults=50&key=${apiKey}`;
+        const plRes = await fetch(plUrl);
+        if (!plRes.ok) return [];
+
+        const plData = await plRes.json();
+        const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+        if (videoIds.length === 0) return [];
+
+        const detailUrl =
+          `https://www.googleapis.com/youtube/v3/videos` +
+          `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
+          `&key=${apiKey}`;
+        const detailRes = await fetch(detailUrl);
+        if (!detailRes.ok) return [];
+
+        const detailData = await detailRes.json();
+        const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
+        videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
+
+        const result = { channel: { name: ch.name, handle: ch.handle }, videos };
+        try {
+          if (redisClient.isReady) {
+            await redisClient.set(cacheKey, JSON.stringify(result), { EX: 21600 });
+          }
+        } catch (cacheErr) {
+          console.warn(`Redis write failed for ${cacheKey}:`, cacheErr.message);
+        }
+
+        return videos;
+      } catch (err) {
+        console.error(`Failed to fetch videos for channel ${ch.handle}:`, err.message);
+        return [];
+      }
+    }),
+  );
+
+  return allVideos.flat();
+}
+
 /**
  * Extract a YouTube video ID from common URL formats.
  */
@@ -680,6 +806,129 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('GET /api/videos/channel/:handle failed:', err);
     res.status(500).json({ error: 'Failed to fetch channel videos' });
+  }
+});
+
+/**
+ * GET /api/videos/lessons
+ * Return lesson summaries with thumbnail previews and video counts.
+ * Cached in Redis for 12 hours.
+ */
+router.get('/api/videos/lessons', authMiddleware, async (req, res) => {
+  try {
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    const lessons = LESSONS_BY_LANG[lang];
+    if (!lessons) return res.json([]);
+
+    const trendingRegion = LANG_TO_REGION[lang] || 'US';
+    const userRegion = (req.query.userRegion || trendingRegion).toString().toUpperCase();
+    const cacheKey = `lessons2:${lang}:${userRegion}`;
+
+    let cached = null;
+    try {
+      if (redisClient.isReady) {
+        cached = await redisClient.get(cacheKey);
+      }
+    } catch (cacheErr) {
+      console.warn('Redis read failed for lessons cache:', cacheErr.message);
+    }
+
+    if (cached) return res.json(JSON.parse(cached));
+
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.error('GET /api/videos/lessons: YOUTUBE_API_KEY not set');
+      return res.status(500).json({ error: 'YouTube API key not configured' });
+    }
+
+    const allVideos = await fetchAllChannelVideos(lang, apiKey, userRegion);
+
+    const results = lessons.map((lesson) => {
+      const matched = allVideos.filter((v) => videoMatchesLesson(v.title, lesson));
+      return {
+        id: lesson.id,
+        title: lesson.title,
+        level: lesson.level,
+        thumbnails: matched.slice(0, 3).map((v) => v.thumbnail),
+        videoCount: matched.length,
+      };
+    });
+
+    // Cache for 12 hours
+    try {
+      if (redisClient.isReady) {
+        await redisClient.set(cacheKey, JSON.stringify(results), { EX: 43200 });
+      }
+    } catch (cacheErr) {
+      console.warn('Redis write failed for lessons cache:', cacheErr.message);
+    }
+
+    res.json(results);
+  } catch (err) {
+    console.error('GET /api/videos/lessons failed:', err);
+    res.status(500).json({ error: 'Failed to fetch lessons' });
+  }
+});
+
+/**
+ * GET /api/videos/lesson/:id
+ * Return lesson detail with matching videos.
+ * Cached in Redis for 6 hours.
+ */
+router.get('/api/videos/lesson/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    const lessons = LESSONS_BY_LANG[lang];
+    if (!lessons) return res.status(404).json({ error: 'No lessons for this language' });
+
+    const lesson = lessons.find((l) => l.id === id);
+    if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
+
+    const trendingRegion = LANG_TO_REGION[lang] || 'US';
+    const userRegion = (req.query.userRegion || trendingRegion).toString().toUpperCase();
+    const cacheKey = `lesson2:${id}:${lang}:${userRegion}`;
+
+    let cached = null;
+    try {
+      if (redisClient.isReady) {
+        cached = await redisClient.get(cacheKey);
+      }
+    } catch (cacheErr) {
+      console.warn('Redis read failed for lesson cache:', cacheErr.message);
+    }
+
+    if (cached) return res.json(JSON.parse(cached));
+
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.error('GET /api/videos/lesson/:id: YOUTUBE_API_KEY not set');
+      return res.status(500).json({ error: 'YouTube API key not configured' });
+    }
+
+    const allVideos = await fetchAllChannelVideos(lang, apiKey, userRegion);
+    const matched = allVideos.filter((v) => videoMatchesLesson(v.title, lesson));
+    // Sort human-captioned first
+    matched.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
+
+    const result = {
+      lesson: { id: lesson.id, title: lesson.title, level: lesson.level },
+      videos: matched,
+    };
+
+    // Cache for 6 hours
+    try {
+      if (redisClient.isReady) {
+        await redisClient.set(cacheKey, JSON.stringify(result), { EX: 21600 });
+      }
+    } catch (cacheErr) {
+      console.warn('Redis write failed for lesson cache:', cacheErr.message);
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('GET /api/videos/lesson/:id failed:', err);
+    res.status(500).json({ error: 'Failed to fetch lesson videos' });
   }
 });
 

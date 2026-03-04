@@ -24,6 +24,7 @@ import Classwork from './pages/Classwork';
 import Watch from './pages/Watch';
 import Browse from './pages/Browse';
 import Channel from './pages/Channel';
+import Lesson from './pages/Lesson';
 import GroupCall from './pages/GroupCall';
 import ReadArticle from './pages/ReadArticle';
 import IncomingCall from './components/IncomingCall';
@@ -127,6 +128,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Channel />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/lesson/:id"
+          element={
+            <ProtectedRoute>
+              <Lesson />
             </ProtectedRoute>
           }
         />

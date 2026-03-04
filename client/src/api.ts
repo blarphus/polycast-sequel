@@ -676,6 +676,19 @@ export interface ChannelDetail {
   videos: TrendingVideo[];
 }
 
+export interface LessonSummary {
+  id: string;
+  title: string;
+  level: string;
+  thumbnails: string[];
+  videoCount: number;
+}
+
+export interface LessonDetail {
+  lesson: { id: string; title: string; level: string };
+  videos: TrendingVideo[];
+}
+
 /** Detect the user's country code from their browser locale (e.g. "en-US" → "US"). */
 function detectUserRegion(): string {
   try {
@@ -705,6 +718,20 @@ export function getChannelVideos(handle: string, lang: string) {
   const params = new URLSearchParams({ lang });
   if (region) params.set('userRegion', region);
   return request<ChannelDetail>(`/videos/channel/${encodeURIComponent(handle)}?${params}`);
+}
+
+export function getLessons(lang: string) {
+  const region = detectUserRegion();
+  const params = new URLSearchParams({ lang });
+  if (region) params.set('userRegion', region);
+  return request<LessonSummary[]>(`/videos/lessons?${params}`);
+}
+
+export function getLessonVideos(id: string, lang: string) {
+  const region = detectUserRegion();
+  const params = new URLSearchParams({ lang });
+  if (region) params.set('userRegion', region);
+  return request<LessonDetail>(`/videos/lesson/${encodeURIComponent(id)}?${params}`);
 }
 
 export function searchVideos(query: string, lang: string) {

@@ -196,6 +196,19 @@
   color: var(--accent);
 }
 
+/* ---- Lesson header ---- */
+
+.lesson-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.lesson-header .browse-section-title {
+  margin-bottom: 0;
+}
+
 /* ---- Mobile ---- */
 
 @media (max-width: 600px) {

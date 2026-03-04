@@ -675,3 +675,50 @@
 .home-channel-stack-img--2 { top: 0; transform: scale(0.92); opacity: 0.5; z-index: 1; }
 .home-channel-stack-img--1 { top: 8px; transform: scale(0.96); opacity: 0.75; z-index: 2; }
 .home-channel-stack-img--0 { top: 16px; z-index: 3; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+
+/* ---- Carousel overflow card ---- */
+
+.carousel-overflow-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 170px;
+}
+
+.carousel-overflow-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.carousel-overflow-count {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.carousel-overflow-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ---- Lesson card ---- */
+
+.lesson-card {
+  flex: 0 0 200px;
+}
+
+.lesson-card-level {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  color: #fff;
+}
+
+.lesson-card-count {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
