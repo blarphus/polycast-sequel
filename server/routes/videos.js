@@ -6,8 +6,10 @@ import { authMiddleware } from '../auth.js';
 import { enqueueTranscriptJob, markReady, clearTranscriptDedupe } from '../services/videoTranscriptQueue.js';
 import { fetchYouTubeTranscript } from '../services/videoTranscriptFetcher.js';
 import { MOVIES_TV_UPLOADS_PLAYLIST, CHANNELS_BY_LANG } from '../data/channels.js';
-import { LESSONS_BY_LANG, videoMatchesLesson } from '../data/lessons.js';
+import { LESSONS_BY_LANG } from '../data/lessons.js';
+import { callGemini } from '../enrichWord.js';
 import { cachedFetch } from '../lib/redisCache.js';
+import crypto from 'crypto';
 import logger from '../logger.js';
 import { validate } from '../lib/validate.js';
 
@@ -35,38 +37,56 @@ async function fetchAllChannelVideos(lang, apiKey, userRegion) {
   const channels = CHANNELS_BY_LANG[lang];
   if (!channels) return [];
 
+  const MAX_PAGES = 3;
+
   const allVideos = await Promise.all(
     channels.map(async (ch) => {
-      const cacheKey = `channel3:${ch.handle}:${userRegion}`;
+      const cacheKey = `channel4:${ch.handle}:${userRegion}`;
 
       try {
         const { data } = await cachedFetch(cacheKey, async () => {
-          const plUrl =
-            `https://www.googleapis.com/youtube/v3/playlistItems` +
-            `?part=contentDetails&playlistId=${ch.uploadsPlaylist}` +
-            `&maxResults=50&key=${apiKey}`;
-          const plRes = await fetch(plUrl);
-          if (!plRes.ok) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
+          // Paginate up to MAX_PAGES pages of 50 videos each
+          const videoIds = [];
+          let pageToken = undefined;
 
-          const plData = await plRes.json();
-          const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+          for (let page = 0; page < MAX_PAGES; page++) {
+            const plUrl =
+              `https://www.googleapis.com/youtube/v3/playlistItems` +
+              `?part=contentDetails&playlistId=${ch.uploadsPlaylist}` +
+              `&maxResults=50&key=${apiKey}` +
+              (pageToken ? `&pageToken=${pageToken}` : '');
+            const plRes = await fetch(plUrl);
+            if (!plRes.ok) break;
+
+            const plData = await plRes.json();
+            const ids = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+            videoIds.push(...ids);
+            pageToken = plData.nextPageToken;
+            if (!pageToken) break;
+          }
+
           if (videoIds.length === 0) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
 
-          const detailUrl =
-            `https://www.googleapis.com/youtube/v3/videos` +
-            `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
-            `&key=${apiKey}`;
-          const detailRes = await fetch(detailUrl);
-          if (!detailRes.ok) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
+          // Fetch video details in batches of 50 (YouTube API limit)
+          const videos = [];
+          for (let i = 0; i < videoIds.length; i += 50) {
+            const batch = videoIds.slice(i, i + 50);
+            const detailUrl =
+              `https://www.googleapis.com/youtube/v3/videos` +
+              `?part=snippet,contentDetails&id=${batch.join(',')}` +
+              `&key=${apiKey}`;
+            const detailRes = await fetch(detailUrl);
+            if (!detailRes.ok) continue;
 
-          const detailData = await detailRes.json();
-          const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
+            const detailData = await detailRes.json();
+            videos.push(...filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true }));
+          }
+
           videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
-
           return { channel: { name: ch.name, handle: ch.handle }, videos };
         }, 21600);
 
-        return data.videos || [];
+        return (data.videos || []).map((v) => ({ ...v, channel: v.channel || data.channel?.name }));
       } catch (err) {
         logger.error({ err }, 'Failed to fetch videos for channel %s', ch.handle);
         return [];
@@ -559,7 +579,7 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
     }
     if (!channel) return res.status(404).json({ error: 'Channel not found' });
 
-    const cacheKey = `channel3:${handle}:${userRegion}`;
+    const cacheKey = `channel4:${handle}:${userRegion}`;
 
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
@@ -568,40 +588,57 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
     }
 
     const { data: result } = await cachedFetch(cacheKey, async () => {
-      // Fetch recent uploads
-      const plUrl =
-        `https://www.googleapis.com/youtube/v3/playlistItems` +
-        `?part=contentDetails&playlistId=${channel.uploadsPlaylist}` +
-        `&maxResults=50&key=${apiKey}`;
-      const plRes = await fetch(plUrl);
-      if (!plRes.ok) {
-        const body = await plRes.text();
-        req.log.error('YouTube playlist API error: %d %s', plRes.status, body);
-        throw new Error('Failed to fetch channel videos from YouTube');
-      }
+      // Paginate up to 3 pages of 50 videos each
+      const videoIds = [];
+      let pageToken = undefined;
 
-      const plData = await plRes.json();
-      const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+      for (let page = 0; page < 3; page++) {
+        const plUrl =
+          `https://www.googleapis.com/youtube/v3/playlistItems` +
+          `?part=contentDetails&playlistId=${channel.uploadsPlaylist}` +
+          `&maxResults=50&key=${apiKey}` +
+          (pageToken ? `&pageToken=${pageToken}` : '');
+        const plRes = await fetch(plUrl);
+        if (!plRes.ok) {
+          if (page === 0) {
+            const body = await plRes.text();
+            req.log.error('YouTube playlist API error: %d %s', plRes.status, body);
+            throw new Error('Failed to fetch channel videos from YouTube');
+          }
+          break;
+        }
+
+        const plData = await plRes.json();
+        const ids = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+        videoIds.push(...ids);
+        pageToken = plData.nextPageToken;
+        if (!pageToken) break;
+      }
 
       if (videoIds.length === 0) {
         return { channel: { name: channel.name, handle: channel.handle }, videos: [] };
       }
 
-      const detailUrl =
-        `https://www.googleapis.com/youtube/v3/videos` +
-        `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
-        `&key=${apiKey}`;
-      const detailRes = await fetch(detailUrl);
-      if (!detailRes.ok) {
-        const body = await detailRes.text();
-        req.log.error('YouTube video details API error: %d %s', detailRes.status, body);
-        throw new Error('Failed to fetch video details from YouTube');
+      // Fetch video details in batches of 50
+      const videos = [];
+      for (let i = 0; i < videoIds.length; i += 50) {
+        const batch = videoIds.slice(i, i + 50);
+        const detailUrl =
+          `https://www.googleapis.com/youtube/v3/videos` +
+          `?part=snippet,contentDetails&id=${batch.join(',')}` +
+          `&key=${apiKey}`;
+        const detailRes = await fetch(detailUrl);
+        if (!detailRes.ok) {
+          const body = await detailRes.text();
+          req.log.error('YouTube video details API error: %d %s', detailRes.status, body);
+          if (videos.length === 0) throw new Error('Failed to fetch video details from YouTube');
+          break;
+        }
+        const detailData = await detailRes.json();
+        videos.push(...filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true }));
       }
 
-      const detailData = await detailRes.json();
-      const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
       videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
-
       return { channel: { name: channel.name, handle: channel.handle }, videos };
     }, 21600);
 
@@ -611,6 +648,71 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch channel videos' });
   }
 });
+
+const LANG_NAMES = { en: 'English', es: 'Spanish', pt: 'Portuguese', fr: 'French', de: 'German', ja: 'Japanese' };
+
+/**
+ * Use Gemini to categorize videos into lesson buckets.
+ * Returns a Map<lessonId, youtube_id[]>.
+ * Results are cached in Redis keyed by a hash of the video pool.
+ */
+async function categorizeVideosWithGemini(allVideos, lessons, lang) {
+  const sortedIds = allVideos.map((v) => v.youtube_id).sort();
+  const videoHash = crypto.createHash('sha256').update(sortedIds.join(',')).digest('hex').slice(0, 16);
+  const cacheKey = `lessons-gemini:${lang}:${videoHash}`;
+
+  const { data: assignments } = await cachedFetch(cacheKey, async () => {
+    const langName = LANG_NAMES[lang] || lang;
+
+    const videoRows = allVideos
+      .map((v, i) => `| ${i + 1} | ${v.youtube_id} | ${v.title} | ${v.channel} |`)
+      .join('\n');
+
+    const lessonRows = lessons
+      .map((l) => `| ${l.id} | ${l.title} | ${l.level} | ${l.description} |`)
+      .join('\n');
+
+    const prompt = `You are categorizing language-learning YouTube videos into grammar lesson playlists for ${langName} learners.
+
+## Videos
+| # | youtube_id | title | channel |
+|---|-----------|-------|---------|
+${videoRows}
+
+## Lesson Categories
+| id | title | level | description |
+|----|-------|-------|-------------|
+${lessonRows}
+
+## Instructions
+- Assign each video to 0 or more lesson categories based on whether the video clearly teaches or covers that grammar topic
+- A video about "everyday ${langName}" that doesn't focus on a specific grammar topic should be assigned to 0 categories
+- Be strict: only assign if the video's title clearly indicates it covers that grammar topic
+- A video can belong to multiple categories if it covers multiple topics
+- Return ONLY valid JSON (no markdown fences, no commentary)
+
+Return this exact JSON structure:
+{
+  "assignments": {
+    "lesson-id": ["youtube_id1", "youtube_id2"],
+    ...
+  }
+}
+
+Only include lesson IDs that have at least one matching video.`;
+
+    const raw = await callGemini(prompt, { temperature: 0 }, 'gemini-2.5-pro-preview-05-06');
+    const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return parsed.assignments || {};
+  }, 86400);
+
+  const map = new Map();
+  for (const [lessonId, ids] of Object.entries(assignments)) {
+    if (Array.isArray(ids)) map.set(lessonId, ids);
+  }
+  return map;
+}
 
 /**
  * GET /api/videos/lessons
@@ -635,9 +737,11 @@ router.get('/api/videos/lessons', authMiddleware, async (req, res) => {
 
     const { data: results } = await cachedFetch(cacheKey, async () => {
       const allVideos = await fetchAllChannelVideos(lang, apiKey, userRegion);
+      const categoryMap = await categorizeVideosWithGemini(allVideos, lessons, lang);
 
       return lessons.map((lesson) => {
-        const matched = allVideos.filter((v) => videoMatchesLesson(v.title, lesson));
+        const matchedIds = categoryMap.get(lesson.id) || [];
+        const matched = matchedIds.map((id) => allVideos.find((v) => v.youtube_id === id)).filter(Boolean);
         return {
           id: lesson.id,
           title: lesson.title,
@@ -682,8 +786,9 @@ router.get('/api/videos/lesson/:id', authMiddleware, async (req, res) => {
 
     const { data: result } = await cachedFetch(cacheKey, async () => {
       const allVideos = await fetchAllChannelVideos(lang, apiKey, userRegion);
-      const matched = allVideos.filter((v) => videoMatchesLesson(v.title, lesson));
-      // Sort human-captioned first
+      const categoryMap = await categorizeVideosWithGemini(allVideos, lessons, lang);
+      const matchedIds = categoryMap.get(lesson.id) || [];
+      const matched = matchedIds.map((id) => allVideos.find((v) => v.youtube_id === id)).filter(Boolean);
       matched.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
 
       return {
