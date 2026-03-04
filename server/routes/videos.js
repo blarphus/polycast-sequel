@@ -262,6 +262,7 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
 function filterAndMapTrendingItems(items, userRegion, opts = {}) {
   return (items || [])
     .filter((item) => opts.skipCaptionFilter || item.contentDetails.caption === 'true')
+    .filter((item) => parseDuration(item.contentDetails.duration) > 60)
     .filter((item) => {
       const rr = item.contentDetails.regionRestriction;
       if (!rr) return true;
@@ -611,7 +612,7 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
     }
     if (!channel) return res.status(404).json({ error: 'Channel not found' });
 
-    const cacheKey = `channel2:${handle}:${userRegion}`;
+    const cacheKey = `channel3:${handle}:${userRegion}`;
     let cached = null;
     try {
       if (redisClient.isReady) {
