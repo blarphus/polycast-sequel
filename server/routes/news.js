@@ -144,7 +144,13 @@ router.get('/api/news', authMiddleware, async (req, res) => {
             console.error(`RSS fetch error for ${feed.source} (${feed.url}):`, rssRes.status);
             return [];
           }
-          const rssXml = await rssRes.text();
+          // Decode using the feed's declared charset (some feeds use ISO-8859-1)
+          const buf = Buffer.from(await rssRes.arrayBuffer());
+          const ctCharset = rssRes.headers.get('content-type')?.match(/charset=([^\s;]+)/i)?.[1];
+          const xmlCharset = buf.toString('ascii').match(/<\?xml[^>]+encoding=["']([^"']+)["']/i)?.[1];
+          const charset = (ctCharset || xmlCharset || 'utf-8').toLowerCase();
+          const decoder = new TextDecoder(charset === 'iso-8859-1' || charset === 'latin1' ? 'windows-1252' : charset);
+          const rssXml = decoder.decode(buf);
           return parseRssItems(rssXml, feed.source);
         } catch (fetchErr) {
           console.error(`RSS fetch failed for ${feed.source} (${feed.url}):`, fetchErr.message);
