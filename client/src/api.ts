@@ -661,6 +661,7 @@ export interface TrendingVideo {
   thumbnail: string;
   duration_seconds: number | null;
   published_at: string;
+  has_captions?: boolean;
 }
 
 export interface ChannelSummary {

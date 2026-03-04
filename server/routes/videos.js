@@ -259,9 +259,9 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
  * @param {Array} items - YouTube Data API video items
  * @param {string} userRegion - the user's actual country code for geo-restriction checks
  */
-function filterAndMapTrendingItems(items, userRegion) {
+function filterAndMapTrendingItems(items, userRegion, opts = {}) {
   return (items || [])
-    .filter((item) => item.contentDetails.caption === 'true')
+    .filter((item) => opts.skipCaptionFilter || item.contentDetails.caption === 'true')
     .filter((item) => {
       const rr = item.contentDetails.regionRestriction;
       if (!rr) return true;
@@ -277,6 +277,7 @@ function filterAndMapTrendingItems(items, userRegion) {
                  `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`,
       duration_seconds: parseDuration(item.contentDetails.duration),
       published_at: item.snippet.publishedAt,
+      has_captions: item.contentDetails.caption === 'true',
     }));
 }
 
@@ -632,7 +633,7 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
     const plUrl =
       `https://www.googleapis.com/youtube/v3/playlistItems` +
       `?part=contentDetails&playlistId=${channel.uploadsPlaylist}` +
-      `&maxResults=30&key=${apiKey}`;
+      `&maxResults=50&key=${apiKey}`;
     const plRes = await fetch(plUrl);
     if (!plRes.ok) {
       const body = await plRes.text();
@@ -660,7 +661,8 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
     }
 
     const detailData = await detailRes.json();
-    const videos = filterAndMapTrendingItems(detailData.items, userRegion);
+    const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
+    videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
 
     const result = { channel: { name: channel.name, handle: channel.handle }, videos };
 

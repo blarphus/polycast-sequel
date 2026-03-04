@@ -121,6 +121,9 @@ export default function Channel() {
               <div className="browse-card-info">
                 <span className="browse-card-title">{v.title}</span>
                 <span className="browse-card-channel">{v.channel}</span>
+                <span className={`browse-card-captions${v.has_captions ? ' browse-card-captions--human' : ''}`}>
+                  {v.has_captions ? 'Human captions' : 'Auto captions'}
+                </span>
               </div>
             </div>
           ))}

@@ -168,6 +168,16 @@
   color: var(--text-muted);
 }
 
+.browse-card-captions {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.browse-card-captions--human {
+  color: var(--success);
+}
+
 /* ---- Channel back button ---- */
 
 .channel-back-btn {
