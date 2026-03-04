@@ -4,121 +4,15 @@ import redisClient from '../redis.js';
 import { authMiddleware } from '../auth.js';
 import { enqueueTranscriptJob, markReady, clearTranscriptDedupe } from '../services/videoTranscriptQueue.js';
 import { fetchYouTubeTranscript } from '../services/videoTranscriptFetcher.js';
+import { MOVIES_TV_UPLOADS_PLAYLIST, CHANNELS_BY_LANG } from '../data/channels.js';
+import { LESSONS_BY_LANG, videoMatchesLesson } from '../data/lessons.js';
+import { cachedFetch } from '../lib/redisCache.js';
 
 const router = Router();
-
-// YouTube Movies & TV channel — free full-length films with professional captions
-const MOVIES_TV_CHANNEL_ID = 'UCuVPpxrm2VAgpH3Ktln4HXg';
-const MOVIES_TV_UPLOADS_PLAYLIST = 'UUuVPpxrm2VAgpH3Ktln4HXg'; // UC → UU = uploads playlist
 
 const LANG_TO_REGION = {
   en: 'US', es: 'ES', pt: 'BR', fr: 'FR', de: 'DE', ja: 'JP',
 };
-
-const CHANNELS_BY_LANG = {
-  en: [
-    { name: 'Movies & TV', handle: 'MoviesTVFreeVideos', channelId: MOVIES_TV_CHANNEL_ID, uploadsPlaylist: MOVIES_TV_UPLOADS_PLAYLIST },
-    { name: 'English with Lucy', handle: 'EnglishwithLucy', channelId: 'UCz4tgANd4yy8Oe0iXCdSWfA', uploadsPlaylist: 'UUz4tgANd4yy8Oe0iXCdSWfA' },
-    { name: 'BBC Learning English', handle: 'bbclearningenglish', channelId: 'UCHaHD477h-FeBbVh9Sh7syA', uploadsPlaylist: 'UUHaHD477h-FeBbVh9Sh7syA' },
-    { name: "Rachel's English", handle: 'rachelsenglish', channelId: 'UCvn_XCl_mgQmt3sD753zdJA', uploadsPlaylist: 'UUvn_XCl_mgQmt3sD753zdJA' },
-    { name: 'mmmEnglish', handle: 'mmmEnglish_Emma', channelId: 'UCrRiVfHqBIIvSgKmgnSY66g', uploadsPlaylist: 'UUrRiVfHqBIIvSgKmgnSY66g' },
-    { name: 'VOA Learning English', handle: 'voalearningenglish', channelId: 'UCKyTokYo0nK2OA-az-sDijA', uploadsPlaylist: 'UUKyTokYo0nK2OA-az-sDijA' },
-    { name: 'Bob the Canadian', handle: 'LearnEnglishWithBobTheCanadian', channelId: 'UCZJJTxA36ZPNTJ1WFIByaeA', uploadsPlaylist: 'UUZJJTxA36ZPNTJ1WFIByaeA' },
-  ],
-  es: [
-    { name: 'Dreaming Spanish', handle: 'DreamingSpanish', channelId: 'UCouyFdE9-Lrjo3M_2idKq1A', uploadsPlaylist: 'UUouyFdE9-Lrjo3M_2idKq1A' },
-    { name: 'Espanol con Juan', handle: 'EspanolconJuan', channelId: 'UCoHJ7PkM6T92LwgJgrnDhWA', uploadsPlaylist: 'UUoHJ7PkM6T92LwgJgrnDhWA' },
-    { name: 'Easy Spanish', handle: 'EasySpanish', channelId: 'UCAL4AMMMXKxHDu3FqZV6CbQ', uploadsPlaylist: 'UUAL4AMMMXKxHDu3FqZV6CbQ' },
-    { name: 'Spanish After Hours', handle: 'spanishafterhours', channelId: 'UCfG2VhlQgy5bHGmkpeKcjVA', uploadsPlaylist: 'UUfG2VhlQgy5bHGmkpeKcjVA' },
-    { name: 'Why Not Spanish', handle: 'WhyNotSpanish', channelId: 'UCIdFcLCIJQ_YMrormG_nU8w', uploadsPlaylist: 'UUIdFcLCIJQ_YMrormG_nU8w' },
-  ],
-  pt: [
-    { name: 'Portugues com Marcia Macedo', handle: 'portuguescommarciamacedobr', channelId: 'UCs3vpdQWaAtmRv7hcNt1jIw', uploadsPlaylist: 'UUs3vpdQWaAtmRv7hcNt1jIw' },
-    { name: 'Speaking Brazilian', handle: 'SpeakingBrazilian', channelId: 'UCGs6EbIt75S4IMKPRUU0JNQ', uploadsPlaylist: 'UUGs6EbIt75S4IMKPRUU0JNQ' },
-    { name: 'Easy Portuguese', handle: 'EasyPortugueseVideos', channelId: 'UCGItHJHk5zoYHRQD6ZQ-mrA', uploadsPlaylist: 'UUGItHJHk5zoYHRQD6ZQ-mrA' },
-    { name: 'Philipe Brazuca', handle: 'philipebrazuca', channelId: 'UCG_FePV_RP6fHHDmRmJ9JbQ', uploadsPlaylist: 'UUG_FePV_RP6fHHDmRmJ9JbQ' },
-  ],
-  fr: [
-    { name: 'Francais avec Pierre', handle: 'FrancaisavecPierre', channelId: 'UCVgW9ZQaGBk6fsiPgE2mYDg', uploadsPlaylist: 'UUVgW9ZQaGBk6fsiPgE2mYDg' },
-    { name: 'Francais Authentique', handle: 'francaisauthentique', channelId: 'UCQpM25U6iqaRSO-SZxd5oDw', uploadsPlaylist: 'UUQpM25U6iqaRSO-SZxd5oDw' },
-    { name: 'Easy French', handle: 'EasyFrench', channelId: 'UCoUWq2QawqdC3-nRXKk-JUw', uploadsPlaylist: 'UUoUWq2QawqdC3-nRXKk-JUw' },
-    { name: 'innerFrench', handle: 'innerFrench', channelId: 'UCI4xp8qHD1MDErkqxb1dPbA', uploadsPlaylist: 'UUI4xp8qHD1MDErkqxb1dPbA' },
-    { name: 'French Mornings with Elisa', handle: 'FrenchMorningswithElisa', channelId: 'UCbj8Qov-9b5WTU1X4y7Yt-w', uploadsPlaylist: 'UUbj8Qov-9b5WTU1X4y7Yt-w' },
-    { name: 'Piece of French', handle: 'pieceoffrench', channelId: 'UCVzyfpNuFF4ENY8zNTIW7ug', uploadsPlaylist: 'UUVzyfpNuFF4ENY8zNTIW7ug' },
-  ],
-  de: [
-    { name: 'Easy German', handle: 'EasyGerman', channelId: 'UCbxb2fqe9oNgglAoYqsYOtQ', uploadsPlaylist: 'UUbxb2fqe9oNgglAoYqsYOtQ' },
-    { name: 'Deutsch mit Benjamin', handle: 'DeutschMitBenjamin', channelId: 'UC1xaY8XtSMaJN38RYJoGGCg', uploadsPlaylist: 'UU1xaY8XtSMaJN38RYJoGGCg' },
-    { name: 'Deutsch mit Marija', handle: 'DeutschmitMarija', channelId: 'UCCAI6jmeW5hWz2-jaLPqLUQ', uploadsPlaylist: 'UUCAI6jmeW5hWz2-jaLPqLUQ' },
-    { name: 'Deutsch Fur Euch', handle: 'DeutschFuerEuch', channelId: 'UCsYMk_FCTGBxmwKFiCynFwg', uploadsPlaylist: 'UUsYMk_FCTGBxmwKFiCynFwg' },
-    { name: 'Naturlich German', handle: 'NaturlichGerman', channelId: 'UCsYGAmiWIvOjvT9f1sgQXRw', uploadsPlaylist: 'UUsYGAmiWIvOjvT9f1sgQXRw' },
-  ],
-  ja: [
-    { name: 'Akane Japanese Class', handle: 'Akane-JapaneseClass', channelId: 'UCh-GhnQ7qDQmS6Bz3pGc1Mw', uploadsPlaylist: 'UUh-GhnQ7qDQmS6Bz3pGc1Mw' },
-    { name: 'Nihongo no Mori', handle: 'nihongonomori2013', channelId: 'UCVx6RFaEAg46xfAsD2zz16w', uploadsPlaylist: 'UUVx6RFaEAg46xfAsD2zz16w' },
-    { name: 'Comprehensible Japanese', handle: 'cijapanese', channelId: 'UCXo8kuCtqLjL1EH6m4FJJNA', uploadsPlaylist: 'UUXo8kuCtqLjL1EH6m4FJJNA' },
-    { name: 'Sambon Juku', handle: 'sambonjuku', channelId: 'UC0ujXryUUwILURRKt9Eh7Nw', uploadsPlaylist: 'UU0ujXryUUwILURRKt9Eh7Nw' },
-    { name: 'Learn Japanese with Noriko', handle: 'LearnJapanesewithNoriko', channelId: 'UCKa6jaRaKR9-n-cuWSBKqsA', uploadsPlaylist: 'UUKa6jaRaKR9-n-cuWSBKqsA' },
-  ],
-};
-
-const LESSONS_BY_LANG = {
-  pt: [
-    // A1
-    { id: 'noun-gender', title: 'Noun Gender & Plurals', level: 'A1', keywords: ['gender', 'genero', 'masculine', 'feminine', 'masculino', 'feminino', 'plural', 'plurais'] },
-    { id: 'ser-estar', title: 'Ser & Estar', level: 'A1', keywords: ['ser', 'estar', 'to be', 'ser e estar', 'ser vs estar', 'ser ou estar'] },
-    { id: 'present-tense', title: 'Present Tense', level: 'A1', keywords: ['present tense', 'presente', 'conjugation', 'conjugar', 'regular verbs', 'verbos regulares'] },
-    { id: 'articles', title: 'Articles & Contractions', level: 'A1', keywords: ['articles', 'artigos', 'contractions', 'do', 'da', 'no', 'na', 'pelo', 'pela'] },
-    { id: 'numbers-time', title: 'Numbers & Time', level: 'A1', keywords: ['numbers', 'numeros', 'time', 'horas', 'clock', 'counting'] },
-    { id: 'question-words', title: 'Question Words', level: 'A1', keywords: ['question', 'pergunta', 'como', 'onde', 'quando', 'por que', 'quanto', 'qual'] },
-    { id: 'greetings', title: 'Greetings & Introductions', level: 'A1', keywords: ['greetings', 'introductions', 'cumprimentos', 'ola', 'bom dia', 'como vai', 'tudo bem'] },
-    { id: 'possessives', title: 'Possessive Pronouns', level: 'A1', keywords: ['possessive', 'possessivo', 'meu', 'minha', 'seu', 'sua', 'nosso', 'nossa'] },
-    // A2
-    { id: 'past-preterite', title: 'Past Tense (Preterite)', level: 'A2', keywords: ['past tense', 'preterite', 'preterito', 'passado', 'perfeito'] },
-    { id: 'imperfect', title: 'Imperfect Tense', level: 'A2', keywords: ['imperfect', 'imperfeito', 'imperfecto', 'used to', 'costumava'] },
-    { id: 'reflexive-verbs', title: 'Reflexive Verbs', level: 'A2', keywords: ['reflexive', 'reflexivo', 'se', 'me', 'levantar-se', 'chamar-se'] },
-    { id: 'prepositions', title: 'Prepositions', level: 'A2', keywords: ['preposition', 'preposicao', 'em', 'de', 'para', 'por', 'com', 'entre'] },
-    { id: 'comparatives', title: 'Comparatives & Superlatives', level: 'A2', keywords: ['comparative', 'comparativo', 'superlative', 'superlativo', 'mais', 'menos', 'melhor', 'pior'] },
-    { id: 'direct-object', title: 'Direct Object Pronouns', level: 'A2', keywords: ['direct object', 'objeto direto', 'pronome', 'me', 'te', 'lo', 'la', 'nos'] },
-    { id: 'indirect-object', title: 'Indirect Object Pronouns', level: 'A2', keywords: ['indirect object', 'objeto indireto', 'lhe', 'lhes', 'pronome'] },
-    { id: 'demonstratives', title: 'Demonstrative Pronouns', level: 'A2', keywords: ['demonstrative', 'demonstrativo', 'este', 'esse', 'aquele', 'isto', 'isso', 'aquilo'] },
-    // B1
-    { id: 'subjunctive-present', title: 'Present Subjunctive', level: 'B1', keywords: ['subjunctive', 'subjuntivo', 'presente do subjuntivo', 'que eu'] },
-    { id: 'future-tense', title: 'Future Tense', level: 'B1', keywords: ['future', 'futuro', 'future tense', 'ir + infinitive', 'vou'] },
-    { id: 'conditional', title: 'Conditional Mood', level: 'B1', keywords: ['conditional', 'condicional', 'futuro do preterito', 'would', 'faria', 'iria'] },
-    { id: 'imperative', title: 'Imperative Mood', level: 'B1', keywords: ['imperative', 'imperativo', 'command', 'ordem', 'faca', 'venha', 'diga'] },
-    { id: 'relative-clauses', title: 'Relative Clauses', level: 'B1', keywords: ['relative', 'relativo', 'que', 'quem', 'cujo', 'onde', 'clause'] },
-    { id: 'por-para', title: 'Por vs Para', level: 'B1', keywords: ['por vs para', 'por ou para', 'por e para', 'para vs por'] },
-    { id: 'pronominal-placement', title: 'Pronoun Placement', level: 'B1', keywords: ['pronoun placement', 'colocacao pronominal', 'proclise', 'mesoclise', 'enclise'] },
-    { id: 'passive-voice', title: 'Passive Voice', level: 'B1', keywords: ['passive', 'passiva', 'voz passiva', 'ser + participle'] },
-    // B2
-    { id: 'subjunctive-imperfect', title: 'Imperfect Subjunctive', level: 'B2', keywords: ['imperfect subjunctive', 'imperfeito do subjuntivo', 'se eu fosse', 'se eu tivesse'] },
-    { id: 'subjunctive-future', title: 'Future Subjunctive', level: 'B2', keywords: ['future subjunctive', 'futuro do subjuntivo', 'quando eu', 'se eu'] },
-    { id: 'pluperfect', title: 'Pluperfect Tense', level: 'B2', keywords: ['pluperfect', 'mais-que-perfeito', 'had done', 'tinha feito', 'fizera'] },
-    { id: 'compound-tenses', title: 'Compound Tenses', level: 'B2', keywords: ['compound', 'composto', 'ter + participle', 'tenho feito', 'tinha ido'] },
-    { id: 'gerund-infinitive', title: 'Gerund vs Infinitive', level: 'B2', keywords: ['gerund', 'gerundio', 'infinitive', 'infinitivo', 'personal infinitive', 'infinitivo pessoal'] },
-    { id: 'discourse-markers', title: 'Discourse Markers', level: 'B2', keywords: ['discourse', 'discurso', 'connector', 'conector', 'portanto', 'entretanto', 'aliás', 'alias'] },
-    { id: 'idiomatic-expressions', title: 'Idiomatic Expressions', level: 'B2', keywords: ['idiom', 'expressao idiomatica', 'expression', 'slang', 'giria', 'dito popular'] },
-    { id: 'subjunctive-triggers', title: 'Subjunctive Triggers', level: 'B2', keywords: ['subjunctive trigger', 'espero que', 'embora', 'talvez', 'caso', 'antes que'] },
-    // C1
-    { id: 'formal-register', title: 'Formal Register', level: 'C1', keywords: ['formal', 'register', 'registro formal', 'academic', 'academico', 'escrita formal'] },
-    { id: 'literary-tenses', title: 'Literary Tenses', level: 'C1', keywords: ['literary', 'literario', 'simple pluperfect', 'mais-que-perfeito simples', 'fizera'] },
-    { id: 'nominalization', title: 'Nominalization', level: 'C1', keywords: ['nominalization', 'nominalização', 'nominalizacao', 'abstract noun', 'substantivo abstrato'] },
-    { id: 'cleft-sentences', title: 'Cleft Sentences', level: 'C1', keywords: ['cleft', 'clivada', 'e que', 'foi que', 'emphasis', 'enfase'] },
-    { id: 'pt-vs-br', title: 'European vs Brazilian', level: 'C1', keywords: ['european', 'brazilian', 'portugal', 'brasil', 'differences', 'diferencas', 'pt-pt', 'pt-br'] },
-    { id: 'collocations', title: 'Collocations', level: 'C1', keywords: ['collocation', 'colocacao', 'word combination', 'combinacao', 'fazer sentido'] },
-    { id: 'false-cognates', title: 'False Cognates', level: 'C1', keywords: ['false cognate', 'falso cognato', 'false friend', 'falso amigo'] },
-    { id: 'advanced-subjunctive', title: 'Advanced Subjunctive', level: 'C1', keywords: ['advanced subjunctive', 'subjuntivo avancado', 'quer que', 'onde quer que', 'por mais que'] },
-  ],
-};
-
-/**
- * Check if a video title matches a lesson based on keyword matching.
- */
-function videoMatchesLesson(videoTitle, lesson) {
-  const lower = videoTitle.toLowerCase();
-  return lesson.keywords.some((kw) => lower.includes(kw));
-}
 
 /**
  * Fetch all channel videos for a language, reusing per-channel Redis cache.
@@ -130,54 +24,35 @@ async function fetchAllChannelVideos(lang, apiKey, userRegion) {
   const allVideos = await Promise.all(
     channels.map(async (ch) => {
       const cacheKey = `channel3:${ch.handle}:${userRegion}`;
-      let cached = null;
+
       try {
-        if (redisClient.isReady) {
-          cached = await redisClient.get(cacheKey);
-        }
-      } catch (err) {
-        console.warn(`Redis read failed for ${cacheKey}:`, err.message);
-      }
+        const { data } = await cachedFetch(cacheKey, async () => {
+          const plUrl =
+            `https://www.googleapis.com/youtube/v3/playlistItems` +
+            `?part=contentDetails&playlistId=${ch.uploadsPlaylist}` +
+            `&maxResults=50&key=${apiKey}`;
+          const plRes = await fetch(plUrl);
+          if (!plRes.ok) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
 
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        return parsed.videos || [];
-      }
+          const plData = await plRes.json();
+          const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+          if (videoIds.length === 0) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
 
-      // Cache miss — fetch from YouTube
-      try {
-        const plUrl =
-          `https://www.googleapis.com/youtube/v3/playlistItems` +
-          `?part=contentDetails&playlistId=${ch.uploadsPlaylist}` +
-          `&maxResults=50&key=${apiKey}`;
-        const plRes = await fetch(plUrl);
-        if (!plRes.ok) return [];
+          const detailUrl =
+            `https://www.googleapis.com/youtube/v3/videos` +
+            `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
+            `&key=${apiKey}`;
+          const detailRes = await fetch(detailUrl);
+          if (!detailRes.ok) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
 
-        const plData = await plRes.json();
-        const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
-        if (videoIds.length === 0) return [];
+          const detailData = await detailRes.json();
+          const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
+          videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
 
-        const detailUrl =
-          `https://www.googleapis.com/youtube/v3/videos` +
-          `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
-          `&key=${apiKey}`;
-        const detailRes = await fetch(detailUrl);
-        if (!detailRes.ok) return [];
+          return { channel: { name: ch.name, handle: ch.handle }, videos };
+        }, 21600);
 
-        const detailData = await detailRes.json();
-        const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
-        videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
-
-        const result = { channel: { name: ch.name, handle: ch.handle }, videos };
-        try {
-          if (redisClient.isReady) {
-            await redisClient.set(cacheKey, JSON.stringify(result), { EX: 21600 });
-          }
-        } catch (cacheErr) {
-          console.warn(`Redis write failed for ${cacheKey}:`, cacheErr.message);
-        }
-
-        return videos;
+        return data.videos || [];
       } catch (err) {
         console.error(`Failed to fetch videos for channel ${ch.handle}:`, err.message);
         return [];
@@ -320,7 +195,7 @@ router.post('/api/videos', authMiddleware, async (req, res) => {
     const youtube_id = parseYouTubeId(url);
     if (!youtube_id) return res.status(400).json({ error: 'Invalid YouTube URL' });
 
-    // Duplicate check — return existing video and ensure queued if transcript missing.
+    // Duplicate check -- return existing video and ensure queued if transcript missing.
     const existing = await pool.query('SELECT * FROM videos WHERE youtube_id = $1', [youtube_id]);
     if (existing.rows.length > 0) {
       const existingVideo = existing.rows[0];
@@ -466,41 +341,24 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
     const isEnglish = lang === 'en';
     const cacheKey = isEnglish ? `trending:en:movies:${userRegion}` : `trending2:${lang}:${userRegion}`;
 
-    // Try Redis cache first
-    let cached = null;
-    try {
-      if (redisClient.isReady) {
-        cached = await redisClient.get(cacheKey);
-      }
-    } catch (cacheErr) {
-      console.warn('Redis read failed for trending cache:', cacheErr.message);
-    }
-
-    if (cached) {
-      return res.json(JSON.parse(cached));
-    }
-
-    // Cache miss — fetch from YouTube Data API
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
       console.error('GET /api/videos/trending: YOUTUBE_API_KEY not set');
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
-    let items;
+    const { data: items } = await cachedFetch(cacheKey, async () => {
+      if (isEnglish) {
+        return await fetchMoviesAndTV(apiKey, userRegion);
+      }
 
-    if (isEnglish) {
-      items = await fetchMoviesAndTV(apiKey, userRegion);
-    } else {
       // Paginate through trending results until we have enough captioned videos.
-      // YouTube's mostPopular endpoint returns max 50 per page; most non-English
-      // trending videos lack captions, so one page often yields only ~3 results.
       const TARGET = 20;
       const MAX_PAGES = 4;
-      items = [];
+      const collected = [];
       let pageToken = undefined;
 
-      for (let page = 0; page < MAX_PAGES && items.length < TARGET; page++) {
+      for (let page = 0; page < MAX_PAGES && collected.length < TARGET; page++) {
         const ytUrl =
           `https://www.googleapis.com/youtube/v3/videos` +
           `?part=snippet,contentDetails&chart=mostPopular` +
@@ -511,27 +369,18 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
         if (!ytRes.ok) {
           const body = await ytRes.text();
           console.error('YouTube trending API error:', ytRes.status, body);
-          if (items.length > 0) break;
-          return res.status(502).json({ error: 'Failed to fetch trending videos from YouTube' });
+          if (collected.length > 0) break;
+          throw new Error('Failed to fetch trending videos from YouTube');
         }
 
         const ytData = await ytRes.json();
-        items.push(...filterAndMapTrendingItems(ytData.items, userRegion));
+        collected.push(...filterAndMapTrendingItems(ytData.items, userRegion));
         pageToken = ytData.nextPageToken;
         if (!pageToken) break;
       }
-    }
 
-    // Cache in Redis for 6 hours (skip empty results to avoid poisoning cache)
-    if (items.length > 0) {
-      try {
-        if (redisClient.isReady) {
-          await redisClient.set(cacheKey, JSON.stringify(items), { EX: 21600 });
-        }
-      } catch (cacheErr) {
-        console.warn('Redis write failed for trending cache:', cacheErr.message);
-      }
-    }
+      return collected;
+    }, 21600);
 
     res.json(items);
   } catch (err) {
@@ -558,80 +407,57 @@ router.get('/api/videos/search', authMiddleware, async (req, res) => {
     const normalizedQuery = query.toLowerCase().replace(/\s+/g, ' ');
     const cacheKey = `search:${lang}:${userRegion}:${normalizedQuery}`;
 
-    // Try Redis cache first
-    let cached = null;
-    try {
-      if (redisClient.isReady) {
-        cached = await redisClient.get(cacheKey);
-      }
-    } catch (cacheErr) {
-      console.warn('Redis read failed for search cache:', cacheErr.message);
-    }
-
-    if (cached) {
-      return res.json(JSON.parse(cached));
-    }
-
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
       console.error('GET /api/videos/search: YOUTUBE_API_KEY not set');
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
-    // Step 1: search.list to get video IDs (100 quota units)
-    const searchParams = new URLSearchParams({
-      part: 'snippet',
-      type: 'video',
-      videoCaption: 'closedCaption',
-      regionCode: trendingRegion,
-      relevanceLanguage: lang,
-      maxResults: '25',
-      q: query,
-      key: apiKey,
-    });
+    const { data: items } = await cachedFetch(cacheKey, async () => {
+      // Step 1: search.list to get video IDs (100 quota units)
+      const searchParams = new URLSearchParams({
+        part: 'snippet',
+        type: 'video',
+        videoCaption: 'closedCaption',
+        regionCode: trendingRegion,
+        relevanceLanguage: lang,
+        maxResults: '25',
+        q: query,
+        key: apiKey,
+      });
 
-    const searchRes = await fetch(`https://www.googleapis.com/youtube/v3/search?${searchParams}`);
-    if (!searchRes.ok) {
-      const body = await searchRes.text();
-      console.error('YouTube search API error:', searchRes.status, body);
-      return res.status(502).json({ error: 'Failed to search YouTube' });
-    }
-
-    const searchData = await searchRes.json();
-    const videoIds = (searchData.items || [])
-      .map((item) => item.id.videoId)
-      .filter(Boolean);
-
-    if (videoIds.length === 0) {
-      return res.json([]);
-    }
-
-    // Step 2: videos.list for full details (1 quota unit)
-    const detailUrl =
-      `https://www.googleapis.com/youtube/v3/videos` +
-      `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
-      `&key=${apiKey}`;
-
-    const detailRes = await fetch(detailUrl);
-    if (!detailRes.ok) {
-      const body = await detailRes.text();
-      console.error('YouTube video details API error:', detailRes.status, body);
-      return res.status(502).json({ error: 'Failed to fetch video details from YouTube' });
-    }
-
-    const detailData = await detailRes.json();
-    const items = filterAndMapTrendingItems(detailData.items, userRegion);
-
-    // Cache in Redis for 1 hour (skip empty results)
-    if (items.length > 0) {
-      try {
-        if (redisClient.isReady) {
-          await redisClient.set(cacheKey, JSON.stringify(items), { EX: 3600 });
-        }
-      } catch (cacheErr) {
-        console.warn('Redis write failed for search cache:', cacheErr.message);
+      const searchRes = await fetch(`https://www.googleapis.com/youtube/v3/search?${searchParams}`);
+      if (!searchRes.ok) {
+        const body = await searchRes.text();
+        console.error('YouTube search API error:', searchRes.status, body);
+        throw new Error('Failed to search YouTube');
       }
-    }
+
+      const searchData = await searchRes.json();
+      const videoIds = (searchData.items || [])
+        .map((item) => item.id.videoId)
+        .filter(Boolean);
+
+      if (videoIds.length === 0) {
+        return [];
+      }
+
+      // Step 2: videos.list for full details (1 quota unit)
+      const detailUrl =
+        `https://www.googleapis.com/youtube/v3/videos` +
+        `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
+        `&key=${apiKey}`;
+
+      const detailRes = await fetch(detailUrl);
+      if (!detailRes.ok) {
+        const body = await detailRes.text();
+        console.error('YouTube video details API error:', detailRes.status, body);
+        throw new Error('Failed to fetch video details from YouTube');
+      }
+
+      const detailData = await detailRes.json();
+      return filterAndMapTrendingItems(detailData.items, userRegion);
+    }, 3600);
 
     res.json(items);
   } catch (err) {
@@ -652,16 +478,6 @@ router.get('/api/videos/channels', authMiddleware, async (req, res) => {
     if (!channels) return res.json([]);
 
     const cacheKey = `channels:${lang}`;
-    let cached = null;
-    try {
-      if (redisClient.isReady) {
-        cached = await redisClient.get(cacheKey);
-      }
-    } catch (cacheErr) {
-      console.warn('Redis read failed for channels cache:', cacheErr.message);
-    }
-
-    if (cached) return res.json(JSON.parse(cached));
 
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
@@ -669,47 +485,40 @@ router.get('/api/videos/channels', authMiddleware, async (req, res) => {
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
-    const results = await Promise.all(
-      channels.map(async (ch) => {
-        try {
-          const plUrl =
-            `https://www.googleapis.com/youtube/v3/playlistItems` +
-            `?part=contentDetails&playlistId=${ch.uploadsPlaylist}` +
-            `&maxResults=5&key=${apiKey}`;
-          const plRes = await fetch(plUrl);
-          if (!plRes.ok) return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
+    const { data: results } = await cachedFetch(cacheKey, async () => {
+      return await Promise.all(
+        channels.map(async (ch) => {
+          try {
+            const plUrl =
+              `https://www.googleapis.com/youtube/v3/playlistItems` +
+              `?part=contentDetails&playlistId=${ch.uploadsPlaylist}` +
+              `&maxResults=5&key=${apiKey}`;
+            const plRes = await fetch(plUrl);
+            if (!plRes.ok) return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
 
-          const plData = await plRes.json();
-          const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
-          if (videoIds.length === 0) return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
+            const plData = await plRes.json();
+            const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+            if (videoIds.length === 0) return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
 
-          const detailUrl =
-            `https://www.googleapis.com/youtube/v3/videos` +
-            `?part=snippet&id=${videoIds.join(',')}&key=${apiKey}`;
-          const detailRes = await fetch(detailUrl);
-          if (!detailRes.ok) return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
+            const detailUrl =
+              `https://www.googleapis.com/youtube/v3/videos` +
+              `?part=snippet&id=${videoIds.join(',')}&key=${apiKey}`;
+            const detailRes = await fetch(detailUrl);
+            if (!detailRes.ok) return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
 
-          const detailData = await detailRes.json();
-          const thumbnails = (detailData.items || [])
-            .slice(0, 3)
-            .map((item) => item.snippet.thumbnails?.medium?.url || `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`);
+            const detailData = await detailRes.json();
+            const thumbnails = (detailData.items || [])
+              .slice(0, 3)
+              .map((item) => item.snippet.thumbnails?.medium?.url || `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`);
 
-          return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails };
-        } catch (err) {
-          console.error(`Failed to fetch thumbnails for channel ${ch.handle}:`, err.message);
-          return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
-        }
-      }),
-    );
-
-    // Cache for 12 hours
-    try {
-      if (redisClient.isReady) {
-        await redisClient.set(cacheKey, JSON.stringify(results), { EX: 43200 });
-      }
-    } catch (cacheErr) {
-      console.warn('Redis write failed for channels cache:', cacheErr.message);
-    }
+            return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails };
+          } catch (err) {
+            console.error(`Failed to fetch thumbnails for channel ${ch.handle}:`, err.message);
+            return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
+          }
+        }),
+      );
+    }, 43200);
 
     res.json(results);
   } catch (err) {
@@ -739,16 +548,6 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
     if (!channel) return res.status(404).json({ error: 'Channel not found' });
 
     const cacheKey = `channel3:${handle}:${userRegion}`;
-    let cached = null;
-    try {
-      if (redisClient.isReady) {
-        cached = await redisClient.get(cacheKey);
-      }
-    } catch (cacheErr) {
-      console.warn('Redis read failed for channel cache:', cacheErr.message);
-    }
-
-    if (cached) return res.json(JSON.parse(cached));
 
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
@@ -756,51 +555,43 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
-    // Fetch recent uploads
-    const plUrl =
-      `https://www.googleapis.com/youtube/v3/playlistItems` +
-      `?part=contentDetails&playlistId=${channel.uploadsPlaylist}` +
-      `&maxResults=50&key=${apiKey}`;
-    const plRes = await fetch(plUrl);
-    if (!plRes.ok) {
-      const body = await plRes.text();
-      console.error('YouTube playlist API error:', plRes.status, body);
-      return res.status(502).json({ error: 'Failed to fetch channel videos from YouTube' });
-    }
-
-    const plData = await plRes.json();
-    const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
-
-    if (videoIds.length === 0) {
-      const result = { channel: { name: channel.name, handle: channel.handle }, videos: [] };
-      return res.json(result);
-    }
-
-    const detailUrl =
-      `https://www.googleapis.com/youtube/v3/videos` +
-      `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
-      `&key=${apiKey}`;
-    const detailRes = await fetch(detailUrl);
-    if (!detailRes.ok) {
-      const body = await detailRes.text();
-      console.error('YouTube video details API error:', detailRes.status, body);
-      return res.status(502).json({ error: 'Failed to fetch video details from YouTube' });
-    }
-
-    const detailData = await detailRes.json();
-    const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
-    videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
-
-    const result = { channel: { name: channel.name, handle: channel.handle }, videos };
-
-    // Cache for 6 hours
-    try {
-      if (redisClient.isReady) {
-        await redisClient.set(cacheKey, JSON.stringify(result), { EX: 21600 });
+    const { data: result } = await cachedFetch(cacheKey, async () => {
+      // Fetch recent uploads
+      const plUrl =
+        `https://www.googleapis.com/youtube/v3/playlistItems` +
+        `?part=contentDetails&playlistId=${channel.uploadsPlaylist}` +
+        `&maxResults=50&key=${apiKey}`;
+      const plRes = await fetch(plUrl);
+      if (!plRes.ok) {
+        const body = await plRes.text();
+        console.error('YouTube playlist API error:', plRes.status, body);
+        throw new Error('Failed to fetch channel videos from YouTube');
       }
-    } catch (cacheErr) {
-      console.warn('Redis write failed for channel cache:', cacheErr.message);
-    }
+
+      const plData = await plRes.json();
+      const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+
+      if (videoIds.length === 0) {
+        return { channel: { name: channel.name, handle: channel.handle }, videos: [] };
+      }
+
+      const detailUrl =
+        `https://www.googleapis.com/youtube/v3/videos` +
+        `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
+        `&key=${apiKey}`;
+      const detailRes = await fetch(detailUrl);
+      if (!detailRes.ok) {
+        const body = await detailRes.text();
+        console.error('YouTube video details API error:', detailRes.status, body);
+        throw new Error('Failed to fetch video details from YouTube');
+      }
+
+      const detailData = await detailRes.json();
+      const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
+      videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
+
+      return { channel: { name: channel.name, handle: channel.handle }, videos };
+    }, 21600);
 
     res.json(result);
   } catch (err) {
@@ -824,44 +615,26 @@ router.get('/api/videos/lessons', authMiddleware, async (req, res) => {
     const userRegion = (req.query.userRegion || trendingRegion).toString().toUpperCase();
     const cacheKey = `lessons2:${lang}:${userRegion}`;
 
-    let cached = null;
-    try {
-      if (redisClient.isReady) {
-        cached = await redisClient.get(cacheKey);
-      }
-    } catch (cacheErr) {
-      console.warn('Redis read failed for lessons cache:', cacheErr.message);
-    }
-
-    if (cached) return res.json(JSON.parse(cached));
-
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
       console.error('GET /api/videos/lessons: YOUTUBE_API_KEY not set');
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
-    const allVideos = await fetchAllChannelVideos(lang, apiKey, userRegion);
+    const { data: results } = await cachedFetch(cacheKey, async () => {
+      const allVideos = await fetchAllChannelVideos(lang, apiKey, userRegion);
 
-    const results = lessons.map((lesson) => {
-      const matched = allVideos.filter((v) => videoMatchesLesson(v.title, lesson));
-      return {
-        id: lesson.id,
-        title: lesson.title,
-        level: lesson.level,
-        thumbnails: matched.slice(0, 3).map((v) => v.thumbnail),
-        videoCount: matched.length,
-      };
-    });
-
-    // Cache for 12 hours
-    try {
-      if (redisClient.isReady) {
-        await redisClient.set(cacheKey, JSON.stringify(results), { EX: 43200 });
-      }
-    } catch (cacheErr) {
-      console.warn('Redis write failed for lessons cache:', cacheErr.message);
-    }
+      return lessons.map((lesson) => {
+        const matched = allVideos.filter((v) => videoMatchesLesson(v.title, lesson));
+        return {
+          id: lesson.id,
+          title: lesson.title,
+          level: lesson.level,
+          thumbnails: matched.slice(0, 3).map((v) => v.thumbnail),
+          videoCount: matched.length,
+        };
+      });
+    }, 43200);
 
     res.json(results);
   } catch (err) {
@@ -889,41 +662,23 @@ router.get('/api/videos/lesson/:id', authMiddleware, async (req, res) => {
     const userRegion = (req.query.userRegion || trendingRegion).toString().toUpperCase();
     const cacheKey = `lesson2:${id}:${lang}:${userRegion}`;
 
-    let cached = null;
-    try {
-      if (redisClient.isReady) {
-        cached = await redisClient.get(cacheKey);
-      }
-    } catch (cacheErr) {
-      console.warn('Redis read failed for lesson cache:', cacheErr.message);
-    }
-
-    if (cached) return res.json(JSON.parse(cached));
-
     const apiKey = process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
       console.error('GET /api/videos/lesson/:id: YOUTUBE_API_KEY not set');
       return res.status(500).json({ error: 'YouTube API key not configured' });
     }
 
-    const allVideos = await fetchAllChannelVideos(lang, apiKey, userRegion);
-    const matched = allVideos.filter((v) => videoMatchesLesson(v.title, lesson));
-    // Sort human-captioned first
-    matched.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
+    const { data: result } = await cachedFetch(cacheKey, async () => {
+      const allVideos = await fetchAllChannelVideos(lang, apiKey, userRegion);
+      const matched = allVideos.filter((v) => videoMatchesLesson(v.title, lesson));
+      // Sort human-captioned first
+      matched.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
 
-    const result = {
-      lesson: { id: lesson.id, title: lesson.title, level: lesson.level },
-      videos: matched,
-    };
-
-    // Cache for 6 hours
-    try {
-      if (redisClient.isReady) {
-        await redisClient.set(cacheKey, JSON.stringify(result), { EX: 21600 });
-      }
-    } catch (cacheErr) {
-      console.warn('Redis write failed for lesson cache:', cacheErr.message);
-    }
+      return {
+        lesson: { id: lesson.id, title: lesson.title, level: lesson.level },
+        videos: matched,
+      };
+    }, 21600);
 
     res.json(result);
   } catch (err) {

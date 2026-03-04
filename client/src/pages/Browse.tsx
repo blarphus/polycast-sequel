@@ -5,25 +5,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getTrendingVideos, searchVideos, addVideo, checkVideoPlayability, getLessons, TrendingVideo, LessonSummary } from '../api';
+import { getTrendingVideos, searchVideos, checkVideoPlayability, getLessons, TrendingVideo, LessonSummary } from '../api';
 import { LANGUAGES } from '../components/classwork/languages';
 import { SearchIcon, CloseIcon } from '../components/icons';
 import Carousel from '../components/Carousel';
-
-const LEVEL_COLORS: Record<string, string> = {
-  A1: '#22a55e', A2: '#22a55e',
-  B1: '#3b82f6', B2: '#3b82f6',
-  C1: '#8b5cf6', C2: '#8b5cf6',
-};
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return '';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
+import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
+import { useVideoClick } from '../hooks/useVideoClick';
+import { filterUnplayableVideos } from '../utils/playabilityFilter';
 
 export default function Browse() {
   const { user } = useAuth();
@@ -34,13 +22,13 @@ export default function Browse() {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
-  const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
   const [lessons, setLessons] = useState<LessonSummary[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const targetLang = user?.target_language;
   const langName = LANGUAGES.find((l) => l.code === targetLang)?.name || targetLang || '';
+  const { addingVideoId, handleVideoClick } = useVideoClick(targetLang || 'en');
 
   // Load trending on mount (or when target language changes)
   useEffect(() => {
@@ -57,17 +45,7 @@ export default function Browse() {
       .then((v) => {
         if (cancelled) return;
         setVideos(v);
-        // Two-phase: show immediately, then filter age-restricted
-        const ids = v.map((vid) => vid.youtube_id);
-        if (ids.length > 0) {
-          checkVideoPlayability(ids)
-            .then((blocked) => {
-              if (!cancelled && blocked.size > 0) {
-                setVideos((prev) => prev.filter((vid) => !blocked.has(vid.youtube_id)));
-              }
-            })
-            .catch((err) => console.error('Playability check failed:', err));
-        }
+        filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
         console.error('Failed to fetch trending videos:', err);
@@ -97,16 +75,7 @@ export default function Browse() {
     searchVideos(trimmed, targetLang)
       .then((v) => {
         setVideos(v);
-        const ids = v.map((vid) => vid.youtube_id);
-        if (ids.length > 0) {
-          checkVideoPlayability(ids)
-            .then((blocked) => {
-              if (blocked.size > 0) {
-                setVideos((prev) => prev.filter((vid) => !blocked.has(vid.youtube_id)));
-              }
-            })
-            .catch((err) => console.error('Playability check failed:', err));
-        }
+        filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
         console.error('Search failed:', err);
@@ -127,35 +96,13 @@ export default function Browse() {
     getTrendingVideos(targetLang)
       .then((v) => {
         setVideos(v);
-        const ids = v.map((vid) => vid.youtube_id);
-        if (ids.length > 0) {
-          checkVideoPlayability(ids)
-            .then((blocked) => {
-              if (blocked.size > 0) {
-                setVideos((prev) => prev.filter((vid) => !blocked.has(vid.youtube_id)));
-              }
-            })
-            .catch((err) => console.error('Playability check failed:', err));
-        }
+        filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
         console.error('Failed to fetch trending videos:', err);
         setError('Failed to load videos. Please try again.');
       })
       .finally(() => setLoading(false));
-  }
-
-  async function handleVideoClick(video: TrendingVideo) {
-    if (addingVideoId) return;
-    setAddingVideoId(video.youtube_id);
-    try {
-      const url = `https://www.youtube.com/watch?v=${video.youtube_id}`;
-      const added = await addVideo(url, targetLang || 'en');
-      navigate(`/watch/${added.id}`);
-    } catch (err) {
-      console.error('Failed to add video:', err);
-      setAddingVideoId(null);
-    }
   }
 
   // Section heading
@@ -230,7 +177,7 @@ export default function Browse() {
                 <div className="home-carousel-meta">
                   <span
                     className="lesson-card-level"
-                    style={{ background: LEVEL_COLORS[lesson.level] || '#3b82f6' }}
+                    style={{ background: CEFR_COLORS[lesson.level] || '#3b82f6' }}
                   >
                     {lesson.level}
                   </span>
@@ -283,7 +230,7 @@ export default function Browse() {
               <div className="browse-card-thumb">
                 <img src={v.thumbnail} alt={v.title} className="browse-card-thumb-img" />
                 {v.duration_seconds != null && (
-                  <span className="browse-card-duration">{formatDuration(v.duration_seconds)}</span>
+                  <span className="browse-card-duration">{formatVideoDuration(v.duration_seconds)}</span>
                 )}
               </div>
               <div className="browse-card-info">

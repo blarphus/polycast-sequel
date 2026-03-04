@@ -3,39 +3,26 @@
 // ---------------------------------------------------------------------------
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getLessonVideos, addVideo, checkVideoPlayability, TrendingVideo } from '../api';
+import { getLessonVideos, TrendingVideo } from '../api';
 import { ChevronLeftIcon } from '../components/icons';
-
-const LEVEL_COLORS: Record<string, string> = {
-  A1: '#22a55e', A2: '#22a55e',
-  B1: '#3b82f6', B2: '#3b82f6',
-  C1: '#8b5cf6', C2: '#8b5cf6',
-};
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null) return '';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
+import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
+import { useVideoClick } from '../hooks/useVideoClick';
+import { filterUnplayableVideos } from '../utils/playabilityFilter';
 
 export default function Lesson() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonLevel, setLessonLevel] = useState('');
   const [videos, setVideos] = useState<TrendingVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
 
   const targetLang = user?.target_language || 'en';
+  const { addingVideoId, handleVideoClick } = useVideoClick(targetLang);
 
   useEffect(() => {
     if (!id) return;
@@ -49,17 +36,7 @@ export default function Lesson() {
         setLessonTitle(data.lesson.title);
         setLessonLevel(data.lesson.level);
         setVideos(data.videos);
-        // Two-phase: show immediately, then filter age-restricted
-        const ids = data.videos.map((v) => v.youtube_id);
-        if (ids.length > 0) {
-          checkVideoPlayability(ids)
-            .then((blocked) => {
-              if (!cancelled && blocked.size > 0) {
-                setVideos((prev) => prev.filter((v) => !blocked.has(v.youtube_id)));
-              }
-            })
-            .catch((err) => console.error('Playability check failed:', err));
-        }
+        filterUnplayableVideos(data.videos, setVideos);
       })
       .catch((err) => {
         console.error('Failed to fetch lesson videos:', err);
@@ -70,22 +47,9 @@ export default function Lesson() {
     return () => { cancelled = true; };
   }, [id, targetLang]);
 
-  async function handleVideoClick(video: TrendingVideo) {
-    if (addingVideoId) return;
-    setAddingVideoId(video.youtube_id);
-    try {
-      const url = `https://www.youtube.com/watch?v=${video.youtube_id}`;
-      const added = await addVideo(url, targetLang);
-      navigate(`/watch/${added.id}`);
-    } catch (err) {
-      console.error('Failed to add video:', err);
-      setAddingVideoId(null);
-    }
-  }
-
   return (
     <div className="browse-page">
-      <button className="channel-back-btn" onClick={() => navigate(-1)}>
+      <button className="channel-back-btn" onClick={() => history.back()}>
         <ChevronLeftIcon size={18} />
         Back
       </button>
@@ -95,7 +59,7 @@ export default function Lesson() {
         {lessonLevel && (
           <span
             className="lesson-card-level"
-            style={{ background: LEVEL_COLORS[lessonLevel] || '#3b82f6', fontSize: '0.75rem', padding: '0.15rem 0.5rem' }}
+            style={{ background: CEFR_COLORS[lessonLevel] || '#3b82f6', fontSize: '0.75rem', padding: '0.15rem 0.5rem' }}
           >
             {lessonLevel}
           </span>
@@ -133,7 +97,7 @@ export default function Lesson() {
               <div className="browse-card-thumb">
                 <img src={v.thumbnail} alt={v.title} className="browse-card-thumb-img" />
                 {v.duration_seconds != null && (
-                  <span className="browse-card-duration">{formatDuration(v.duration_seconds)}</span>
+                  <span className="browse-card-duration">{formatVideoDuration(v.duration_seconds)}</span>
                 )}
               </div>
               <div className="browse-card-info">

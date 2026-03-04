@@ -5,26 +5,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getNewToday, getTrendingVideos, addVideo, checkVideoPlayability, getNews, getChannels, SavedWord, TrendingVideo, NewsArticle, ChannelSummary } from '../api';
+import { getNewToday, getTrendingVideos, getNews, getChannels, SavedWord, TrendingVideo, NewsArticle, ChannelSummary } from '../api';
 import { LANGUAGES } from '../components/classwork/languages';
 import FriendRequests from '../components/FriendRequests';
 import PendingClasswork from '../components/PendingClasswork';
 import UpcomingClasses from '../components/UpcomingClasses';
 import AddVideoModal from '../components/AddVideoModal';
 import { FrequencyDots } from '../components/FrequencyDots';
-
-const DIFFICULTY_COLORS: Record<string, string> = {
-  A1: '#22a55e', A2: '#22a55e',
-  B1: '#3b82f6', B2: '#3b82f6',
-  C1: '#8b5cf6', C2: '#8b5cf6',
-};
-
-function formatVideoDuration(seconds: number | null): string {
-  if (seconds == null) return '';
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
+import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
+import { useVideoClick } from '../hooks/useVideoClick';
+import { filterUnplayableVideos } from '../utils/playabilityFilter';
 
 export default function Home() {
   const { user } = useAuth();
@@ -36,7 +26,6 @@ export default function Home() {
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
-  const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
   const [showAddVideo, setShowAddVideo] = useState(false);
   const [channels, setChannels] = useState<ChannelSummary[]>([]);
   const [channelsLoading, setChannelsLoading] = useState(true);
@@ -46,6 +35,7 @@ export default function Home() {
 
   const targetLang = user?.target_language;
   const langName = LANGUAGES.find((l) => l.code === targetLang)?.name || targetLang || '';
+  const { addingVideoId, handleVideoClick: handleTrendingClick } = useVideoClick(targetLang || 'en');
 
   useEffect(() => {
     let cancelled = false;
@@ -61,17 +51,7 @@ export default function Home() {
         .then((v) => {
           if (cancelled) return;
           setTrending(v);
-          // Two-phase: show immediately, then filter out age-restricted videos
-          const ids = v.map((vid) => vid.youtube_id);
-          if (ids.length > 0) {
-            checkVideoPlayability(ids)
-              .then((blocked) => {
-                if (!cancelled && blocked.size > 0) {
-                  setTrending((prev) => prev.filter((vid) => !blocked.has(vid.youtube_id)));
-                }
-              })
-              .catch((err) => console.error('Playability check failed:', err));
-          }
+          filterUnplayableVideos(v, setTrending);
         })
         .catch((err) => console.error('Failed to fetch trending videos:', err))
         .finally(() => { if (!cancelled) setTrendingLoading(false); });
@@ -92,19 +72,6 @@ export default function Home() {
     }
     return () => { cancelled = true; };
   }, [targetLang]);
-
-  async function handleTrendingClick(video: TrendingVideo) {
-    if (addingVideoId) return;
-    setAddingVideoId(video.youtube_id);
-    try {
-      const url = `https://www.youtube.com/watch?v=${video.youtube_id}`;
-      const added = await addVideo(url, targetLang || 'en');
-      navigate(`/watch/${added.id}`);
-    } catch (err) {
-      console.error('Failed to add trending video:', err);
-      setAddingVideoId(null);
-    }
-  }
 
   function scrollCarousel(ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') {
     const el = ref.current;
@@ -159,7 +126,7 @@ export default function Home() {
               </div>
             ) : newWords.length === 0 ? (
               <div className="home-empty-state">
-                <p>No new words — add some from a call or the dictionary!</p>
+                <p>No new words - add some from a call or the dictionary!</p>
               </div>
             ) : (
               <div className="home-words-list">
@@ -206,7 +173,7 @@ export default function Home() {
               aria-label="Scroll videos left"
               onClick={() => scrollCarousel(videosCarouselRef, 'left')}
             >
-              ‹
+              &#8249;
             </button>
             <div className="home-carousel" ref={videosCarouselRef}>
               {trendingLoading ? (
@@ -249,7 +216,7 @@ export default function Home() {
               aria-label="Scroll videos right"
               onClick={() => scrollCarousel(videosCarouselRef, 'right')}
             >
-              ›
+              &#8250;
             </button>
           </div>
         )}
@@ -328,7 +295,7 @@ export default function Home() {
               aria-label="Scroll news left"
               onClick={() => scrollCarousel(newsCarouselRef, 'left')}
             >
-              ‹
+              &#8249;
             </button>
             <div className="home-carousel" ref={newsCarouselRef}>
               {newsLoading ? (
@@ -363,7 +330,7 @@ export default function Home() {
                       <span className="home-carousel-title">{n.simplified_title}</span>
                       <div className="home-carousel-meta">
                         {n.difficulty && (
-                          <span className="home-difficulty-pill" style={{ background: DIFFICULTY_COLORS[n.difficulty] || '#3b82f6' }}>
+                          <span className="home-difficulty-pill" style={{ background: CEFR_COLORS[n.difficulty] || '#3b82f6' }}>
                             {n.difficulty}
                           </span>
                         )}
@@ -381,7 +348,7 @@ export default function Home() {
               aria-label="Scroll news right"
               onClick={() => scrollCarousel(newsCarouselRef, 'right')}
             >
-              ›
+              &#8250;
             </button>
           </div>
         )}

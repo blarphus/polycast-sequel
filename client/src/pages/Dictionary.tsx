@@ -14,7 +14,7 @@ import ImagePicker from '../components/ImagePicker';
 import { proxyImageUrl } from '../api';
 import type { SavedWord } from '../api';
 import { SearchIcon, SearchMinusIcon, BookPlusIcon, ChevronDownIcon, TrashIcon } from '../components/icons';
-import { FrequencyDots, LEVEL_COLORS } from '../components/FrequencyDots';
+import { FrequencyDots, FREQUENCY_DOT_COLORS } from '../components/FrequencyDots';
 
 // -- DueStatusBadge: shows SRS status in collapsed header -------------------
 
@@ -248,7 +248,7 @@ export default function Dictionary() {
                   {pageGroups.map((group) => {
                     const open = expandedKeys.has(group.key);
                     const maxFreq = Math.max(...group.entries.map((e) => e.frequency ?? 0)) || null;
-                    const freqColor = maxFreq != null ? LEVEL_COLORS[Math.ceil(maxFreq / 2) - 1] || LEVEL_COLORS[0] : undefined;
+                    const freqColor = maxFreq != null ? FREQUENCY_DOT_COLORS[Math.ceil(maxFreq / 2) - 1] || FREQUENCY_DOT_COLORS[0] : undefined;
                     return (
                       <div
                         key={group.key}
