@@ -15,6 +15,53 @@ const LANG_TO_REGION = {
   en: 'US', es: 'ES', pt: 'BR', fr: 'FR', de: 'DE', ja: 'JP',
 };
 
+const CHANNELS_BY_LANG = {
+  en: [
+    { name: 'Movies & TV', handle: 'MoviesTVFreeVideos', channelId: MOVIES_TV_CHANNEL_ID, uploadsPlaylist: MOVIES_TV_UPLOADS_PLAYLIST },
+    { name: 'English with Lucy', handle: 'EnglishwithLucy', channelId: 'UCz4tgANd4yy8Oe0iXCdSWfA', uploadsPlaylist: 'UUz4tgANd4yy8Oe0iXCdSWfA' },
+    { name: 'BBC Learning English', handle: 'bbclearningenglish', channelId: 'UCHaHD477h-FeBbVh9Sh7syA', uploadsPlaylist: 'UUHaHD477h-FeBbVh9Sh7syA' },
+    { name: "Rachel's English", handle: 'rachelsenglish', channelId: 'UCvn_XCl_mgQmt3sD753zdJA', uploadsPlaylist: 'UUvn_XCl_mgQmt3sD753zdJA' },
+    { name: 'mmmEnglish', handle: 'mmmEnglish_Emma', channelId: 'UCrRiVfHqBIIvSgKmgnSY66g', uploadsPlaylist: 'UUrRiVfHqBIIvSgKmgnSY66g' },
+    { name: 'VOA Learning English', handle: 'voalearningenglish', channelId: 'UCKyTokYo0nK2OA-az-sDijA', uploadsPlaylist: 'UUKyTokYo0nK2OA-az-sDijA' },
+    { name: 'Bob the Canadian', handle: 'LearnEnglishWithBobTheCanadian', channelId: 'UCZJJTxA36ZPNTJ1WFIByaeA', uploadsPlaylist: 'UUZJJTxA36ZPNTJ1WFIByaeA' },
+  ],
+  es: [
+    { name: 'Dreaming Spanish', handle: 'DreamingSpanish', channelId: 'UCouyFdE9-Lrjo3M_2idKq1A', uploadsPlaylist: 'UUouyFdE9-Lrjo3M_2idKq1A' },
+    { name: 'Espanol con Juan', handle: 'EspanolconJuan', channelId: 'UCoHJ7PkM6T92LwgJgrnDhWA', uploadsPlaylist: 'UUoHJ7PkM6T92LwgJgrnDhWA' },
+    { name: 'Easy Spanish', handle: 'EasySpanish', channelId: 'UCAL4AMMMXKxHDu3FqZV6CbQ', uploadsPlaylist: 'UUAL4AMMMXKxHDu3FqZV6CbQ' },
+    { name: 'Spanish After Hours', handle: 'spanishafterhours', channelId: 'UCfG2VhlQgy5bHGmkpeKcjVA', uploadsPlaylist: 'UUfG2VhlQgy5bHGmkpeKcjVA' },
+    { name: 'Why Not Spanish', handle: 'WhyNotSpanish', channelId: 'UCIdFcLCIJQ_YMrormG_nU8w', uploadsPlaylist: 'UUIdFcLCIJQ_YMrormG_nU8w' },
+  ],
+  pt: [
+    { name: 'Portugues com Marcia Macedo', handle: 'portuguescommarciamacedobr', channelId: 'UCs3vpdQWaAtmRv7hcNt1jIw', uploadsPlaylist: 'UUs3vpdQWaAtmRv7hcNt1jIw' },
+    { name: 'Speaking Brazilian', handle: 'SpeakingBrazilian', channelId: 'UCGs6EbIt75S4IMKPRUU0JNQ', uploadsPlaylist: 'UUGs6EbIt75S4IMKPRUU0JNQ' },
+    { name: 'Easy Portuguese', handle: 'EasyPortugueseVideos', channelId: 'UCGItHJHk5zoYHRQD6ZQ-mrA', uploadsPlaylist: 'UUGItHJHk5zoYHRQD6ZQ-mrA' },
+    { name: 'Philipe Brazuca', handle: 'philipebrazuca', channelId: 'UCG_FePV_RP6fHHDmRmJ9JbQ', uploadsPlaylist: 'UUG_FePV_RP6fHHDmRmJ9JbQ' },
+  ],
+  fr: [
+    { name: 'Francais avec Pierre', handle: 'FrancaisavecPierre', channelId: 'UCVgW9ZQaGBk6fsiPgE2mYDg', uploadsPlaylist: 'UUVgW9ZQaGBk6fsiPgE2mYDg' },
+    { name: 'Francais Authentique', handle: 'francaisauthentique', channelId: 'UCQpM25U6iqaRSO-SZxd5oDw', uploadsPlaylist: 'UUQpM25U6iqaRSO-SZxd5oDw' },
+    { name: 'Easy French', handle: 'EasyFrench', channelId: 'UCoUWq2QawqdC3-nRXKk-JUw', uploadsPlaylist: 'UUoUWq2QawqdC3-nRXKk-JUw' },
+    { name: 'innerFrench', handle: 'innerFrench', channelId: 'UCI4xp8qHD1MDErkqxb1dPbA', uploadsPlaylist: 'UUI4xp8qHD1MDErkqxb1dPbA' },
+    { name: 'French Mornings with Elisa', handle: 'FrenchMorningswithElisa', channelId: 'UCbj8Qov-9b5WTU1X4y7Yt-w', uploadsPlaylist: 'UUbj8Qov-9b5WTU1X4y7Yt-w' },
+    { name: 'Piece of French', handle: 'pieceoffrench', channelId: 'UCVzyfpNuFF4ENY8zNTIW7ug', uploadsPlaylist: 'UUVzyfpNuFF4ENY8zNTIW7ug' },
+  ],
+  de: [
+    { name: 'Easy German', handle: 'EasyGerman', channelId: 'UCbxb2fqe9oNgglAoYqsYOtQ', uploadsPlaylist: 'UUbxb2fqe9oNgglAoYqsYOtQ' },
+    { name: 'Deutsch mit Benjamin', handle: 'DeutschMitBenjamin', channelId: 'UC1xaY8XtSMaJN38RYJoGGCg', uploadsPlaylist: 'UU1xaY8XtSMaJN38RYJoGGCg' },
+    { name: 'Deutsch mit Marija', handle: 'DeutschmitMarija', channelId: 'UCCAI6jmeW5hWz2-jaLPqLUQ', uploadsPlaylist: 'UUCAI6jmeW5hWz2-jaLPqLUQ' },
+    { name: 'Deutsch Fur Euch', handle: 'DeutschFuerEuch', channelId: 'UCsYMk_FCTGBxmwKFiCynFwg', uploadsPlaylist: 'UUsYMk_FCTGBxmwKFiCynFwg' },
+    { name: 'Naturlich German', handle: 'NaturlichGerman', channelId: 'UCsYGAmiWIvOjvT9f1sgQXRw', uploadsPlaylist: 'UUsYGAmiWIvOjvT9f1sgQXRw' },
+  ],
+  ja: [
+    { name: 'Akane Japanese Class', handle: 'Akane-JapaneseClass', channelId: 'UCh-GhnQ7qDQmS6Bz3pGc1Mw', uploadsPlaylist: 'UUh-GhnQ7qDQmS6Bz3pGc1Mw' },
+    { name: 'Nihongo no Mori', handle: 'nihongonomori2013', channelId: 'UCVx6RFaEAg46xfAsD2zz16w', uploadsPlaylist: 'UUVx6RFaEAg46xfAsD2zz16w' },
+    { name: 'Comprehensible Japanese', handle: 'cijapanese', channelId: 'UCXo8kuCtqLjL1EH6m4FJJNA', uploadsPlaylist: 'UUXo8kuCtqLjL1EH6m4FJJNA' },
+    { name: 'Sambon Juku', handle: 'sambonjuku', channelId: 'UC0ujXryUUwILURRKt9Eh7Nw', uploadsPlaylist: 'UU0ujXryUUwILURRKt9Eh7Nw' },
+    { name: 'Learn Japanese with Noriko', handle: 'LearnJapanesewithNoriko', channelId: 'UCKa6jaRaKR9-n-cuWSBKqsA', uploadsPlaylist: 'UUKa6jaRaKR9-n-cuWSBKqsA' },
+  ],
+};
+
 /**
  * Extract a YouTube video ID from common URL formats.
  */
@@ -462,6 +509,174 @@ router.get('/api/videos/search', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error('GET /api/videos/search failed:', err);
     res.status(500).json({ error: 'Failed to search videos' });
+  }
+});
+
+/**
+ * GET /api/videos/channels
+ * Return curated channel list with 3 thumbnail URLs per channel.
+ * Cached in Redis for 12 hours.
+ */
+router.get('/api/videos/channels', authMiddleware, async (req, res) => {
+  try {
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    const channels = CHANNELS_BY_LANG[lang];
+    if (!channels) return res.json([]);
+
+    const cacheKey = `channels:${lang}`;
+    let cached = null;
+    try {
+      if (redisClient.isReady) {
+        cached = await redisClient.get(cacheKey);
+      }
+    } catch (cacheErr) {
+      console.warn('Redis read failed for channels cache:', cacheErr.message);
+    }
+
+    if (cached) return res.json(JSON.parse(cached));
+
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.error('GET /api/videos/channels: YOUTUBE_API_KEY not set');
+      return res.status(500).json({ error: 'YouTube API key not configured' });
+    }
+
+    const results = await Promise.all(
+      channels.map(async (ch) => {
+        try {
+          const plUrl =
+            `https://www.googleapis.com/youtube/v3/playlistItems` +
+            `?part=contentDetails&playlistId=${ch.uploadsPlaylist}` +
+            `&maxResults=5&key=${apiKey}`;
+          const plRes = await fetch(plUrl);
+          if (!plRes.ok) return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
+
+          const plData = await plRes.json();
+          const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+          if (videoIds.length === 0) return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
+
+          const detailUrl =
+            `https://www.googleapis.com/youtube/v3/videos` +
+            `?part=snippet&id=${videoIds.join(',')}&key=${apiKey}`;
+          const detailRes = await fetch(detailUrl);
+          if (!detailRes.ok) return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
+
+          const detailData = await detailRes.json();
+          const thumbnails = (detailData.items || [])
+            .slice(0, 3)
+            .map((item) => item.snippet.thumbnails?.medium?.url || `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`);
+
+          return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails };
+        } catch (err) {
+          console.error(`Failed to fetch thumbnails for channel ${ch.handle}:`, err.message);
+          return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
+        }
+      }),
+    );
+
+    // Cache for 12 hours
+    try {
+      if (redisClient.isReady) {
+        await redisClient.set(cacheKey, JSON.stringify(results), { EX: 43200 });
+      }
+    } catch (cacheErr) {
+      console.warn('Redis write failed for channels cache:', cacheErr.message);
+    }
+
+    res.json(results);
+  } catch (err) {
+    console.error('GET /api/videos/channels failed:', err);
+    res.status(500).json({ error: 'Failed to fetch channels' });
+  }
+});
+
+/**
+ * GET /api/videos/channel/:handle
+ * Return videos for a single curated channel.
+ * Cached in Redis for 6 hours.
+ */
+router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
+  try {
+    const { handle } = req.params;
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    const trendingRegion = LANG_TO_REGION[lang] || 'US';
+    const userRegion = (req.query.userRegion || trendingRegion).toString().toUpperCase();
+
+    // Find channel in our curated list
+    let channel = null;
+    for (const langChannels of Object.values(CHANNELS_BY_LANG)) {
+      channel = langChannels.find((ch) => ch.handle === handle);
+      if (channel) break;
+    }
+    if (!channel) return res.status(404).json({ error: 'Channel not found' });
+
+    const cacheKey = `channel:${handle}:${userRegion}`;
+    let cached = null;
+    try {
+      if (redisClient.isReady) {
+        cached = await redisClient.get(cacheKey);
+      }
+    } catch (cacheErr) {
+      console.warn('Redis read failed for channel cache:', cacheErr.message);
+    }
+
+    if (cached) return res.json(JSON.parse(cached));
+
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.error('GET /api/videos/channel/:handle: YOUTUBE_API_KEY not set');
+      return res.status(500).json({ error: 'YouTube API key not configured' });
+    }
+
+    // Fetch recent uploads
+    const plUrl =
+      `https://www.googleapis.com/youtube/v3/playlistItems` +
+      `?part=contentDetails&playlistId=${channel.uploadsPlaylist}` +
+      `&maxResults=30&key=${apiKey}`;
+    const plRes = await fetch(plUrl);
+    if (!plRes.ok) {
+      const body = await plRes.text();
+      console.error('YouTube playlist API error:', plRes.status, body);
+      return res.status(502).json({ error: 'Failed to fetch channel videos from YouTube' });
+    }
+
+    const plData = await plRes.json();
+    const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+
+    if (videoIds.length === 0) {
+      const result = { channel: { name: channel.name, handle: channel.handle }, videos: [] };
+      return res.json(result);
+    }
+
+    const detailUrl =
+      `https://www.googleapis.com/youtube/v3/videos` +
+      `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
+      `&key=${apiKey}`;
+    const detailRes = await fetch(detailUrl);
+    if (!detailRes.ok) {
+      const body = await detailRes.text();
+      console.error('YouTube video details API error:', detailRes.status, body);
+      return res.status(502).json({ error: 'Failed to fetch video details from YouTube' });
+    }
+
+    const detailData = await detailRes.json();
+    const videos = filterAndMapTrendingItems(detailData.items, userRegion);
+
+    const result = { channel: { name: channel.name, handle: channel.handle }, videos };
+
+    // Cache for 6 hours
+    try {
+      if (redisClient.isReady) {
+        await redisClient.set(cacheKey, JSON.stringify(result), { EX: 21600 });
+      }
+    } catch (cacheErr) {
+      console.warn('Redis write failed for channel cache:', cacheErr.message);
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('GET /api/videos/channel/:handle failed:', err);
+    res.status(500).json({ error: 'Failed to fetch channel videos' });
   }
 });
 

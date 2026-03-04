@@ -168,6 +168,26 @@
   color: var(--text-muted);
 }
 
+/* ---- Channel back button ---- */
+
+.channel-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.25rem 0;
+  margin-bottom: 1rem;
+  font-family: var(--font);
+  font-size: 0.85rem;
+}
+
+.channel-back-btn:hover {
+  color: var(--accent);
+}
+
 /* ---- Mobile ---- */
 
 @media (max-width: 600px) {

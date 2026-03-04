@@ -5,7 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getNewToday, getTrendingVideos, addVideo, checkVideoPlayability, getNews, SavedWord, TrendingVideo, NewsArticle } from '../api';
+import { getNewToday, getTrendingVideos, addVideo, checkVideoPlayability, getNews, getChannels, SavedWord, TrendingVideo, NewsArticle, ChannelSummary } from '../api';
 import { LANGUAGES } from '../components/classwork/languages';
 import FriendRequests from '../components/FriendRequests';
 import PendingClasswork from '../components/PendingClasswork';
@@ -38,7 +38,10 @@ export default function Home() {
   const [newsLoading, setNewsLoading] = useState(true);
   const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
   const [showAddVideo, setShowAddVideo] = useState(false);
+  const [channels, setChannels] = useState<ChannelSummary[]>([]);
+  const [channelsLoading, setChannelsLoading] = useState(true);
   const videosCarouselRef = useRef<HTMLDivElement | null>(null);
+  const channelsCarouselRef = useRef<HTMLDivElement | null>(null);
   const newsCarouselRef = useRef<HTMLDivElement | null>(null);
 
   const targetLang = user?.target_language;
@@ -77,9 +80,15 @@ export default function Home() {
         .then((articles) => { if (!cancelled) setNews(articles); })
         .catch((err) => console.error('Failed to fetch news:', err))
         .finally(() => { if (!cancelled) setNewsLoading(false); });
+
+      getChannels(targetLang)
+        .then((ch) => { if (!cancelled) setChannels(ch); })
+        .catch((err) => console.error('Failed to fetch channels:', err))
+        .finally(() => { if (!cancelled) setChannelsLoading(false); });
     } else {
       setTrendingLoading(false);
       setNewsLoading(false);
+      setChannelsLoading(false);
     }
     return () => { cancelled = true; };
   }, [targetLang]);
@@ -245,6 +254,64 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* Section 2b: Recommended Channels */}
+      {targetLang && (
+        <section className="home-section">
+          <h2 className="home-section-title">Recommended Channels</h2>
+          <p className="home-section-subtitle">curated {langName} content creators</p>
+          <div className="home-carousel-shell">
+            <button
+              className="home-carousel-arrow home-carousel-arrow--left"
+              aria-label="Scroll channels left"
+              onClick={() => scrollCarousel(channelsCarouselRef, 'left')}
+            >
+              &#8249;
+            </button>
+            <div className="home-carousel" ref={channelsCarouselRef}>
+              {channelsLoading ? (
+                Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="home-carousel-card home-channel-card home-carousel-card--skeleton">
+                    <div className="home-channel-stack home-carousel-thumb--skeleton" />
+                    <div className="home-carousel-info">
+                      <div className="home-skeleton-line" style={{ width: '70%' }} />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                channels.map((ch) => (
+                  <div
+                    key={ch.handle}
+                    className="home-carousel-card home-channel-card home-carousel-card--clickable"
+                    onClick={() => navigate(`/channel/${ch.handle}`)}
+                  >
+                    <div className="home-channel-stack">
+                      {ch.thumbnails.slice(0, 3).reverse().map((thumb, i, arr) => (
+                        <img
+                          key={i}
+                          src={thumb}
+                          alt=""
+                          className={`home-channel-stack-img home-channel-stack-img--${arr.length - 1 - i}`}
+                        />
+                      ))}
+                    </div>
+                    <div className="home-carousel-info">
+                      <span className="home-carousel-title">{ch.name}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <button
+              className="home-carousel-arrow home-carousel-arrow--right"
+              aria-label="Scroll channels right"
+              onClick={() => scrollCarousel(channelsCarouselRef, 'right')}
+            >
+              &#8250;
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Section 3: News for you */}
       <section className="home-section">

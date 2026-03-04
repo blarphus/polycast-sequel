@@ -663,6 +663,18 @@ export interface TrendingVideo {
   published_at: string;
 }
 
+export interface ChannelSummary {
+  name: string;
+  handle: string;
+  channelId: string;
+  thumbnails: string[];
+}
+
+export interface ChannelDetail {
+  channel: { name: string; handle: string };
+  videos: TrendingVideo[];
+}
+
 /** Detect the user's country code from their browser locale (e.g. "en-US" → "US"). */
 function detectUserRegion(): string {
   try {
@@ -681,6 +693,17 @@ export function getTrendingVideos(lang: string) {
   const params = new URLSearchParams({ lang });
   if (region) params.set('userRegion', region);
   return request<TrendingVideo[]>(`/videos/trending?${params}`);
+}
+
+export function getChannels(lang: string) {
+  return request<ChannelSummary[]>(`/videos/channels?lang=${encodeURIComponent(lang)}`);
+}
+
+export function getChannelVideos(handle: string, lang: string) {
+  const region = detectUserRegion();
+  const params = new URLSearchParams({ lang });
+  if (region) params.set('userRegion', region);
+  return request<ChannelDetail>(`/videos/channel/${encodeURIComponent(handle)}?${params}`);
 }
 
 export function searchVideos(query: string, lang: string) {

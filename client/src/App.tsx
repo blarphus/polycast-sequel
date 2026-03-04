@@ -23,6 +23,7 @@ import StudentDetail from './pages/StudentDetail';
 import Classwork from './pages/Classwork';
 import Watch from './pages/Watch';
 import Browse from './pages/Browse';
+import Channel from './pages/Channel';
 import GroupCall from './pages/GroupCall';
 import ReadArticle from './pages/ReadArticle';
 import IncomingCall from './components/IncomingCall';
@@ -118,6 +119,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Browse />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/channel/:handle"
+          element={
+            <ProtectedRoute>
+              <Channel />
             </ProtectedRoute>
           }
         />
