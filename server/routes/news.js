@@ -117,7 +117,7 @@ router.get('/api/news', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: `Unsupported language: ${lang}` });
     }
 
-    const cacheKey = `news:${lang}`;
+    const cacheKey = `news3:${lang}`;
 
     // Try Redis cache first
     let cached = null;
@@ -241,6 +241,7 @@ router.get('/api/news/article', authMiddleware, async (req, res) => {
     // Find the cached news list — try new key first, then legacy patterns
     let newsListJson = null;
     const cachePatterns = [
+      `news3:${lang}`,
       `news:${lang}`,
       `news2:${lang}:${userRows[0]?.cefr_level || 'raw'}:${nativeLang}`,
       `news2:${lang}:raw:${nativeLang}`,
