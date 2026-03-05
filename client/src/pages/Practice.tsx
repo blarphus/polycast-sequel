@@ -10,12 +10,11 @@ import {
   createQuizSession,
   submitQuizAnswer,
   completeQuizSession,
-  generateConjugationDrill,
   type QuizQuestion,
   type QuizAnswerResult,
   type QuizSessionResult,
-  type ConjugationProblem,
 } from '../api';
+import { generateProblems, type ConjugationProblem } from '../data/conjugations';
 import { playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
 import { TargetIcon, BoltIcon, CheckCircleIcon, CloseIcon } from '../components/icons';
 import ConjugationDrill from '../components/ConjugationDrill';
@@ -24,7 +23,7 @@ import ConjugationDrill from '../components/ConjugationDrill';
 // Types
 // ---------------------------------------------------------------------------
 
-type Phase = 'config' | 'generating' | 'active' | 'feedback' | 'results' | 'drill-generating' | 'drill';
+type Phase = 'config' | 'generating' | 'active' | 'feedback' | 'results' | 'drill';
 type PracticeMode = 'quiz' | 'drill';
 
 interface AnswerRecord {
@@ -209,21 +208,18 @@ export default function Practice() {
   // ---------------------------------------------------------------------------
 
   if (phase === 'config') {
-    const handleStart = async () => {
+    const handleStart = () => {
       if (mode === 'quiz') {
         startQuiz();
       } else {
-        setPhase('drill-generating');
         setError('');
-        try {
-          const { problems } = await generateConjugationDrill();
-          setDrillProblems(problems);
-          setPhase('drill');
-        } catch (err: any) {
-          console.error('Failed to generate drill:', err);
-          setError(err.message);
-          setPhase('config');
+        const problems = generateProblems(user?.target_language ?? '', 30);
+        if (problems.length === 0) {
+          setError('Conjugation drill not available for this language');
+          return;
         }
+        setDrillProblems(problems);
+        setPhase('drill');
       }
     };
 
@@ -285,17 +281,6 @@ export default function Practice() {
         <div className="practice-generating">
           <div className="loading-spinner" />
           <p>Generating your quiz...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (phase === 'drill-generating') {
-    return (
-      <div className="practice-page">
-        <div className="practice-generating">
-          <div className="loading-spinner" />
-          <p>Generating conjugation drill...</p>
         </div>
       </div>
     );

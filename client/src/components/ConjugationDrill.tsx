@@ -4,7 +4,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { ConjugationProblem } from '../api';
+import type { ConjugationProblem } from '../data/conjugations';
 import { playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
 import { CloseIcon, FlameIcon, CheckCircleIcon } from './icons';
 
