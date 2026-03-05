@@ -9,7 +9,7 @@ import { getTrendingVideos, searchVideos, checkVideoPlayability, getLessons, Tre
 import { LANGUAGES } from '../components/classwork/languages';
 import { SearchIcon, CloseIcon } from '../components/icons';
 import Carousel from '../components/Carousel';
-import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
+import { formatVideoDuration } from '../utils/videoFormat';
 import { useVideoClick } from '../hooks/useVideoClick';
 import { filterUnplayableVideos } from '../utils/playabilityFilter';
 
@@ -174,17 +174,9 @@ export default function Browse() {
               </div>
               <div className="home-carousel-info">
                 <span className="home-carousel-title">{lesson.title}</span>
-                <div className="home-carousel-meta">
-                  <span
-                    className="lesson-card-level"
-                    style={{ background: CEFR_COLORS[lesson.level] || '#3b82f6' }}
-                  >
-                    {lesson.level}
-                  </span>
-                  <span className="lesson-card-count">
-                    {lesson.videoCount} video{lesson.videoCount !== 1 ? 's' : ''}
-                  </span>
-                </div>
+                <span className="lesson-card-count">
+                  {lesson.videoCount} video{lesson.videoCount !== 1 ? 's' : ''}
+                </span>
               </div>
             </div>
           )}

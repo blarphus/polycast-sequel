@@ -482,7 +482,6 @@ router.get('/api/videos/lessons', authMiddleware, async (req, res) => {
         return {
           id: lesson.id,
           title: lesson.title,
-          level: lesson.level,
           thumbnails: videos.slice(0, 3).map((v) => v.thumbnail),
           videoCount: videos.length,
         };
@@ -509,7 +508,6 @@ router.get('/api/videos/lessons', authMiddleware, async (req, res) => {
         return {
           id: lesson.id,
           title: lesson.title,
-          level: lesson.level,
           thumbnails: matched.slice(0, 3).map((v) => v.thumbnail),
           videoCount: matched.length,
         };
@@ -544,7 +542,7 @@ router.get('/api/videos/lesson/:id', authMiddleware, async (req, res) => {
       // Sort human-captioned first
       const sorted = [...catalogVideos].sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
       return res.json({
-        lesson: { id: lesson.id, title: lesson.title, level: lesson.level },
+        lesson: { id: lesson.id, title: lesson.title },
         videos: sorted,
       });
     }
@@ -567,7 +565,7 @@ router.get('/api/videos/lesson/:id', authMiddleware, async (req, res) => {
       matched.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
 
       return {
-        lesson: { id: lesson.id, title: lesson.title, level: lesson.level },
+        lesson: { id: lesson.id, title: lesson.title },
         videos: matched,
       };
     }, 21600);

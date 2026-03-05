@@ -5,7 +5,7 @@ const ptCatalog = require('./pt-catalog.json');
 // PT lessons are derived from the curated catalog (58 categories, 2,221 videos).
 // Other languages still use keyword-based matching.
 export const LESSONS_BY_LANG = {
-  pt: ptCatalog.map((cat) => ({ id: cat.id, title: cat.title, level: cat.level })),
+  pt: ptCatalog.map((cat) => ({ id: cat.id, title: cat.title })),
 };
 
 // Index catalog videos by category ID for fast lookup.

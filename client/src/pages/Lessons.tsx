@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getLessons, LessonSummary } from '../api';
 import { ChevronLeftIcon } from '../components/icons';
-import { CEFR_COLORS } from '../utils/videoFormat';
+
 
 export default function Lessons() {
   const { user } = useAuth();
@@ -80,19 +80,9 @@ export default function Lessons() {
               </div>
               <div className="home-carousel-info">
                 <span className="home-carousel-title">{lesson.title}</span>
-                <div className="home-carousel-meta">
-                  {lesson.level && (
-                    <span
-                      className="lesson-card-level"
-                      style={{ background: CEFR_COLORS[lesson.level] || '#3b82f6' }}
-                    >
-                      {lesson.level}
-                    </span>
-                  )}
-                  <span className="lesson-card-count">
-                    {lesson.videoCount} video{lesson.videoCount !== 1 ? 's' : ''}
-                  </span>
-                </div>
+                <span className="lesson-card-count">
+                  {lesson.videoCount} video{lesson.videoCount !== 1 ? 's' : ''}
+                </span>
               </div>
             </div>
           ))}

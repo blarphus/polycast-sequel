@@ -2,7 +2,6 @@
   {
     "id": "numbers-time",
     "title": "Numbers & Time",
-    "level": "A1",
     "videos": [
       {
         "youtube_id": "SRzSMS_ao0s",
@@ -113,7 +112,6 @@
   {
     "id": "ser-estar",
     "title": "Ser & Estar",
-    "level": "A1",
     "videos": [
       {
         "youtube_id": "pJstIWUuHRY",
@@ -192,7 +190,6 @@
   {
     "id": "greetings",
     "title": "Greetings & Introductions",
-    "level": "A1",
     "videos": [
       {
         "youtube_id": "8S6YYTOx0BE",
@@ -311,7 +308,6 @@
   {
     "id": "noun-gender",
     "title": "Noun Gender & Plurals",
-    "level": "A1",
     "videos": [
       {
         "youtube_id": "oCj82PfV2PI",
@@ -398,7 +394,6 @@
   {
     "id": "question-words",
     "title": "Question Words",
-    "level": "A1",
     "videos": [
       {
         "youtube_id": "fJpd6KyvRf0",
@@ -445,7 +440,6 @@
   {
     "id": "possessives",
     "title": "Possessive Pronouns",
-    "level": "A1",
     "videos": [
       {
         "youtube_id": "kF958sZu8jg",
@@ -484,7 +478,6 @@
   {
     "id": "prepositions",
     "title": "Prepositions",
-    "level": "A2",
     "videos": [
       {
         "youtube_id": "EKJo0KDEUE0",
@@ -691,7 +684,6 @@
   {
     "id": "past-preterite",
     "title": "Past Tense (Preterite)",
-    "level": "A2",
     "videos": [
       {
         "youtube_id": "d1vC9qp1ijk",
@@ -738,7 +730,6 @@
   {
     "id": "demonstratives",
     "title": "Demonstrative Pronouns",
-    "level": "A2",
     "videos": [
       {
         "youtube_id": "2OMe3YSh0mw",
@@ -793,7 +784,6 @@
   {
     "id": "conditional",
     "title": "Conditional Mood",
-    "level": "B1",
     "videos": [
       {
         "youtube_id": "7KuCv7nPol0",
@@ -840,7 +830,6 @@
   {
     "id": "future-tense",
     "title": "Future Tense",
-    "level": "B1",
     "videos": [
       {
         "youtube_id": "r3d-xCbprxk",
@@ -919,7 +908,6 @@
   {
     "id": "idiomatic-expressions",
     "title": "Idiomatic Expressions",
-    "level": "B2",
     "videos": [
       {
         "youtube_id": "Z_J2nj-hsLM",
@@ -1622,7 +1610,6 @@
   {
     "id": "discourse-markers",
     "title": "Discourse Markers",
-    "level": "B2",
     "videos": [
       {
         "youtube_id": "ab-SpTK4z48",
@@ -1677,7 +1664,6 @@
   {
     "id": "false-cognates",
     "title": "False Cognates",
-    "level": "C1",
     "videos": [
       {
         "youtube_id": "35KXgDpWbsI",
@@ -1876,7 +1862,6 @@
   {
     "id": "pt-vs-br",
     "title": "European vs Brazilian",
-    "level": "C1",
     "videos": [
       {
         "youtube_id": "jdUutR1Zbck",
@@ -1947,7 +1932,6 @@
   {
     "id": "vocabulary",
     "title": "Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "go4N2uJj4pA",
@@ -2970,7 +2954,6 @@
   {
     "id": "culture-traditions",
     "title": "Culture & Traditions",
-    "level": null,
     "videos": [
       {
         "youtube_id": "DghJgD3wsqc",
@@ -3697,7 +3680,6 @@
   {
     "id": "learning-tips",
     "title": "Language Learning Tips",
-    "level": null,
     "videos": [
       {
         "youtube_id": "pFnPt4IgcrI",
@@ -4704,7 +4686,6 @@
   {
     "id": "confusing-words",
     "title": "Confusing Words",
-    "level": null,
     "videos": [
       {
         "youtube_id": "eiOGxaY1xyc",
@@ -5519,7 +5500,6 @@
   {
     "id": "listening-comprehension",
     "title": "Listening Comprehension",
-    "level": null,
     "videos": [
       {
         "youtube_id": "6PX3091igQo",
@@ -6094,7 +6074,6 @@
   {
     "id": "verb-usage",
     "title": "Verb Usage & Meanings",
-    "level": null,
     "videos": [
       {
         "youtube_id": "PtnmUp_Rzww",
@@ -6741,7 +6720,6 @@
   {
     "id": "pronunciation",
     "title": "Pronunciation",
-    "level": null,
     "videos": [
       {
         "youtube_id": "jM65ly9J0C0",
@@ -7396,7 +7374,6 @@
   {
     "id": "slang",
     "title": "Slang & Colloquialisms",
-    "level": null,
     "videos": [
       {
         "youtube_id": "ISql3ODutS4",
@@ -7827,7 +7804,6 @@
   {
     "id": "basic-phrases",
     "title": "Basic Phrases & Sentences",
-    "level": null,
     "videos": [
       {
         "youtube_id": "QHqeFzKYBqo",
@@ -8178,7 +8154,6 @@
   {
     "id": "reading-comprehension",
     "title": "Reading Comprehension",
-    "level": null,
     "videos": [
       {
         "youtube_id": "rE4Ac_Nke9I",
@@ -8649,7 +8624,6 @@
   {
     "id": "verb-tenses-overview",
     "title": "Verb Tenses Overview",
-    "level": null,
     "videos": [
       {
         "youtube_id": "GVpZ15Oa8r8",
@@ -8952,7 +8926,6 @@
   {
     "id": "conversation",
     "title": "Conversation Practice",
-    "level": null,
     "videos": [
       {
         "youtube_id": "m8-9AZVH2CA",
@@ -9175,7 +9148,6 @@
   {
     "id": "pt-vs-es",
     "title": "Portuguese vs Spanish",
-    "level": null,
     "videos": [
       {
         "youtube_id": "vfXj0uiKIqc",
@@ -9390,7 +9362,6 @@
   {
     "id": "vocabulary-food",
     "title": "Food & Dining Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "fN2ZIod_L7Q",
@@ -9533,7 +9504,6 @@
   {
     "id": "learning-resources",
     "title": "Learning Resources",
-    "level": null,
     "videos": [
       {
         "youtube_id": "4ygqb46j4P0",
@@ -9724,7 +9694,6 @@
   {
     "id": "vocabulary-travel",
     "title": "Travel & Transportation Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "D9O-kht3Hmw",
@@ -9907,7 +9876,6 @@
   {
     "id": "learning-with-music",
     "title": "Learning with Music",
-    "level": null,
     "videos": [
       {
         "youtube_id": "4L6-VJQZTMU",
@@ -10114,7 +10082,6 @@
   {
     "id": "quizzes-tests",
     "title": "Quizzes & Tests",
-    "level": null,
     "videos": [
       {
         "youtube_id": "CM3FDozZm8Y",
@@ -10233,7 +10200,6 @@
   {
     "id": "spelling-orthography",
     "title": "Spelling & Orthography",
-    "level": null,
     "videos": [
       {
         "youtube_id": "3SQbFWfFHsk",
@@ -10352,7 +10318,6 @@
   {
     "id": "adjectives",
     "title": "Adjectives",
-    "level": null,
     "videos": [
       {
         "youtube_id": "EwA0rbCSM2Y",
@@ -10439,7 +10404,6 @@
   {
     "id": "subject-pronouns",
     "title": "Pronouns",
-    "level": null,
     "videos": [
       {
         "youtube_id": "tOR4C87J4kw",
@@ -10566,7 +10530,6 @@
   {
     "id": "common-mistakes",
     "title": "Common Mistakes",
-    "level": null,
     "videos": [
       {
         "youtube_id": "c5TqmroGda0",
@@ -10701,7 +10664,6 @@
   {
     "id": "vocabulary-holidays",
     "title": "Holidays & Celebrations Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "cAeJ9UH5vvc",
@@ -10796,7 +10758,6 @@
   {
     "id": "dialects-accents",
     "title": "Dialects & Accents",
-    "level": null,
     "videos": [
       {
         "youtube_id": "lJOf_Q9dOjE",
@@ -10875,7 +10836,6 @@
   {
     "id": "adverbs",
     "title": "Adverbs",
-    "level": null,
     "videos": [
       {
         "youtube_id": "LqqHF_jCtUY",
@@ -10994,7 +10954,6 @@
   {
     "id": "vocabulary-romance",
     "title": "Romance & Dating Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "mANCEroWyh4",
@@ -11081,7 +11040,6 @@
   {
     "id": "vocabulary-home",
     "title": "Home Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "8xq24fNMo3I",
@@ -11120,7 +11078,6 @@
   {
     "id": "language-comparison",
     "title": "Language Comparison",
-    "level": null,
     "videos": [
       {
         "youtube_id": "wIYipw7DAd8",
@@ -11191,7 +11148,6 @@
   {
     "id": "vocabulary-sports",
     "title": "Sports & Hobbies Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "AT9OsOr4Ma8",
@@ -11270,7 +11226,6 @@
   {
     "id": "vocabulary-work",
     "title": "Work & Business Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "JS2k0thkGn8",
@@ -11349,7 +11304,6 @@
   {
     "id": "vocabulary-daily-routine",
     "title": "Daily Routine Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "y6WZbBxA_tY",
@@ -11412,7 +11366,6 @@
   {
     "id": "word-formation",
     "title": "Word Formation & Affixes",
-    "level": null,
     "videos": [
       {
         "youtube_id": "rzFO1oMlfmI",
@@ -11467,7 +11420,6 @@
   {
     "id": "irregular-verbs",
     "title": "Irregular Verbs",
-    "level": null,
     "videos": [
       {
         "youtube_id": "81c50kMiyLg",
@@ -11522,7 +11474,6 @@
   {
     "id": "vocabulary-clothes",
     "title": "Clothes & Fashion Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "l8vjypye3nw",
@@ -11537,7 +11488,6 @@
   {
     "id": "regular-verbs",
     "title": "Regular Verbs",
-    "level": null,
     "videos": [
       {
         "youtube_id": "BiGquYQdO6s",
@@ -11592,7 +11542,6 @@
   {
     "id": "vocabulary-animals",
     "title": "Animals Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "ytub5xL-jS0",
@@ -11615,7 +11564,6 @@
   {
     "id": "conjunctions",
     "title": "Conjunctions & Connectors",
-    "level": null,
     "videos": [
       {
         "youtube_id": "2YU5sewRBgA",
@@ -11678,7 +11626,6 @@
   {
     "id": "vocabulary-shopping",
     "title": "Shopping & Store Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "XbIAIUQpnJQ",
@@ -11741,7 +11688,6 @@
   {
     "id": "vocabulary-countries",
     "title": "Countries & Nationalities Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "EotE3s5fkPE",
@@ -11764,7 +11710,6 @@
   {
     "id": "vocabulary-family",
     "title": "Family Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "hYBcdyT0ADI",
@@ -11787,7 +11732,6 @@
   {
     "id": "vocabulary-emotions",
     "title": "Emotions & Feelings Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "KZl0ghM8yH0",
@@ -11826,7 +11770,6 @@
   {
     "id": "vocabulary-body",
     "title": "Body Parts Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "Y8LFByJlOZU",
@@ -11857,7 +11800,6 @@
   {
     "id": "vocabulary-calendar",
     "title": "Calendar & Dates Vocabulary",
-    "level": null,
     "videos": [
       {
         "youtube_id": "bVGLq2jflrM",

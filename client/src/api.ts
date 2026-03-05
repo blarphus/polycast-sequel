@@ -679,13 +679,12 @@ export interface ChannelDetail {
 export interface LessonSummary {
   id: string;
   title: string;
-  level: string;
   thumbnails: string[];
   videoCount: number;
 }
 
 export interface LessonDetail {
-  lesson: { id: string; title: string; level: string };
+  lesson: { id: string; title: string };
   videos: TrendingVideo[];
 }
 

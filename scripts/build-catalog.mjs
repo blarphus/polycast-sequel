@@ -248,19 +248,12 @@ for (const [catId, cat] of Object.entries(categories)) {
   catalog.push({
     id: catId,
     title: cat.title,
-    level: cat.level || null,
     videos: enrichedVideos,
   });
 }
 
-// Sort catalog: categories with levels first (A1, A2, B1, B2, C1), then by video count desc
-const levelOrder = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5 };
-catalog.sort((a, b) => {
-  const aLevel = levelOrder[a.level] || 99;
-  const bLevel = levelOrder[b.level] || 99;
-  if (aLevel !== bLevel) return aLevel - bLevel;
-  return b.videos.length - a.videos.length;
-});
+// Sort catalog by video count descending
+catalog.sort((a, b) => b.videos.length - a.videos.length);
 
 // ---------------------------------------------------------------------------
 // Step 5: Write output

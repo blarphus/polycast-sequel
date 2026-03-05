@@ -7,7 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getLessonVideos, TrendingVideo } from '../api';
 import { ChevronLeftIcon } from '../components/icons';
-import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
+import { formatVideoDuration } from '../utils/videoFormat';
 import { useVideoClick } from '../hooks/useVideoClick';
 
 
@@ -17,7 +17,6 @@ export default function Lesson() {
   const { user } = useAuth();
 
   const [lessonTitle, setLessonTitle] = useState('');
-  const [lessonLevel, setLessonLevel] = useState('');
   const [videos, setVideos] = useState<TrendingVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -35,7 +34,6 @@ export default function Lesson() {
       .then((data) => {
         if (cancelled) return;
         setLessonTitle(data.lesson.title);
-        setLessonLevel(data.lesson.level);
         setVideos(data.videos);
       })
       .catch((err) => {
@@ -54,17 +52,7 @@ export default function Lesson() {
         Back
       </button>
 
-      <div className="lesson-header">
-        <h2 className="browse-section-title">{lessonTitle || 'Lesson'}</h2>
-        {lessonLevel && (
-          <span
-            className="lesson-card-level"
-            style={{ background: CEFR_COLORS[lessonLevel] || '#3b82f6', fontSize: '0.75rem', padding: '0.15rem 0.5rem' }}
-          >
-            {lessonLevel}
-          </span>
-        )}
-      </div>
+      <h2 className="browse-section-title">{lessonTitle || 'Lesson'}</h2>
 
       {error ? (
         <div className="home-empty-state">

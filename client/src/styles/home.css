@@ -720,14 +720,6 @@
   flex: 0 0 200px;
 }
 
-.lesson-card-level {
-  font-size: 0.6rem;
-  font-weight: 700;
-  padding: 0.1rem 0.35rem;
-  border-radius: 4px;
-  color: #fff;
-}
-
 .lesson-card-count {
   font-size: 0.7rem;
   color: var(--text-muted);

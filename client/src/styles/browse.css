@@ -196,19 +196,6 @@
   color: var(--accent);
 }
 
-/* ---- Lesson header ---- */
-
-.lesson-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.lesson-header .browse-section-title {
-  margin-bottom: 0;
-}
-
 /* ---- Lessons grid (all playlists page) ---- */
 
 .lessons-grid {
