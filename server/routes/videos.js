@@ -60,7 +60,8 @@ async function fetchAllChannelVideos(lang, apiKey, userRegion) {
           if (!detailRes.ok) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
 
           const detailData = await detailRes.json();
-          const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
+          let videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
+          videos = await removeShorts(videos);
           videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
 
           return { channel: { name: ch.name, handle: ch.handle }, videos };
@@ -297,6 +298,55 @@ function filterAndMapTrendingItems(items, userRegion, opts = {}) {
 }
 
 /**
+ * Detect YouTube Shorts by checking oEmbed dimensions (height > width = vertical = Short).
+ * Falls back to /shorts/{id} redirect check if oEmbed doesn't differentiate.
+ * Returns a Set of video IDs that are Shorts.
+ */
+async function detectShorts(videoIds) {
+  const shortsSet = new Set();
+  const BATCH = 10;
+
+  for (let i = 0; i < videoIds.length; i += BATCH) {
+    const batch = videoIds.slice(i, i + BATCH);
+    const results = await Promise.allSettled(batch.map(async (id) => {
+      try {
+        const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`;
+        const res = await fetch(oembedUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.height && data.width && data.height > data.width) return id;
+          return null;
+        }
+        // oEmbed failed — fall back to /shorts/ redirect check
+        const shortsRes = await fetch(`https://www.youtube.com/shorts/${id}`, { redirect: 'manual' });
+        if (shortsRes.status === 200) return id;
+        return null;
+      } catch {
+        return null;
+      }
+    }));
+
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) shortsSet.add(r.value);
+    }
+  }
+
+  return shortsSet;
+}
+
+/**
+ * Filter Shorts out of a video list using oEmbed dimension detection.
+ */
+async function removeShorts(videos) {
+  if (videos.length === 0) return videos;
+  const ids = videos.map((v) => v.youtube_id);
+  const shortsSet = await detectShorts(ids);
+  if (shortsSet.size === 0) return videos;
+  logger.info('Filtered %d Shorts from %d videos', shortsSet.size, videos.length);
+  return videos.filter((v) => !shortsSet.has(v.youtube_id));
+}
+
+/**
  * Fetch free movies & TV from YouTube's dedicated channel (English only).
  * Step 1: playlistItems.list to get video IDs (1 quota unit)
  * Step 2: videos.list for details + caption filtering (1 quota unit)
@@ -392,7 +442,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
         if (!pageToken) break;
       }
 
-      return collected;
+      return await removeShorts(collected);
     }, 21600);
 
     res.json(items);
@@ -468,7 +518,7 @@ router.get('/api/videos/search', authMiddleware, validate({ query: videoSearchQu
       }
 
       const detailData = await detailRes.json();
-      return filterAndMapTrendingItems(detailData.items, userRegion);
+      return await removeShorts(filterAndMapTrendingItems(detailData.items, userRegion));
     }, 3600);
 
     res.json(items);
@@ -599,7 +649,8 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
       }
 
       const detailData = await detailRes.json();
-      const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
+      let videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
+      videos = await removeShorts(videos);
       videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
 
       return { channel: { name: channel.name, handle: channel.handle }, videos };

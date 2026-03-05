@@ -56,11 +56,14 @@ async function main() {
   // ------ Redis connection ------
   try {
     await redisClient.connect();
-    // Flush stale trending cache so new filters take effect immediately
-    const trendingKeys = await redisClient.keys('trending:*');
-    if (trendingKeys.length > 0) {
-      await redisClient.del(trendingKeys);
-      logger.info(`Flushed ${trendingKeys.length} trending cache key(s) on startup`);
+    // Flush stale video caches so new Shorts filters take effect immediately
+    const videoCacheKeys = await redisClient.keys('trending:*');
+    for (const prefix of ['trending2:*', 'channel3:*', 'search:*', 'lessons2:*', 'lesson2:*']) {
+      videoCacheKeys.push(...await redisClient.keys(prefix));
+    }
+    if (videoCacheKeys.length > 0) {
+      await redisClient.del(videoCacheKeys);
+      logger.info(`Flushed ${videoCacheKeys.length} video cache key(s) on startup`);
     }
     transcriptWorker = await startTranscriptWorker({ redisClient, pool });
     backfillCefrLevels(pool).catch((err) => logger.error({ err }, '[cefr-backfill] Error'));
