@@ -187,12 +187,12 @@ router.post('/api/practice/sessions/:id/answer', authMiddleware, validate({ para
     let isCorrect = false;
     let aiFeedback = null;
 
-    if (answerRow.question_type === 'conjugation') {
-      // Deterministic check: string match (case-insensitive, trimmed)
+    if (answerRow.input_mode === 'word_bank' || answerRow.question_type === 'conjugation') {
+      // Deterministic check: word_bank has a fixed answer, conjugation is exact match
       isCorrect = userAnswer.trim().toLowerCase() === answerRow.expected_answer.trim().toLowerCase();
       aiFeedback = isCorrect ? 'Correct!' : `The correct answer is: ${answerRow.expected_answer}`;
     } else {
-      // AI validation for grammar construction and translation
+      // AI validation for free-type grammar and translation (multiple valid phrasings)
       const result = await validateWithAI(userAnswer, answerRow.expected_answer, answerRow.question_type, answerRow.prompt);
       isCorrect = result.is_correct;
       aiFeedback = result.feedback;
