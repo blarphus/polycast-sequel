@@ -146,7 +146,7 @@ export default function Browse() {
           loading={lessonsLoading}
           skeletonCount={3}
           maxVisible={10}
-          onOverflowClick={() => {/* future: navigate to full lessons list */}}
+          onOverflowClick={() => navigate('/lessons')}
           renderSkeleton={(i) => (
             <div key={i} className="home-carousel-card lesson-card home-carousel-card--skeleton">
               <div className="home-channel-stack home-carousel-thumb--skeleton" />

@@ -209,6 +209,14 @@
   margin-bottom: 0;
 }
 
+/* ---- Lessons grid (all playlists page) ---- */
+
+.lessons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
 /* ---- Mobile ---- */
 
 @media (max-width: 600px) {
