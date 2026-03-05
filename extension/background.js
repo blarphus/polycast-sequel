@@ -182,6 +182,11 @@ async function handleMessage(msg) {
       return { savedWords: savedWords || [] };
     }
 
+    case 'GET_TARGET_LANGUAGE': {
+      const { user } = await chrome.storage.local.get('user');
+      return { targetLanguage: user?.target_language || null };
+    }
+
     default:
       throw new Error(`Unknown message type: ${msg.type}`);
   }

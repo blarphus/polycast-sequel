@@ -17,6 +17,21 @@ let savedWordsSet = new Set();
   }
 })();
 
+// ---- Target language state ------------------------------------------------
+
+let targetLanguage = null;
+
+(async function initTargetLanguage() {
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'GET_TARGET_LANGUAGE' });
+    if (res && res.targetLanguage) {
+      targetLanguage = res.targetLanguage.toLowerCase();
+    }
+  } catch {
+    // Extension context invalidated — will work after page refresh
+  }
+})();
+
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'WORDS_UPDATED') {
     savedWordsSet = new Set(msg.savedWords || []);

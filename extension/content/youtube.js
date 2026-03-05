@@ -4,8 +4,65 @@
 
 (function initYouTube() {
   let subtitleObserver = null;
+  let captionLang = '';
+  let langPollInterval = null;
+
+  // -- Caption language detection via page-context injection ----------------
+
+  // YouTube doesn't populate standard video.textTracks — we must read from
+  // their proprietary player API which lives in the page's JS world.
+  // Content scripts can't access page objects, so we inject a <script> that
+  // reads the caption track and posts the language back via a CustomEvent.
+
+  const INJECTED_SCRIPT = `
+    (function() {
+      var player = document.getElementById('movie_player');
+      if (!player || !player.getOption) return;
+      var track = player.getOption('captions', 'track');
+      var lang = track ? track.languageCode : '';
+      document.dispatchEvent(new CustomEvent('pc-caption-lang', { detail: lang }));
+    })();
+  `;
+
+  function injectLangCheck() {
+    const script = document.createElement('script');
+    script.textContent = INJECTED_SCRIPT;
+    (document.head || document.documentElement).appendChild(script);
+    script.remove();
+  }
+
+  document.addEventListener('pc-caption-lang', (e) => {
+    captionLang = (e.detail || '').toLowerCase();
+  });
+
+  function startLangPolling() {
+    if (langPollInterval) return;
+    // Check immediately, then every 2.5 seconds
+    injectLangCheck();
+    langPollInterval = setInterval(injectLangCheck, 2500);
+  }
+
+  // -- Untokenize: strip .pc-word spans back to plain text ------------------
+
+  function untokenizeAll() {
+    const segments = document.querySelectorAll('.ytp-caption-segment');
+    for (const seg of segments) {
+      if (seg.dataset.pcTokenized) {
+        seg.textContent = seg.dataset.pcTokenized;
+        delete seg.dataset.pcTokenized;
+      }
+    }
+  }
+
+  // -- Subtitle processing --------------------------------------------------
 
   function processSubtitles() {
+    // Skip if caption language doesn't match target (or target not loaded yet)
+    if (targetLanguage && captionLang && !captionLang.startsWith(targetLanguage)) {
+      untokenizeAll();
+      return;
+    }
+
     const segments = document.querySelectorAll('.ytp-caption-segment');
     for (const seg of segments) {
       tokenizeElement(seg);
@@ -56,7 +113,8 @@
       characterData: true,
     });
 
-    // Process any existing subtitles
+    // Start polling for caption language and process any existing subtitles
+    startLangPolling();
     processSubtitles();
   }
 
