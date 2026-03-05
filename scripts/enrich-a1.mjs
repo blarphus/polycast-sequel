@@ -33,7 +33,7 @@ const serverDir = path.join(__dirname, '..', 'server');
 
 // We need the functions from enrichWord.js
 const { callGemini, fetchWordImage } = await import(path.join(serverDir, 'enrichWord.js'));
-const { applyEnglishFrequency } = await import(path.join(serverDir, 'lib', 'englishFrequency.js'));
+const { applyCorpusFrequency } = await import(path.join(serverDir, 'lib', 'wordFrequency.js'));
 
 // ---------------------------------------------------------------------------
 // Config
@@ -91,7 +91,7 @@ Respond with ONLY the JSON object, no other text.`;
 
   // Apply corpus frequency
   const rawFrequency = typeof parsed.frequency === 'number' ? parsed.frequency : null;
-  const { frequency, frequency_count } = applyEnglishFrequency(word, 'en', rawFrequency);
+  const { frequency, frequency_count } = applyCorpusFrequency(word, 'en', rawFrequency);
 
   // Normalize forms
   let forms = null;

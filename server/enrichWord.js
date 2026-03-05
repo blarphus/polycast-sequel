@@ -4,7 +4,7 @@
  * and the stream route (POST /api/stream/posts) at word-list creation time.
  */
 
-import { applyEnglishFrequency } from './lib/englishFrequency.js';
+import { applyCorpusFrequency } from './lib/wordFrequency.js';
 import { normalizeForms, normalizeLemma } from './lib/normalizeWordFields.js';
 import logger from './logger.js';
 
@@ -379,9 +379,9 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
   } // end if (translation === undefined) — Path A/B
 
   // For English target words, override Gemini frequency with SUBTLEX-US corpus data
-  const englishFreq = applyEnglishFrequency(word, targetLang, frequency);
-  frequency = englishFreq.frequency;
-  const frequency_count = englishFreq.frequency_count;
+  const corpusFreq = applyCorpusFrequency(word, targetLang, frequency);
+  frequency = corpusFreq.frequency;
+  const frequency_count = corpusFreq.frequency_count;
 
   // Normalize forms and lemma
   const forms = normalizeForms(geminiFormsRaw);

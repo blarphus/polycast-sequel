@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
 import { enrichWord, fetchWordImage, callGemini, fetchWiktSenses, fetchWiktTranslations } from '../enrichWord.js';
-import { applyEnglishFrequency } from '../lib/englishFrequency.js';
+import { applyCorpusFrequency } from '../lib/wordFrequency.js';
 import { normalizeForms, normalizeLemma } from '../lib/normalizeWordFields.js';
 import { validate } from '../lib/validate.js';
 
@@ -61,7 +61,7 @@ Respond with ONLY the JSON object, no other text.`;
   const image_url = await fetchWordImage(parsed.image_term || word);
 
   const rawFrequency = typeof parsed.frequency === 'number' ? parsed.frequency : null;
-  const { frequency, frequency_count } = applyEnglishFrequency(word, targetLang, rawFrequency);
+  const { frequency, frequency_count } = applyCorpusFrequency(word, targetLang, rawFrequency);
 
   // Normalize forms and lemma
   const forms = normalizeForms(parsed.forms);
