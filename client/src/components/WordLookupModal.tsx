@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { wiktLookup, enrichWord } from '../api';
 import type { WiktSense } from '../api';
 import { useDictionaryToast } from '../hooks/useDictionaryToast';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 interface Props {
   targetLang: string;
@@ -43,14 +44,7 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
     inputRef.current?.focus();
   }, []);
 
-  // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const doSearch = async (term?: string) => {
     const trimmed = (term ?? query).trim();

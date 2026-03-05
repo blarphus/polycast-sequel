@@ -2,10 +2,11 @@
 // components/classwork/PostCards.tsx — Post card components (display)
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import * as api from '../../api';
 import type { StreamPost, StreamTopic, StreamPostWord, StreamAttachment, LessonItem } from '../../api';
 import { YouTubeIcon, FileIcon, ExternalLinkIcon, ChevronRightIcon, CheckIcon } from '../icons';
+import { useClickOutside } from '../../hooks/useClickOutside';
 
 // ---------------------------------------------------------------------------
 // AttachmentLink (display only)
@@ -75,14 +76,7 @@ function PostMenu({
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  useClickOutside(menuRef, onClose);
 
   const moveTargets = topics.filter((t) => t.id !== currentTopicId);
   const canMoveToNoTopic = !!currentTopicId;

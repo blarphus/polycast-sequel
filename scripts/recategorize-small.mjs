@@ -11,7 +11,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Load .env
-const envPath = path.join(__dirname, '.env');
+const envPath = path.join(__dirname, '..', '.env');
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
     const match = line.match(/^\s*([^#=]+?)\s*=\s*(.*?)\s*$/);
@@ -22,8 +22,8 @@ if (fs.existsSync(envPath)) {
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 if (!GEMINI_API_KEY) { console.error('Missing GEMINI_API_KEY'); process.exit(1); }
 
-const statePath = path.join(__dirname, '.categorization-state.json');
-const outputPath = path.join(__dirname, 'categorized-videos.txt');
+const statePath = path.join(__dirname, '..', '.categorization-state.json');
+const outputPath = path.join(__dirname, '..', 'categorized-videos.txt');
 const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
 
 // Identify small vs large categories

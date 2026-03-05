@@ -411,9 +411,14 @@ describe('Classwork component directory structure', () => {
   const classworkDir = path.resolve(__dirname, '../components/classwork');
 
   const expectedFiles = [
+    'ClassSessionCard.tsx',
+    'ClassSessionTab.tsx',
     'CreatePostModal.tsx',
     'EditModal.tsx',
+    'LessonTab.tsx',
+    'MaterialTab.tsx',
     'PostCards.tsx',
+    'TemplatePicker.tsx',
     'TopicSection.tsx',
     'WordListTab.tsx',
     'languages.ts',

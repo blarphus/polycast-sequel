@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addVideo } from '../api';
 import { LANGUAGES } from './classwork/CreatePostModal';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 interface Props {
   onClose: () => void;
@@ -20,13 +21,7 @@ export default function AddVideoModal({ onClose, onAdded }: Props) {
     inputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

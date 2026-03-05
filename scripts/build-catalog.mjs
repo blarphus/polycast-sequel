@@ -7,7 +7,7 @@
  * matches state file entries to YouTube data by title + channel,
  * and outputs server/data/pt-catalog.json.
  *
- * Usage:  node build-catalog.mjs
+ * Usage:  node scripts/build-catalog.mjs
  *
  * Requires YOUTUBE_API_KEY in .env (or environment).
  */
@@ -20,7 +20,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load .env from project root
-const envPath = path.join(__dirname, '.env');
+const envPath = path.join(__dirname, '..', '.env');
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
     const match = line.match(/^\s*([^#=]+?)\s*=\s*(.*?)\s*$/);
@@ -28,13 +28,13 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const { CHANNELS_BY_LANG } = await import(path.join(__dirname, 'server', 'data', 'channels.js'));
+const { CHANNELS_BY_LANG } = await import(path.join(__dirname, '..', 'server', 'data', 'channels.js'));
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 if (!YOUTUBE_API_KEY) { console.error('Missing YOUTUBE_API_KEY'); process.exit(1); }
 
-const statePath = path.join(__dirname, '.categorization-state.json');
-const outputPath = path.join(__dirname, 'server', 'data', 'pt-catalog.json');
+const statePath = path.join(__dirname, '..', '.categorization-state.json');
+const outputPath = path.join(__dirname, '..', 'server', 'data', 'pt-catalog.json');
 
 // ---------------------------------------------------------------------------
 // Step 1: Read categorization state

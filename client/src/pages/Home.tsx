@@ -2,7 +2,7 @@
 // pages/Home.tsx -- Central learning hub (default landing page)
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getNewToday, getTrendingVideos, getNews, getChannels, SavedWord, TrendingVideo, NewsArticle, ChannelSummary } from '../api';
@@ -11,6 +11,7 @@ import FriendRequests from '../components/FriendRequests';
 import PendingClasswork from '../components/PendingClasswork';
 import UpcomingClasses from '../components/UpcomingClasses';
 import AddVideoModal from '../components/AddVideoModal';
+import Carousel from '../components/Carousel';
 import { FrequencyDots } from '../components/FrequencyDots';
 import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
 import { useVideoClick } from '../hooks/useVideoClick';
@@ -29,9 +30,6 @@ export default function Home() {
   const [showAddVideo, setShowAddVideo] = useState(false);
   const [channels, setChannels] = useState<ChannelSummary[]>([]);
   const [channelsLoading, setChannelsLoading] = useState(true);
-  const videosCarouselRef = useRef<HTMLDivElement | null>(null);
-  const channelsCarouselRef = useRef<HTMLDivElement | null>(null);
-  const newsCarouselRef = useRef<HTMLDivElement | null>(null);
 
   const targetLang = user?.target_language;
   const langName = LANGUAGES.find((l) => l.code === targetLang)?.name || targetLang || '';
@@ -72,16 +70,6 @@ export default function Home() {
     }
     return () => { cancelled = true; };
   }, [targetLang]);
-
-  function scrollCarousel(ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') {
-    const el = ref.current;
-    if (!el) return;
-    const amount = Math.max(220, Math.floor(el.clientWidth * 0.85));
-    el.scrollBy({
-      left: direction === 'left' ? -amount : amount,
-      behavior: 'smooth',
-    });
-  }
 
   const displayName = user?.display_name || user?.username || '';
   const firstName = displayName.split(/\s+/)[0];
@@ -150,209 +138,140 @@ export default function Home() {
       </div>
 
       {/* Section 2: Trending videos */}
-      <section className="home-section">
-        <div className="home-section-header">
-          <div>
-            <h2 className="home-section-title">
-              {!targetLang ? 'Videos for you' : targetLang === 'en' ? 'Free Movies & TV' : `Trending in ${langName}`}
-            </h2>
-            <p className="home-section-subtitle">
-              {targetLang === 'en' ? 'full-length films with captions' : 'watch and learn new words'}
-            </p>
-          </div>
-          <button className="home-add-video-btn" onClick={() => setShowAddVideo(true)}>+</button>
-        </div>
-        {!targetLang ? (
+      <Carousel<TrendingVideo>
+        title={!targetLang ? 'Videos for you' : targetLang === 'en' ? 'Free Movies & TV' : `Trending in ${langName}`}
+        subtitle={targetLang === 'en' ? 'full-length films with captions' : 'watch and learn new words'}
+        headerRight={<button className="home-add-video-btn" onClick={() => setShowAddVideo(true)}>+</button>}
+        items={trending}
+        loading={trendingLoading}
+        emptyState={
           <div className="home-empty-state">
             <p>Set a target language in Settings to see trending videos.</p>
           </div>
-        ) : (
-          <div className="home-carousel-shell">
-            <button
-              className="home-carousel-arrow home-carousel-arrow--left"
-              aria-label="Scroll videos left"
-              onClick={() => scrollCarousel(videosCarouselRef, 'left')}
-            >
-              &#8249;
-            </button>
-            <div className="home-carousel" ref={videosCarouselRef}>
-              {trendingLoading ? (
-                Array.from({ length: 3 }, (_, i) => (
-                  <div key={i} className="home-carousel-card home-carousel-card--skeleton">
-                    <div className="home-carousel-thumb home-carousel-thumb--skeleton" />
-                    <div className="home-carousel-info">
-                      <div className="home-skeleton-line" style={{ width: '80%' }} />
-                      <div className="home-skeleton-line" style={{ width: '50%' }} />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                trending.map((v) => (
-                  <div
-                    key={v.youtube_id}
-                    className={`home-carousel-card home-carousel-card--clickable${addingVideoId === v.youtube_id ? ' home-carousel-card--loading' : ''}`}
-                    onClick={() => handleTrendingClick(v)}
-                  >
-                    <div className="home-carousel-thumb home-carousel-thumb--video">
-                      <img
-                        src={v.thumbnail}
-                        alt={v.title}
-                        className="home-carousel-thumb-img"
-                      />
-                      {v.duration_seconds != null && (
-                        <span className="home-carousel-duration">{formatVideoDuration(v.duration_seconds)}</span>
-                      )}
-                    </div>
-                    <div className="home-carousel-info">
-                      <span className="home-carousel-title">{v.title}</span>
-                      <span className="home-carousel-channel">{v.channel}</span>
-                    </div>
-                  </div>
-                ))
-              )}
+        }
+        renderSkeleton={() => (
+          <div className="home-carousel-card home-carousel-card--skeleton">
+            <div className="home-carousel-thumb home-carousel-thumb--skeleton" />
+            <div className="home-carousel-info">
+              <div className="home-skeleton-line" style={{ width: '80%' }} />
+              <div className="home-skeleton-line" style={{ width: '50%' }} />
             </div>
-            <button
-              className="home-carousel-arrow home-carousel-arrow--right"
-              aria-label="Scroll videos right"
-              onClick={() => scrollCarousel(videosCarouselRef, 'right')}
-            >
-              &#8250;
-            </button>
           </div>
         )}
-      </section>
+        renderItem={(v) => (
+          <div
+            key={v.youtube_id}
+            className={`home-carousel-card home-carousel-card--clickable${addingVideoId === v.youtube_id ? ' home-carousel-card--loading' : ''}`}
+            onClick={() => handleTrendingClick(v)}
+          >
+            <div className="home-carousel-thumb home-carousel-thumb--video">
+              <img src={v.thumbnail} alt={v.title} className="home-carousel-thumb-img" />
+              {v.duration_seconds != null && (
+                <span className="home-carousel-duration">{formatVideoDuration(v.duration_seconds)}</span>
+              )}
+            </div>
+            <div className="home-carousel-info">
+              <span className="home-carousel-title">{v.title}</span>
+              <span className="home-carousel-channel">{v.channel}</span>
+            </div>
+          </div>
+        )}
+      />
 
       {/* Section 2b: Recommended Channels */}
       {targetLang && (
-        <section className="home-section">
-          <h2 className="home-section-title">Recommended Channels</h2>
-          <p className="home-section-subtitle">curated {langName} content creators</p>
-          <div className="home-carousel-shell">
-            <button
-              className="home-carousel-arrow home-carousel-arrow--left"
-              aria-label="Scroll channels left"
-              onClick={() => scrollCarousel(channelsCarouselRef, 'left')}
-            >
-              &#8249;
-            </button>
-            <div className="home-carousel" ref={channelsCarouselRef}>
-              {channelsLoading ? (
-                Array.from({ length: 3 }, (_, i) => (
-                  <div key={i} className="home-carousel-card home-channel-card home-carousel-card--skeleton">
-                    <div className="home-channel-stack home-carousel-thumb--skeleton" />
-                    <div className="home-carousel-info">
-                      <div className="home-skeleton-line" style={{ width: '70%' }} />
-                    </div>
-                  </div>
-                ))
-              ) : (
-                channels.map((ch) => (
-                  <div
-                    key={ch.handle}
-                    className="home-carousel-card home-channel-card home-carousel-card--clickable"
-                    onClick={() => navigate(`/channel/${ch.handle}`)}
-                  >
-                    <div className="home-channel-stack">
-                      {ch.thumbnails.slice(0, 3).reverse().map((thumb, i, arr) => (
-                        <img
-                          key={i}
-                          src={thumb}
-                          alt=""
-                          className={`home-channel-stack-img home-channel-stack-img--${arr.length - 1 - i}`}
-                        />
-                      ))}
-                    </div>
-                    <div className="home-carousel-info">
-                      <span className="home-carousel-title">{ch.name}</span>
-                    </div>
-                  </div>
-                ))
-              )}
+        <Carousel<ChannelSummary>
+          title="Recommended Channels"
+          subtitle={`curated ${langName} content creators`}
+          items={channels}
+          loading={channelsLoading}
+          renderSkeleton={() => (
+            <div className="home-carousel-card home-channel-card home-carousel-card--skeleton">
+              <div className="home-channel-stack home-carousel-thumb--skeleton" />
+              <div className="home-carousel-info">
+                <div className="home-skeleton-line" style={{ width: '70%' }} />
+              </div>
             </div>
-            <button
-              className="home-carousel-arrow home-carousel-arrow--right"
-              aria-label="Scroll channels right"
-              onClick={() => scrollCarousel(channelsCarouselRef, 'right')}
+          )}
+          renderItem={(ch) => (
+            <div
+              key={ch.handle}
+              className="home-carousel-card home-channel-card home-carousel-card--clickable"
+              onClick={() => navigate(`/channel/${ch.handle}`)}
             >
-              &#8250;
-            </button>
-          </div>
-        </section>
+              <div className="home-channel-stack">
+                {ch.thumbnails.slice(0, 3).reverse().map((thumb, i, arr) => (
+                  <img
+                    key={i}
+                    src={thumb}
+                    alt=""
+                    className={`home-channel-stack-img home-channel-stack-img--${arr.length - 1 - i}`}
+                  />
+                ))}
+              </div>
+              <div className="home-carousel-info">
+                <span className="home-carousel-title">{ch.name}</span>
+              </div>
+            </div>
+          )}
+        />
       )}
 
       {/* Section 3: News for you */}
-      <section className="home-section">
-        <h2 className="home-section-title">News for you</h2>
-        <p className="home-section-subtitle">headlines in {langName || 'your target language'}</p>
-        {!targetLang ? (
-          <div className="home-empty-state">
-            <p>Set a target language in Settings to see news headlines.</p>
-          </div>
-        ) : (
-          <div className="home-carousel-shell">
-            <button
-              className="home-carousel-arrow home-carousel-arrow--left"
-              aria-label="Scroll news left"
-              onClick={() => scrollCarousel(newsCarouselRef, 'left')}
-            >
-              &#8249;
-            </button>
-            <div className="home-carousel" ref={newsCarouselRef}>
-              {newsLoading ? (
-                Array.from({ length: 3 }, (_, i) => (
-                  <div key={i} className="home-carousel-card home-carousel-card--skeleton">
-                    <div className="home-carousel-thumb home-carousel-thumb--news home-carousel-thumb--skeleton" />
-                    <div className="home-carousel-info">
-                      <div className="home-skeleton-line" style={{ width: '80%' }} />
-                      <div className="home-skeleton-line" style={{ width: '50%' }} />
-                    </div>
-                  </div>
-                ))
-              ) : news.length === 0 ? (
-                <div className="home-empty-state">
-                  <p>No news articles available right now.</p>
-                </div>
-              ) : (
-                news.map((n, i) => (
-                  <div
-                    key={i}
-                    className="home-carousel-card home-carousel-card--clickable"
-                    onClick={() => navigate(`/read/${targetLang}/${i}`)}
-                  >
-                    {n.image && (
-                      <div className="home-carousel-thumb home-carousel-thumb--news">
-                        <img src={n.image} alt="" className="home-carousel-thumb-img" />
-                        <span className="home-news-source-overlay">{n.source}</span>
-                      </div>
-                    )}
-                    <div className="home-carousel-info">
-                      {!n.image && <span className="home-carousel-source">{n.source}</span>}
-                      <span className="home-carousel-title">{n.simplified_title}</span>
-                      <div className="home-carousel-meta">
-                        {n.difficulty && (
-                          <span className="home-difficulty-pill" style={{ background: CEFR_COLORS[n.difficulty] || '#3b82f6' }}>
-                            {n.difficulty}
-                          </span>
-                        )}
-                        {n.words.map((w) => (
-                          <span key={w.word} className="home-word-badge">{w.word}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
+      <Carousel<NewsArticle>
+        title="News for you"
+        subtitle={`headlines in ${langName || 'your target language'}`}
+        items={news}
+        loading={newsLoading}
+        emptyState={
+          !targetLang ? (
+            <div className="home-empty-state">
+              <p>Set a target language in Settings to see news headlines.</p>
             </div>
-            <button
-              className="home-carousel-arrow home-carousel-arrow--right"
-              aria-label="Scroll news right"
-              onClick={() => scrollCarousel(newsCarouselRef, 'right')}
-            >
-              &#8250;
-            </button>
+          ) : (
+            <div className="home-empty-state">
+              <p>No news articles available right now.</p>
+            </div>
+          )
+        }
+        renderSkeleton={() => (
+          <div className="home-carousel-card home-carousel-card--skeleton">
+            <div className="home-carousel-thumb home-carousel-thumb--news home-carousel-thumb--skeleton" />
+            <div className="home-carousel-info">
+              <div className="home-skeleton-line" style={{ width: '80%' }} />
+              <div className="home-skeleton-line" style={{ width: '50%' }} />
+            </div>
           </div>
         )}
-      </section>
+        renderItem={(n, i) => (
+          <div
+            key={i}
+            className="home-carousel-card home-carousel-card--clickable"
+            onClick={() => navigate(`/read/${targetLang}/${i}`)}
+          >
+            {n.image && (
+              <div className="home-carousel-thumb home-carousel-thumb--news">
+                <img src={n.image} alt="" className="home-carousel-thumb-img" />
+                <span className="home-news-source-overlay">{n.source}</span>
+              </div>
+            )}
+            <div className="home-carousel-info">
+              {!n.image && <span className="home-carousel-source">{n.source}</span>}
+              <span className="home-carousel-title">{n.simplified_title}</span>
+              <div className="home-carousel-meta">
+                {n.difficulty && (
+                  <span className="home-difficulty-pill" style={{ background: CEFR_COLORS[n.difficulty] || '#3b82f6' }}>
+                    {n.difficulty}
+                  </span>
+                )}
+                {n.words.map((w) => (
+                  <span key={w.word} className="home-word-badge">{w.word}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      />
 
       {showAddVideo && (
         <AddVideoModal onClose={() => setShowAddVideo(false)} onAdded={() => {}} />

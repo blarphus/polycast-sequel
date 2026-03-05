@@ -4,6 +4,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { searchImages } from '../api';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 interface Props {
   initialQuery: string;
@@ -107,14 +108,7 @@ export default function ImagePicker({ initialQuery, onSelect, onClose }: Props) 
     }
   }, []);
 
-  // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const handleSelect = async (url: string) => {
     if (savingUrl) return;

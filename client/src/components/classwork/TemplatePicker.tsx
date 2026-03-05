@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as api from '../../api';
 import type { TemplateSummary } from '../../api';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
 
 const THUMBS_PER_PAGE = 4;
 
@@ -32,13 +33,7 @@ export default function TemplatePicker({ onSelect, onClose }: Props) {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   const handleUnitClick = async (textbookId: string, unitId: string) => {
     if (loadingUnit) return;

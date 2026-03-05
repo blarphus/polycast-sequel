@@ -2,12 +2,13 @@
 // components/classwork/TopicSection.tsx — Topic section with post grouping
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import * as api from '../../api';
 import type { StreamPost, StreamTopic } from '../../api';
 import { TeacherPostCard, StudentWordListCard, StudentMaterialCard, StudentLessonCard } from './PostCards';
 import { TeacherClassSessionCard, StudentClassSessionCard } from './ClassSessionCard';
 import { ChevronUpIcon } from '../icons';
+import { useClickOutside } from '../../hooks/useClickOutside';
 
 // ---------------------------------------------------------------------------
 // Topic context menu (rename, delete)
@@ -23,14 +24,7 @@ function TopicMenu({
   onClose: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  useClickOutside(menuRef, onClose);
 
   return (
     <div ref={menuRef} className="stream-post-menu">

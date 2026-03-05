@@ -7,7 +7,7 @@
  * conversations, etc.) are discarded. State is saved after every batch so
  * the script can be interrupted and resumed.
  *
- * Usage:  node categorize-lessons.mjs [--lang pt] [--reset]
+ * Usage:  node scripts/categorize-lessons.mjs [--lang pt] [--reset]
  *
  * Requires YOUTUBE_API_KEY and GEMINI_API_KEY in .env (or environment).
  */
@@ -21,7 +21,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load .env from project root
-const envPath = path.join(__dirname, '.env');
+const envPath = path.join(__dirname, '..', '.env');
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
     const match = line.match(/^\s*([^#=]+?)\s*=\s*(.*?)\s*$/);
@@ -29,8 +29,8 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const { CHANNELS_BY_LANG } = await import(path.join(__dirname, 'server', 'data', 'channels.js'));
-const { LESSONS_BY_LANG } = await import(path.join(__dirname, 'server', 'data', 'lessons.js'));
+const { CHANNELS_BY_LANG } = await import(path.join(__dirname, '..', 'server', 'data', 'channels.js'));
+const { LESSONS_BY_LANG } = await import(path.join(__dirname, '..', 'server', 'data', 'lessons.js'));
 
 // CLI args
 const args = process.argv.slice(2);
@@ -97,8 +97,8 @@ console.log(`\nTotal: ${allVideos.length} videos\n`);
 // Step 2: State management
 // ---------------------------------------------------------------------------
 
-const statePath = path.join(__dirname, '.categorization-state.json');
-const outputPath = path.join(__dirname, 'categorized-videos.txt');
+const statePath = path.join(__dirname, '..', '.categorization-state.json');
+const outputPath = path.join(__dirname, '..', 'categorized-videos.txt');
 const BATCH_SIZE = 20;
 
 // State shape: { categories: { id: { title, level?, videos: [{title, channel}] } }, uncategorized: [...], removed: [...], processedCount: N }

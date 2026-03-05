@@ -3,8 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const statePath = path.join(__dirname, '.categorization-state.json');
-const outputPath = path.join(__dirname, 'categorized-videos.txt');
+const statePath = path.join(__dirname, '..', '.categorization-state.json');
+const outputPath = path.join(__dirname, '..', 'categorized-videos.txt');
 
 const state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
 

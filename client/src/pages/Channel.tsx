@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getChannelVideos, TrendingVideo } from '../api';
 import { ChevronLeftIcon } from '../components/icons';
@@ -13,6 +13,7 @@ import { filterUnplayableVideos } from '../utils/playabilityFilter';
 
 export default function Channel() {
   const { handle } = useParams<{ handle: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const [channelName, setChannelName] = useState('');
@@ -47,7 +48,7 @@ export default function Channel() {
 
   return (
     <div className="browse-page">
-      <button className="channel-back-btn" onClick={() => history.back()}>
+      <button className="channel-back-btn" onClick={() => navigate(-1)}>
         <ChevronLeftIcon size={18} />
         Back
       </button>

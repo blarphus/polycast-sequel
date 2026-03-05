@@ -37,7 +37,7 @@ export default function Lessons() {
 
   return (
     <div className="browse-page">
-      <button className="channel-back-btn" onClick={() => history.back()}>
+      <button className="channel-back-btn" onClick={() => navigate(-1)}>
         <ChevronLeftIcon size={18} />
         Back
       </button>

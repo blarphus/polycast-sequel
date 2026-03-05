@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { lookupWord, enrichWord, type SaveWordData } from '../api';
 import { useDictionaryToast } from '../hooks/useDictionaryToast';
+import { useClickOutside } from '../hooks/useClickOutside';
 import { CheckIcon } from './icons';
 
 interface WordPopupProps {
@@ -66,16 +67,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
     return () => { cancelled = true; };
   }, [word, sentence, nativeLang, targetLang]);
 
-  // Click-outside to dismiss
-  useEffect(() => {
-    function handleMouseDown(e: MouseEvent) {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener('mousedown', handleMouseDown);
-    return () => document.removeEventListener('mousedown', handleMouseDown);
-  }, [onClose]);
+  useClickOutside(popupRef, onClose);
 
   // Position: centered above the clicked word, flip below if off-screen top
   const popupWidth = 300;

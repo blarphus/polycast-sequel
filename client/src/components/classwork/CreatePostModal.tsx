@@ -2,15 +2,19 @@
 // components/classwork/CreatePostModal.tsx — Create-post components
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import * as api from '../../api';
 import type { StreamPost, StreamTopic, StreamAttachment, LessonItem, WordOverride, Recurrence } from '../../api';
 
 import WordListTab from './WordListTab';
+import MaterialTab from './MaterialTab';
+import LessonTab from './LessonTab';
+import ClassSessionTab from './ClassSessionTab';
 import { DocumentIcon, BookIcon, TypeIcon, CalendarIcon, CloseIcon } from '../icons';
+import { useClickOutside } from '../../hooks/useClickOutside';
 
-import { DAY_LABELS, DAY_VALUES } from './languages';
 export { LANGUAGES } from './languages';
+export { LessonItemEditor } from './LessonTab';
 
 // ---------------------------------------------------------------------------
 // Attachment editor (used by MaterialTab and LessonItemEditor)
@@ -82,357 +86,7 @@ export function AttachmentEditor({
 }
 
 // ---------------------------------------------------------------------------
-// MaterialTab
-// ---------------------------------------------------------------------------
-
-function MaterialTab({
-  onSubmit,
-}: {
-  onSubmit: (data: { title: string; body: string; attachments: StreamAttachment[] }) => Promise<void>;
-}) {
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [attachments, setAttachments] = useState<StreamAttachment[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleSubmit = async () => {
-    if (!title.trim() && !body.trim() && attachments.length === 0) {
-      setError('Add a title, body, or at least one link');
-      return;
-    }
-    setSubmitting(true);
-    setError('');
-    try {
-      await onSubmit({ title, body, attachments });
-    } catch (err: any) {
-      console.error('Create material post failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="create-post-tab-content">
-      {error && <div className="auth-error">{error}</div>}
-      <label className="form-label">Title</label>
-      <input
-        className="form-input"
-        placeholder="e.g. Watch this video about Spanish verbs"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <label className="form-label">Body (optional)</label>
-      <textarea
-        className="form-input stream-textarea"
-        placeholder="Add notes or instructions for your students…"
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        rows={4}
-      />
-      <label className="form-label">Links</label>
-      <AttachmentEditor attachments={attachments} onChange={setAttachments} />
-      <button
-        className="btn btn-primary btn-block"
-        disabled={submitting}
-        onClick={handleSubmit}
-        style={{ marginTop: '1.25rem' }}
-      >
-        {submitting ? 'Posting…' : 'Post Material'}
-      </button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// LessonItemEditor + LessonTab
-// ---------------------------------------------------------------------------
-
-export function LessonItemEditor({
-  item,
-  index,
-  onChange,
-  onRemove,
-  showRemove,
-}: {
-  item: LessonItem;
-  index: number;
-  onChange: (updated: LessonItem) => void;
-  onRemove: () => void;
-  showRemove: boolean;
-}) {
-  return (
-    <div className="lesson-item-editor">
-      <div className="lesson-item-editor-header">
-        <span className="lesson-item-number">Item {index + 1}</span>
-        {showRemove && (
-          <button className="btn-small btn-danger" onClick={onRemove}>
-            Remove
-          </button>
-        )}
-      </div>
-      <label className="form-label">Title</label>
-      <input
-        className="form-input"
-        placeholder={`e.g. Watch video ${index + 1}`}
-        value={item.title}
-        onChange={(e) => onChange({ ...item, title: e.target.value })}
-      />
-      <label className="form-label">Notes (optional)</label>
-      <textarea
-        className="form-input stream-textarea"
-        placeholder="Instructions or context for this item…"
-        value={item.body || ''}
-        onChange={(e) => onChange({ ...item, body: e.target.value })}
-        rows={3}
-      />
-      <label className="form-label">Links</label>
-      <AttachmentEditor
-        attachments={item.attachments}
-        onChange={(atts) => onChange({ ...item, attachments: atts })}
-      />
-    </div>
-  );
-}
-
-function LessonTab({
-  onSubmit,
-}: {
-  onSubmit: (data: { title: string; lesson_items: LessonItem[] }) => Promise<void>;
-}) {
-  const [title, setTitle] = useState('');
-  const [items, setItems] = useState<LessonItem[]>([{ title: '', body: '', attachments: [] }]);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-
-  const updateItem = (i: number, updated: LessonItem) =>
-    setItems((prev) => prev.map((it, idx) => (idx === i ? updated : it)));
-  const removeItem = (i: number) => setItems((prev) => prev.filter((_, idx) => idx !== i));
-  const addItem = () => setItems((prev) => [...prev, { title: '', body: '', attachments: [] }]);
-
-  const handleSubmit = async () => {
-    if (!title.trim()) { setError('Lesson title is required'); return; }
-    const validItems = items.filter((it) => it.title.trim() || (it.attachments && it.attachments.length > 0));
-    if (validItems.length === 0) { setError('Add at least one item with a title or link'); return; }
-    setSubmitting(true);
-    setError('');
-    try {
-      await onSubmit({ title, lesson_items: validItems });
-    } catch (err: any) {
-      console.error('Create lesson post failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="create-post-tab-content">
-      {error && <div className="auth-error">{error}</div>}
-      <label className="form-label">Lesson Title</label>
-      <input
-        className="form-input"
-        placeholder="e.g. Lesson 1: Introduction"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <div className="lesson-items-list">
-        {items.map((item, i) => (
-          <LessonItemEditor
-            key={i}
-            item={item}
-            index={i}
-            onChange={(updated) => updateItem(i, updated)}
-            onRemove={() => removeItem(i)}
-            showRemove={items.length > 1}
-          />
-        ))}
-      </div>
-      <button className="btn btn-secondary btn-block" onClick={addItem} style={{ marginBottom: '1rem' }}>
-        + Add Material Item
-      </button>
-      <button className="btn btn-primary btn-block" disabled={submitting} onClick={handleSubmit}>
-        {submitting ? 'Posting…' : `Post Lesson (${items.length} item${items.length !== 1 ? 's' : ''})`}
-      </button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// ClassSessionTab
-// ---------------------------------------------------------------------------
-
-function ClassSessionTab({
-  onSubmit,
-}: {
-  onSubmit: (data: {
-    title: string;
-    body?: string;
-    scheduled_at?: string;
-    duration_minutes?: number;
-    recurrence?: Recurrence | null;
-  }) => Promise<void>;
-}) {
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('14:00');
-  const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [untilDate, setUntilDate] = useState('');
-  const [duration, setDuration] = useState(30);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-
-  const toggleDay = (day: number) => {
-    setSelectedDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b),
-    );
-  };
-
-  const handleSubmit = async () => {
-    if (!title.trim()) { setError('Title is required'); return; }
-    if (!isRecurring && !date) { setError('Date is required for one-off sessions'); return; }
-    if (isRecurring && selectedDays.length === 0) { setError('Select at least one day'); return; }
-
-    setSubmitting(true);
-    setError('');
-    try {
-      if (isRecurring) {
-        await onSubmit({
-          title,
-          body: body || undefined,
-          scheduled_at: new Date().toISOString(),
-          duration_minutes: duration || undefined,
-          recurrence: { days: selectedDays, time, until: untilDate || '2099-12-31' },
-        });
-      } else {
-        const scheduledAt = new Date(`${date}T${time}`).toISOString();
-        await onSubmit({
-          title,
-          body: body || undefined,
-          scheduled_at: scheduledAt,
-          duration_minutes: duration || undefined,
-          recurrence: null,
-        });
-      }
-    } catch (err: any) {
-      console.error('Create class session failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="create-post-tab-content">
-      {error && <div className="auth-error">{error}</div>}
-
-      <label className="form-label">Title</label>
-      <input
-        className="form-input"
-        placeholder="e.g. Conversation Practice"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-
-      <div className="class-session-toggle">
-        <button
-          className={`class-session-toggle-btn${!isRecurring ? ' active' : ''}`}
-          onClick={() => setIsRecurring(false)}
-        >
-          One-off
-        </button>
-        <button
-          className={`class-session-toggle-btn${isRecurring ? ' active' : ''}`}
-          onClick={() => setIsRecurring(true)}
-        >
-          Recurring
-        </button>
-      </div>
-
-      {!isRecurring ? (
-        <>
-          <label className="form-label">Date</label>
-          <input
-            className="form-input"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-          <label className="form-label">Time</label>
-          <input
-            className="form-input"
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-          />
-        </>
-      ) : (
-        <>
-          <label className="form-label">Days of the week</label>
-          <div className="class-session-days">
-            {DAY_VALUES.map((day, i) => (
-              <button
-                key={day}
-                className={`class-session-day-btn${selectedDays.includes(day) ? ' active' : ''}`}
-                onClick={() => toggleDay(day)}
-              >
-                {DAY_LABELS[i]}
-              </button>
-            ))}
-          </div>
-          <label className="form-label">Time</label>
-          <input
-            className="form-input"
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-          />
-          <label className="form-label">End date (optional)</label>
-          <input
-            className="form-input"
-            type="date"
-            value={untilDate}
-            onChange={(e) => setUntilDate(e.target.value)}
-          />
-        </>
-      )}
-
-      <label className="form-label">Duration (minutes)</label>
-      <input
-        className="form-input"
-        type="number"
-        min={5}
-        max={180}
-        value={duration}
-        onChange={(e) => setDuration(parseInt(e.target.value) || 30)}
-      />
-
-      <label className="form-label">Description (optional)</label>
-      <textarea
-        className="form-input stream-textarea"
-        placeholder="What will you cover in this class?"
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        rows={3}
-      />
-
-      <button
-        className="btn btn-primary btn-block"
-        disabled={submitting}
-        onClick={handleSubmit}
-        style={{ marginTop: '1.25rem' }}
-      >
-        {submitting ? 'Scheduling…' : 'Schedule Class'}
-      </button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Create post modal (replaces /classwork/create navigation)
+// Create post modal
 // ---------------------------------------------------------------------------
 
 export function CreatePostModal({
@@ -554,14 +208,7 @@ export function CreateMenu({
   onClose: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  useClickOutside(menuRef, onClose);
 
   return (
     <div ref={menuRef} className="stream-create-dropdown">
@@ -579,7 +226,7 @@ export function CreateMenu({
       </button>
       <div className="stream-create-menu-separator" />
       <button className="stream-create-menu-item" onClick={() => { onSelect('topic'); onClose(); }}>
-        <span className="stream-create-menu-icon">＋</span> New Topic
+        <span className="stream-create-menu-icon">+</span> New Topic
       </button>
     </div>
   );
