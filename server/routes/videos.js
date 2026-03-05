@@ -6,7 +6,7 @@ import { authMiddleware } from '../auth.js';
 import { enqueueTranscriptJob, markReady, clearTranscriptDedupe } from '../services/videoTranscriptQueue.js';
 import {
   parseDuration, parseYouTubeId, filterAndMapTrendingItems,
-  removeShorts, fetchMoviesAndTV, fetchAllChannelVideos,
+  fetchMoviesAndTV, fetchAllChannelVideos,
 } from '../services/youtubeApi.js';
 import { CHANNELS_BY_LANG } from '../data/channels.js';
 import { LESSONS_BY_LANG, videoMatchesLesson, getCatalogVideos } from '../data/lessons.js';
@@ -243,7 +243,7 @@ router.get('/api/videos/trending', authMiddleware, async (req, res) => {
         if (!pageToken) break;
       }
 
-      return await removeShorts(collected);
+      return collected;
     }, 21600);
 
     res.json(items);
@@ -319,7 +319,7 @@ router.get('/api/videos/search', authMiddleware, validate({ query: videoSearchQu
       }
 
       const detailData = await detailRes.json();
-      return await removeShorts(filterAndMapTrendingItems(detailData.items, userRegion));
+      return filterAndMapTrendingItems(detailData.items, userRegion);
     }, 3600);
 
     res.json(items);
@@ -450,8 +450,7 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
       }
 
       const detailData = await detailRes.json();
-      let videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
-      videos = await removeShorts(videos);
+      const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
       videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
 
       return { channel: { name: channel.name, handle: channel.handle }, videos };
