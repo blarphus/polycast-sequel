@@ -275,6 +275,15 @@ function handleWordClick(word, sentence, anchorEl) {
       saveBtn.innerHTML = '&#10003; Saved';
       saveBtn.classList.add('pc-popup-save--saved');
 
+      // Optimistically mark all matching words on the page immediately
+      const lower = word.toLowerCase();
+      savedWordsSet.add(lower);
+      document.querySelectorAll('.pc-word').forEach((el) => {
+        if (el.textContent.toLowerCase() === lower) {
+          el.classList.add('pc-saved');
+        }
+      });
+
       try {
         chrome.runtime.sendMessage(
           { type: 'SAVE_WORD', word, sentence },
