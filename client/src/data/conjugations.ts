@@ -1143,20 +1143,68 @@ const pronounLabels: Record<string, Record<string, string>> = {
 };
 
 // ---------------------------------------------------------------------------
+// Regular verb lookup (everything else is irregular)
+// ---------------------------------------------------------------------------
+
+const regularVerbs: Record<string, Set<string>> = {
+  es: new Set(['hablar', 'comer', 'vivir']),
+  pt: new Set(['falar', 'comer', 'viver']),
+  fr: new Set(['parler', 'manger', 'finir']),
+  de: new Set(['machen']),
+  en: new Set(['want']),
+};
+
+// ---------------------------------------------------------------------------
+// Config helpers for drill UI
+// ---------------------------------------------------------------------------
+
+export interface DrillConfig {
+  tenses?: string[];
+  irregulars?: 'all' | 'regular' | 'irregular';
+}
+
+export function getLanguageConfig(targetLang: string): {
+  tenses: { key: string; label: string }[];
+  verbs: { infinitive: string; irregular: boolean }[];
+} | null {
+  const data = conjugations[targetLang];
+  if (!data) return null;
+  const regs = regularVerbs[targetLang];
+  return {
+    tenses: data.tenses,
+    verbs: data.verbs.map((v) => ({
+      infinitive: v.infinitive,
+      irregular: !regs?.has(v.infinitive),
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Problem generator
 // ---------------------------------------------------------------------------
 
-export function generateProblems(targetLang: string, count: number): ConjugationProblem[] {
+export function generateProblems(
+  targetLang: string,
+  count: number,
+  config?: DrillConfig,
+): ConjugationProblem[] {
   const data = conjugations[targetLang];
   if (!data) return [];
 
   const labels = pronounLabels[targetLang];
+  const regs = regularVerbs[targetLang];
+  const tenseFilter = config?.tenses && config.tenses.length > 0
+    ? new Set(config.tenses)
+    : null;
 
   // Build pool of all possible combos
   type Combo = { verb: VerbTable; tenseKey: string; tenseLabel: string; pronoun: string };
   const pool: Combo[] = [];
   for (const verb of data.verbs) {
+    if (config?.irregulars === 'regular' && !regs?.has(verb.infinitive)) continue;
+    if (config?.irregulars === 'irregular' && regs?.has(verb.infinitive)) continue;
     for (const tense of data.tenses) {
+      if (tenseFilter && !tenseFilter.has(tense.key)) continue;
       const tenseConj = verb.conjugations[tense.key];
       if (!tenseConj) continue;
       for (const pronoun of data.pronouns) {

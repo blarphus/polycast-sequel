@@ -676,6 +676,61 @@
 }
 
 /* ---------------------------------------------------------------------------
+   Drill config panel
+   --------------------------------------------------------------------------- */
+
+.drill-config {
+  width: 100%;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  text-align: left;
+}
+
+.drill-config-section {
+  margin-bottom: 1rem;
+}
+
+.drill-config-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.drill-config-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.drill-config-chip {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  font-family: var(--font);
+}
+
+.drill-config-chip:hover {
+  border-color: var(--accent);
+  background: rgba(108, 99, 255, 0.05);
+}
+
+.drill-config-chip.selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------------------
    Watch page practice prompt
    --------------------------------------------------------------------------- */
 
