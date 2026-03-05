@@ -357,6 +357,54 @@
   background: rgba(108, 99, 255, 0.15);
 }
 
+/* ---- Practice / Quiz page ------------------------------------------------ */
+
+[data-theme="dark"] .practice-page {
+  background: linear-gradient(160deg, #1a1a2e 0%, #0f0f0f 40%, #131320 100%);
+}
+
+[data-theme="dark"] .practice-progress-bar {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .practice-feedback.correct {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.25);
+}
+
+[data-theme="dark"] .practice-feedback.incorrect {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+[data-theme="dark"] .practice-feedback-badge.correct {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+
+[data-theme="dark"] .practice-feedback-badge.incorrect {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+[data-theme="dark"] .practice-review-item {
+  background: var(--bg-surface);
+}
+
+[data-theme="dark"] .practice-review-badge.correct {
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+}
+
+[data-theme="dark"] .practice-review-badge.incorrect {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+[data-theme="dark"] .practice-review-expected {
+  color: #f87171;
+}
+
 /* ---- Dark theme sidebar -------------------------------------------------- */
 
 @media (min-width: 769px) {
