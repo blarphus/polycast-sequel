@@ -334,7 +334,7 @@ router.post('/api/practice/conjugations', authMiddleware, validate({ body: conju
 
     // Fetch user's saved verbs for personalization
     const { rows: savedVerbs } = await pool.query(
-      `SELECT DISTINCT word, lemma
+      `SELECT word, lemma
        FROM saved_words
        WHERE user_id = $1 AND target_language = $2
          AND part_of_speech ILIKE '%verb%'
