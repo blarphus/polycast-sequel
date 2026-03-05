@@ -24,7 +24,7 @@ export default function Browse() {
   const [activeQuery, setActiveQuery] = useState('');
   const [lessons, setLessons] = useState<LessonSummary[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(8);
+  const [visibleCount, setVisibleCount] = useState(30);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const targetLang = user?.target_language;
@@ -46,7 +46,7 @@ export default function Browse() {
       .then((v) => {
         if (cancelled) return;
         setVideos(v);
-        setVisibleCount(8);
+        setVisibleCount(30);
         filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
@@ -77,7 +77,7 @@ export default function Browse() {
     searchVideos(trimmed, targetLang)
       .then((v) => {
         setVideos(v);
-        setVisibleCount(8);
+        setVisibleCount(30);
         filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
@@ -99,7 +99,7 @@ export default function Browse() {
     getTrendingVideos(targetLang)
       .then((v) => {
         setVideos(v);
-        setVisibleCount(8);
+        setVisibleCount(30);
         filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
@@ -240,7 +240,7 @@ export default function Browse() {
           {visibleCount < videos.length && (
             <button
               className="btn btn-secondary browse-load-more"
-              onClick={() => setVisibleCount((c) => c + 8)}
+              onClick={() => setVisibleCount((c) => c + 30)}
             >
               Load More
             </button>
