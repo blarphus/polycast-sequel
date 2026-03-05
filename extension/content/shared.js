@@ -183,11 +183,24 @@ function handleWordClick(word, sentence, anchorEl) {
 
   // Gemini lookup — contextual translation + definition + POS
   const body = popup.querySelector('.pc-popup-body');
+  let lookupResolved = false;
+
+  // Timeout: if no response in 15s, show error (MV3 service worker may have died)
+  const lookupTimeout = setTimeout(() => {
+    if (lookupResolved) return;
+    lookupResolved = true;
+    if (!activePopup || activePopup !== popup) return;
+    body.innerHTML = `<div class="pc-popup-error">Lookup timed out — try again</div>`;
+  }, 15000);
 
   try {
     chrome.runtime.sendMessage(
       { type: 'LOOKUP_WORD', word, sentence },
       (res) => {
+        if (lookupResolved) return;
+        lookupResolved = true;
+        clearTimeout(lookupTimeout);
+
         if (chrome.runtime.lastError) {
           console.error('Polycast lookup error:', chrome.runtime.lastError.message);
           if (!activePopup || activePopup !== popup) return;
@@ -197,19 +210,37 @@ function handleWordClick(word, sentence, anchorEl) {
 
         if (!activePopup || activePopup !== popup) return;
 
-        if (res && res.error) {
+        if (!res) {
+          body.innerHTML = `<div class="pc-popup-error">No response — try refreshing the page</div>`;
+          return;
+        }
+
+        if (res.error) {
           body.innerHTML = `<div class="pc-popup-error">${escapeHtml(res.error)}</div>`;
           return;
         }
 
+        if (res.valid === false) {
+          body.innerHTML = `<div class="pc-popup-error">Not a recognized word</div>`;
+          return;
+        }
+
+        const hasContent = res.translation || res.definition || res.part_of_speech;
+        if (!hasContent) {
+          body.innerHTML = `<div class="pc-popup-error">No definition found</div>`;
+          return;
+        }
+
         body.innerHTML = `
-          ${res && res.translation ? `<div class="pc-popup-translation">${escapeHtml(res.translation)}</div>` : ''}
-          ${res && res.part_of_speech ? `<div class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</div>` : ''}
-          ${res && res.definition ? `<div class="pc-popup-definition">${escapeHtml(res.definition)}</div>` : ''}
+          ${res.translation ? `<div class="pc-popup-translation">${escapeHtml(res.translation)}</div>` : ''}
+          ${res.part_of_speech ? `<div class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</div>` : ''}
+          ${res.definition ? `<div class="pc-popup-definition">${escapeHtml(res.definition)}</div>` : ''}
         `;
       },
     );
   } catch {
+    lookupResolved = true;
+    clearTimeout(lookupTimeout);
     body.innerHTML = `<div class="pc-popup-error">Extension reloaded — refresh this page</div>`;
   }
 
