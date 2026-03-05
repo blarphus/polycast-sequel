@@ -530,6 +530,15 @@
   overflow: hidden;
 }
 
+.home-carousel-card--news .home-carousel-title {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.home-carousel-card--no-thumb .home-carousel-title {
+  font-size: 1rem;
+  -webkit-line-clamp: 4;
+}
+
 .home-carousel-meta {
   display: flex;
   flex-wrap: wrap;

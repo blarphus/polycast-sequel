@@ -246,7 +246,7 @@ export default function Home() {
         renderItem={(n, i) => (
           <div
             key={i}
-            className="home-carousel-card home-carousel-card--clickable"
+            className={`home-carousel-card home-carousel-card--clickable home-carousel-card--news${n.image ? '' : ' home-carousel-card--no-thumb'}`}
             onClick={() => navigate(`/read/${targetLang}/${i}`)}
           >
             {n.image && (
