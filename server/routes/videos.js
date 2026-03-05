@@ -6,7 +6,7 @@ import { authMiddleware } from '../auth.js';
 import { enqueueTranscriptJob, markReady, clearTranscriptDedupe } from '../services/videoTranscriptQueue.js';
 import { fetchYouTubeTranscript } from '../services/videoTranscriptFetcher.js';
 import { MOVIES_TV_UPLOADS_PLAYLIST, CHANNELS_BY_LANG } from '../data/channels.js';
-import { LESSONS_BY_LANG, videoMatchesLesson } from '../data/lessons.js';
+import { LESSONS_BY_LANG, videoMatchesLesson, getCatalogVideos } from '../data/lessons.js';
 import { cachedFetch } from '../lib/redisCache.js';
 import logger from '../logger.js';
 import { validate } from '../lib/validate.js';
@@ -623,6 +623,23 @@ router.get('/api/videos/lessons', authMiddleware, async (req, res) => {
     const lessons = LESSONS_BY_LANG[lang];
     if (!lessons) return res.json([]);
 
+    // PT: serve directly from static catalog (no YouTube API needed)
+    const catalogCheck = getCatalogVideos(lang, lessons[0]?.id);
+    if (catalogCheck !== null) {
+      const results = lessons.map((lesson) => {
+        const videos = getCatalogVideos(lang, lesson.id) || [];
+        return {
+          id: lesson.id,
+          title: lesson.title,
+          level: lesson.level,
+          thumbnails: videos.slice(0, 3).map((v) => v.thumbnail),
+          videoCount: videos.length,
+        };
+      });
+      return res.json(results);
+    }
+
+    // Other languages: keyword-match against YouTube API
     const trendingRegion = LANG_TO_REGION[lang] || 'US';
     const userRegion = (req.query.userRegion || trendingRegion).toString().toUpperCase();
     const cacheKey = `lessons2:${lang}:${userRegion}`;
@@ -670,6 +687,18 @@ router.get('/api/videos/lesson/:id', authMiddleware, async (req, res) => {
     const lesson = lessons.find((l) => l.id === id);
     if (!lesson) return res.status(404).json({ error: 'Lesson not found' });
 
+    // PT: serve directly from static catalog (no YouTube API needed)
+    const catalogVideos = getCatalogVideos(lang, id);
+    if (catalogVideos !== null) {
+      // Sort human-captioned first
+      const sorted = [...catalogVideos].sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
+      return res.json({
+        lesson: { id: lesson.id, title: lesson.title, level: lesson.level },
+        videos: sorted,
+      });
+    }
+
+    // Other languages: keyword-match against YouTube API
     const trendingRegion = LANG_TO_REGION[lang] || 'US';
     const userRegion = (req.query.userRegion || trendingRegion).toString().toUpperCase();
     const cacheKey = `lesson2:${id}:${lang}:${userRegion}`;
