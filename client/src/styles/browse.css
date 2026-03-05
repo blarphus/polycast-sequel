@@ -176,6 +176,14 @@
   color: var(--success);
 }
 
+/* ---- Load more ---- */
+
+.browse-load-more {
+  display: block;
+  margin: 1.5rem auto 0;
+  min-width: 160px;
+}
+
 /* ---- Channel back button ---- */
 
 .channel-back-btn {

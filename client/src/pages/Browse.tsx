@@ -24,6 +24,7 @@ export default function Browse() {
   const [activeQuery, setActiveQuery] = useState('');
   const [lessons, setLessons] = useState<LessonSummary[]>([]);
   const [lessonsLoading, setLessonsLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(8);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const targetLang = user?.target_language;
@@ -45,6 +46,7 @@ export default function Browse() {
       .then((v) => {
         if (cancelled) return;
         setVideos(v);
+        setVisibleCount(8);
         filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
@@ -75,6 +77,7 @@ export default function Browse() {
     searchVideos(trimmed, targetLang)
       .then((v) => {
         setVideos(v);
+        setVisibleCount(8);
         filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
@@ -96,6 +99,7 @@ export default function Browse() {
     getTrendingVideos(targetLang)
       .then((v) => {
         setVideos(v);
+        setVisibleCount(8);
         filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
@@ -212,26 +216,36 @@ export default function Browse() {
           <p>{activeQuery ? `No results for "${activeQuery}".` : 'No videos available right now.'}</p>
         </div>
       ) : (
-        <div className="browse-grid">
-          {videos.map((v) => (
-            <div
-              key={v.youtube_id}
-              className={`browse-card${addingVideoId === v.youtube_id ? ' browse-card--loading' : ''}`}
-              onClick={() => handleVideoClick(v)}
+        <>
+          <div className="browse-grid">
+            {videos.slice(0, visibleCount).map((v) => (
+              <div
+                key={v.youtube_id}
+                className={`browse-card${addingVideoId === v.youtube_id ? ' browse-card--loading' : ''}`}
+                onClick={() => handleVideoClick(v)}
+              >
+                <div className="browse-card-thumb">
+                  <img src={v.thumbnail} alt={v.title} className="browse-card-thumb-img" />
+                  {v.duration_seconds != null && (
+                    <span className="browse-card-duration">{formatVideoDuration(v.duration_seconds)}</span>
+                  )}
+                </div>
+                <div className="browse-card-info">
+                  <span className="browse-card-title">{v.title}</span>
+                  <span className="browse-card-channel">{v.channel}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {visibleCount < videos.length && (
+            <button
+              className="btn btn-secondary browse-load-more"
+              onClick={() => setVisibleCount((c) => c + 8)}
             >
-              <div className="browse-card-thumb">
-                <img src={v.thumbnail} alt={v.title} className="browse-card-thumb-img" />
-                {v.duration_seconds != null && (
-                  <span className="browse-card-duration">{formatVideoDuration(v.duration_seconds)}</span>
-                )}
-              </div>
-              <div className="browse-card-info">
-                <span className="browse-card-title">{v.title}</span>
-                <span className="browse-card-channel">{v.channel}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+              Load More
+            </button>
+          )}
+        </>
       )}
     </div>
   );
