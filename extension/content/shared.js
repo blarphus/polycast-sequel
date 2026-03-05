@@ -257,27 +257,21 @@ function handleWordClick(word, sentence, anchorEl) {
     saveBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving...';
+      saveBtn.innerHTML = '&#10003; Saved';
+      saveBtn.classList.add('pc-popup-save--saved');
 
       try {
         chrome.runtime.sendMessage(
           { type: 'SAVE_WORD', word, sentence },
           (res) => {
             if (chrome.runtime.lastError) {
-              saveBtn.disabled = false;
-              saveBtn.textContent = '!';
-              saveBtn.title = 'Extension reloaded — refresh this page';
+              console.error('Polycast save error:', chrome.runtime.lastError.message);
               return;
             }
             if (res && res.error) {
-              saveBtn.disabled = false;
-              saveBtn.textContent = '!';
-              saveBtn.title = res.error;
               console.error('Polycast save error:', res.error);
               return;
             }
-            saveBtn.innerHTML = '&#10003; Saved';
-            saveBtn.classList.add('pc-popup-save--saved');
           },
         );
       } catch {
