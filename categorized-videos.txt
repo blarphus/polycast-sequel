@@ -1,12 +1,12 @@
 CATEGORIZED VIDEOS -- PT
 ============================================================
 Processed: 2567/2567
-Categorized: 2226
-Uncategorized: 41
+Categorized: 2218
+Uncategorized: 49
 Removed (not lessons): 300
 
 ------------------------------------------------------------
-Vocabulary -- 181 videos  [vocabulary]
+Vocabulary -- 195 videos  [vocabulary]
 ------------------------------------------------------------
   - O que significa FOFOCA em português?  [Portugues com Marcia Macedo]
   - Aprenda 20 diferentes maneiras de dizer Feliz Natal e Ano Novo  [Portugues com Marcia Macedo]
@@ -189,6 +189,20 @@ Vocabulary -- 181 videos  [vocabulary]
   - [DOSE] 😇 ¿Cómo decir ¨JUICIOSO¨ en Portugués? - DESAFÍO 🇧🇷🇨🇴  [Philipe Brazuca]
   - 🚦 7 Formas de utilizar ¨SINAL¨ - Aumenta tu vocabulario en Portugués  [Philipe Brazuca]
   - ¨JEITO¨ en portugués y sus significados con frases  [Philipe Brazuca]
+  - VOCABULÁRIO de uma consulta médica em português | Prof. Responde #185  [Portugues com Marcia Macedo]
+  - VOCABULÁRIO DO CORONAVÍRUS TUDO O QUE VOCÊ PRECISA SABER  [Portugues com Marcia Macedo]
+  - How to talk about coronavirus in Portuguese | Vocabulary Lesson  [Speaking Brazilian]
+  - Going to the doctor in Brazil #live #portuguese  [Easy Portuguese]
+  - AULA DE PORTUGUÊS: OS SINAIS MAIS USADOS DA MATEMÁTICA  [Portugues com Marcia Macedo]
+  - 15 SIGLAS QUE VOCÊ PRECISA SABER!  [Portugues com Marcia Macedo]
+  - Contrações e Abreviações Que Você Precisa Saber Em Português  [Philipe Brazuca]
+  - SIGLAS EN PORTUGUÉS QUE VERÁS EN BRASIL  [Philipe Brazuca]
+  - COLORS IN PORTUGUESE | Basic Brazilian Portuguese  [Speaking Brazilian]
+  - What is this? #colors #portuguese  [Easy Portuguese]
+  - What is this? #cores #portuguese  [Easy Portuguese]
+  - What is This? Colors and Objects Vocabulary in Slow Portuguese | Super Easy Portuguese 56  [Easy Portuguese]
+  - De onde vem a cor "vermelho"? | Easy Portuguese Facts #shorts  [Easy Portuguese]
+  - How to talk about the WEATHER in Portuguese | Speaking Brazilian  [Speaking Brazilian]
 
 ------------------------------------------------------------
 Idiomatic Expressions (B2) -- 164 videos  [idiomatic-expressions]
@@ -359,7 +373,7 @@ Idiomatic Expressions (B2) -- 164 videos  [idiomatic-expressions]
   - 10 Dichos Populares que se dice en Brasil - Frases en Portugués - Expresiones  [Philipe Brazuca]
 
 ------------------------------------------------------------
-Confusing Words -- 153 videos  [confusing-words]
+Confusing Words -- 154 videos  [confusing-words]
 ------------------------------------------------------------
   - Propenso x propício: qual a diferença?  [Portugues com Marcia Macedo]
   - Você NÃO sabe usar essas palavras!  [Portugues com Marcia Macedo]
@@ -514,6 +528,7 @@ Confusing Words -- 153 videos  [confusing-words]
   - FORMAS DE UTILIZAR MEIA EN PORTUGUÉS  [Philipe Brazuca]
   - 😅 Palabras difíciles en Portugués - Philipe Brazuca 🇧🇷  [Philipe Brazuca]
   - Como utilizar (LONGO - LONGE, SE - SI) entre otros - Clases de Portugués  [Philipe Brazuca]
+  - "Tomar" ou "tirar" uma foto? 🤳  [Portugues com Marcia Macedo]
 
 ------------------------------------------------------------
 Language Learning Tips -- 143 videos  [learning-tips]
@@ -808,7 +823,7 @@ Culture & Traditions -- 141 videos  [culture-traditions]
   - 20 Diferencias culturales entre vivir en Brasil y Colombia - Philipe Brazuca  [Philipe Brazuca]
 
 ------------------------------------------------------------
-Pronunciation -- 135 videos  [pronunciation]
+Pronunciation -- 138 videos  [pronunciation]
 ------------------------------------------------------------
   - Pronúncia de DISSER e DIZER  [Portugues com Marcia Macedo]
   - Aprenda a pronunciar as consoantes mudas em português  [Portugues com Marcia Macedo]
@@ -945,6 +960,150 @@ Pronunciation -- 135 videos  [pronunciation]
   - 🗣 Pronunciación Básica - Letra X - Clases de Portugués 🇧🇷 para Extranjeros con Philipe Brazuca  [Philipe Brazuca]
   - 👄 🇧🇷 13 TIPS de Pronunciación en Portugués - Avô - Avó - AM - ÃO - entre otros  [Philipe Brazuca]
   - Palabras en Portugués con la misma escritura con distinta pronunciación  [Philipe Brazuca]
+  - PORTUGUÊS: O ALFABETO COM DETALHES  [Portugues com Marcia Macedo]
+  - A to Z Brazilian Portuguese Pronunciations | SEP10  [Easy Portuguese]
+  - Deletreando en Portugués como un verdadero nativo de Brasil - Abecedario/Alfabeto y Pronunciación  [Philipe Brazuca]
+
+------------------------------------------------------------
+Verb Usage & Meanings -- 137 videos  [verb-usage]
+------------------------------------------------------------
+  - 4 Dicas ESSENCIAIS para Usar VERBO VIRAR corretamente  [Portugues com Marcia Macedo]
+  - 2 usos do verrbo ANDAR  [Portugues com Marcia Macedo]
+  - Verbo "Lamentar" em português  [Portugues com Marcia Macedo]
+  - Qual o significado de "CABER" em português?  [Portugues com Marcia Macedo]
+  - 5 ERROS CRÍTICOS ao Usar o Verbo Golpear que Você Precisa Evitar  [Portugues com Marcia Macedo]
+  - VERBO CURTIR pode ser usado com pessoas?  [Portugues com Marcia Macedo]
+  - É possível dizer "eu anseio por você" em português?  [Portugues com Marcia Macedo]
+  - VERBO CURTIR - TODOS OS USOS  [Portugues com Marcia Macedo]
+  - 6 (OU MAIS!) USOS DO VERBO BATER EM PORTUGUÊS  [Portugues com Marcia Macedo]
+  - 1 VERBO = 6 USOS  [Portugues com Marcia Macedo]
+  - Aprenda como usar o VERBO FOR em português  [Portugues com Marcia Macedo]
+  - 15 usos do VERBO PEGAR em português 🇧🇷  [Portugues com Marcia Macedo]
+  - Não use "eu tomo" para falar de tempo em português, troque por este outro verbo  [Portugues com Marcia Macedo]
+  - Os DOIS USOS do VERBO ACHAR em português  [Portugues com Marcia Macedo]
+  - VERBO CRER |Entenda as Diferenças em Português!  [Portugues com Marcia Macedo]
+  - Você Realmente Sabe Usar 'Mexer' em português? As 7 Maneiras que Todo Estrangeiro Precisa Conhecer!  [Portugues com Marcia Macedo]
+  - Qual usar em poruguês: FOR x IR  [Portugues com Marcia Macedo]
+  - Verbo TRADUZIR em português 🇧🇷  [Portugues com Marcia Macedo]
+  - TODOS OS USOS DO VERBO BOTAR #learnportuguese  [Portugues com Marcia Macedo]
+  - Tenho fome ou estou com fome? 🤔  [Portugues com Marcia Macedo]
+  - Um verbo que os estrangeiros não conhecem! #learnportuguese  [Portugues com Marcia Macedo]
+  - Conhecia este verbo afrouxar? Faça frases para treinar o seu uso.  [Portugues com Marcia Macedo]
+  - "Reparar" não é só consertar! 1 verbo e dois usos totalmente diferentes | #learnportuguese  [Portugues com Marcia Macedo]
+  - Tem, existe ou há? Aprenda a diferença de uma vez por todas | #learnportuguese  [Portugues com Marcia Macedo]
+  - 1 VERBO, 3 USOS  [Portugues com Marcia Macedo]
+  - Você sabe usar o verbo ARRUMAR em diferentes contextos?  [Portugues com Marcia Macedo]
+  - ACABAR em PORTUGUÊS | TUDO O QUE VOCÊ PRECISA SABER  [Portugues com Marcia Macedo]
+  - VERBOS PARA NIVEL INTERMEDIARIO  [Portugues com Marcia Macedo]
+  - 5 USOS DO VERBO LIGAR  [Portugues com Marcia Macedo]
+  - Como usar o verbo "jogar"do português?  [Portugues com Marcia Macedo]
+  - 25 USOS DE PEGAR!  [Portugues com Marcia Macedo]
+  - VOCÊ PRECISA APRENDER ESTES 7 VERBOS!! Parte II  [Portugues com Marcia Macedo]
+  - 7 SIGNIFICADOS de ENROLAR!  [Portugues com Marcia Macedo]
+  - LOS 25 VERBOS MÁS USADOS EN PORTUGUÉS  [Portugues com Marcia Macedo]
+  - O VERBO MAIS ODIADO NO PORTUGUÊS!!!  [Portugues com Marcia Macedo]
+  - 12 USOS DO VERBO LEVAR| #Expressões  [Portugues com Marcia Macedo]
+  - Português | Como usar o verbo ACABAR?  [Portugues com Marcia Macedo]
+  - Quando usar o VERBO HAVER em PORTUGUÊS??  [Portugues com Marcia Macedo]
+  - Portuguese|Português para estrangeiros: 7 VERBOS que você precisa aprender.  [Portugues com Marcia Macedo]
+  - COMO USAR o Verbo ESPERAR em PORTUGUÊS  [Portugues com Marcia Macedo]
+  - Português para estrangeiros: 8 maneiras de usar o verbo PERDER  [Portugues com Marcia Macedo]
+  - These 5 Portuguese Verbs DON’T EXIST In English  [Speaking Brazilian]
+  - These 15 Portuguese Verbs DON’T EXIST In English  [Speaking Brazilian]
+  - 10 Most Common Verbs in Brazilian Portuguese  [Speaking Brazilian]
+  - Brazilian Portuguese Vocabulary | 4 uses of the verb APANHAR (to catch)  [Speaking Brazilian]
+  - How to use the verb HAVER | Brazilian Portuguese  [Speaking Brazilian]
+  - How to use the verb MEXER in Portuguese  [Speaking Brazilian]
+  - How to use the verb ARRUMAR in Portuguese  [Speaking Brazilian]
+  - How to use the verb PASSAR (to pass) in Portuguese  [Speaking Brazilian]
+  - 5 Ways of Using the Verb "Ficar" (to stay) | Speaking Brazilian  [Speaking Brazilian]
+  - 10 verbs in Portuguese that don’t exist in English | Speaking Brazilian  [Speaking Brazilian]
+  - Verbs in Portuguese - to look, to see or to watch? | Speaking Brazilian  [Speaking Brazilian]
+  - TOP 10 most used verbs in Portuguese - Speaking Brazilian  [Speaking Brazilian]
+  - Speak Portuguese - When to use "trazer" (to bring) or "levar" (to take)? - Speaking Brazilian  [Speaking Brazilian]
+  - Learn how to express your opinion in Portuguese: "achar" or "pensar"? - Speaking Brazilian  [Speaking Brazilian]
+  - How to use the verb "to know" in Brazilian Portuguese - saber ou conhecer? - Speaking Brazilian  [Speaking Brazilian]
+  - Can you speak Portuguese? How to use the verb "poder" (can).  [Speaking Brazilian]
+  - Learn Brazilian Portuguese - Verb TER (to have)  [Speaking Brazilian]
+  - Most Common Regular Verbs in Portuguese - Verbo Precisar.  [Speaking Brazilian]
+  - Speak Brazilian Portuguese - How to talk about what you want.  [Speaking Brazilian]
+  - Brazilian Portuguese - Learn the most common uses of the verb falar (to speak).  [Speaking Brazilian]
+  - Learning the verb "to speak" in Portuguese #falar  [Easy Portuguese]
+  - Learning the verb "to work" in Portuguese #trabalhar  [Easy Portuguese]
+  - Do you like learning verbs? "To like" in Portuguese  [Easy Portuguese]
+  - Asking questions with the verb "querer" #portuguese  [Easy Portuguese]
+  - Expressing a desire with "queria" #portuguese #querer  [Easy Portuguese]
+  - 100+ Real Life Sentences With the Verb "Querer" | Easy Portuguese 152  [Easy Portuguese]
+  - Complete the sentence: I have had... #portuguese  [Easy Portuguese]
+  - Complete the sentence: I have… #verb #ter  [Easy Portuguese]
+  - 70+ Real Life Sentences With the Verb "Ter" | Easy Portuguese 141  [Easy Portuguese]
+  - 10 Expressions With The Verb "Ficar" | Super Easy Portuguese 23  [Easy Portuguese]
+  - 4 Essential Verbs in Portuguese! #shorts  [Easy Portuguese]
+  - 7 Verbos que Vocês Deve Saber em Português #shorts  [Easy Portuguese]
+  - 5 Useful Verbs in Portuguese! #shorts  [Easy Portuguese]
+  - 40 Verbs You Must Know in Portuguese! | Super Easy Portuguese 20  [Easy Portuguese]
+  - Verbo "ter": Sentido de "dever" #shorts  [Easy Portuguese]
+  - Verbo "ter": Sentido de "possuir" #shorts  [Easy Portuguese]
+  - Verbo "ter": Sentido de "existir" #shorts  [Easy Portuguese]
+  - How To Use The Verb "Ter” | Super Easy Portuguese 14  [Easy Portuguese]
+  - O verbo ESGOELAR em português  [Philipe Brazuca]
+  - ¿Qué significa ESPERNEAR en portugués?  [Philipe Brazuca]
+  - Cómo usar ESTRAGAR en portugués (ropa, comida y personas)  [Philipe Brazuca]
+  - Palitar en portugués: qué significa y cómo se usa en Brasil  [Philipe Brazuca]
+  - ENGAVETAR en portugués: el verbo que “mata” proyectos  [Philipe Brazuca]
+  - Como usar "arregaçar" em Português  [Philipe Brazuca]
+  - "Vai despachar a mala?" - Verbo "Despachar" en portugués  [Philipe Brazuca]
+  - "Você fez numa tacada só?" El verbo TACAR en portugués  [Philipe Brazuca]
+  - Faz fiado? - El verbo FIAR en portugués  [Philipe Brazuca]
+  - Cómo utilizar TRILHO y el verbo TRILHAR en portugués  [Philipe Brazuca]
+  - Cómo utilizar Sovar y Alisar en portugués  [Philipe Brazuca]
+  - Cómo utilizar DESMANCHAR en portugués  [Philipe Brazuca]
+  - Você acenou pra ele? (El verbo ACENAR en portugués)  [Philipe Brazuca]
+  - "vasculhar" y "curiar" en portugués - Aprende qué significan estos verbos  [Philipe Brazuca]
+  - 10 Verbos Cruciales en Portugués de Brasil - Básico  [Philipe Brazuca]
+  - SE GABAR  [Philipe Brazuca]
+  - VERBO MAGOAR EM PORTUGUÊS  [Philipe Brazuca]
+  - [DOSE] Verbo TORCER mini história em português  [Philipe Brazuca]
+  - ¨TOMAR VERGONHA NA CARA ¨  EL VERBO TOMAR EN PORTUGUÉS  [Philipe Brazuca]
+  - ¨FECHA COMIGO?¨ EL VERBO FECHAR EN PORTUGUÉS  [Philipe Brazuca]
+  - EL VERBO "RECEAR¨" Y "HESITAR¨" EN PORTUGUÉS  [Philipe Brazuca]
+  - ¨CHEGOU CHEGANDO HEIN!¨ 14 FORMAS DE UTILIZAR EL VERBO CHEGAR EN PORTUGUÉS  [Philipe Brazuca]
+  - ¨SACA AÍ O SAQUE QUE FIZERAM ESSA SEMANA¨ - EL VERBO SACAR EN PORTUGUÉS!  [Philipe Brazuca]
+  - 13 FORMAS DE UTILIZAR EL VERBO PUXAR EN PORTUGUÉS  [Philipe Brazuca]
+  - NO ME MOLESTE! CÓMO DECIRLO EN PORTUGUÉS - VERBO MOLESTAR  [Philipe Brazuca]
+  - [DOSE] Verbo CISCAR en portugués  [Philipe Brazuca]
+  - [DOSE] Cómo utilizar CATAR en portugués  [Philipe Brazuca]
+  - [DOSE] Verbo SOCAR en portugués  [Philipe Brazuca]
+  - [DOSE] Cómo utilizar CHEFIAR en portugués  [Philipe Brazuca]
+  - [DOSE] Soca tudo aí na mala! Verbo SOCAR.  [Philipe Brazuca]
+  - ELA PISCOU PRA MIM! VERBO PISCAR EM PORTUGUÊS  [Philipe Brazuca]
+  - MEXER - 9 FORMAS DE UTILIZAR ESTE VERBO EN PORTUGUÉS  [Philipe Brazuca]
+  - VERBO ¨APANHAR¨ EN PORTUGUÉS ¿QUÉ SIGNIFICA?  [Philipe Brazuca]
+  - CÓMO UTILIZAR ¨VIRAR¨ EN PORTUGUÉS - VARIAS FORMAS - PARTE 2  [Philipe Brazuca]
+  - [DOSE] CÓMO UTILIZAR ¨BERRAR¨ Y ¨XINGAR¨ EN PORTUGUÉS [CLASE]  [Philipe Brazuca]
+  - [DOSE] CÓMO UTILIZAR ¨TORRAR¨ EN PORTUGUÉS [CLASE]  [Philipe Brazuca]
+  - Verbos - Parte 4/10 - Curso VIP - Portugués con Philipe Brazuca  [Philipe Brazuca]
+  - 27 expresiones con el verbo BATER en Portugués  [Philipe Brazuca]
+  - 20 Expresiones con el verbo FICAR en Portugués  [Philipe Brazuca]
+  - 9 Formas de utilizar ¨Pular¨ - Palabras y Expresiones en Portugués  [Philipe Brazuca]
+  - [DOSE] 👀La diferencia entre ¨Olhar / Ver / Enxergar / Assistir¨ en Portugués [CLASE]  [Philipe Brazuca]
+  - [DOSE] 😋 ¿El verbo ¨CAPRICHAR¨ existe en Español? [CLASE]  [Philipe Brazuca]
+  - [DOSE] 3 verbos en Portugués que no existen en Español [CLASE]  [Philipe Brazuca]
+  - PEGAR - 7 formas de utilizar el verbo en Portugués - Expresiones  [Philipe Brazuca]
+  - 7 Formas de utilizar el verbo ¨VIRAR¨ en Portugués - PARTE 1  [Philipe Brazuca]
+  - 📞 5 Formas de utilizar el verbo ¨LIGAR¨ en Portugués - Aumenta tu nivel  [Philipe Brazuca]
+  - Cómo utilizar ¨Achar¨ y ¨Pensar¨ en Portugués  [Philipe Brazuca]
+  - [TIRAR] 😮 15 Expresiones en Portugués con el verbo ● TIRAR ● 😮  [Philipe Brazuca]
+  - Dudas frecuentes - Como utilizar - Botar - Tirar - Pôr - Jogar - Aprende Portugués 😀  [Philipe Brazuca]
+  - Como utilizar el verbo MEXER en Portugués - 8 significados - Expresiones  [Philipe Brazuca]
+  - 10 Essential Verbs in Brazilian Portuguese – Present Tense Drill  [Speaking Brazilian]
+  - 50 Essential Verbs in Brazilian Portuguese – Present Tense Drill  [Speaking Brazilian]
+  - Você também tem dúvida sobre os pronomes reflexivos e os verbos? #portuguesbrasileiro  [Portugues com Marcia Macedo]
+  - VERBOS REFLEXIVOS- COMO USAR?  [Portugues com Marcia Macedo]
+  - Pronominal & Reflexive Verbs in Portuguese | Speaking Brazilian  [Speaking Brazilian]
+  - ING Form in Portuguese #brazilianportuguese #portuguesbrasileiro  [Speaking Brazilian]
+  - Speak Like a Brazilian: How to use the "-ING FORM" in Portuguese?  [Speaking Brazilian]
+  - FORMAL x INFORMAL| 10 VERBOS PARA VOCÊ CONHECER!  [Portugues com Marcia Macedo]
 
 ------------------------------------------------------------
 Listening Comprehension -- 133 videos  [listening-comprehension]
@@ -1084,140 +1243,7 @@ Listening Comprehension -- 133 videos  [listening-comprehension]
   - Fazendo ditado em Português PLE - Dictado para Clases de Idiomas - Portugués  [Philipe Brazuca]
 
 ------------------------------------------------------------
-Verb Usage & Meanings -- 129 videos  [verb-usage]
-------------------------------------------------------------
-  - 4 Dicas ESSENCIAIS para Usar VERBO VIRAR corretamente  [Portugues com Marcia Macedo]
-  - 2 usos do verrbo ANDAR  [Portugues com Marcia Macedo]
-  - Verbo "Lamentar" em português  [Portugues com Marcia Macedo]
-  - Qual o significado de "CABER" em português?  [Portugues com Marcia Macedo]
-  - 5 ERROS CRÍTICOS ao Usar o Verbo Golpear que Você Precisa Evitar  [Portugues com Marcia Macedo]
-  - VERBO CURTIR pode ser usado com pessoas?  [Portugues com Marcia Macedo]
-  - É possível dizer "eu anseio por você" em português?  [Portugues com Marcia Macedo]
-  - VERBO CURTIR - TODOS OS USOS  [Portugues com Marcia Macedo]
-  - 6 (OU MAIS!) USOS DO VERBO BATER EM PORTUGUÊS  [Portugues com Marcia Macedo]
-  - 1 VERBO = 6 USOS  [Portugues com Marcia Macedo]
-  - Aprenda como usar o VERBO FOR em português  [Portugues com Marcia Macedo]
-  - 15 usos do VERBO PEGAR em português 🇧🇷  [Portugues com Marcia Macedo]
-  - Não use "eu tomo" para falar de tempo em português, troque por este outro verbo  [Portugues com Marcia Macedo]
-  - Os DOIS USOS do VERBO ACHAR em português  [Portugues com Marcia Macedo]
-  - VERBO CRER |Entenda as Diferenças em Português!  [Portugues com Marcia Macedo]
-  - Você Realmente Sabe Usar 'Mexer' em português? As 7 Maneiras que Todo Estrangeiro Precisa Conhecer!  [Portugues com Marcia Macedo]
-  - Qual usar em poruguês: FOR x IR  [Portugues com Marcia Macedo]
-  - Verbo TRADUZIR em português 🇧🇷  [Portugues com Marcia Macedo]
-  - TODOS OS USOS DO VERBO BOTAR #learnportuguese  [Portugues com Marcia Macedo]
-  - Tenho fome ou estou com fome? 🤔  [Portugues com Marcia Macedo]
-  - Um verbo que os estrangeiros não conhecem! #learnportuguese  [Portugues com Marcia Macedo]
-  - Conhecia este verbo afrouxar? Faça frases para treinar o seu uso.  [Portugues com Marcia Macedo]
-  - "Reparar" não é só consertar! 1 verbo e dois usos totalmente diferentes | #learnportuguese  [Portugues com Marcia Macedo]
-  - Tem, existe ou há? Aprenda a diferença de uma vez por todas | #learnportuguese  [Portugues com Marcia Macedo]
-  - 1 VERBO, 3 USOS  [Portugues com Marcia Macedo]
-  - Você sabe usar o verbo ARRUMAR em diferentes contextos?  [Portugues com Marcia Macedo]
-  - ACABAR em PORTUGUÊS | TUDO O QUE VOCÊ PRECISA SABER  [Portugues com Marcia Macedo]
-  - VERBOS PARA NIVEL INTERMEDIARIO  [Portugues com Marcia Macedo]
-  - 5 USOS DO VERBO LIGAR  [Portugues com Marcia Macedo]
-  - Como usar o verbo "jogar"do português?  [Portugues com Marcia Macedo]
-  - 25 USOS DE PEGAR!  [Portugues com Marcia Macedo]
-  - VOCÊ PRECISA APRENDER ESTES 7 VERBOS!! Parte II  [Portugues com Marcia Macedo]
-  - 7 SIGNIFICADOS de ENROLAR!  [Portugues com Marcia Macedo]
-  - LOS 25 VERBOS MÁS USADOS EN PORTUGUÉS  [Portugues com Marcia Macedo]
-  - O VERBO MAIS ODIADO NO PORTUGUÊS!!!  [Portugues com Marcia Macedo]
-  - 12 USOS DO VERBO LEVAR| #Expressões  [Portugues com Marcia Macedo]
-  - Português | Como usar o verbo ACABAR?  [Portugues com Marcia Macedo]
-  - Quando usar o VERBO HAVER em PORTUGUÊS??  [Portugues com Marcia Macedo]
-  - Portuguese|Português para estrangeiros: 7 VERBOS que você precisa aprender.  [Portugues com Marcia Macedo]
-  - COMO USAR o Verbo ESPERAR em PORTUGUÊS  [Portugues com Marcia Macedo]
-  - Português para estrangeiros: 8 maneiras de usar o verbo PERDER  [Portugues com Marcia Macedo]
-  - These 5 Portuguese Verbs DON’T EXIST In English  [Speaking Brazilian]
-  - These 15 Portuguese Verbs DON’T EXIST In English  [Speaking Brazilian]
-  - 10 Most Common Verbs in Brazilian Portuguese  [Speaking Brazilian]
-  - Brazilian Portuguese Vocabulary | 4 uses of the verb APANHAR (to catch)  [Speaking Brazilian]
-  - How to use the verb HAVER | Brazilian Portuguese  [Speaking Brazilian]
-  - How to use the verb MEXER in Portuguese  [Speaking Brazilian]
-  - How to use the verb ARRUMAR in Portuguese  [Speaking Brazilian]
-  - How to use the verb PASSAR (to pass) in Portuguese  [Speaking Brazilian]
-  - 5 Ways of Using the Verb "Ficar" (to stay) | Speaking Brazilian  [Speaking Brazilian]
-  - 10 verbs in Portuguese that don’t exist in English | Speaking Brazilian  [Speaking Brazilian]
-  - Verbs in Portuguese - to look, to see or to watch? | Speaking Brazilian  [Speaking Brazilian]
-  - TOP 10 most used verbs in Portuguese - Speaking Brazilian  [Speaking Brazilian]
-  - Speak Portuguese - When to use "trazer" (to bring) or "levar" (to take)? - Speaking Brazilian  [Speaking Brazilian]
-  - Learn how to express your opinion in Portuguese: "achar" or "pensar"? - Speaking Brazilian  [Speaking Brazilian]
-  - How to use the verb "to know" in Brazilian Portuguese - saber ou conhecer? - Speaking Brazilian  [Speaking Brazilian]
-  - Can you speak Portuguese? How to use the verb "poder" (can).  [Speaking Brazilian]
-  - Learn Brazilian Portuguese - Verb TER (to have)  [Speaking Brazilian]
-  - Most Common Regular Verbs in Portuguese - Verbo Precisar.  [Speaking Brazilian]
-  - Speak Brazilian Portuguese - How to talk about what you want.  [Speaking Brazilian]
-  - Brazilian Portuguese - Learn the most common uses of the verb falar (to speak).  [Speaking Brazilian]
-  - Learning the verb "to speak" in Portuguese #falar  [Easy Portuguese]
-  - Learning the verb "to work" in Portuguese #trabalhar  [Easy Portuguese]
-  - Do you like learning verbs? "To like" in Portuguese  [Easy Portuguese]
-  - Asking questions with the verb "querer" #portuguese  [Easy Portuguese]
-  - Expressing a desire with "queria" #portuguese #querer  [Easy Portuguese]
-  - 100+ Real Life Sentences With the Verb "Querer" | Easy Portuguese 152  [Easy Portuguese]
-  - Complete the sentence: I have had... #portuguese  [Easy Portuguese]
-  - Complete the sentence: I have… #verb #ter  [Easy Portuguese]
-  - 70+ Real Life Sentences With the Verb "Ter" | Easy Portuguese 141  [Easy Portuguese]
-  - 10 Expressions With The Verb "Ficar" | Super Easy Portuguese 23  [Easy Portuguese]
-  - 4 Essential Verbs in Portuguese! #shorts  [Easy Portuguese]
-  - 7 Verbos que Vocês Deve Saber em Português #shorts  [Easy Portuguese]
-  - 5 Useful Verbs in Portuguese! #shorts  [Easy Portuguese]
-  - 40 Verbs You Must Know in Portuguese! | Super Easy Portuguese 20  [Easy Portuguese]
-  - Verbo "ter": Sentido de "dever" #shorts  [Easy Portuguese]
-  - Verbo "ter": Sentido de "possuir" #shorts  [Easy Portuguese]
-  - Verbo "ter": Sentido de "existir" #shorts  [Easy Portuguese]
-  - How To Use The Verb "Ter” | Super Easy Portuguese 14  [Easy Portuguese]
-  - O verbo ESGOELAR em português  [Philipe Brazuca]
-  - ¿Qué significa ESPERNEAR en portugués?  [Philipe Brazuca]
-  - Cómo usar ESTRAGAR en portugués (ropa, comida y personas)  [Philipe Brazuca]
-  - Palitar en portugués: qué significa y cómo se usa en Brasil  [Philipe Brazuca]
-  - ENGAVETAR en portugués: el verbo que “mata” proyectos  [Philipe Brazuca]
-  - Como usar "arregaçar" em Português  [Philipe Brazuca]
-  - "Vai despachar a mala?" - Verbo "Despachar" en portugués  [Philipe Brazuca]
-  - "Você fez numa tacada só?" El verbo TACAR en portugués  [Philipe Brazuca]
-  - Faz fiado? - El verbo FIAR en portugués  [Philipe Brazuca]
-  - Cómo utilizar TRILHO y el verbo TRILHAR en portugués  [Philipe Brazuca]
-  - Cómo utilizar Sovar y Alisar en portugués  [Philipe Brazuca]
-  - Cómo utilizar DESMANCHAR en portugués  [Philipe Brazuca]
-  - Você acenou pra ele? (El verbo ACENAR en portugués)  [Philipe Brazuca]
-  - "vasculhar" y "curiar" en portugués - Aprende qué significan estos verbos  [Philipe Brazuca]
-  - 10 Verbos Cruciales en Portugués de Brasil - Básico  [Philipe Brazuca]
-  - SE GABAR  [Philipe Brazuca]
-  - VERBO MAGOAR EM PORTUGUÊS  [Philipe Brazuca]
-  - [DOSE] Verbo TORCER mini história em português  [Philipe Brazuca]
-  - ¨TOMAR VERGONHA NA CARA ¨  EL VERBO TOMAR EN PORTUGUÉS  [Philipe Brazuca]
-  - ¨FECHA COMIGO?¨ EL VERBO FECHAR EN PORTUGUÉS  [Philipe Brazuca]
-  - EL VERBO "RECEAR¨" Y "HESITAR¨" EN PORTUGUÉS  [Philipe Brazuca]
-  - ¨CHEGOU CHEGANDO HEIN!¨ 14 FORMAS DE UTILIZAR EL VERBO CHEGAR EN PORTUGUÉS  [Philipe Brazuca]
-  - ¨SACA AÍ O SAQUE QUE FIZERAM ESSA SEMANA¨ - EL VERBO SACAR EN PORTUGUÉS!  [Philipe Brazuca]
-  - 13 FORMAS DE UTILIZAR EL VERBO PUXAR EN PORTUGUÉS  [Philipe Brazuca]
-  - NO ME MOLESTE! CÓMO DECIRLO EN PORTUGUÉS - VERBO MOLESTAR  [Philipe Brazuca]
-  - [DOSE] Verbo CISCAR en portugués  [Philipe Brazuca]
-  - [DOSE] Cómo utilizar CATAR en portugués  [Philipe Brazuca]
-  - [DOSE] Verbo SOCAR en portugués  [Philipe Brazuca]
-  - [DOSE] Cómo utilizar CHEFIAR en portugués  [Philipe Brazuca]
-  - [DOSE] Soca tudo aí na mala! Verbo SOCAR.  [Philipe Brazuca]
-  - ELA PISCOU PRA MIM! VERBO PISCAR EM PORTUGUÊS  [Philipe Brazuca]
-  - MEXER - 9 FORMAS DE UTILIZAR ESTE VERBO EN PORTUGUÉS  [Philipe Brazuca]
-  - VERBO ¨APANHAR¨ EN PORTUGUÉS ¿QUÉ SIGNIFICA?  [Philipe Brazuca]
-  - CÓMO UTILIZAR ¨VIRAR¨ EN PORTUGUÉS - VARIAS FORMAS - PARTE 2  [Philipe Brazuca]
-  - [DOSE] CÓMO UTILIZAR ¨BERRAR¨ Y ¨XINGAR¨ EN PORTUGUÉS [CLASE]  [Philipe Brazuca]
-  - [DOSE] CÓMO UTILIZAR ¨TORRAR¨ EN PORTUGUÉS [CLASE]  [Philipe Brazuca]
-  - Verbos - Parte 4/10 - Curso VIP - Portugués con Philipe Brazuca  [Philipe Brazuca]
-  - 27 expresiones con el verbo BATER en Portugués  [Philipe Brazuca]
-  - 20 Expresiones con el verbo FICAR en Portugués  [Philipe Brazuca]
-  - 9 Formas de utilizar ¨Pular¨ - Palabras y Expresiones en Portugués  [Philipe Brazuca]
-  - [DOSE] 👀La diferencia entre ¨Olhar / Ver / Enxergar / Assistir¨ en Portugués [CLASE]  [Philipe Brazuca]
-  - [DOSE] 😋 ¿El verbo ¨CAPRICHAR¨ existe en Español? [CLASE]  [Philipe Brazuca]
-  - [DOSE] 3 verbos en Portugués que no existen en Español [CLASE]  [Philipe Brazuca]
-  - PEGAR - 7 formas de utilizar el verbo en Portugués - Expresiones  [Philipe Brazuca]
-  - 7 Formas de utilizar el verbo ¨VIRAR¨ en Portugués - PARTE 1  [Philipe Brazuca]
-  - 📞 5 Formas de utilizar el verbo ¨LIGAR¨ en Portugués - Aumenta tu nivel  [Philipe Brazuca]
-  - Cómo utilizar ¨Achar¨ y ¨Pensar¨ en Portugués  [Philipe Brazuca]
-  - [TIRAR] 😮 15 Expresiones en Portugués con el verbo ● TIRAR ● 😮  [Philipe Brazuca]
-  - Dudas frecuentes - Como utilizar - Botar - Tirar - Pôr - Jogar - Aprende Portugués 😀  [Philipe Brazuca]
-  - Como utilizar el verbo MEXER en Portugués - 8 significados - Expresiones  [Philipe Brazuca]
-
-------------------------------------------------------------
-Slang & Colloquialisms -- 95 videos  [slang]
+Slang & Colloquialisms -- 99 videos  [slang]
 ------------------------------------------------------------
   - O que significa "ARRETADO" em português?  [Portugues com Marcia Macedo]
   - Você saber como utilizar a expressão "SE TOCA" em português?  [Portugues com Marcia Macedo]
@@ -1314,9 +1340,13 @@ Slang & Colloquialisms -- 95 videos  [slang]
   - 💀 😤  Las 10 palabrotas más utilizadas en Brasil - Cursing in Brazilian Portuguese  [Philipe Brazuca]
   - Parte 2 - 9 Expresiones que vas a escuchar en Brasil (Expressions in Portuguese) Slangs - ¨pois não¨  [Philipe Brazuca]
   - 🇧🇷 9 expresiones que vas a escuchar en Brasil - Parte 1  [Philipe Brazuca]
+  - Brazilian Internet Language: abbreviations you need to know!  [Speaking Brazilian]
+  - Kékicêké? Abreviaciones y Contracciones en Portugués [Avanzado] - Parte 1  [Philipe Brazuca]
+  - Ep.56 - DINHEIRO, Palavras e Expressões Relacionadas Com ¨GRANA¨  [Philipe Brazuca]
+  - DINHEIRO - PALAVRAS E EXPRESSÕES EM PORTUGUÊS RELACIONADAS COM ¨GRANA¨  [Philipe Brazuca]
 
 ------------------------------------------------------------
-Basic Phrases & Sentences -- 61 videos  [basic-phrases]
+Basic Phrases & Sentences -- 67 videos  [basic-phrases]
 ------------------------------------------------------------
   - 10 frases para você sair do 0 e começar sua jornada até a fluência 🤩  [Portugues com Marcia Macedo]
   - Como usar parabéns e felicidades em português? Muito simples #learnportuguese  [Portugues com Marcia Macedo]
@@ -1379,6 +1409,12 @@ Basic Phrases & Sentences -- 61 videos  [basic-phrases]
   - [DOSE] Cómo decir ¨OLVÍDATE¨ en Portugués - 🇧🇷 [CLASE]  [Philipe Brazuca]
   - [DOSE] 😡🔥 NO ME MOLESTE!! Aprende a decirlo en Portugués 🇧🇷 [CLASE]  [Philipe Brazuca]
   - 😮 Frases y expresiones para aprender Portugués - Clases con Philipe Brazuca  [Philipe Brazuca]
+  - 🔴 LIVE – Basic Sentence Structure in Brazilian Portuguese  [Speaking Brazilian]
+  - Basic Sentence Structure in Brazilian Portuguese  [Speaking Brazilian]
+  - How To Make Longer Sentences In Portuguese | Easy Portuguese LIVE  [Easy Portuguese]
+  - How To Make Long Sentences in Portuguese #live  [Easy Portuguese]
+  - Double negative in Portuguese. Is it correct?  [Speaking Brazilian]
+  - Brazilians don’t say NO (NÃO) | Brazilian Portuguese  [Speaking Brazilian]
 
 ------------------------------------------------------------
 Reading Comprehension -- 45 videos  [reading-comprehension]
@@ -1430,7 +1466,7 @@ Reading Comprehension -- 45 videos  [reading-comprehension]
   - Lectura en Portugués - (Pronunciación) Parte 1 - Tema: La Escuela  [Philipe Brazuca]
 
 ------------------------------------------------------------
-Conversation Practice -- 41 videos  [conversation]
+Conversation Practice -- 43 videos  [conversation]
 ------------------------------------------------------------
   - Conversação básica em português  [Portugues com Marcia Macedo]
   - 5 maneiras de responder em português  [Portugues com Marcia Macedo]
@@ -1473,6 +1509,97 @@ Conversation Practice -- 41 videos  [conversation]
   - [REPLAY] Conversación en Portugués via Instagram LIVE @philipebrazuca  [Philipe Brazuca]
   - [REPLAY] Conversando en Portugués con Extranjeros - Philipe Brazuca  [Philipe Brazuca]
   - Videoconferencia [Clase de Portugués] + Conversación con Philipe Brazuca  [Philipe Brazuca]
+  - Como falar Português de maneira formal e informal?  [Portugues com Marcia Macedo]
+  - Formal vs Informal Language in Brazilian Portuguese  [Speaking Brazilian]
+
+------------------------------------------------------------
+Verb Tenses Overview -- 41 videos  [verb-tenses-overview]
+------------------------------------------------------------
+  - TODOS os Tempos VERBAIS do Português - fácil  [Portugues com Marcia Macedo]
+  - ATENCIÓN: TIEMPOS DEL VERBO EN PORTUGUÉS  [Portugues com Marcia Macedo]
+  - Domine os verbos em português: Dicas e estratégias para aprender e nunca mais errar!  [Portugues com Marcia Macedo]
+  - Os tempos verbais do português  | Prof. Responde #162  [Portugues com Marcia Macedo]
+  - Verbos Português: IMPERFEITO X MAIS-QUE-PERFEITO do Indicativo  [Portugues com Marcia Macedo]
+  - 5 Portuguese Verb Tenses (with Examples) - Brazilian Portuguese  [Speaking Brazilian]
+  - Learn All 15 Portuguese Verb Tenses (with Examples) - Brazilian Portuguese  [Speaking Brazilian]
+  - Brazilian Portuguese for Beginners: The 3 Most Used Tenses (+ Quiz!)  [Speaking Brazilian]
+  - The Subjunctive in Portuguese -  Verb Tenses Explained  [Speaking Brazilian]
+  - Pretérito Perfeito vs Pretérito Imperfeito in Brazilian Portuguese - Everything you need to know!  [Speaking Brazilian]
+  - Do THIS to sound like a Brazilian - Conjugation Drill | Brazilian Portuguese Lesson  [Speaking Brazilian]
+  - Verb Conjugation in Portuguese | 15 tenses you need to know!  [Speaking Brazilian]
+  - 3 Most Used Verb Tenses [Portuguese Test]  [Speaking Brazilian]
+  - Verbs "to walk" and "to run" | Present, past and future #portuguese  [Easy Portuguese]
+  - Verbs "to lie down" and "to sit" | Present, Past and Future #portuguese  [Easy Portuguese]
+  - Verb Tenses in Portuguese: Living the Simple Life | Super Easy Portuguese 45  [Easy Portuguese]
+  - How To Conjugate Verbs in Portuguese | Super Easy Portuguese 9  [Easy Portuguese]
+  - Português - Conjugação dos Verbos no Presente  [Portugues com Marcia Macedo]
+  - Past IMPERFECT tense in Portuguese | Speaking Brazilian  [Speaking Brazilian]
+  - How did we used to listen to music? #música #portuguese  [Easy Portuguese]
+  - How did we used to make a phone call? #telefone #portuguese  [Easy Portuguese]
+  - How To Talk About Past Habits in Slow Portuguese (Pretérito Imperfeito) | Super Easy Portuguese 51  [Easy Portuguese]
+  - Português. Presente do Subjuntivo  [Portugues com Marcia Macedo]
+  - 30 Verbs in the Present Subjunctive - Conjugation Drill | Brazilian Portuguese  [Speaking Brazilian]
+  - Can you use the Present Subjunctive Tense? [Portuguese Test]  [Speaking Brazilian]
+  - Pare de errar! Aprenda o IMPERATIVO em português  [Portugues com Marcia Macedo]
+  - IMPERATIVO| SERÁ QUE VOCÊ SABE DISSO?  [Portugues com Marcia Macedo]
+  - Imperative Mood | Advanced Brazilian Portuguese  [Speaking Brazilian]
+  - Pagaria X Pagasse? Aprenda o modo subjuntivo, um dos modos mais utilizados no português.  [Portugues com Marcia Macedo]
+  - Português: Pretérito Imperfeito do Subjuntivo  [Portugues com Marcia Macedo]
+  - ADVANCED PORTUGUESE | Imperfeito do Subjuntivo | Speaking Brazilian  [Speaking Brazilian]
+  - Pretérito mais que perfeito é usado no Brasil?  [Portugues com Marcia Macedo]
+  - Past Perfect in Portuguese | Mais-Que-Perfeito | Speaking Brazilian  [Speaking Brazilian]
+  - Avoid this common mistake in Portuguese! | Pretérito Perfeito Composto in Brazilian Portuguese  [Speaking Brazilian]
+  - BRAZILIAN PORTUGUESE | Present Perfect Continuous | Speaking Brazilian  [Speaking Brazilian]
+  - Subjuntivo - os Brasileiros também falam errado!  [Portugues com Marcia Macedo]
+  - Brazilian Portuguese 🇧🇷 Subjunctive Mood  [Speaking Brazilian]
+  - Intermediate & Advanced Portuguese: SUBJUNTIVO | Speaking Brazilian  [Speaking Brazilian]
+  - Brazilian Portuguese Quiz! Infinitivo Pessoal  [Speaking Brazilian]
+  - ADVANCED PORTUGUESE QUIZ - Do you accept the challenge? | Infinitivo Pessoal vs. Impessoal  [Speaking Brazilian]
+  - Perfect or Imperfect? [Portuguese Test - Intermediate Level]  [Speaking Brazilian]
+
+------------------------------------------------------------
+Prepositions (A2) -- 40 videos  [prepositions]
+------------------------------------------------------------
+  - Qual preposição usar com o VERBO IR em português?  [Portugues com Marcia Macedo]
+  - Da semana x De semana? Prof Responde! | #182  [Portugues com Marcia Macedo]
+  - Preposições de verbos em português que enganam os falantes de espanhol | #learnportuguese  [Portugues com Marcia Macedo]
+  - ESTADOS BRASILEIROS: QUAL PREPOSIÇÃO USAR?  [Portugues com Marcia Macedo]
+  - NÃO ERRE MAIS! VERBO + PREPOSIÇÃO  [Portugues com Marcia Macedo]
+  - COMO USAR 'ATÉ'?| Português para estrangeiros  [Portugues com Marcia Macedo]
+  - Portuguese|  POR x PELO  [Portugues com Marcia Macedo]
+  - Portuguese|Português: Uso das preposições  DE, DO, DA, EM, NO, NA  [Portugues com Marcia Macedo]
+  - Português - Verbos mais preposição "DE"  [Portugues com Marcia Macedo]
+  - 10 Essential Prepositions in Portuguese  [Speaking Brazilian]
+  - Every preposition you need in one video - Brazilian Portuguese Lesson  [Speaking Brazilian]
+  - 🔴 LIVE – PARA vs A: Basic Prepositions in Brazilian Portuguese  [Speaking Brazilian]
+  - The preposition DE in Brazilian Portuguese 🇧🇷 Use DE instead of 's  [Speaking Brazilian]
+  - De, Da or Do? What's the Difference? 🇧🇷 Brazilian Portuguese  [Speaking Brazilian]
+  - DE, DA or DO? What’s the difference? 🇧🇷  Brazilian Portuguese  [Speaking Brazilian]
+  - 60 Essential Verbs Used with Prepositions | Brazilian Portuguese Lesson  [Speaking Brazilian]
+  - Em, Na ou No?  [Speaking Brazilian]
+  - 🇧🇷 EM, NA or NO? What’s the difference? | Brazilian Portuguese Lesson  [Speaking Brazilian]
+  - Quick test: DE or EM? #brazilianportuguese  [Speaking Brazilian]
+  - Quick Portuguese test: DE or A? #brazilianportuguese  [Speaking Brazilian]
+  - Every Brazilian makes this mistake! PARA or A? [Brazilian Portuguese]  [Speaking Brazilian]
+  - How to use the preposition EM in Portuguese | Speaking Brazilian  [Speaking Brazilian]
+  - How to use the preposition DE in Portuguese  [Speaking Brazilian]
+  - The preposition "com" in portuguese #with  [Easy Portuguese]
+  - What's inside? #dentro #portuguese  [Easy Portuguese]
+  - Where are you? #portuguese #prepositions  [Easy Portuguese]
+  - Lost? Location Words in Slow Portuguese | Super Easy Portuguese 49  [Easy Portuguese]
+  - Prepositions in Portuguese #shorts  [Easy Portuguese]
+  - Sobre X Sob! Você se confunde ou sabe usar? #shorts  [Easy Portuguese]
+  - How to use "em" in Portuguese! #shorts  [Easy Portuguese]
+  - Learning Prepositions of Places in Portuguese | Super Easy Portuguese 11  [Easy Portuguese]
+  - Gosto DA x Gosto DE: qual a diferença?  [Portugues com Marcia Macedo]
+  - Gosto do X Gosto de X Gosto da: como utilizar no dia a dia e dominar o português | #learnportuguese  [Portugues com Marcia Macedo]
+  - AS CONTRAÇÕES MAIS USADAS NO PORTUGUÊS!  [Portugues com Marcia Macedo]
+  - Word Contractions in Brazilian Portuguese  [Speaking Brazilian]
+  - POR X PARA X PELO X PELA  [Portugues com Marcia Macedo]
+  - How should you use the preposition "por" in Portuguese? #brazilianportuguese  [Speaking Brazilian]
+  - How should you use the preposition "para" in Portuguese? #brazilianportuguese  [Speaking Brazilian]
+  - PARA vs POR: A Simple Guide for Portuguese Learners (with real-life examples)  [Speaking Brazilian]
+  - When to use PARA or POR? | Speaking Brazilian  [Speaking Brazilian]
 
 ------------------------------------------------------------
 False Cognates (C1) -- 37 videos  [false-cognates]
@@ -1593,41 +1720,6 @@ Portuguese vs Spanish -- 33 videos  [pt-vs-es]
   - If you know Spanish you can learn Portuguese faster  [Philipe Brazuca]
 
 ------------------------------------------------------------
-Prepositions (A2) -- 31 videos  [prepositions]
-------------------------------------------------------------
-  - Qual preposição usar com o VERBO IR em português?  [Portugues com Marcia Macedo]
-  - Da semana x De semana? Prof Responde! | #182  [Portugues com Marcia Macedo]
-  - Preposições de verbos em português que enganam os falantes de espanhol | #learnportuguese  [Portugues com Marcia Macedo]
-  - ESTADOS BRASILEIROS: QUAL PREPOSIÇÃO USAR?  [Portugues com Marcia Macedo]
-  - NÃO ERRE MAIS! VERBO + PREPOSIÇÃO  [Portugues com Marcia Macedo]
-  - COMO USAR 'ATÉ'?| Português para estrangeiros  [Portugues com Marcia Macedo]
-  - Portuguese|  POR x PELO  [Portugues com Marcia Macedo]
-  - Portuguese|Português: Uso das preposições  DE, DO, DA, EM, NO, NA  [Portugues com Marcia Macedo]
-  - Português - Verbos mais preposição "DE"  [Portugues com Marcia Macedo]
-  - 10 Essential Prepositions in Portuguese  [Speaking Brazilian]
-  - Every preposition you need in one video - Brazilian Portuguese Lesson  [Speaking Brazilian]
-  - 🔴 LIVE – PARA vs A: Basic Prepositions in Brazilian Portuguese  [Speaking Brazilian]
-  - The preposition DE in Brazilian Portuguese 🇧🇷 Use DE instead of 's  [Speaking Brazilian]
-  - De, Da or Do? What's the Difference? 🇧🇷 Brazilian Portuguese  [Speaking Brazilian]
-  - DE, DA or DO? What’s the difference? 🇧🇷  Brazilian Portuguese  [Speaking Brazilian]
-  - 60 Essential Verbs Used with Prepositions | Brazilian Portuguese Lesson  [Speaking Brazilian]
-  - Em, Na ou No?  [Speaking Brazilian]
-  - 🇧🇷 EM, NA or NO? What’s the difference? | Brazilian Portuguese Lesson  [Speaking Brazilian]
-  - Quick test: DE or EM? #brazilianportuguese  [Speaking Brazilian]
-  - Quick Portuguese test: DE or A? #brazilianportuguese  [Speaking Brazilian]
-  - Every Brazilian makes this mistake! PARA or A? [Brazilian Portuguese]  [Speaking Brazilian]
-  - How to use the preposition EM in Portuguese | Speaking Brazilian  [Speaking Brazilian]
-  - How to use the preposition DE in Portuguese  [Speaking Brazilian]
-  - The preposition "com" in portuguese #with  [Easy Portuguese]
-  - What's inside? #dentro #portuguese  [Easy Portuguese]
-  - Where are you? #portuguese #prepositions  [Easy Portuguese]
-  - Lost? Location Words in Slow Portuguese | Super Easy Portuguese 49  [Easy Portuguese]
-  - Prepositions in Portuguese #shorts  [Easy Portuguese]
-  - Sobre X Sob! Você se confunde ou sabe usar? #shorts  [Easy Portuguese]
-  - How to use "em" in Portuguese! #shorts  [Easy Portuguese]
-  - Learning Prepositions of Places in Portuguese | Super Easy Portuguese 11  [Easy Portuguese]
-
-------------------------------------------------------------
 Learning Resources -- 31 videos  [learning-resources]
 ------------------------------------------------------------
   - 3 Brazilian telenovelas for you to improve your Portuguese!  [Speaking Brazilian]
@@ -1663,7 +1755,7 @@ Learning Resources -- 31 videos  [learning-resources]
   - 📱 Mejores aplicaciones para aprender Portugués - Aumenta tu nivel - Best apps to learn Portuguese  [Philipe Brazuca]
 
 ------------------------------------------------------------
-Travel & Transportation Vocabulary -- 26 videos  [vocabulary-travel]
+Travel & Transportation Vocabulary -- 30 videos  [vocabulary-travel]
 ------------------------------------------------------------
   - LOS MEDIOS DE TRANSPORTE EN PORTUGUÉS  [Portugues com Marcia Macedo]
   - 5 PALABRAS PARA USAR EN EL AEROPUERTO EN PORTUGUÉS  [Portugues com Marcia Macedo]
@@ -1691,6 +1783,10 @@ Travel & Transportation Vocabulary -- 26 videos  [vocabulary-travel]
   - Como você chegou até aqui? #shorts  [Easy Portuguese]
   - How Brazilians Get Around São Paulo | Easy Portuguese 75  [Easy Portuguese]
   - 🏍 Vocabulario de Tránsito y Expresiones en Portugués - Clase con Philipe Brazuca (el tráfico)  [Philipe Brazuca]
+  - Clases de Portugues| LUGARES NA CIDADE!  [Portugues com Marcia Macedo]
+  - LIVE Q&A | My Favorite Places in SÃO PAULO  [Speaking Brazilian]
+  - My Favorite Places in SÃO PAULO | Brazilian Portuguese  [Speaking Brazilian]
+  - Asking and Giving Directions in Portuguese | Super Easy Portuguese 26  [Easy Portuguese]
 
 ------------------------------------------------------------
 Learning with Music -- 26 videos  [learning-with-music]
@@ -1751,7 +1847,7 @@ Numbers & Time (A1) -- 24 videos  [numbers-time]
   - Counting in Portuguese: from Zero to Billions | Super Easy Portuguese 22  [Easy Portuguese]
 
 ------------------------------------------------------------
-Greetings & Introductions (A1) -- 23 videos  [greetings]
+Greetings & Introductions (A1) -- 24 videos  [greetings]
 ------------------------------------------------------------
   - NÃO RESPONDA "de nada" para um brasileiro!  [Portugues com Marcia Macedo]
   - Não use "SAUDAÇÕES" em português! ❌👋  [Portugues com Marcia Macedo]
@@ -1776,33 +1872,10 @@ Greetings & Introductions (A1) -- 23 videos  [greetings]
   - Aula 2/7 - Cumprimentos e Despedidas em Português - Mini Curso - Philipe Brazuca  [Philipe Brazuca]
   - Ep.39 - Cumprimentos e Despedidas em Português (Formal e Informal)  [Philipe Brazuca]
   - SALUDOS Y DESPEDIDAS EN PORTUGUÉS - DESDE EL NIVEL BÁSICO AL AVANZADO  [Philipe Brazuca]
+  - How to be FORMAL in Brazilian Portuguese? SENHOR, SENHORA, SEU, DONA, MOÇO, or MOÇA?  [Speaking Brazilian]
 
 ------------------------------------------------------------
-Ser & Estar (A1) -- 20 videos  [ser-estar]
-------------------------------------------------------------
-  - Verbo "ESTAR" é igual no português 🇧🇷 e espanhol 🇪🇸?  [Portugues com Marcia Macedo]
-  - O verbos “estar” tem os mesmos usos em português e espanhol? 🇧🇷 🇪🇸  [Portugues com Marcia Macedo]
-  - SER x ESTAR- CHEGA DE ERRAR!!  [Portugues com Marcia Macedo]
-  - Ser vs. Estar  [Speaking Brazilian]
-  - SER or ESTAR? Brazilian Portuguese Grammar for Beginners  [Speaking Brazilian]
-  - ERA ou ESTAVA em casa?#brazilianportuguese  [Speaking Brazilian]
-  - Can you pass this test? ERA ou ESTAVA? | Brazilian Portuguese Lesson  [Speaking Brazilian]
-  - Speaking Brazilian - The Differences Between Ser & Estar  [Speaking Brazilian]
-  - Complete the sentence: I was... #estar #portuguese  [Easy Portuguese]
-  - 100+ Real Life Sentences With the Verb "Estar" | EP146  [Easy Portuguese]
-  - Complete the sentence: I was... #ser #portuguese  [Easy Portuguese]
-  - Complete the sentence: I am... #ser #portuguese  [Easy Portuguese]
-  - 100+ Real Life Sentences With the Verb "Ser" | Easy Portuguese 143  [Easy Portuguese]
-  - Do you know how to conjugate the verb "ser"? #shorts  [Easy Portuguese]
-  - How To Use The Verb "Ser" | Super Easy Portuguese 35  [Easy Portuguese]
-  - Verb "estar" + Geúndio #shorts  [Easy Portuguese]
-  - Verb "estar" + Adjectives #shorts  [Easy Portuguese]
-  - Verb "estar" + Adverbs #shorts  [Easy Portuguese]
-  - Tá! Using the Verb "Estar" in Portuguese | Super Easy Portuguese 32  [Easy Portuguese]
-  - How to conjugate "Ser" in the present! #shorts  [Easy Portuguese]
-
-------------------------------------------------------------
-Quizzes & Tests -- 20 videos  [quizzes-tests]
+Quizzes & Tests -- 24 videos  [quizzes-tests]
 ------------------------------------------------------------
   - How good is your Portuguese? Take the test!  [Speaking Brazilian]
   - If you ace this test, your Portuguese is AMAZING! Prepositions Quiz!  [Speaking Brazilian]
@@ -1824,30 +1897,13 @@ Quizzes & Tests -- 20 videos  [quizzes-tests]
   - 🔴  [Día 3/3] Maratón de Quiz con Philipe Brazuca - Vocabulario en Portugués  [Philipe Brazuca]
   - 🔴  [Día 2/3] Maratón de Quiz con Philipe Brazuca - Vocabulario en Portugués  [Philipe Brazuca]
   - 🔴  [Día 1/3] Maratón de Quiz con Philipe Brazuca - Vocabulario en Portugués  [Philipe Brazuca]
+  - Celpe-Bras 2026.1 - Preparación para el examen  [Philipe Brazuca]
+  - ¿Cuál es mi nivel de portugués? A1, B1, C1?  [Philipe Brazuca]
+  - Ep.51 - CELPE-Bras, Certificado de Português Para Estrangeiros  [Philipe Brazuca]
+  - ✅ CELPE-Bras - Como conseguir el certificado de Portugués 📄 - TIPS  [Philipe Brazuca]
 
 ------------------------------------------------------------
-Verb Tenses Overview -- 17 videos  [verb-tenses-overview]
-------------------------------------------------------------
-  - TODOS os Tempos VERBAIS do Português - fácil  [Portugues com Marcia Macedo]
-  - ATENCIÓN: TIEMPOS DEL VERBO EN PORTUGUÉS  [Portugues com Marcia Macedo]
-  - Domine os verbos em português: Dicas e estratégias para aprender e nunca mais errar!  [Portugues com Marcia Macedo]
-  - Os tempos verbais do português  | Prof. Responde #162  [Portugues com Marcia Macedo]
-  - Verbos Português: IMPERFEITO X MAIS-QUE-PERFEITO do Indicativo  [Portugues com Marcia Macedo]
-  - 5 Portuguese Verb Tenses (with Examples) - Brazilian Portuguese  [Speaking Brazilian]
-  - Learn All 15 Portuguese Verb Tenses (with Examples) - Brazilian Portuguese  [Speaking Brazilian]
-  - Brazilian Portuguese for Beginners: The 3 Most Used Tenses (+ Quiz!)  [Speaking Brazilian]
-  - The Subjunctive in Portuguese -  Verb Tenses Explained  [Speaking Brazilian]
-  - Pretérito Perfeito vs Pretérito Imperfeito in Brazilian Portuguese - Everything you need to know!  [Speaking Brazilian]
-  - Do THIS to sound like a Brazilian - Conjugation Drill | Brazilian Portuguese Lesson  [Speaking Brazilian]
-  - Verb Conjugation in Portuguese | 15 tenses you need to know!  [Speaking Brazilian]
-  - 3 Most Used Verb Tenses [Portuguese Test]  [Speaking Brazilian]
-  - Verbs "to walk" and "to run" | Present, past and future #portuguese  [Easy Portuguese]
-  - Verbs "to lie down" and "to sit" | Present, Past and Future #portuguese  [Easy Portuguese]
-  - Verb Tenses in Portuguese: Living the Simple Life | Super Easy Portuguese 45  [Easy Portuguese]
-  - How To Conjugate Verbs in Portuguese | Super Easy Portuguese 9  [Easy Portuguese]
-
-------------------------------------------------------------
-Spelling & Orthography -- 17 videos  [spelling-orthography]
+Spelling & Orthography -- 23 videos  [spelling-orthography]
 ------------------------------------------------------------
   - Você está ERRANDO ao escrever palavras com SS?  [Portugues com Marcia Macedo]
   - NÃO ERRE MAIS OS USOS DOS 4 PORQUÊS EM PORTUGUÊS  [Portugues com Marcia Macedo]
@@ -1866,6 +1922,60 @@ Spelling & Orthography -- 17 videos  [spelling-orthography]
   - Portuguese spelling test: CINTO or SINTO?  [Speaking Brazilian]
   - Portuguese spelling test: assento ou acento?  [Speaking Brazilian]
   - Can you pass this spelling test? | Brazilian Portuguese  [Speaking Brazilian]
+  - A regra do HÍFEN nos Verbos Reflexivos: você NUNCA imaginaria! #learnportuguese  [Portugues com Marcia Macedo]
+  - Aprenda os sinais de pontuação do português que os brasileiros mais usam🚨  [Portugues com Marcia Macedo]
+  - SINAIS DE PONTUAÇÃO DO PORTUGUÊS!  [Portugues com Marcia Macedo]
+  - Puntuación en Portugués: ¡La Guía Definitiva!  [Philipe Brazuca]
+  - Portuguese | COMO USAR A CRASE?? #video1  [Portugues com Marcia Macedo]
+  - Advanced Portuguese: What is the grave accent?  [Speaking Brazilian]
+
+------------------------------------------------------------
+Ser & Estar (A1) -- 22 videos  [ser-estar]
+------------------------------------------------------------
+  - Verbo "ESTAR" é igual no português 🇧🇷 e espanhol 🇪🇸?  [Portugues com Marcia Macedo]
+  - O verbos “estar” tem os mesmos usos em português e espanhol? 🇧🇷 🇪🇸  [Portugues com Marcia Macedo]
+  - SER x ESTAR- CHEGA DE ERRAR!!  [Portugues com Marcia Macedo]
+  - Ser vs. Estar  [Speaking Brazilian]
+  - SER or ESTAR? Brazilian Portuguese Grammar for Beginners  [Speaking Brazilian]
+  - ERA ou ESTAVA em casa?#brazilianportuguese  [Speaking Brazilian]
+  - Can you pass this test? ERA ou ESTAVA? | Brazilian Portuguese Lesson  [Speaking Brazilian]
+  - Speaking Brazilian - The Differences Between Ser & Estar  [Speaking Brazilian]
+  - Complete the sentence: I was... #estar #portuguese  [Easy Portuguese]
+  - 100+ Real Life Sentences With the Verb "Estar" | EP146  [Easy Portuguese]
+  - Complete the sentence: I was... #ser #portuguese  [Easy Portuguese]
+  - Complete the sentence: I am... #ser #portuguese  [Easy Portuguese]
+  - 100+ Real Life Sentences With the Verb "Ser" | Easy Portuguese 143  [Easy Portuguese]
+  - Do you know how to conjugate the verb "ser"? #shorts  [Easy Portuguese]
+  - How To Use The Verb "Ser" | Super Easy Portuguese 35  [Easy Portuguese]
+  - Verb "estar" + Geúndio #shorts  [Easy Portuguese]
+  - Verb "estar" + Adjectives #shorts  [Easy Portuguese]
+  - Verb "estar" + Adverbs #shorts  [Easy Portuguese]
+  - Tá! Using the Verb "Estar" in Portuguese | Super Easy Portuguese 32  [Easy Portuguese]
+  - How to conjugate "Ser" in the present! #shorts  [Easy Portuguese]
+  - FOI ou ERA? 🇧🇷 #brazilianportuguese #portuguesequiz  [Speaking Brazilian]
+  - FOI or ERA? How to use the verb SER in the past tense | Brazilian Portuguese  [Speaking Brazilian]
+
+------------------------------------------------------------
+Adjectives -- 18 videos  [adjectives]
+------------------------------------------------------------
+  - 10 adjetivos mais usados no Brasil  [Portugues com Marcia Macedo]
+  - 10 ADJETIVOS PARA FALAR DE CRIANÇAS (e adultos também!)  [Portugues com Marcia Macedo]
+  - Melhore seu VOCABULARIO com esses 10 ADJETIVOS!  [Portugues com Marcia Macedo]
+  - 10 adjectives you need to know in Portuguese - Speaking Brazilian  [Speaking Brazilian]
+  - TOP 10 most used adjectives in Portuguese - Speaking Brazilian  [Speaking Brazilian]
+  - Speak Portuguese - Learn the most common adjectives and how to use them.  [Speaking Brazilian]
+  - Opposite adjectives: Fast, heavy, hot #portuguese  [Easy Portuguese]
+  - Opposite adjectives: Tall, new and big #portuguese  [Easy Portuguese]
+  - Learning Opposite Adjectives While Walking To The Beach | Super Easy Portuguese 47  [Easy Portuguese]
+  - How would you describe yourself physically? #shorts  [Easy Portuguese]
+  - Adjectives ending with -e #shorts  [Easy Portuguese]
+  - Which adjectives do you think of? #shorts  [Easy Portuguese]
+  - Basic Adjectives in Portuguese #shorts  [Easy Portuguese]
+  - Adjectives in Portuguese: Hiking in the Forest | Super Easy Portuguese 27  [Easy Portuguese]
+  - Adjetivos em português para enriquecer seu vocabulário! #shorts  [Easy Portuguese]
+  - 11 adjetivos que você tem que saber em português! #shorts  [Easy Portuguese]
+  - 50 Adjectives You Need To Know | Super Easy Portuguese 13  [Easy Portuguese]
+  - Descubra os Segredos dos SUPERLATIVOS no PORTUGUÊS!  [Portugues com Marcia Macedo]
 
 ------------------------------------------------------------
 Holidays & Celebrations Vocabulary -- 17 videos  [vocabulary-holidays]
@@ -1887,27 +1997,6 @@ Holidays & Celebrations Vocabulary -- 17 videos  [vocabulary-holidays]
   - Do Brazilians Celebrate Christmas (Natal)? | Easy Portuguese 77  [Easy Portuguese]
   - Happy Teachers' Day in Brazil | Easy Portuguese 69  [Easy Portuguese]
   - DATAS COMEMORATIVAS - VOCÊ CELEBRA?  [Philipe Brazuca]
-
-------------------------------------------------------------
-Adjectives -- 17 videos  [adjectives]
-------------------------------------------------------------
-  - 10 adjetivos mais usados no Brasil  [Portugues com Marcia Macedo]
-  - 10 ADJETIVOS PARA FALAR DE CRIANÇAS (e adultos também!)  [Portugues com Marcia Macedo]
-  - Melhore seu VOCABULARIO com esses 10 ADJETIVOS!  [Portugues com Marcia Macedo]
-  - 10 adjectives you need to know in Portuguese - Speaking Brazilian  [Speaking Brazilian]
-  - TOP 10 most used adjectives in Portuguese - Speaking Brazilian  [Speaking Brazilian]
-  - Speak Portuguese - Learn the most common adjectives and how to use them.  [Speaking Brazilian]
-  - Opposite adjectives: Fast, heavy, hot #portuguese  [Easy Portuguese]
-  - Opposite adjectives: Tall, new and big #portuguese  [Easy Portuguese]
-  - Learning Opposite Adjectives While Walking To The Beach | Super Easy Portuguese 47  [Easy Portuguese]
-  - How would you describe yourself physically? #shorts  [Easy Portuguese]
-  - Adjectives ending with -e #shorts  [Easy Portuguese]
-  - Which adjectives do you think of? #shorts  [Easy Portuguese]
-  - Basic Adjectives in Portuguese #shorts  [Easy Portuguese]
-  - Adjectives in Portuguese: Hiking in the Forest | Super Easy Portuguese 27  [Easy Portuguese]
-  - Adjetivos em português para enriquecer seu vocabulário! #shorts  [Easy Portuguese]
-  - 11 adjetivos que você tem que saber em português! #shorts  [Easy Portuguese]
-  - 50 Adjectives You Need To Know | Super Easy Portuguese 13  [Easy Portuguese]
 
 ------------------------------------------------------------
 Adverbs -- 16 videos  [adverbs]
@@ -1988,6 +2077,26 @@ Home Vocabulary -- 16 videos  [vocabulary-home]
   - Como é a sua sala? #shorts  [Easy Portuguese]
   - Open House: Brazilians Talk About Their Home. | Easy Portuguese 104  [Easy Portuguese]
   - Cómo decir "destapador" en portugués  [Philipe Brazuca]
+
+------------------------------------------------------------
+Language Comparison -- 16 videos  [language-comparison]
+------------------------------------------------------------
+  - Latin Languages Comparison #shorts  [Easy Portuguese]
+  - Latin Languages Comparison #shorts  [Easy Portuguese]
+  - Latin Languages Comparison | Easy Portuguese 124  [Easy Portuguese]
+  - Será que é fácil entender o português se você fala catalão #shorts  [Easy Portuguese]
+  - Can Catalans Understand Portuguese? (Feat. @EasyCatalan ) | Easy Portuguese 121  [Easy Portuguese]
+  - Learning Portuguese, Spanish and English with AJ @bilingualsecrets  | Easy Portuguese Live  [Easy Portuguese]
+  - Aprenda português, espanhol e inglês com AJ #shorts  [Easy Portuguese]
+  - PORTUGUÊS x FRANCÊS - Palavras iguais!  [Portugues com Marcia Macedo]
+  - Professora francesa mostra palavras do francês no português.   Portuguese X French  [Portugues com Marcia Macedo]
+  - PORTUGUESE vs ITALIAN with @PodcastItaliano  [Speaking Brazilian]
+  - Can Italians understand the verb "gostar" in Portuguese? #italian #portuguese  [Easy Portuguese]
+  - Can the Brazilian "d" be an issue for Italians? #portuguese #italian  [Easy Portuguese]
+  - Can Italians Understand Brazilian Portuguese? | Easy Portuguese 157  [Easy Portuguese]
+  - Can Greek and Portuguese be similar?  #grego #português  [Easy Portuguese]
+  - Is the word φούρνος (fournos) plural or singular? #grego #português  [Easy Portuguese]
+  - Can Brazilian Portuguese Speakers Understand Greek Words? | Easy Portuguese 156  [Easy Portuguese]
 
 ------------------------------------------------------------
 Work & Business Vocabulary -- 15 videos  [vocabulary-work]
@@ -2099,6 +2208,23 @@ Noun Gender & Plurals (A1) -- 13 videos  [noun-gender]
   - Masculino y Femenino - Género de Palabras en Portugués  [Philipe Brazuca]
 
 ------------------------------------------------------------
+Word Formation & Affixes -- 13 videos  [word-formation]
+------------------------------------------------------------
+  - 6 SUFIXOS DEPRECIATIVOS comuns que você PRECISA SABER  [Portugues com Marcia Macedo]
+  - Utilize isto para falar das ÁRVORES FRUTIÍFERAS em português 🍎  [Portugues com Marcia Macedo]
+  - ADJETIVOS em português: aprenda como criá-los | Prof. Responde #168  [Portugues com Marcia Macedo]
+  - 😯Você está falando 'inho' e 'inha' errado no português? Aprenda a usar o DIMINUTIVO agora!  [Portugues com Marcia Macedo]
+  - Português | AUMENTATIVO com vídeo #Bonitono  [Portugues com Marcia Macedo]
+  - Português| DIMINUTIVO Como usar?  [Portugues com Marcia Macedo]
+  - Words Ending in -OUS that are the same in Brazilian Portuguese 🇺🇸 ➔ 🇧🇷  [Speaking Brazilian]
+  - 🇺🇸 = 🇧🇷 10 Words Ending in -IC that are the same in Brazilian Portuguese  [Speaking Brazilian]
+  - English = Portuguese | Words Ending in -ARY that are the same in Brazilian Portuguese  [Speaking Brazilian]
+  - 🇺🇸 ➔ 🇧🇷 English Words Ending in -SION End in -SÃO in Portuguese  [Speaking Brazilian]
+  - PORTUGUESE vs ENGLISH: Suffixes [vocabulary test]  [Speaking Brazilian]
+  - 🇺🇸 = 🇧🇷 10 Words Ending in -TION that are the same in Brazilian Portuguese  [Speaking Brazilian]
+  - English = Portuguese? 10 Words Ending in -AL that are the same in Brazilian Portuguese  [Speaking Brazilian]
+
+------------------------------------------------------------
 Irregular Verbs -- 12 videos  [irregular-verbs]
 ------------------------------------------------------------
   - Quantos verbos irregulares tem na língua portuguesa?  [Portugues com Marcia Macedo]
@@ -2113,6 +2239,22 @@ Irregular Verbs -- 12 videos  [irregular-verbs]
   - Can you conjugate "Fazer" in Portuguese? #shorts  [Easy Portuguese]
   - Conjugating the verb "Ter" in Portuguese! #shorts  [Easy Portuguese]
   - 20 VERBOS IRREGULARES EN PORTUGUÉS QUE TIENES QUE APRENDER YA  [Philipe Brazuca]
+
+------------------------------------------------------------
+Subject Pronouns -- 12 videos  [subject-pronouns]
+------------------------------------------------------------
+  - NÓS X A GENTE: como utilizar em português? #learnportuguese  [Portugues com Marcia Macedo]
+  - Como usar "a gente" no português?  [Portugues com Marcia Macedo]
+  - VOCÊ x TU x VÓS??  [Portugues com Marcia Macedo]
+  - When do we use “nós” or “a gente” in Brazilian Portuguese?  [Speaking Brazilian]
+  - TU or VOCÊ? What’s the difference? | Brazilian Portuguese Lesson  [Speaking Brazilian]
+  - Nós or A Gente? What is the difference? | Speaking Brazilian  [Speaking Brazilian]
+  - Tu ou  Você? What is the difference? | Speaking Brazilian  [Speaking Brazilian]
+  - Personal Pronouns in Portuguese: a Beginner's Guide | Super Easy Portuguese 24  [Easy Portuguese]
+  - A gente X Nós #shorts  [Easy Portuguese]
+  - A GENTE NÃO SABE SE AS PESSOAS SABEM - ¨NOSOTROS Y LAS PERSONAS¨ EN PORTUGUÉS  [Philipe Brazuca]
+  - 🤔 Tu, Você, O senhor, A senhora - Cómo utilizarlos 🇧🇷 Clases de Portugués  [Philipe Brazuca]
+  - "Você" ou "senhor"? #shorts  [Easy Portuguese]
 
 ------------------------------------------------------------
 Conditional Mood (B1) -- 11 videos  [conditional]
@@ -2130,34 +2272,32 @@ Conditional Mood (B1) -- 11 videos  [conditional]
   - What Would You Do If You Won The Lottery? | Easy Portuguese 96  [Easy Portuguese]
 
 ------------------------------------------------------------
-Word Formation & Affixes -- 11 videos  [word-formation]
+Future Tense (B1) -- 10 videos  [future-tense]
 ------------------------------------------------------------
-  - 6 SUFIXOS DEPRECIATIVOS comuns que você PRECISA SABER  [Portugues com Marcia Macedo]
-  - Utilize isto para falar das ÁRVORES FRUTIÍFERAS em português 🍎  [Portugues com Marcia Macedo]
-  - ADJETIVOS em português: aprenda como criá-los | Prof. Responde #168  [Portugues com Marcia Macedo]
-  - 😯Você está falando 'inho' e 'inha' errado no português? Aprenda a usar o DIMINUTIVO agora!  [Portugues com Marcia Macedo]
-  - Português | AUMENTATIVO com vídeo #Bonitono  [Portugues com Marcia Macedo]
-  - Português| DIMINUTIVO Como usar?  [Portugues com Marcia Macedo]
-  - Words Ending in -OUS that are the same in Brazilian Portuguese 🇺🇸 ➔ 🇧🇷  [Speaking Brazilian]
-  - 🇺🇸 = 🇧🇷 10 Words Ending in -IC that are the same in Brazilian Portuguese  [Speaking Brazilian]
-  - English = Portuguese | Words Ending in -ARY that are the same in Brazilian Portuguese  [Speaking Brazilian]
-  - 🇺🇸 ➔ 🇧🇷 English Words Ending in -SION End in -SÃO in Portuguese  [Speaking Brazilian]
-  - PORTUGUESE vs ENGLISH: Suffixes [vocabulary test]  [Speaking Brazilian]
+  - VOU FALAR ou FALAREI?? COMO USAR O FUTURO?  [Portugues com Marcia Macedo]
+  - Future Tense in Brazilian Portuguese  [Speaking Brazilian]
+  - 3 Easy Ways to Talk About the Future in Portuguese  [Speaking Brazilian]
+  - How to Use the Future Tense in Brazilian Portuguese | Speaking Brazilian  [Speaking Brazilian]
+  - The Future Tense in Portuguese | Super Easy Portuguese 15  [Easy Portuguese]
+  - EL ¨TRUCO¨  CUALQUIER VERBO EN PORTUGUÉS EN EL FUTURO  [Philipe Brazuca]
+  - APRENDA DE UMA VEZ| FUTURO DO SUBJUNTIVO!!  [Portugues com Marcia Macedo]
+  - ADVANCED PORTUGUESE: QUER VS QUISER | Present Indicative vs Future Subjunctive  [Speaking Brazilian]
+  - ADVANCED PORTUGUESE | Futuro do Subjuntivo | Speaking Brazilian  [Speaking Brazilian]
+  - 🤔 Cómo utilizar ¨FOR¨ en Portugués - Verbos / IR - SER - Futuro del Subjuntivo - Philipe Brazuca  [Philipe Brazuca]
 
 ------------------------------------------------------------
-Subject Pronouns -- 11 videos  [subject-pronouns]
+Discourse Markers (B2) -- 10 videos  [discourse-markers]
 ------------------------------------------------------------
-  - NÓS X A GENTE: como utilizar em português? #learnportuguese  [Portugues com Marcia Macedo]
-  - Como usar "a gente" no português?  [Portugues com Marcia Macedo]
-  - VOCÊ x TU x VÓS??  [Portugues com Marcia Macedo]
-  - When do we use “nós” or “a gente” in Brazilian Portuguese?  [Speaking Brazilian]
-  - TU or VOCÊ? What’s the difference? | Brazilian Portuguese Lesson  [Speaking Brazilian]
-  - Nós or A Gente? What is the difference? | Speaking Brazilian  [Speaking Brazilian]
-  - Tu ou  Você? What is the difference? | Speaking Brazilian  [Speaking Brazilian]
-  - Personal Pronouns in Portuguese: a Beginner's Guide | Super Easy Portuguese 24  [Easy Portuguese]
-  - A gente X Nós #shorts  [Easy Portuguese]
-  - A GENTE NÃO SABE SE AS PESSOAS SABEM - ¨NOSOTROS Y LAS PERSONAS¨ EN PORTUGUÉS  [Philipe Brazuca]
-  - 🤔 Tu, Você, O senhor, A senhora - Cómo utilizarlos 🇧🇷 Clases de Portugués  [Philipe Brazuca]
+  - Quando usar "porém" em português?  [Portugues com Marcia Macedo]
+  - POIS É: Como utilizar em português  [Portugues com Marcia Macedo]
+  - Como usar "Aliás"?  [Portugues com Marcia Macedo]
+  - 7 Usos do "AÍ" no Brasil  [Portugues com Marcia Macedo]
+  - Portuguese| Português para estrangeiros: Explicação da palavra ALIÁS  [Portugues com Marcia Macedo]
+  - 5 Key Words to Help You Have Natural Conversations | Super Easy Portuguese 46  [Easy Portuguese]
+  - Hã… tipo… né? Tipo assim… #shorts  [Easy Portuguese]
+  - Português para estrangeiros: Como usar as vogais para se expressar. Portuguese  [Portugues com Marcia Macedo]
+  - Tsc tsc - What does it mean in Brazil? #brazilianportuguese #portuguesbrasileiro  [Speaking Brazilian]
+  - Tsc, tsc... What does it mean in Brazil? 🇧🇷 | Brazilian Portuguese Lesson  [Speaking Brazilian]
 
 ------------------------------------------------------------
 Clothes & Fashion Vocabulary -- 9 videos  [vocabulary-clothes]
@@ -2171,6 +2311,18 @@ Clothes & Fashion Vocabulary -- 9 videos  [vocabulary-clothes]
   - What are you wearing? #shorts  [Easy Portuguese]
   - What Are You Wearing? | Easy Portuguese 76  [Easy Portuguese]
   - Cómo decir 'chaleco' en portugués  [Philipe Brazuca]
+
+------------------------------------------------------------
+Possessive Pronouns (A1) -- 8 videos  [possessives]
+------------------------------------------------------------
+  - Teu ou seu? Qual usar em português?  [Portugues com Marcia Macedo]
+  - É obrigatório usar ARTIGOS antes de PRONOMES POSSESSIVOS?  [Portugues com Marcia Macedo]
+  - Aprenda o uso dos PRONOMES POSSESSIVOS em português | Prof. Responde #170  [Portugues com Marcia Macedo]
+  - Seu ou sua? A regra que vai te ajudar a falar português como um nativo | #learnportuguese  [Portugues com Marcia Macedo]
+  - Portuguese for Beginners: POSSESSIVE PRONOUNS | Speaking Brazilian  [Speaking Brazilian]
+  - Showing Possession in Brazilian Portuguese (Possessive Pronouns) | Super Easy Portuguese 19  [Easy Portuguese]
+  - Domine o uso de CUJO ou CUJA em português!  [Portugues com Marcia Macedo]
+  - Advanced Portuguese: How to use the word CUJO?  [Speaking Brazilian]
 
 ------------------------------------------------------------
 Past Tense (Preterite) (A2) -- 8 videos  [past-preterite]
@@ -2197,6 +2349,18 @@ Body Parts Vocabulary -- 8 videos  [vocabulary-body]
   - [DOSE] Cómo decir los ¨golpes con partes del cuerpo¨ en Portugués - 🇧🇷 [CLASE]  [Philipe Brazuca]
 
 ------------------------------------------------------------
+Regular Verbs -- 8 videos  [regular-verbs]
+------------------------------------------------------------
+  - How to conjugate regular verbs in Portuguese - part 2  [Speaking Brazilian]
+  - How to conjugate regular verbs in Portuguese - part 1  [Speaking Brazilian]
+  - Learning Portuguese Conjugation: Verbs Ending in IR | EP162  [Easy Portuguese]
+  - Learning to conjugate the verb "to receive" in Portuguese #learnportuguese  [Easy Portuguese]
+  - Learning to conjugate the verb "to live" in Portuguese #learnportuguese  [Easy Portuguese]
+  - Learning Portuguese Conjugation: Verbs Ending in ER | Easy Portuguese 160  [Easy Portuguese]
+  - Learning Portuguese Conjugation: Verbs Ending in AR | Easy Portuguese 158  [Easy Portuguese]
+  - How to conjugate Regular Verbs in Portuguese - Complete Lesson (present tense)  [Speaking Brazilian]
+
+------------------------------------------------------------
 Animals Vocabulary -- 8 videos  [vocabulary-animals]
 ------------------------------------------------------------
   - O que você acha de onça? #shorts  [Easy Portuguese]
@@ -2218,17 +2382,6 @@ Question Words (A1) -- 7 videos  [question-words]
   - How to ask questions in Portuguese #basicportuguese  [Easy Portuguese]
   - Learn to Ask Questions in Portuguese | Super Easy Portuguese 38  [Easy Portuguese]
   - ⭐ Cómo utilizar ¨Cadê¨ y ¨Onde está¨ en Portugués  [Philipe Brazuca]
-
-------------------------------------------------------------
-Discourse Markers (B2) -- 7 videos  [discourse-markers]
-------------------------------------------------------------
-  - Quando usar "porém" em português?  [Portugues com Marcia Macedo]
-  - POIS É: Como utilizar em português  [Portugues com Marcia Macedo]
-  - Como usar "Aliás"?  [Portugues com Marcia Macedo]
-  - 7 Usos do "AÍ" no Brasil  [Portugues com Marcia Macedo]
-  - Portuguese| Português para estrangeiros: Explicação da palavra ALIÁS  [Portugues com Marcia Macedo]
-  - 5 Key Words to Help You Have Natural Conversations | Super Easy Portuguese 46  [Easy Portuguese]
-  - Hã… tipo… né? Tipo assim… #shorts  [Easy Portuguese]
 
 ------------------------------------------------------------
 Shopping & Store Vocabulary -- 7 videos  [vocabulary-shopping]
@@ -2253,38 +2406,6 @@ Countries & Nationalities Vocabulary -- 7 videos  [vocabulary-countries]
   - Quais países falam português? | Easy Portuguese Facts #shorts  [Easy Portuguese]
 
 ------------------------------------------------------------
-Regular Verbs -- 7 videos  [regular-verbs]
-------------------------------------------------------------
-  - How to conjugate regular verbs in Portuguese - part 2  [Speaking Brazilian]
-  - How to conjugate regular verbs in Portuguese - part 1  [Speaking Brazilian]
-  - Learning Portuguese Conjugation: Verbs Ending in IR | EP162  [Easy Portuguese]
-  - Learning to conjugate the verb "to receive" in Portuguese #learnportuguese  [Easy Portuguese]
-  - Learning to conjugate the verb "to live" in Portuguese #learnportuguese  [Easy Portuguese]
-  - Learning Portuguese Conjugation: Verbs Ending in ER | Easy Portuguese 160  [Easy Portuguese]
-  - Learning Portuguese Conjugation: Verbs Ending in AR | Easy Portuguese 158  [Easy Portuguese]
-
-------------------------------------------------------------
-Language Comparison -- 7 videos  [language-comparison]
-------------------------------------------------------------
-  - Latin Languages Comparison #shorts  [Easy Portuguese]
-  - Latin Languages Comparison #shorts  [Easy Portuguese]
-  - Latin Languages Comparison | Easy Portuguese 124  [Easy Portuguese]
-  - Será que é fácil entender o português se você fala catalão #shorts  [Easy Portuguese]
-  - Can Catalans Understand Portuguese? (Feat. @EasyCatalan ) | Easy Portuguese 121  [Easy Portuguese]
-  - Learning Portuguese, Spanish and English with AJ @bilingualsecrets  | Easy Portuguese Live  [Easy Portuguese]
-  - Aprenda português, espanhol e inglês com AJ #shorts  [Easy Portuguese]
-
-------------------------------------------------------------
-Possessive Pronouns (A1) -- 6 videos  [possessives]
-------------------------------------------------------------
-  - Teu ou seu? Qual usar em português?  [Portugues com Marcia Macedo]
-  - É obrigatório usar ARTIGOS antes de PRONOMES POSSESSIVOS?  [Portugues com Marcia Macedo]
-  - Aprenda o uso dos PRONOMES POSSESSIVOS em português | Prof. Responde #170  [Portugues com Marcia Macedo]
-  - Seu ou sua? A regra que vai te ajudar a falar português como um nativo | #learnportuguese  [Portugues com Marcia Macedo]
-  - Portuguese for Beginners: POSSESSIVE PRONOUNS | Speaking Brazilian  [Speaking Brazilian]
-  - Showing Possession in Brazilian Portuguese (Possessive Pronouns) | Super Easy Portuguese 19  [Easy Portuguese]
-
-------------------------------------------------------------
 Demonstrative Pronouns (A2) -- 6 videos  [demonstratives]
 ------------------------------------------------------------
   - DISSO, DUM, DAQUILO... | Prof. Responde #177  [Portugues com Marcia Macedo]
@@ -2293,16 +2414,6 @@ Demonstrative Pronouns (A2) -- 6 videos  [demonstratives]
   - Portuguese|Português: Como usar NESTE, NESSE, NAQUELE...?  [Portugues com Marcia Macedo]
   - PRONOMES - ESTE ESSE ESTAS AQUELE...  [Portugues com Marcia Macedo]
   - BASIC PORTUGUESE | Demonstrative Pronouns  [Speaking Brazilian]
-
-------------------------------------------------------------
-Future Tense (B1) -- 6 videos  [future-tense]
-------------------------------------------------------------
-  - VOU FALAR ou FALAREI?? COMO USAR O FUTURO?  [Portugues com Marcia Macedo]
-  - Future Tense in Brazilian Portuguese  [Speaking Brazilian]
-  - 3 Easy Ways to Talk About the Future in Portuguese  [Speaking Brazilian]
-  - How to Use the Future Tense in Brazilian Portuguese | Speaking Brazilian  [Speaking Brazilian]
-  - The Future Tense in Portuguese | Super Easy Portuguese 15  [Easy Portuguese]
-  - EL ¨TRUCO¨  CUALQUIER VERBO EN PORTUGUÉS EN EL FUTURO  [Philipe Brazuca]
 
 ------------------------------------------------------------
 Conjunctions & Connectors -- 6 videos  [conjunctions]
@@ -2345,290 +2456,7 @@ Calendar & Dates Vocabulary -- 6 videos  [vocabulary-calendar]
   - Meses do ano #shorts  [Easy Portuguese]
 
 ------------------------------------------------------------
-Por vs Para (B1) -- 5 videos  [por-para]
-------------------------------------------------------------
-  - POR X PARA X PELO X PELA  [Portugues com Marcia Macedo]
-  - How should you use the preposition "por" in Portuguese? #brazilianportuguese  [Speaking Brazilian]
-  - How should you use the preposition "para" in Portuguese? #brazilianportuguese  [Speaking Brazilian]
-  - PARA vs POR: A Simple Guide for Portuguese Learners (with real-life examples)  [Speaking Brazilian]
-  - When to use PARA or POR? | Speaking Brazilian  [Speaking Brazilian]
-
-------------------------------------------------------------
-Formal Register (C1) -- 5 videos  [formal-register]
-------------------------------------------------------------
-  - Como falar Português de maneira formal e informal?  [Portugues com Marcia Macedo]
-  - FORMAL x INFORMAL| 10 VERBOS PARA VOCÊ CONHECER!  [Portugues com Marcia Macedo]
-  - How to be FORMAL in Brazilian Portuguese? SENHOR, SENHORA, SEU, DONA, MOÇO, or MOÇA?  [Speaking Brazilian]
-  - Formal vs Informal Language in Brazilian Portuguese  [Speaking Brazilian]
-  - "Você" ou "senhor"? #shorts  [Easy Portuguese]
-
-------------------------------------------------------------
-Acronyms & Abbreviations -- 5 videos  [acronyms-abbreviations]
-------------------------------------------------------------
-  - 15 SIGLAS QUE VOCÊ PRECISA SABER!  [Portugues com Marcia Macedo]
-  - Brazilian Internet Language: abbreviations you need to know!  [Speaking Brazilian]
-  - Contrações e Abreviações Que Você Precisa Saber Em Português  [Philipe Brazuca]
-  - SIGLAS EN PORTUGUÉS QUE VERÁS EN BRASIL  [Philipe Brazuca]
-  - Kékicêké? Abreviaciones y Contracciones en Portugués [Avanzado] - Parte 1  [Philipe Brazuca]
-
-------------------------------------------------------------
-Colors Vocabulary -- 5 videos  [vocabulary-colors]
-------------------------------------------------------------
-  - COLORS IN PORTUGUESE | Basic Brazilian Portuguese  [Speaking Brazilian]
-  - What is this? #colors #portuguese  [Easy Portuguese]
-  - What is this? #cores #portuguese  [Easy Portuguese]
-  - What is This? Colors and Objects Vocabulary in Slow Portuguese | Super Easy Portuguese 56  [Easy Portuguese]
-  - De onde vem a cor "vermelho"? | Easy Portuguese Facts #shorts  [Easy Portuguese]
-
-------------------------------------------------------------
-Present Tense (A1) -- 4 videos  [present-tense]
-------------------------------------------------------------
-  - Português - Conjugação dos Verbos no Presente  [Portugues com Marcia Macedo]
-  - How to conjugate Regular Verbs in Portuguese - Complete Lesson (present tense)  [Speaking Brazilian]
-  - 10 Essential Verbs in Brazilian Portuguese – Present Tense Drill  [Speaking Brazilian]
-  - 50 Essential Verbs in Brazilian Portuguese – Present Tense Drill  [Speaking Brazilian]
-
-------------------------------------------------------------
-Articles & Contractions (A1) -- 4 videos  [articles]
-------------------------------------------------------------
-  - Gosto DA x Gosto DE: qual a diferença?  [Portugues com Marcia Macedo]
-  - Gosto do X Gosto de X Gosto da: como utilizar no dia a dia e dominar o português | #learnportuguese  [Portugues com Marcia Macedo]
-  - AS CONTRAÇÕES MAIS USADAS NO PORTUGUÊS!  [Portugues com Marcia Macedo]
-  - Word Contractions in Brazilian Portuguese  [Speaking Brazilian]
-
-------------------------------------------------------------
-Imperfect Tense (A2) -- 4 videos  [imperfect]
-------------------------------------------------------------
-  - Past IMPERFECT tense in Portuguese | Speaking Brazilian  [Speaking Brazilian]
-  - How did we used to listen to music? #música #portuguese  [Easy Portuguese]
-  - How did we used to make a phone call? #telefone #portuguese  [Easy Portuguese]
-  - How To Talk About Past Habits in Slow Portuguese (Pretérito Imperfeito) | Super Easy Portuguese 51  [Easy Portuguese]
-
-------------------------------------------------------------
-Pronoun Placement (B1) -- 4 videos  [pronominal-placement]
-------------------------------------------------------------
-  - Pronomes antes ou depois do verbo?  [Portugues com Marcia Macedo]
-  - A regra do HÍFEN nos Verbos Reflexivos: você NUNCA imaginaria! #learnportuguese  [Portugues com Marcia Macedo]
-  - Pronome antes do verbo?  [Portugues com Marcia Macedo]
-  - POSIÇÃO DOS PRONOMES  [Portugues com Marcia Macedo]
-
-------------------------------------------------------------
-Future Subjunctive (B2) -- 4 videos  [subjunctive-future]
-------------------------------------------------------------
-  - APRENDA DE UMA VEZ| FUTURO DO SUBJUNTIVO!!  [Portugues com Marcia Macedo]
-  - ADVANCED PORTUGUESE: QUER VS QUISER | Present Indicative vs Future Subjunctive  [Speaking Brazilian]
-  - ADVANCED PORTUGUESE | Futuro do Subjuntivo | Speaking Brazilian  [Speaking Brazilian]
-  - 🤔 Cómo utilizar ¨FOR¨ en Portugués - Verbos / IR - SER - Futuro del Subjuntivo - Philipe Brazuca  [Philipe Brazuca]
-
-------------------------------------------------------------
-Medical & Health Vocabulary -- 4 videos  [vocabulary-medical]
-------------------------------------------------------------
-  - VOCABULÁRIO de uma consulta médica em português | Prof. Responde #185  [Portugues com Marcia Macedo]
-  - VOCABULÁRIO DO CORONAVÍRUS TUDO O QUE VOCÊ PRECISA SABER  [Portugues com Marcia Macedo]
-  - How to talk about coronavirus in Portuguese | Vocabulary Lesson  [Speaking Brazilian]
-  - Going to the doctor in Brazil #live #portuguese  [Easy Portuguese]
-
-------------------------------------------------------------
-Sentence Structure -- 4 videos  [sentence-structure]
-------------------------------------------------------------
-  - 🔴 LIVE – Basic Sentence Structure in Brazilian Portuguese  [Speaking Brazilian]
-  - Basic Sentence Structure in Brazilian Portuguese  [Speaking Brazilian]
-  - How To Make Longer Sentences In Portuguese | Easy Portuguese LIVE  [Easy Portuguese]
-  - How To Make Long Sentences in Portuguese #live  [Easy Portuguese]
-
-------------------------------------------------------------
-Portuguese vs Italian -- 4 videos  [pt-vs-it]
-------------------------------------------------------------
-  - PORTUGUESE vs ITALIAN with @PodcastItaliano  [Speaking Brazilian]
-  - Can Italians understand the verb "gostar" in Portuguese? #italian #portuguese  [Easy Portuguese]
-  - Can the Brazilian "d" be an issue for Italians? #portuguese #italian  [Easy Portuguese]
-  - Can Italians Understand Brazilian Portuguese? | Easy Portuguese 157  [Easy Portuguese]
-
-------------------------------------------------------------
-Proficiency Exams -- 4 videos  [proficiency-exams]
-------------------------------------------------------------
-  - Celpe-Bras 2026.1 - Preparación para el examen  [Philipe Brazuca]
-  - ¿Cuál es mi nivel de portugués? A1, B1, C1?  [Philipe Brazuca]
-  - Ep.51 - CELPE-Bras, Certificado de Português Para Estrangeiros  [Philipe Brazuca]
-  - ✅ CELPE-Bras - Como conseguir el certificado de Portugués 📄 - TIPS  [Philipe Brazuca]
-
-------------------------------------------------------------
-Reflexive Verbs (A2) -- 3 videos  [reflexive-verbs]
-------------------------------------------------------------
-  - Você também tem dúvida sobre os pronomes reflexivos e os verbos? #portuguesbrasileiro  [Portugues com Marcia Macedo]
-  - VERBOS REFLEXIVOS- COMO USAR?  [Portugues com Marcia Macedo]
-  - Pronominal & Reflexive Verbs in Portuguese | Speaking Brazilian  [Speaking Brazilian]
-
-------------------------------------------------------------
-Direct Object Pronouns (A2) -- 3 videos  [direct-object]
-------------------------------------------------------------
-  - PRONOMES -LO -LA -O -A -LHE: COMO USAR COM EFICIÊNCIA!  [Portugues com Marcia Macedo]
-  - Como usar LO - LA - O - A no Português Brasileiro?  [Portugues com Marcia Macedo]
-  - Portuguese| Português: Pronomes LO, LA, LHE, LHES...  [Portugues com Marcia Macedo]
-
-------------------------------------------------------------
-Present Subjunctive (B1) -- 3 videos  [subjunctive-present]
-------------------------------------------------------------
-  - Português. Presente do Subjuntivo  [Portugues com Marcia Macedo]
-  - 30 Verbs in the Present Subjunctive - Conjugation Drill | Brazilian Portuguese  [Speaking Brazilian]
-  - Can you use the Present Subjunctive Tense? [Portuguese Test]  [Speaking Brazilian]
-
-------------------------------------------------------------
-Imperative Mood (B1) -- 3 videos  [imperative]
-------------------------------------------------------------
-  - Pare de errar! Aprenda o IMPERATIVO em português  [Portugues com Marcia Macedo]
-  - IMPERATIVO| SERÁ QUE VOCÊ SABE DISSO?  [Portugues com Marcia Macedo]
-  - Imperative Mood | Advanced Brazilian Portuguese  [Speaking Brazilian]
-
-------------------------------------------------------------
-Imperfect Subjunctive (B2) -- 3 videos  [subjunctive-imperfect]
-------------------------------------------------------------
-  - Pagaria X Pagasse? Aprenda o modo subjuntivo, um dos modos mais utilizados no português.  [Portugues com Marcia Macedo]
-  - Português: Pretérito Imperfeito do Subjuntivo  [Portugues com Marcia Macedo]
-  - ADVANCED PORTUGUESE | Imperfeito do Subjuntivo | Speaking Brazilian  [Speaking Brazilian]
-
-------------------------------------------------------------
-Advanced Subjunctive (C1) -- 3 videos  [advanced-subjunctive]
-------------------------------------------------------------
-  - Subjuntivo - os Brasileiros também falam errado!  [Portugues com Marcia Macedo]
-  - Brazilian Portuguese 🇧🇷 Subjunctive Mood  [Speaking Brazilian]
-  - Intermediate & Advanced Portuguese: SUBJUNTIVO | Speaking Brazilian  [Speaking Brazilian]
-
-------------------------------------------------------------
-Punctuation -- 3 videos  [punctuation]
-------------------------------------------------------------
-  - Aprenda os sinais de pontuação do português que os brasileiros mais usam🚨  [Portugues com Marcia Macedo]
-  - SINAIS DE PONTUAÇÃO DO PORTUGUÊS!  [Portugues com Marcia Macedo]
-  - Puntuación en Portugués: ¡La Guía Definitiva!  [Philipe Brazuca]
-
-------------------------------------------------------------
-Alphabet -- 3 videos  [alphabet]
-------------------------------------------------------------
-  - PORTUGUÊS: O ALFABETO COM DETALHES  [Portugues com Marcia Macedo]
-  - A to Z Brazilian Portuguese Pronunciations | SEP10  [Easy Portuguese]
-  - Deletreando en Portugués como un verdadero nativo de Brasil - Abecedario/Alfabeto y Pronunciación  [Philipe Brazuca]
-
-------------------------------------------------------------
-City & Places Vocabulary -- 3 videos  [vocabulary-places]
-------------------------------------------------------------
-  - Clases de Portugues| LUGARES NA CIDADE!  [Portugues com Marcia Macedo]
-  - LIVE Q&A | My Favorite Places in SÃO PAULO  [Speaking Brazilian]
-  - My Favorite Places in SÃO PAULO | Brazilian Portuguese  [Speaking Brazilian]
-
-------------------------------------------------------------
-Interjections -- 3 videos  [interjections]
-------------------------------------------------------------
-  - Português para estrangeiros: Como usar as vogais para se expressar. Portuguese  [Portugues com Marcia Macedo]
-  - Tsc tsc - What does it mean in Brazil? #brazilianportuguese #portuguesbrasileiro  [Speaking Brazilian]
-  - Tsc, tsc... What does it mean in Brazil? 🇧🇷 | Brazilian Portuguese Lesson  [Speaking Brazilian]
-
-------------------------------------------------------------
-Preterite vs Imperfect -- 3 videos  [preterite-vs-imperfect]
-------------------------------------------------------------
-  - FOI ou ERA? 🇧🇷 #brazilianportuguese #portuguesequiz  [Speaking Brazilian]
-  - FOI or ERA? How to use the verb SER in the past tense | Brazilian Portuguese  [Speaking Brazilian]
-  - Perfect or Imperfect? [Portuguese Test - Intermediate Level]  [Speaking Brazilian]
-
-------------------------------------------------------------
-Portuguese vs Greek -- 3 videos  [pt-vs-el]
-------------------------------------------------------------
-  - Can Greek and Portuguese be similar?  #grego #português  [Easy Portuguese]
-  - Is the word φούρνος (fournos) plural or singular? #grego #português  [Easy Portuguese]
-  - Can Brazilian Portuguese Speakers Understand Greek Words? | Easy Portuguese 156  [Easy Portuguese]
-
-------------------------------------------------------------
-Indirect Object Pronouns (A2) -- 2 videos  [indirect-object]
-------------------------------------------------------------
-  - COMO USAR "TE" E "LHE" EM PORTUGUÊS? MUITO SIMPLES  [Portugues com Marcia Macedo]
-  - Como usar LHE no português?  [Portugues com Marcia Macedo]
-
-------------------------------------------------------------
-Relative Clauses (B1) -- 2 videos  [relative-clauses]
-------------------------------------------------------------
-  - Domine o uso de CUJO ou CUJA em português!  [Portugues com Marcia Macedo]
-  - Advanced Portuguese: How to use the word CUJO?  [Speaking Brazilian]
-
-------------------------------------------------------------
-Pluperfect Tense (B2) -- 2 videos  [pluperfect]
-------------------------------------------------------------
-  - Pretérito mais que perfeito é usado no Brasil?  [Portugues com Marcia Macedo]
-  - Past Perfect in Portuguese | Mais-Que-Perfeito | Speaking Brazilian  [Speaking Brazilian]
-
-------------------------------------------------------------
-Compound Tenses (B2) -- 2 videos  [compound-tenses]
-------------------------------------------------------------
-  - Avoid this common mistake in Portuguese! | Pretérito Perfeito Composto in Brazilian Portuguese  [Speaking Brazilian]
-  - BRAZILIAN PORTUGUESE | Present Perfect Continuous | Speaking Brazilian  [Speaking Brazilian]
-
-------------------------------------------------------------
-Gerund vs Infinitive (B2) -- 2 videos  [gerund-infinitive]
-------------------------------------------------------------
-  - ING Form in Portuguese #brazilianportuguese #portuguesbrasileiro  [Speaking Brazilian]
-  - Speak Like a Brazilian: How to use the "-ING FORM" in Portuguese?  [Speaking Brazilian]
-
-------------------------------------------------------------
-Crase (Grave Accent) -- 2 videos  [crase]
-------------------------------------------------------------
-  - Portuguese | COMO USAR A CRASE?? #video1  [Portugues com Marcia Macedo]
-  - Advanced Portuguese: What is the grave accent?  [Speaking Brazilian]
-
-------------------------------------------------------------
-Portuguese vs French -- 2 videos  [pt-vs-fr]
-------------------------------------------------------------
-  - PORTUGUÊS x FRANCÊS - Palavras iguais!  [Portugues com Marcia Macedo]
-  - Professora francesa mostra palavras do francês no português.   Portuguese X French  [Portugues com Marcia Macedo]
-
-------------------------------------------------------------
-Cognates -- 2 videos  [cognates]
-------------------------------------------------------------
-  - 🇺🇸 = 🇧🇷 10 Words Ending in -TION that are the same in Brazilian Portuguese  [Speaking Brazilian]
-  - English = Portuguese? 10 Words Ending in -AL that are the same in Brazilian Portuguese  [Speaking Brazilian]
-
-------------------------------------------------------------
-Personal Infinitive -- 2 videos  [personal-infinitive]
-------------------------------------------------------------
-  - Brazilian Portuguese Quiz! Infinitivo Pessoal  [Speaking Brazilian]
-  - ADVANCED PORTUGUESE QUIZ - Do you accept the challenge? | Infinitivo Pessoal vs. Impessoal  [Speaking Brazilian]
-
-------------------------------------------------------------
-Negation -- 2 videos  [negation]
-------------------------------------------------------------
-  - Double negative in Portuguese. Is it correct?  [Speaking Brazilian]
-  - Brazilians don’t say NO (NÃO) | Brazilian Portuguese  [Speaking Brazilian]
-
-------------------------------------------------------------
-Money & Finance Vocabulary -- 2 videos  [vocabulary-money]
-------------------------------------------------------------
-  - Ep.56 - DINHEIRO, Palavras e Expressões Relacionadas Com ¨GRANA¨  [Philipe Brazuca]
-  - DINHEIRO - PALAVRAS E EXPRESSÕES EM PORTUGUÊS RELACIONADAS COM ¨GRANA¨  [Philipe Brazuca]
-
-------------------------------------------------------------
-Comparatives & Superlatives (A2) -- 1 videos  [comparatives]
-------------------------------------------------------------
-  - Descubra os Segredos dos SUPERLATIVOS no PORTUGUÊS!  [Portugues com Marcia Macedo]
-
-------------------------------------------------------------
-Collocations (C1) -- 1 videos  [collocations]
-------------------------------------------------------------
-  - "Tomar" ou "tirar" uma foto? 🤳  [Portugues com Marcia Macedo]
-
-------------------------------------------------------------
-Math Vocabulary -- 1 videos  [vocabulary-math]
-------------------------------------------------------------
-  - AULA DE PORTUGUÊS: OS SINAIS MAIS USADOS DA MATEMÁTICA  [Portugues com Marcia Macedo]
-
-------------------------------------------------------------
-Weather Vocabulary -- 1 videos  [vocabulary-weather]
-------------------------------------------------------------
-  - How to talk about the WEATHER in Portuguese | Speaking Brazilian  [Speaking Brazilian]
-
-------------------------------------------------------------
-Directions & Navigation Vocabulary -- 1 videos  [vocabulary-directions]
-------------------------------------------------------------
-  - Asking and Giving Directions in Portuguese | Super Easy Portuguese 26  [Easy Portuguese]
-
-------------------------------------------------------------
-Uncategorized -- 41 videos
+Uncategorized -- 49 videos
 ------------------------------------------------------------
   - APRENDA TUDO sobre como usar NEM em Português  [Portugues com Marcia Macedo]
   - ORAÇÃO DO PAI NOSSO em Português| Aprender Português  [Portugues com Marcia Macedo]
@@ -2671,6 +2499,14 @@ Uncategorized -- 41 videos
   - REVISÃO - INSTAGRAM STORIES 📲 @philipebrazuca - Clases de Portugués Gratis  [Philipe Brazuca]
   - 🤔 ¿Qué preferirías? 4 Preguntas para ti 🇨🇷 Portugués con Philipe Brazuca 🇧🇷  [Philipe Brazuca]
   - 6 formas de utilizar la palabra ●MESMO● en Portugués 🙌  [Philipe Brazuca]
+  - PRONOMES -LO -LA -O -A -LHE: COMO USAR COM EFICIÊNCIA!  [Portugues com Marcia Macedo]
+  - Como usar LO - LA - O - A no Português Brasileiro?  [Portugues com Marcia Macedo]
+  - Portuguese| Português: Pronomes LO, LA, LHE, LHES...  [Portugues com Marcia Macedo]
+  - COMO USAR "TE" E "LHE" EM PORTUGUÊS? MUITO SIMPLES  [Portugues com Marcia Macedo]
+  - Como usar LHE no português?  [Portugues com Marcia Macedo]
+  - Pronomes antes ou depois do verbo?  [Portugues com Marcia Macedo]
+  - Pronome antes do verbo?  [Portugues com Marcia Macedo]
+  - POSIÇÃO DOS PRONOMES  [Portugues com Marcia Macedo]
 
 ------------------------------------------------------------
 Categories with no videos yet:
