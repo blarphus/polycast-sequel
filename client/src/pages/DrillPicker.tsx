@@ -160,25 +160,35 @@ export default function DrillPicker() {
               <div className="drill-picker-cards">
                 {verbFilters.map((vf) => {
                   const best = getBestScore(tense.key, vf.key);
+                  const attempts = getSessionsFor(tense.key, vf.key).length;
+                  const pct = best ? Math.round((best.correct_count / best.question_count) * 100) : 0;
+                  const bestMins = best ? Math.floor(best.duration_seconds / 60) : 0;
+                  const bestSecs = best ? best.duration_seconds % 60 : 0;
                   return (
                     <button
                       key={vf.key}
-                      className="drill-picker-card"
+                      className={`drill-picker-card${attempts > 0 ? ' attempted' : ''}`}
                       onClick={() => setSelected({ tenseKey: tense.key, tenseLabel: tense.label, verbFilter: vf.key })}
                     >
                       <span className="drill-picker-card-label">{vf.label}</span>
-                      {best && (
-                        <>
+                      {best ? (
+                        <div className="drill-picker-card-stats">
                           <div className="drill-picker-card-progress">
                             <div
                               className="drill-picker-card-progress-fill"
-                              style={{ width: `${Math.round((best.correct_count / best.question_count) * 100)}%` }}
+                              style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <span className="drill-picker-card-progress-label">
-                            {Math.round((best.correct_count / best.question_count) * 100)}%
+                          <span className="drill-picker-card-pct">{pct}%</span>
+                          <span className="drill-picker-card-meta">
+                            Best: {bestMins > 0 ? `${bestMins}m ${bestSecs}s` : `${bestSecs}s`}
                           </span>
-                        </>
+                          <span className="drill-picker-card-meta">
+                            {attempts} attempt{attempts !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="drill-picker-card-new">Not attempted</span>
                       )}
                     </button>
                   );
