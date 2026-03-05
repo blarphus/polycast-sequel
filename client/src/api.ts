@@ -748,7 +748,8 @@ export function retryVideoTranscript(id: string) {
 // CF Worker URL (not secret -- just proxies YouTube's public API)
 const CF_WORKER_URL = 'https://polycast-transcript-worker.polycast-app.workers.dev';
 
-export async function checkVideoPlayability(videoIds: string[]): Promise<Set<string>> {
+export async function checkVideoPlayability(videoIds: string[]): Promise<{ blocked: Set<string>; shorts: Set<string> }> {
+  const empty = { blocked: new Set<string>(), shorts: new Set<string>() };
   const res = await fetch(`${CF_WORKER_URL}?action=check`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -756,18 +757,26 @@ export async function checkVideoPlayability(videoIds: string[]): Promise<Set<str
   });
   if (!res.ok) {
     console.error(`checkVideoPlayability failed: HTTP ${res.status}`);
-    return new Set();
+    return empty;
   }
   const data = await res.json();
   if (!data.success || !data.results) {
     console.error('checkVideoPlayability: unexpected response', data);
-    return new Set();
+    return empty;
   }
   const blocked = new Set<string>();
-  for (const [id, status] of Object.entries(data.results)) {
-    if (status !== 'OK') blocked.add(id);
+  const shorts = new Set<string>();
+  for (const [id, result] of Object.entries(data.results)) {
+    // Support both old (string) and new ({ status, isShort }) response shapes
+    if (typeof result === 'string') {
+      if (result !== 'OK') blocked.add(id);
+    } else {
+      const r = result as { status: string; isShort: boolean };
+      if (r.status !== 'OK') blocked.add(id);
+      if (r.isShort) shorts.add(id);
+    }
   }
-  return blocked;
+  return { blocked, shorts };
 }
 
 export async function fetchTranscriptFromWorker(youtubeId: string, lang: string): Promise<TranscriptSegment[]> {

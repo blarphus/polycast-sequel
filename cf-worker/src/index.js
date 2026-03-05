@@ -100,11 +100,23 @@ export default {
               }),
             },
           );
-          if (!playerRes.ok) return { id, status: 'ERROR' };
+          if (!playerRes.ok) return { id, status: 'ERROR', isShort: false };
           const data = await playerRes.json();
-          return { id, status: data?.playabilityStatus?.status || 'UNKNOWN' };
+          const status = data?.playabilityStatus?.status || 'UNKNOWN';
+
+          // Check video dimensions from adaptive formats to detect vertical (Shorts)
+          let isShort = false;
+          const formats = data?.streamingData?.adaptiveFormats || [];
+          for (const fmt of formats) {
+            if (fmt.width && fmt.height) {
+              isShort = fmt.height > fmt.width;
+              break;
+            }
+          }
+
+          return { id, status, isShort };
         } catch {
-          return { id, status: 'ERROR' };
+          return { id, status: 'ERROR', isShort: false };
         }
       });
 
@@ -112,7 +124,10 @@ export default {
       const results = {};
       for (const outcome of settled) {
         if (outcome.status === 'fulfilled') {
-          results[outcome.value.id] = outcome.value.status;
+          results[outcome.value.id] = {
+            status: outcome.value.status,
+            isShort: outcome.value.isShort,
+          };
         }
       }
 

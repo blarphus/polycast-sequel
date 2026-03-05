@@ -8,9 +8,9 @@ export function filterUnplayableVideos(
   if (ids.length === 0) return;
 
   checkVideoPlayability(ids)
-    .then((blocked) => {
-      if (blocked.size > 0) {
-        setVideos((prev) => prev.filter((v) => !blocked.has(v.youtube_id)));
+    .then(({ blocked, shorts }) => {
+      if (blocked.size > 0 || shorts.size > 0) {
+        setVideos((prev) => prev.filter((v) => !blocked.has(v.youtube_id) && !shorts.has(v.youtube_id)));
       }
     })
     .catch((err) => console.error('Playability check failed:', err));

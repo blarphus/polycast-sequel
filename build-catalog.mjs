@@ -137,6 +137,50 @@ for (let i = 0; i < allYouTubeVideos.length; i += BATCH_SIZE) {
 console.log('\n');
 
 // ---------------------------------------------------------------------------
+// Step 3.5: Detect YouTube Shorts via oEmbed dimensions
+// ---------------------------------------------------------------------------
+
+console.log('Detecting YouTube Shorts via oEmbed...\n');
+
+const shortsSet = new Set();
+const OEMBED_BATCH = 10; // concurrent requests to avoid rate-limiting
+
+for (let i = 0; i < allYouTubeVideos.length; i += OEMBED_BATCH) {
+  const batch = allYouTubeVideos.slice(i, i + OEMBED_BATCH);
+
+  const results = await Promise.allSettled(batch.map(async (v) => {
+    try {
+      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${v.id}&format=json`;
+      const res = await fetch(oembedUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.height && data.width && data.height > data.width) {
+          return v.id;
+        }
+        return null;
+      }
+      // oEmbed failed — fall back to /shorts/ redirect check
+      const shortsRes = await fetch(`https://www.youtube.com/shorts/${v.id}`, { redirect: 'manual' });
+      // 200 = Short, 303 = not a Short
+      if (shortsRes.status === 200) return v.id;
+      return null;
+    } catch {
+      return null;
+    }
+  }));
+
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value) {
+      shortsSet.add(r.value);
+    }
+  }
+
+  process.stdout.write(`\r  Checked: ${Math.min(i + OEMBED_BATCH, allYouTubeVideos.length)}/${allYouTubeVideos.length} (${shortsSet.size} Shorts found)`);
+}
+
+console.log('\n');
+
+// ---------------------------------------------------------------------------
 // Step 4: Build lookup index and match state entries to YouTube data
 // ---------------------------------------------------------------------------
 
@@ -180,6 +224,9 @@ for (const [catId, cat] of Object.entries(categories)) {
     }
 
     if (ytVideo) {
+      // Skip YouTube Shorts
+      if (shortsSet.has(ytVideo.id)) continue;
+
       const details = videoDetailsMap.get(ytVideo.id);
       enrichedVideos.push({
         youtube_id: ytVideo.id,
@@ -220,6 +267,7 @@ catalog.sort((a, b) => {
 fs.writeFileSync(outputPath, JSON.stringify(catalog, null, 2));
 
 console.log(`Matched: ${matched}`);
+console.log(`Shorts filtered: ${shortsSet.size}`);
 console.log(`Unmatched: ${unmatched}`);
 console.log(`Categories with videos: ${catalog.length}`);
 console.log(`Output: ${outputPath}`);
