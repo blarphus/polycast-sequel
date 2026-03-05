@@ -734,6 +734,243 @@
    Watch page practice prompt
    --------------------------------------------------------------------------- */
 
+/* ---------------------------------------------------------------------------
+   Drill picker page
+   --------------------------------------------------------------------------- */
+
+.drill-picker-page {
+  min-height: 100dvh;
+  padding: 1rem 1rem 100px;
+  background: linear-gradient(160deg, #fef9c3 0%, #f5f5f7 40%, #f0f0f5 100%);
+  overflow-y: auto;
+}
+
+.drill-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.drill-picker-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.drill-picker-back:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.drill-picker-header-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--accent);
+}
+
+.drill-picker-header-content h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.drill-picker-sections {
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.drill-picker-tense-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.drill-picker-tense-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.drill-picker-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.drill-picker-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.85rem 0.5rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  text-align: center;
+}
+
+.drill-picker-card:hover {
+  border-color: var(--accent);
+  background: rgba(108, 99, 255, 0.03);
+  box-shadow: 0 2px 8px rgba(108, 99, 255, 0.08);
+}
+
+.drill-picker-card-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.drill-picker-card-best {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(108, 99, 255, 0.1);
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+}
+
+/* ---------------------------------------------------------------------------
+   Drill leaderboard overlay
+   --------------------------------------------------------------------------- */
+
+.drill-leaderboard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.drill-leaderboard-modal {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 400px;
+  max-height: 80dvh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+.drill-leaderboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 1.25rem 1.25rem 0.75rem;
+}
+
+.drill-leaderboard-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem;
+}
+
+.drill-leaderboard-filter {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(108, 99, 255, 0.1);
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+}
+
+.drill-leaderboard-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.drill-leaderboard-close:hover {
+  background: var(--bg-hover);
+}
+
+.drill-leaderboard-empty {
+  padding: 2rem 1.25rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.drill-leaderboard-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 0;
+  max-height: 300px;
+}
+
+.drill-leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  background: var(--bg-page);
+  font-size: 0.85rem;
+}
+
+.drill-leaderboard-score {
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 3rem;
+}
+
+.drill-leaderboard-accuracy {
+  font-weight: 600;
+  color: var(--accent);
+  min-width: 2.5rem;
+}
+
+.drill-leaderboard-time {
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.drill-leaderboard-date {
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+}
+
+.drill-leaderboard-start {
+  margin: 1rem 1.25rem 1.25rem;
+}
+
 .watch-practice-prompt {
   display: flex;
   align-items: center;

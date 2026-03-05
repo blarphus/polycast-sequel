@@ -15,6 +15,7 @@ import { CloseIcon, FlameIcon, CheckCircleIcon } from './icons';
 interface Props {
   problems: ConjugationProblem[];
   onExit: () => void;
+  onComplete?: (result: { correctCount: number; total: number; duration: number }) => void;
 }
 
 type FlashState = 'none' | 'correct' | 'incorrect';
@@ -29,7 +30,7 @@ interface DrillAnswer {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function ConjugationDrill({ problems, onExit }: Props) {
+export default function ConjugationDrill({ problems, onExit, onComplete }: Props) {
   const navigate = useNavigate();
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -130,6 +131,14 @@ export default function ConjugationDrill({ problems, onExit }: Props) {
     const secs = duration % 60;
     const incorrectAnswers = answers.filter((a) => !a.correct);
 
+    const handleNewDrill = () => {
+      if (onComplete) {
+        onComplete({ correctCount, total, duration });
+      } else {
+        onExit();
+      }
+    };
+
     return (
       <div className="drill-container">
         <div className="drill-summary">
@@ -176,8 +185,8 @@ export default function ConjugationDrill({ problems, onExit }: Props) {
           )}
 
           <div className="practice-results-actions">
-            <button className="btn btn-primary" onClick={onExit}>
-              New Drill
+            <button className="btn btn-primary" onClick={handleNewDrill}>
+              {onComplete ? 'Back to Tenses' : 'New Drill'}
             </button>
             <button className="btn btn-secondary" onClick={() => navigate('/')}>
               Done

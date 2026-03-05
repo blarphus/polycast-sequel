@@ -14,17 +14,14 @@ import {
   type QuizAnswerResult,
   type QuizSessionResult,
 } from '../api';
-import { generateProblems, getLanguageConfig, type ConjugationProblem, type DrillConfig } from '../data/conjugations';
 import { playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
 import { TargetIcon, BoltIcon, CheckCircleIcon, CloseIcon } from '../components/icons';
-import ConjugationDrill from '../components/ConjugationDrill';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type Phase = 'config' | 'generating' | 'active' | 'feedback' | 'results' | 'drill';
-type PracticeMode = 'quiz' | 'drill';
+type Phase = 'config' | 'generating' | 'active' | 'feedback' | 'results';
 
 interface AnswerRecord {
   questionIndex: number;
@@ -44,11 +41,6 @@ export default function Practice() {
   // Phase state machine
   const [phase, setPhase] = useState<Phase>(videoId ? 'generating' : 'config');
   const [error, setError] = useState('');
-  const [mode, setMode] = useState<PracticeMode>('quiz');
-  const [drillProblems, setDrillProblems] = useState<ConjugationProblem[]>([]);
-  const [selectedTenses, setSelectedTenses] = useState<Set<string>>(new Set());
-  const [verbFilter, setVerbFilter] = useState<'all' | 'regular' | 'irregular'>('all');
-  const [tensesInitialized, setTensesInitialized] = useState(false);
 
   // Quiz data
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -190,17 +182,6 @@ export default function Practice() {
     setWordBankPool((prev) => [...prev, word]);
   }
 
-  // Initialize selected tenses when target language is available
-  useEffect(() => {
-    if (!tensesInitialized && user?.target_language) {
-      const langConfig = getLanguageConfig(user.target_language);
-      if (langConfig) {
-        setSelectedTenses(new Set(langConfig.tenses.map((t) => t.key)));
-        setTensesInitialized(true);
-      }
-    }
-  }, [user?.target_language, tensesInitialized]);
-
   // Focus input when entering active phase
   useEffect(() => {
     if (phase === 'active' && inputRef.current) {
@@ -222,40 +203,6 @@ export default function Practice() {
   // ---------------------------------------------------------------------------
 
   if (phase === 'config') {
-    const langConfig = mode === 'drill' ? getLanguageConfig(user?.target_language ?? '') : null;
-    const canStartDrill = mode !== 'drill' || selectedTenses.size > 0;
-
-    const handleStart = () => {
-      if (mode === 'quiz') {
-        startQuiz();
-      } else {
-        if (selectedTenses.size === 0) {
-          setError('Select at least one tense');
-          return;
-        }
-        setError('');
-        const problems = generateProblems(user?.target_language ?? '', 30, {
-          tenses: [...selectedTenses],
-          irregulars: verbFilter,
-        });
-        if (problems.length === 0) {
-          setError('No conjugation problems match these filters');
-          return;
-        }
-        setDrillProblems(problems);
-        setPhase('drill');
-      }
-    };
-
-    const toggleTense = (key: string) => {
-      setSelectedTenses((prev) => {
-        const next = new Set(prev);
-        if (next.has(key)) next.delete(key);
-        else next.add(key);
-        return next;
-      });
-    };
-
     return (
       <div className="practice-page" onKeyDown={handleKeyDown}>
         <div className="practice-config">
@@ -268,8 +215,8 @@ export default function Practice() {
 
           <div className="practice-mode-cards">
             <button
-              className={`practice-mode-card ${mode === 'quiz' ? 'active' : ''}`}
-              onClick={() => setMode('quiz')}
+              className="practice-mode-card active"
+              onClick={() => startQuiz()}
             >
               <div className="practice-mode-card-icon">
                 <TargetIcon size={28} strokeWidth={1.5} />
@@ -280,8 +227,8 @@ export default function Practice() {
               </div>
             </button>
             <button
-              className={`practice-mode-card ${mode === 'drill' ? 'active' : ''}`}
-              onClick={() => setMode('drill')}
+              className="practice-mode-card"
+              onClick={() => navigate('/practice/drill')}
             >
               <div className="practice-mode-card-icon">
                 <BoltIcon size={28} strokeWidth={1.5} />
@@ -293,42 +240,6 @@ export default function Practice() {
             </button>
           </div>
 
-          {mode === 'drill' && langConfig && (
-            <div className="drill-config">
-              <div className="drill-config-section">
-                <div className="drill-config-label">Tenses</div>
-                <div className="drill-config-chips">
-                  {langConfig.tenses.map((t) => (
-                    <button
-                      key={t.key}
-                      className={`drill-config-chip ${selectedTenses.has(t.key) ? 'selected' : ''}`}
-                      onClick={() => toggleTense(t.key)}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="drill-config-section">
-                <div className="drill-config-label">Verb Type</div>
-                <div className="drill-config-chips">
-                  {(['all', 'regular', 'irregular'] as const).map((v) => (
-                    <button
-                      key={v}
-                      className={`drill-config-chip ${verbFilter === v ? 'selected' : ''}`}
-                      onClick={() => setVerbFilter(v)}
-                    >
-                      {v === 'all' ? 'All Verbs' : v === 'regular' ? 'Regular Only' : 'Irregular Only'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <button className="btn btn-primary" onClick={handleStart} disabled={!canStartDrill}>
-            Start
-          </button>
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>
             Back
           </button>
@@ -349,15 +260,6 @@ export default function Practice() {
           <p>Generating your quiz...</p>
         </div>
       </div>
-    );
-  }
-
-  if (phase === 'drill') {
-    return (
-      <ConjugationDrill
-        problems={drillProblems}
-        onExit={() => setPhase('config')}
-      />
     );
   }
 

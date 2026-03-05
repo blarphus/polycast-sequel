@@ -313,6 +313,55 @@ router.post('/api/practice/sessions/:id/complete', authMiddleware, validate({ pa
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/practice/drill-sessions -- List user's drill sessions
+// ---------------------------------------------------------------------------
+
+router.get('/api/practice/drill-sessions', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, tense_key, verb_filter, question_count, correct_count, duration_seconds, created_at
+       FROM drill_sessions
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [req.userId],
+    );
+    return res.json({ sessions: rows });
+  } catch (err) {
+    req.log.error({ err }, 'Error fetching drill sessions');
+    return res.status(500).json({ error: 'Failed to fetch drill sessions' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/practice/drill-sessions -- Save a completed drill session
+// ---------------------------------------------------------------------------
+
+const drillSessionBody = z.object({
+  tense_key: z.string().min(1).max(30),
+  verb_filter: z.string().min(1).max(15),
+  question_count: z.number().int().min(1).max(100),
+  correct_count: z.number().int().min(0),
+  duration_seconds: z.number().int().min(0),
+});
+
+router.post('/api/practice/drill-sessions', authMiddleware, validate({ body: drillSessionBody }), async (req, res) => {
+  const { tense_key, verb_filter, question_count, correct_count, duration_seconds } = req.body;
+
+  try {
+    const { rows: [row] } = await pool.query(
+      `INSERT INTO drill_sessions (user_id, tense_key, verb_filter, question_count, correct_count, duration_seconds)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [req.userId, tense_key, verb_filter, question_count, correct_count, duration_seconds],
+    );
+    return res.json({ id: row.id });
+  } catch (err) {
+    req.log.error({ err }, 'Error saving drill session');
+    return res.status(500).json({ error: 'Failed to save drill session' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

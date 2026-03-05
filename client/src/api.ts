@@ -869,6 +869,35 @@ export function leaveGroupCall(postId: string) {
   return request<void>(`/group-call/${postId}/leave`, { method: 'POST' });
 }
 
+// ---- Drill Sessions -------------------------------------------------------
+
+export interface DrillSession {
+  id: string;
+  tense_key: string;
+  verb_filter: string;
+  question_count: number;
+  correct_count: number;
+  duration_seconds: number;
+  created_at: string;
+}
+
+export function getDrillSessions() {
+  return request<{ sessions: DrillSession[] }>('/practice/drill-sessions');
+}
+
+export function saveDrillSession(data: {
+  tense_key: string;
+  verb_filter: string;
+  question_count: number;
+  correct_count: number;
+  duration_seconds: number;
+}) {
+  return request<{ id: string }>('/practice/drill-sessions', {
+    method: 'POST',
+    body: data,
+  });
+}
+
 // ---- Practice / Quiz ------------------------------------------------------
 
 export interface QuizQuestion {

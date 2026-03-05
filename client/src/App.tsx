@@ -29,6 +29,7 @@ import Lessons from './pages/Lessons';
 import GroupCall from './pages/GroupCall';
 import ReadArticle from './pages/ReadArticle';
 import Practice from './pages/Practice';
+import DrillPicker from './pages/DrillPicker';
 import IncomingCall from './components/IncomingCall';
 import BottomToolbar from './components/BottomToolbar';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -260,6 +261,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Practice />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/practice/drill"
+          element={
+            <ProtectedRoute>
+              <DrillPicker />
             </ProtectedRoute>
           }
         />
