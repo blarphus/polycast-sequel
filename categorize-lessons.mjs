@@ -1,10 +1,13 @@
 /**
  * categorize-lessons.mjs — Categorize YouTube videos into lesson topics using Gemini.
  *
- * Fetches videos from all channels for a language, sends titles to Gemini,
- * and prints a table showing which videos match each lesson.
+ * Fetches ALL videos from all channels, then sorts each into a category.
+ * Categories start from the lesson list but new ones are created dynamically
+ * when Gemini identifies recurring topics. Non-language-lesson videos (vlogs,
+ * conversations, etc.) are discarded. State is saved after every batch so
+ * the script can be interrupted and resumed.
  *
- * Usage:  node categorize-lessons.mjs [--lang pt]
+ * Usage:  node categorize-lessons.mjs [--lang pt] [--reset]
  *
  * Requires YOUTUBE_API_KEY and GEMINI_API_KEY in .env (or environment).
  */
@@ -32,6 +35,7 @@ const { LESSONS_BY_LANG } = await import(path.join(__dirname, 'server', 'data', 
 // CLI args
 const args = process.argv.slice(2);
 const lang = args.includes('--lang') ? args[args.indexOf('--lang') + 1] : 'pt';
+const reset = args.includes('--reset');
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -80,8 +84,7 @@ async function fetchPlaylistVideos(playlistId, channelName) {
 console.log(`Fetching videos for ${lang} (${channels.length} channels)...\n`);
 
 const allVideos = [];
-for (let ci = 0; ci < channels.length; ci++) {
-  const ch = channels[ci];
+for (const ch of channels) {
   const videos = await fetchPlaylistVideos(ch.uploadsPlaylist, ch.name);
   for (const v of videos) {
     allVideos.push({ ...v, channel: ch.name });
@@ -91,12 +94,87 @@ for (let ci = 0; ci < channels.length; ci++) {
 console.log(`\nTotal: ${allVideos.length} videos\n`);
 
 // ---------------------------------------------------------------------------
-// Step 2: Build prompts in batches and call Gemini
+// Step 2: State management
 // ---------------------------------------------------------------------------
 
-const BATCH_SIZE = 100;
-const lessonList = lessons.map(l => `- ${l.id}: "${l.title}" (${l.level})`).join('\n');
-const lessonIdList = lessons.map(l => l.id);
+const statePath = path.join(__dirname, '.categorization-state.json');
+const outputPath = path.join(__dirname, 'categorized-videos.txt');
+const BATCH_SIZE = 20;
+
+// State shape: { categories: { id: { title, level?, videos: [{title, channel}] } }, uncategorized: [...], removed: [...], processedCount: N }
+let state;
+
+if (!reset && fs.existsSync(statePath)) {
+  state = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+  console.log(`Resuming from saved state: ${state.processedCount}/${allVideos.length} processed\n`);
+} else {
+  // Initialize with lesson categories (empty)
+  const categories = {};
+  for (const l of lessons) {
+    categories[l.id] = { title: l.title, level: l.level, videos: [] };
+  }
+  state = { categories, uncategorized: [], removed: [], processedCount: 0 };
+  if (reset) console.log('Reset: starting fresh.\n');
+}
+
+function saveState() {
+  fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
+}
+
+function writeDocument() {
+  const lines = [];
+  lines.push(`CATEGORIZED VIDEOS -- ${lang.toUpperCase()}`);
+  lines.push('='.repeat(60));
+
+  const catCount = Object.values(state.categories).reduce((s, c) => s + c.videos.length, 0);
+  lines.push(`Processed: ${state.processedCount}/${allVideos.length}`);
+  lines.push(`Categorized: ${catCount}`);
+  lines.push(`Uncategorized: ${state.uncategorized.length}`);
+  lines.push(`Removed (not lessons): ${state.removed.length}`);
+  lines.push('');
+
+  // Sort categories: ones with videos first, sorted by video count descending
+  const sortedCats = Object.entries(state.categories)
+    .filter(([, c]) => c.videos.length > 0)
+    .sort((a, b) => b[1].videos.length - a[1].videos.length);
+
+  for (const [id, cat] of sortedCats) {
+    const levelStr = cat.level ? ` (${cat.level})` : '';
+    lines.push('-'.repeat(60));
+    lines.push(`${cat.title}${levelStr} -- ${cat.videos.length} videos  [${id}]`);
+    lines.push('-'.repeat(60));
+    for (const v of cat.videos) {
+      lines.push(`  - ${v.title}  [${v.channel}]`);
+    }
+    lines.push('');
+  }
+
+  if (state.uncategorized.length > 0) {
+    lines.push('-'.repeat(60));
+    lines.push(`Uncategorized -- ${state.uncategorized.length} videos`);
+    lines.push('-'.repeat(60));
+    for (const v of state.uncategorized) {
+      lines.push(`  - ${v.title}  [${v.channel}]`);
+    }
+    lines.push('');
+  }
+
+  // Empty categories
+  const emptyCats = Object.entries(state.categories).filter(([, c]) => c.videos.length === 0);
+  if (emptyCats.length > 0) {
+    lines.push('-'.repeat(60));
+    lines.push(`Categories with no videos yet:`);
+    lines.push(`  ${emptyCats.map(([, c]) => c.title).join(', ')}`);
+    lines.push('');
+  }
+
+  fs.writeFileSync(outputPath, lines.join('\n'), 'utf-8');
+}
+
+// ---------------------------------------------------------------------------
+// Step 3: Gemini helper
+// ---------------------------------------------------------------------------
+
 const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_API_KEY}`;
 
 function callGemini(prompt) {
@@ -132,44 +210,69 @@ function callGemini(prompt) {
   });
 }
 
-const totalBatches = Math.ceil(allVideos.length / BATCH_SIZE);
-console.log(`Categorizing ${allVideos.length} videos in ${totalBatches} batches of ${BATCH_SIZE} via Gemini...\n`);
+// ---------------------------------------------------------------------------
+// Step 4: Process videos in batches
+// ---------------------------------------------------------------------------
 
-const categorization = [];
+const totalBatches = Math.ceil((allVideos.length - state.processedCount) / BATCH_SIZE);
+const startIndex = state.processedCount;
+
+if (startIndex >= allVideos.length) {
+  console.log('All videos already processed.\n');
+} else {
+  console.log(`Processing ${allVideos.length - startIndex} remaining videos in batches of ${BATCH_SIZE}...\n`);
+}
+
 const overallStart = Date.now();
+let batchNum = 0;
 
-for (let b = 0; b < totalBatches; b++) {
-  const start = b * BATCH_SIZE;
-  const end = Math.min(start + BATCH_SIZE, allVideos.length);
-  const batchVideos = allVideos.slice(start, end);
-  const batchSize = batchVideos.length;
+for (let i = startIndex; i < allVideos.length; i += BATCH_SIZE) {
+  batchNum++;
+  const end = Math.min(i + BATCH_SIZE, allVideos.length);
+  const batchVideos = allVideos.slice(i, end);
 
-  const videoList = batchVideos.map((v, i) => `${i + 1}. "${v.title}" [${v.channel}]`).join('\n');
+  // Build current category list for the prompt
+  const catList = Object.entries(state.categories)
+    .map(([id, c]) => {
+      const levelStr = c.level ? ` (${c.level})` : '';
+      return `- ${id}: "${c.title}"${levelStr}`;
+    })
+    .join('\n');
 
-  const prompt = `You are categorizing YouTube language-learning videos into grammar/topic lessons.
+  const videoList = batchVideos.map((v, idx) => `${idx + 1}. "${v.title}" [${v.channel}]`).join('\n');
 
-Here are the lesson categories for ${lang === 'pt' ? 'Portuguese' : lang}:
-${lessonList}
+  const prompt = `You are categorizing YouTube language-learning videos for ${lang === 'pt' ? 'Portuguese' : lang}.
 
-Here are the videos (numbered, with channel name):
+EXISTING CATEGORIES:
+${catList}
+
+VIDEOS TO CATEGORIZE:
 ${videoList}
 
-For EVERY video, assign it to the single best-matching lesson from the list above. A video matches a lesson if its title suggests it teaches or discusses that grammar point or topic. Be selective - only match videos that are clearly about a lesson topic, not just incidentally mentioning a word. If a video does not clearly match any lesson, assign null.
+For each video, decide ONE of:
 
-Return a JSON array with exactly ${batchSize} elements. Each element is either a lesson ID string (e.g. "ser-estar") or null. The element at index 0 corresponds to video 1, index 1 to video 2, etc.
+1. EXISTING CATEGORY: If the video clearly teaches a topic that matches an existing category, return its category ID.
 
-Valid lesson IDs: ${JSON.stringify(lessonIdList)}
+2. NEW CATEGORY: If the video teaches a language topic that does NOT fit any existing category, BUT seems like a topic that would come up repeatedly and be useful as its own category (e.g. "pronunciation", "vocabulary-food", "numbers", "colors", "slang"), return an object: {"new": "category-id", "title": "Category Title"}. Use lowercase-hyphenated IDs.
 
-Example format: ["ser-estar","present-tense",null,"greetings",null,...]
+3. UNCATEGORIZED: If it's a language-related video but truly a one-off that doesn't fit any category and wouldn't warrant its own, return "uncategorized".
 
-Return ONLY the JSON array, no other text.`;
+4. REMOVE: If it is NOT a language lesson at all (vlogs, personal stories, motivational talks, cooking, interviews/conversations that aren't teaching, channel promos, Q&A about personal life, music commentary), return "remove".
+
+Return a JSON array with exactly ${batchVideos.length} elements. Each element is either:
+- A string category ID (existing)
+- An object {"new": "category-id", "title": "Category Title"} (new category)
+- "uncategorized"
+- "remove"
+
+Return ONLY the JSON array.`;
 
   const batchStart = Date.now();
   const spinner = ['|', '/', '-', '\\'];
   let spinIdx = 0;
   const spinnerInterval = setInterval(() => {
     const elapsed = ((Date.now() - batchStart) / 1000).toFixed(0);
-    process.stdout.write(`\r  ${spinner[spinIdx++ % 4]} Batch ${b + 1}/${totalBatches} (videos ${start + 1}-${end})... ${elapsed}s`);
+    process.stdout.write(`\r  ${spinner[spinIdx++ % 4]} Batch ${batchNum}/${totalBatches} (videos ${i + 1}-${end})... ${elapsed}s`);
   }, 250);
 
   const geminiData = await callGemini(prompt);
@@ -177,7 +280,7 @@ Return ONLY the JSON array, no other text.`;
   clearInterval(spinnerInterval);
   const batchElapsed = ((Date.now() - batchStart) / 1000).toFixed(1);
   const usage = geminiData.usageMetadata;
-  process.stdout.write(`\r  Batch ${b + 1}/${totalBatches} done in ${batchElapsed}s`);
+  process.stdout.write(`\r  Batch ${batchNum}/${totalBatches} done in ${batchElapsed}s`);
   if (usage) {
     process.stdout.write(` (${usage.promptTokenCount?.toLocaleString()} in, ${usage.candidatesTokenCount?.toLocaleString()} out)`);
   }
@@ -185,7 +288,7 @@ Return ONLY the JSON array, no other text.`;
 
   const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!rawText) {
-    console.error(`\nNo response from Gemini for batch ${b + 1}:`, JSON.stringify(geminiData, null, 2));
+    console.error(`\nNo response from Gemini for batch ${batchNum}:`, JSON.stringify(geminiData, null, 2));
     process.exit(1);
   }
 
@@ -197,92 +300,64 @@ Return ONLY the JSON array, no other text.`;
     if (jsonMatch) {
       batchResult = JSON.parse(jsonMatch[1].trim());
     } else {
-      console.error(`\nFailed to parse Gemini response for batch ${b + 1}. Raw text:`);
+      console.error(`\nFailed to parse Gemini response for batch ${batchNum}. Raw text:`);
       console.error(rawText.slice(0, 2000));
       process.exit(1);
     }
   }
 
   if (!Array.isArray(batchResult)) {
-    console.error(`\nExpected array from Gemini batch ${b + 1}, got:`, typeof batchResult);
+    console.error(`\nExpected array from Gemini batch ${batchNum}, got:`, typeof batchResult);
     process.exit(1);
   }
 
-  if (batchResult.length !== batchSize) {
-    console.warn(`  Warning: batch ${b + 1} returned ${batchResult.length} entries, expected ${batchSize}`);
+  // Process results
+  let newCats = 0;
+  for (let j = 0; j < batchVideos.length; j++) {
+    const video = { title: batchVideos[j].title, channel: batchVideos[j].channel };
+    const result = j < batchResult.length ? batchResult[j] : 'uncategorized';
+
+    if (result === 'remove') {
+      state.removed.push(video);
+    } else if (result === 'uncategorized') {
+      state.uncategorized.push(video);
+    } else if (typeof result === 'object' && result.new) {
+      // New category
+      const catId = result.new;
+      if (!state.categories[catId]) {
+        state.categories[catId] = { title: result.title, videos: [] };
+        newCats++;
+      }
+      state.categories[catId].videos.push(video);
+    } else if (typeof result === 'string' && state.categories[result]) {
+      state.categories[result].videos.push(video);
+    } else if (typeof result === 'string') {
+      // Gemini returned a category ID that doesn't exist yet — create it
+      state.categories[result] = { title: result.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), videos: [video] };
+      newCats++;
+    } else {
+      state.uncategorized.push(video);
+    }
   }
 
-  categorization.push(...batchResult);
+  state.processedCount = end;
+
+  if (newCats > 0) {
+    console.log(`    + ${newCats} new categor${newCats === 1 ? 'y' : 'ies'} created`);
+  }
+
+  // Save state and document after every batch
+  saveState();
+  writeDocument();
 }
 
 const totalElapsed = ((Date.now() - overallStart) / 1000).toFixed(1);
-console.log(`\nAll batches complete in ${totalElapsed}s\n`);
+const catCount = Object.values(state.categories).reduce((s, c) => s + c.videos.length, 0);
+const totalCats = Object.keys(state.categories).length;
 
-// ---------------------------------------------------------------------------
-// Step 3: Validate and transform flat array → grouped results
-// ---------------------------------------------------------------------------
-
-if (!Array.isArray(categorization)) {
-  console.error('Expected a JSON array from Gemini, got:', typeof categorization);
-  process.exit(1);
-}
-
-if (categorization.length !== allVideos.length) {
-  console.warn(`Warning: Gemini returned ${categorization.length} entries, expected ${allVideos.length}`);
-}
-
-// Group videos by lesson ID
-const lessonToVideos = {};
-const uncategorized = [];
-let categorizedCount = 0;
-
-for (let i = 0; i < allVideos.length; i++) {
-  const lessonId = i < categorization.length ? categorization[i] : null;
-  const video = allVideos[i];
-  const entry = { num: i + 1, title: video.title, channel: video.channel };
-
-  if (lessonId && lessonIdList.includes(lessonId)) {
-    if (!lessonToVideos[lessonId]) lessonToVideos[lessonId] = [];
-    lessonToVideos[lessonId].push(entry);
-    categorizedCount++;
-  } else {
-    uncategorized.push(entry);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Step 4: Print results
-// ---------------------------------------------------------------------------
-
-const matchedLessonIds = new Set(Object.keys(lessonToVideos));
-const unmatchedLessons = [];
-
-for (const lesson of lessons) {
-  const videos = lessonToVideos[lesson.id];
-  if (!videos || videos.length === 0) {
-    unmatchedLessons.push(lesson.title);
-    continue;
-  }
-
-  console.log(`=== ${lesson.title} (${lesson.level}) — ${videos.length} videos ===`);
-  for (const v of videos) {
-    console.log(`  ${v.num}. "${v.title}" -- ${v.channel}`);
-  }
-  console.log('');
-}
-
-if (uncategorized.length > 0) {
-  console.log(`=== Uncategorized — ${uncategorized.length} videos ===`);
-  for (const v of uncategorized) {
-    console.log(`  ${v.num}. "${v.title}" -- ${v.channel}`);
-  }
-  console.log('');
-}
-
-if (unmatchedLessons.length > 0) {
-  console.log(`=== Lessons with no matches ===`);
-  console.log(`  ${unmatchedLessons.join(', ')}`);
-  console.log('');
-}
-
-console.log(`Done. ${categorizedCount}/${allVideos.length} videos categorized. ${matchedLessonIds.size}/${lessons.length} lessons have matches.`);
+console.log(`\nDone in ${totalElapsed}s.`);
+console.log(`  ${catCount} videos in ${totalCats} categories`);
+console.log(`  ${state.uncategorized.length} uncategorized`);
+console.log(`  ${state.removed.length} removed (not lessons)`);
+console.log(`\nResults: ${outputPath}`);
+console.log(`State:   ${statePath}`);
