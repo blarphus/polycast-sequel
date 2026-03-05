@@ -168,9 +168,17 @@ export default function DrillPicker() {
                     >
                       <span className="drill-picker-card-label">{vf.label}</span>
                       {best && (
-                        <span className="drill-picker-card-best">
-                          {best.correct_count}/{best.question_count}
-                        </span>
+                        <>
+                          <div className="drill-picker-card-progress">
+                            <div
+                              className="drill-picker-card-progress-fill"
+                              style={{ width: `${Math.round((best.correct_count / best.question_count) * 100)}%` }}
+                            />
+                          </div>
+                          <span className="drill-picker-card-progress-label">
+                            {Math.round((best.correct_count / best.question_count) * 100)}%
+                          </span>
+                        </>
                       )}
                     </button>
                   );
