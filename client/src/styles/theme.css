@@ -171,6 +171,11 @@
   color: #fbbf24;
 }
 
+[data-theme="dark"] .toolbar-tab--yellow.active {
+  background: rgba(234, 179, 8, 0.15);
+  color: #fde047;
+}
+
 [data-theme="dark"] .toolbar-tab--teal.active {
   background: rgba(20, 184, 166, 0.15);
   color: #2dd4bf;

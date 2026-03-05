@@ -4,6 +4,7 @@ import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
 import { enrichWord, fetchWordImage, callGemini, fetchWiktSenses, fetchWiktTranslations } from '../enrichWord.js';
 import { applyEnglishFrequency } from '../lib/englishFrequency.js';
+import { normalizeForms, normalizeLemma } from '../lib/normalizeWordFields.js';
 import { validate } from '../lib/validate.js';
 
 const router = Router();
@@ -62,18 +63,9 @@ Respond with ONLY the JSON object, no other text.`;
   const rawFrequency = typeof parsed.frequency === 'number' ? parsed.frequency : null;
   const { frequency, frequency_count } = applyEnglishFrequency(word, targetLang, rawFrequency);
 
-  // Normalize forms
-  let forms = null;
-  if (parsed.forms) {
-    const formsList = parsed.forms.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-    if (formsList.length > 1) forms = JSON.stringify(formsList);
-  }
-
-  // Normalize lemma
-  let lemma = parsed.lemma?.trim() || null;
-  if (lemma && parsed.part_of_speech === 'verb' && (targetLang === 'en' || targetLang?.startsWith('en-'))) {
-    if (!lemma.startsWith('to ')) lemma = 'to ' + lemma;
-  }
+  // Normalize forms and lemma
+  const forms = normalizeForms(parsed.forms);
+  const lemma = normalizeLemma(parsed.lemma, parsed.part_of_speech, targetLang);
 
   return {
     translation: parsed.translation || '',

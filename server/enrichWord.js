@@ -5,9 +5,10 @@
  */
 
 import { applyEnglishFrequency } from './lib/englishFrequency.js';
+import { normalizeForms, normalizeLemma } from './lib/normalizeWordFields.js';
 import logger from './logger.js';
 
-export const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
+const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
 
 export async function searchPixabay(query, perPage = 3) {
   const pixabayKey = process.env.PIXABAY_API_KEY;
@@ -31,7 +32,7 @@ export async function searchPixabay(query, perPage = 3) {
   return (data.hits || []).map(h => h.webformatURL);
 }
 
-export async function searchWikimedia(query, limit = 5) {
+async function searchWikimedia(query, limit = 5) {
   const params = new URLSearchParams({
     action: 'query',
     generator: 'search',
@@ -132,7 +133,7 @@ export async function callGemini(prompt, generationConfig = {}) {
   return text;
 }
 
-export const WIKT_EDITIONS = new Set([
+const WIKT_EDITIONS = new Set([
   'cs','de','el','en','es','fr','id','it','ja','ko',
   'ku','ms','nl','pl','pt','ru','th','tr','vi','zh',
 ]);
@@ -382,21 +383,9 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
   frequency = englishFreq.frequency;
   const frequency_count = englishFreq.frequency_count;
 
-  // Parse forms from Gemini's comma-separated FORMS field
-  let forms = null;
-  if (geminiFormsRaw) {
-    const formsList = geminiFormsRaw.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-    if (formsList.length > 1) {
-      forms = JSON.stringify(formsList);
-    }
-  }
-
-  // Normalize English verb lemmas to "to [verb]"
-  if (lemma && part_of_speech === 'verb' && (targetLang === 'en' || targetLang?.startsWith('en-'))) {
-    if (!lemma.startsWith('to ')) lemma = 'to ' + lemma;
-  }
-
-  if (!lemma) lemma = null;
+  // Normalize forms and lemma
+  const forms = normalizeForms(geminiFormsRaw);
+  lemma = normalizeLemma(lemma, part_of_speech, targetLang);
 
   // Fetch image: use Gemini's IMAGE_TERM from enrichment, or raw word as last resort
   const imageSearchTerm = geminiImageTerm || word;

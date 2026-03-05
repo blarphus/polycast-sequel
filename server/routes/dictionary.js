@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord as enrichWordHelper, callGemini, searchPixabay, searchAllImages, fetchWiktSenses } from '../enrichWord.js';
+import { enrichWord as enrichWordHelper, callGemini, searchAllImages, fetchWiktSenses } from '../enrichWord.js';
 import { validate } from '../lib/validate.js';
 import { computeNextReview } from '../lib/srsAlgorithm.js';
 
