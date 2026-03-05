@@ -405,6 +405,50 @@
   color: #f87171;
 }
 
+/* ---- Mode selector cards (dark) ----------------------------------------- */
+
+[data-theme="dark"] .practice-mode-card {
+  background: var(--bg-surface);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .practice-mode-card:hover {
+  border-color: var(--accent);
+  background: rgba(108, 99, 255, 0.08);
+}
+
+[data-theme="dark"] .practice-mode-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.25), 0 2px 12px rgba(108, 99, 255, 0.15);
+  background: rgba(108, 99, 255, 0.1);
+}
+
+/* ---- Conjugation drill (dark) ------------------------------------------- */
+
+[data-theme="dark"] .drill-container {
+  background: linear-gradient(160deg, #1a1a2e 0%, #0f0f0f 40%, #131320 100%);
+}
+
+[data-theme="dark"] .drill-container.drill-flash-correct {
+  background: linear-gradient(160deg, #0f2a1a 0%, #0a1f12 40%, #0f1f18 100%);
+}
+
+[data-theme="dark"] .drill-container.drill-flash-incorrect {
+  background: linear-gradient(160deg, #2a0f0f 0%, #1f0a0a 40%, #1f0f0f 100%);
+}
+
+[data-theme="dark"] .drill-score-correct {
+  color: #4ade80;
+}
+
+[data-theme="dark"] .drill-score-incorrect {
+  color: #f87171;
+}
+
+[data-theme="dark"] .drill-expected {
+  color: #f87171;
+}
+
 /* ---- Dark theme sidebar -------------------------------------------------- */
 
 @media (min-width: 769px) {

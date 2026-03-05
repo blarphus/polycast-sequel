@@ -10,18 +10,22 @@ import {
   createQuizSession,
   submitQuizAnswer,
   completeQuizSession,
+  generateConjugationDrill,
   type QuizQuestion,
   type QuizAnswerResult,
   type QuizSessionResult,
+  type ConjugationProblem,
 } from '../api';
 import { playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
-import { TargetIcon, CheckCircleIcon, CloseIcon } from '../components/icons';
+import { TargetIcon, BoltIcon, CheckCircleIcon, CloseIcon } from '../components/icons';
+import ConjugationDrill from '../components/ConjugationDrill';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type Phase = 'config' | 'generating' | 'active' | 'feedback' | 'results';
+type Phase = 'config' | 'generating' | 'active' | 'feedback' | 'results' | 'drill-generating' | 'drill';
+type PracticeMode = 'quiz' | 'drill';
 
 interface AnswerRecord {
   questionIndex: number;
@@ -41,6 +45,8 @@ export default function Practice() {
   // Phase state machine
   const [phase, setPhase] = useState<Phase>(videoId ? 'generating' : 'config');
   const [error, setError] = useState('');
+  const [mode, setMode] = useState<PracticeMode>('quiz');
+  const [drillProblems, setDrillProblems] = useState<ConjugationProblem[]>([]);
 
   // Quiz data
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -203,17 +209,63 @@ export default function Practice() {
   // ---------------------------------------------------------------------------
 
   if (phase === 'config') {
+    const handleStart = async () => {
+      if (mode === 'quiz') {
+        startQuiz();
+      } else {
+        setPhase('drill-generating');
+        setError('');
+        try {
+          const { problems } = await generateConjugationDrill();
+          setDrillProblems(problems);
+          setPhase('drill');
+        } catch (err: any) {
+          console.error('Failed to generate drill:', err);
+          setError(err.message);
+          setPhase('config');
+        }
+      }
+    };
+
     return (
       <div className="practice-page" onKeyDown={handleKeyDown}>
         <div className="practice-config">
           <div className="practice-config-icon">
             <TargetIcon size={48} strokeWidth={1.5} />
           </div>
-          <h2>Practice Quiz</h2>
-          <p>Test your knowledge with a mix of conjugation, grammar, and translation questions.</p>
+          <h2>Practice</h2>
+          <p>Choose your practice mode</p>
           {error && <p className="practice-error">{error}</p>}
-          <button className="btn btn-primary" onClick={() => startQuiz()}>
-            Start Practice
+
+          <div className="practice-mode-cards">
+            <button
+              className={`practice-mode-card ${mode === 'quiz' ? 'active' : ''}`}
+              onClick={() => setMode('quiz')}
+            >
+              <div className="practice-mode-card-icon">
+                <TargetIcon size={28} strokeWidth={1.5} />
+              </div>
+              <div className="practice-mode-card-title">Mixed Quiz</div>
+              <div className="practice-mode-card-desc">
+                10 questions: conjugation, grammar, translation.
+              </div>
+            </button>
+            <button
+              className={`practice-mode-card ${mode === 'drill' ? 'active' : ''}`}
+              onClick={() => setMode('drill')}
+            >
+              <div className="practice-mode-card-icon">
+                <BoltIcon size={28} strokeWidth={1.5} />
+              </div>
+              <div className="practice-mode-card-title">Conjugation Drill</div>
+              <div className="practice-mode-card-desc">
+                Fast-paced verb drill. Type conjugations, instant feedback.
+              </div>
+            </button>
+          </div>
+
+          <button className="btn btn-primary" onClick={handleStart}>
+            Start
           </button>
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>
             Back
@@ -235,6 +287,26 @@ export default function Practice() {
           <p>Generating your quiz...</p>
         </div>
       </div>
+    );
+  }
+
+  if (phase === 'drill-generating') {
+    return (
+      <div className="practice-page">
+        <div className="practice-generating">
+          <div className="loading-spinner" />
+          <p>Generating conjugation drill...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === 'drill') {
+    return (
+      <ConjugationDrill
+        problems={drillProblems}
+        onExit={() => setPhase('config')}
+      />
     );
   }
 

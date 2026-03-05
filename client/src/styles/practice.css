@@ -456,6 +456,229 @@
    Watch page practice prompt
    --------------------------------------------------------------------------- */
 
+/* ---------------------------------------------------------------------------
+   Mode selector cards
+   --------------------------------------------------------------------------- */
+
+.practice-mode-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.practice-mode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.25rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.practice-mode-card:hover {
+  border-color: var(--accent);
+  background: rgba(108, 99, 255, 0.03);
+}
+
+.practice-mode-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15), 0 2px 8px rgba(108, 99, 255, 0.1);
+  background: rgba(108, 99, 255, 0.05);
+}
+
+.practice-mode-card-icon {
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+}
+
+.practice-mode-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.4rem;
+}
+
+.practice-mode-card-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ---------------------------------------------------------------------------
+   Conjugation drill
+   --------------------------------------------------------------------------- */
+
+.drill-container {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: linear-gradient(160deg, #fef9c3 0%, #f5f5f7 40%, #f0f0f5 100%);
+  position: relative;
+  transition: background 0.3s ease;
+}
+
+.drill-container.drill-flash-correct {
+  background: linear-gradient(160deg, #bbf7d0 0%, #dcfce7 40%, #f0fdf4 100%);
+}
+
+.drill-container.drill-flash-incorrect {
+  background: linear-gradient(160deg, #fecaca 0%, #fee2e2 40%, #fef2f2 100%);
+}
+
+/* Score bar */
+.drill-score-bar {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  background: var(--bg-surface);
+  padding: 0.4rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.drill-score-correct {
+  color: #16a34a;
+}
+
+.drill-score-divider {
+  color: var(--text-secondary);
+  margin: 0 0.1rem;
+}
+
+.drill-score-total {
+  color: var(--text-primary);
+}
+
+.drill-score-streak {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: 0.75rem;
+  color: #f59e0b;
+}
+
+/* Question area */
+.drill-question {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.drill-infinitive {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.drill-tense {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(108, 99, 255, 0.1);
+  padding: 0.25rem 0.85rem;
+  border-radius: 999px;
+  margin-bottom: 0.5rem;
+}
+
+.drill-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.drill-pronoun {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.drill-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-size: 1.2rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  outline: none;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+
+.drill-input:focus {
+  border-color: var(--accent);
+}
+
+.drill-input.correct {
+  border-color: #4ade80;
+}
+
+.drill-input.incorrect {
+  border-color: #ef4444;
+}
+
+.drill-expected {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #dc2626;
+  margin-top: 0.25rem;
+}
+
+/* Progress counter */
+.drill-progress {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Drill summary (reuses practice results classes) */
+.drill-summary {
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  max-height: calc(100dvh - 100px);
+  overflow-y: auto;
+}
+
+.drill-summary h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.drill-summary h3 {
+  text-align: left;
+}
+
+/* ---------------------------------------------------------------------------
+   Watch page practice prompt
+   --------------------------------------------------------------------------- */
+
 .watch-practice-prompt {
   display: flex;
   align-items: center;

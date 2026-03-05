@@ -147,3 +147,9 @@
     max-height: 300px;
   }
 }
+
+@media (max-width: 420px) {
+  .practice-mode-cards {
+    grid-template-columns: 1fr;
+  }
+}

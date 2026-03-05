@@ -423,6 +423,14 @@ export function TargetIcon(props: IconProps = {}) {
   );
 }
 
+export function FlameIcon(props: IconProps = {}) {
+  return (
+    <svg {...defaults(props)}>
+      <path d="M12 22c-4.97 0-7-3.58-7-7 0-4 3.5-7.5 4-10.5 1.5 2 2.5 3.5 2.5 5.5 1-1.5 1.5-3.5 1.5-5.5C15 7 18 10.5 18 15c0 3.42-2.03 7-6 7z" />
+    </svg>
+  );
+}
+
 export function TapIcon(props: IconProps = {}) {
   return (
     <svg {...defaults(props)}>

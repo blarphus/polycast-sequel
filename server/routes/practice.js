@@ -313,6 +313,64 @@ router.post('/api/practice/sessions/:id/complete', authMiddleware, validate({ pa
 });
 
 // ---------------------------------------------------------------------------
+// POST /api/practice/conjugations -- Generate conjugation drill batch
+// ---------------------------------------------------------------------------
+
+const conjugationBody = z.object({
+  count: z.number().int().min(10).max(50).optional(),
+});
+
+router.post('/api/practice/conjugations', authMiddleware, validate({ body: conjugationBody }), async (req, res) => {
+  const { count = 30 } = req.body;
+
+  try {
+    const { rows: [userRow] } = await pool.query(
+      'SELECT native_language, target_language, cefr_level FROM users WHERE id = $1',
+      [req.userId],
+    );
+    if (!userRow) return res.status(404).json({ error: 'User not found' });
+
+    const { native_language, target_language, cefr_level } = userRow;
+
+    // Fetch user's saved verbs for personalization
+    const { rows: savedVerbs } = await pool.query(
+      `SELECT DISTINCT word, lemma
+       FROM saved_words
+       WHERE user_id = $1 AND target_language = $2
+         AND part_of_speech ILIKE '%verb%'
+       ORDER BY created_at DESC LIMIT 30`,
+      [req.userId, target_language],
+    );
+
+    const prompt = buildConjugationPrompt({
+      nativeLang: native_language,
+      targetLang: target_language,
+      cefrLevel: cefr_level,
+      count,
+      savedVerbs,
+    });
+
+    const raw = await callGemini(prompt, {
+      thinkingConfig: { thinkingBudget: 0 },
+      maxOutputTokens: 4000,
+      responseMimeType: 'application/json',
+    });
+
+    const problems = JSON.parse(raw);
+
+    if (!Array.isArray(problems) || problems.length === 0) {
+      logger.error('Gemini returned invalid conjugation format: %s', raw.slice(0, 500));
+      return res.status(500).json({ error: 'Failed to generate conjugation drill' });
+    }
+
+    return res.json({ problems });
+  } catch (err) {
+    req.log.error({ err }, 'Error generating conjugation drill');
+    return res.status(500).json({ error: 'Failed to generate conjugation drill' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -346,6 +404,34 @@ Each question object must have exactly these fields:
 - "hint": a short hint (optional, can be empty string)
 - "saved_word_id": UUID string or null
 
+Respond with ONLY the JSON array, no other text.`;
+}
+
+function buildConjugationPrompt({ nativeLang, targetLang, cefrLevel, count, savedVerbs }) {
+  const cefrNote = cefrLevel ? `The student's level is ${cefrLevel}.` : '';
+
+  let verbContext = '';
+  if (savedVerbs.length > 0) {
+    const verbs = savedVerbs.map((v) => v.lemma || v.word).join(', ');
+    verbContext = `\nInclude some of these verbs the student is learning: ${verbs}\nAlso include common verbs for variety.\n`;
+  }
+
+  return `You are a conjugation drill generator for a ${targetLang} learner whose native language is ${nativeLang}. ${cefrNote}
+
+Generate exactly ${count} conjugation problems as a JSON array. Each object must have:
+- "infinitive": the verb infinitive in ${targetLang}
+- "tense": tense name in ${nativeLang} (e.g. "present", "past", "future")
+- "tense_target": tense name in ${targetLang}
+- "pronoun": subject pronoun in ${targetLang} (e.g. "yo", "je", "ich")
+- "expected": the correct conjugated verb form (just the verb, not the pronoun)
+
+Rules:
+- Use tenses appropriate for the student's level
+- Mix different pronouns and tenses
+- Include common irregular verbs
+- Each "expected" must be exactly one correct form (the most standard form)
+- Do NOT include the pronoun in "expected", only the conjugated verb
+${verbContext}
 Respond with ONLY the JSON array, no other text.`;
 }
 

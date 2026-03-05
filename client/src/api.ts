@@ -932,3 +932,22 @@ export function completeQuizSession(sessionId: string) {
     method: 'POST',
   });
 }
+
+// ---- Conjugation Drill ----------------------------------------------------
+
+export interface ConjugationProblem {
+  infinitive: string;
+  tense: string;
+  tense_target: string;
+  pronoun: string;
+  expected: string;
+}
+
+export function generateConjugationDrill(count?: number) {
+  const body: Record<string, unknown> = {};
+  if (count) body.count = count;
+  return request<{ problems: ConjugationProblem[] }>('/practice/conjugations', {
+    method: 'POST',
+    body,
+  });
+}
