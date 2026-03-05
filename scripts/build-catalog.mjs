@@ -137,36 +137,38 @@ for (let i = 0; i < allYouTubeVideos.length; i += BATCH_SIZE) {
 console.log('\n');
 
 // ---------------------------------------------------------------------------
-// Step 3.5: Detect YouTube Shorts via oEmbed dimensions
+// Step 3.5: Detect YouTube Shorts via innertube player API dimensions
 // ---------------------------------------------------------------------------
 
-console.log('Detecting YouTube Shorts via oEmbed...\n');
+console.log('Detecting YouTube Shorts via innertube player API...\n');
 
+const INNERTUBE_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
 const shortsSet = new Set();
-const OEMBED_BATCH = 10; // concurrent requests to avoid rate-limiting
+const SHORTS_CONCURRENCY = 10;
 
-for (let i = 0; i < allYouTubeVideos.length; i += OEMBED_BATCH) {
-  const batch = allYouTubeVideos.slice(i, i + OEMBED_BATCH);
+for (let i = 0; i < allYouTubeVideos.length; i += SHORTS_CONCURRENCY) {
+  const batch = allYouTubeVideos.slice(i, i + SHORTS_CONCURRENCY);
 
   const results = await Promise.allSettled(batch.map(async (v) => {
-    try {
-      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${v.id}&format=json`;
-      const res = await fetch(oembedUrl);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.height && data.width && data.height > data.width) {
-          return v.id;
-        }
-        return null;
-      }
-      // oEmbed failed — fall back to /shorts/ redirect check
-      const shortsRes = await fetch(`https://www.youtube.com/shorts/${v.id}`, { redirect: 'manual' });
-      // 200 = Short, 303 = not a Short
-      if (shortsRes.status === 200) return v.id;
-      return null;
-    } catch {
-      return null;
+    const res = await fetch(
+      `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: { client: { clientName: 'IOS', clientVersion: '20.10.4' } },
+          videoId: v.id,
+        }),
+      },
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const formats = data?.streamingData?.adaptiveFormats || [];
+    for (const fmt of formats) {
+      if (fmt.width && fmt.height && fmt.height > fmt.width) return v.id;
+      if (fmt.width && fmt.height) return null;
     }
+    return null;
   }));
 
   for (const r of results) {
@@ -175,7 +177,7 @@ for (let i = 0; i < allYouTubeVideos.length; i += OEMBED_BATCH) {
     }
   }
 
-  process.stdout.write(`\r  Checked: ${Math.min(i + OEMBED_BATCH, allYouTubeVideos.length)}/${allYouTubeVideos.length} (${shortsSet.size} Shorts found)`);
+  process.stdout.write(`\r  Checked: ${Math.min(i + SHORTS_CONCURRENCY, allYouTubeVideos.length)}/${allYouTubeVideos.length} (${shortsSet.size} Shorts found)`);
 }
 
 console.log('\n');

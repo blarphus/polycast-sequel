@@ -9,7 +9,7 @@ import { getLessonVideos, TrendingVideo } from '../api';
 import { ChevronLeftIcon } from '../components/icons';
 import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
 import { useVideoClick } from '../hooks/useVideoClick';
-import { filterUnplayableVideos } from '../utils/playabilityFilter';
+
 
 export default function Lesson() {
   const { id } = useParams<{ id: string }>();
@@ -37,7 +37,6 @@ export default function Lesson() {
         setLessonTitle(data.lesson.title);
         setLessonLevel(data.lesson.level);
         setVideos(data.videos);
-        filterUnplayableVideos(data.videos, setVideos);
       })
       .catch((err) => {
         console.error('Failed to fetch lesson videos:', err);
