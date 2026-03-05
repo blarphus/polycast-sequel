@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import * as api from '../../api';
-import type { TemplateSummary } from '../../api';
+import type { TemplateSummary, StreamPostWord } from '../../api';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
 
 const THUMBS_PER_PAGE = 4;
 
 interface Props {
-  onSelect: (data: { title: string; words: (string | Record<string, unknown>)[]; language: string }) => void;
+  onSelect: (data: { title: string; words: (string | StreamPostWord)[]; language: string }) => void;
   onClose: () => void;
 }
 

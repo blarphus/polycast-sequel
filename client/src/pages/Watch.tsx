@@ -369,7 +369,7 @@ export default function Watch() {
               ref={transcriptRef}
               onScroll={handleTranscriptScroll}
             >
-              {video.transcript.map((seg, i) => (
+              {video.transcript?.map((seg, i) => (
                 <div
                   key={i}
                   ref={(el) => { segmentRefs.current[i] = el; }}

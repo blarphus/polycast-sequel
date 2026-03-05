@@ -34,7 +34,7 @@ export default function WordListTab({
   const [defPickerIdx, setDefPickerIdx] = useState<number | null>(null);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
-  const handleTemplateSelect = async (data: { title: string; words: (string | Record<string, unknown>)[]; language: string }) => {
+  const handleTemplateSelect = async (data: { title: string; words: (string | StreamPostWord)[]; language: string }) => {
     setTitle(data.title);
     setTargetLang(data.language);
     setShowTemplatePicker(false);
@@ -42,18 +42,18 @@ export default function WordListTab({
     // Pre-enriched template: words are objects with a translation field
     const firstWord = data.words[0];
     if (typeof firstWord === 'object' && firstWord !== null && 'translation' in firstWord) {
-      const rawWords = data.words as Record<string, unknown>[];
+      type TemplateWord = StreamPostWord & { translations?: Record<string, Record<string, string>> };
+      const rawWords = data.words as TemplateWord[];
       const isNonEnglish = !!(nativeLang && nativeLang !== 'en' && !nativeLang.startsWith('en-'));
 
       // Use pre-computed translations when available (e.g. pt, es)
       const allPrecomputed = isNonEnglish && rawWords.every(w => {
-        const txMap = w.translations as Record<string, Record<string, string>> | undefined;
-        return txMap?.[nativeLang]?.translation;
+        return w.translations?.[nativeLang]?.translation;
       });
 
       const enriched: StreamPostWord[] = rawWords.map((w, i) => {
         const pre = isNonEnglish
-          ? (w.translations as Record<string, Record<string, string>> | undefined)?.[nativeLang]
+          ? w.translations?.[nativeLang]
           : null;
         return {
           id: `tpl-${i}`,
