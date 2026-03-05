@@ -10,7 +10,7 @@ import { getVideo, retryVideoTranscript, fetchTranscriptFromWorker, uploadTransc
 import TokenizedText from '../components/TokenizedText';
 import WordPopup from '../components/WordPopup';
 import { PopupState } from '../textTokens';
-import { ArrowDownIcon } from '../components/icons';
+import { ArrowDownIcon, TargetIcon } from '../components/icons';
 
 // Minimal YT IFrame API type declarations
 declare global {
@@ -62,6 +62,7 @@ export default function Watch() {
   const [retryingTranscript, setRetryingTranscript] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [clientFetching, setClientFetching] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
 
   const playerRef = useRef<YT.Player | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -172,6 +173,10 @@ export default function Watch() {
           onStateChange: (e) => {
             if (e.data === window.YT.PlayerState.PLAYING) {
               startPolling();
+              setVideoEnded(false);
+            } else if (e.data === window.YT.PlayerState.ENDED) {
+              stopPolling();
+              setVideoEnded(true);
             } else {
               stopPolling();
             }
@@ -407,6 +412,17 @@ export default function Watch() {
           </div>
         )}
       </div>
+
+      {/* Practice prompt (shown when video ends) */}
+      {videoEnded && video && video.transcript_status === 'ready' && (
+        <div className="watch-practice-prompt">
+          <TargetIcon size={20} />
+          <p>Ready to practice?</p>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate(`/practice/${video.id}`)}>
+            Start Quiz
+          </button>
+        </div>
+      )}
 
       {/* Word popup */}
       {popup && user && (

@@ -28,6 +28,7 @@ import Lesson from './pages/Lesson';
 import Lessons from './pages/Lessons';
 import GroupCall from './pages/GroupCall';
 import ReadArticle from './pages/ReadArticle';
+import Practice from './pages/Practice';
 import IncomingCall from './components/IncomingCall';
 import BottomToolbar from './components/BottomToolbar';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -251,6 +252,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ReadArticle />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/practice"
+          element={
+            <ProtectedRoute>
+              <Practice />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/practice/:videoId"
+          element={
+            <ProtectedRoute>
+              <Practice />
             </ProtectedRoute>
           }
         />

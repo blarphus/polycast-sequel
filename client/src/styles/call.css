@@ -649,6 +649,11 @@
   color: #f59e0b;
 }
 
+.toolbar-tab--yellow.active {
+  background: rgba(234, 179, 8, 0.1);
+  color: #ca8a04;
+}
+
 .toolbar-tab--teal.active {
   background: rgba(20, 184, 166, 0.1);
   color: #14b8a6;

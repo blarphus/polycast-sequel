@@ -413,6 +413,16 @@ export function PlayCircleIcon(props: IconProps = {}) {
   );
 }
 
+export function TargetIcon(props: IconProps = {}) {
+  return (
+    <svg {...defaults(props)}>
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
+    </svg>
+  );
+}
+
 export function TapIcon(props: IconProps = {}) {
   return (
     <svg {...defaults(props)}>
