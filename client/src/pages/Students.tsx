@@ -3,12 +3,29 @@
 // ---------------------------------------------------------------------------
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { useActiveClassroom } from '../hooks/useActiveClassroom';
 import * as api from '../api';
-import type { ClassroomStudent, UserResult } from '../api';
+import type { Classroom, ClassroomStudent, UserResult } from '../api';
+import ClassroomPicker from '../components/classroom/ClassroomPicker';
+import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
 
 export default function Students() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isTeacher = user?.account_type === 'teacher';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const classroomIdParam = searchParams.get('classroomId');
+  const {
+    classrooms,
+    activeClassroom,
+    activeClassroomId,
+    setActiveClassroomId,
+    loading: classroomsLoading,
+    error: classroomsError,
+    reloadClassrooms,
+  } = useActiveClassroom(classroomIdParam);
   const [roster, setRoster] = useState<ClassroomStudent[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserResult[]>([]);
@@ -17,9 +34,29 @@ export default function Students() {
   const [error, setError] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Fetch classroom roster on mount
   useEffect(() => {
-    api.getClassroomStudents()
+    if (!activeClassroomId) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('classroomId', activeClassroomId);
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [activeClassroomId, searchParams, setSearchParams]);
+
+  // Fetch classroom roster on classroom change
+  useEffect(() => {
+    setError('');
+    setSearchQuery('');
+    setSearchResults([]);
+    if (!activeClassroomId) {
+      setRoster([]);
+      setAddedIds(new Set());
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    api.getClassroomStudents(activeClassroomId)
       .then((students) => {
         setRoster(students);
         setAddedIds(new Set(students.map((s) => s.id)));
@@ -29,7 +66,7 @@ export default function Students() {
         setError('Failed to load students');
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [activeClassroomId]);
 
   // Debounced search
   const handleSearch = useCallback((query: string) => {
@@ -52,11 +89,12 @@ export default function Students() {
   }, []);
 
   const handleAdd = async (studentId: string) => {
+    if (!activeClassroomId) return;
     try {
-      await api.addClassroomStudent(studentId);
+      await api.addClassroomStudent(activeClassroomId, studentId);
       setAddedIds((prev) => new Set(prev).add(studentId));
       // Refresh roster
-      const updated = await api.getClassroomStudents();
+      const updated = await api.getClassroomStudents(activeClassroomId);
       setRoster(updated);
     } catch (err) {
       console.error('Failed to add student:', err);
@@ -64,8 +102,9 @@ export default function Students() {
   };
 
   const handleRemove = async (studentId: string) => {
+    if (!activeClassroomId) return;
     try {
-      await api.removeClassroomStudent(studentId);
+      await api.removeClassroomStudent(activeClassroomId, studentId);
       setRoster((prev) => prev.filter((s) => s.id !== studentId));
       setAddedIds((prev) => {
         const next = new Set(prev);
@@ -77,24 +116,47 @@ export default function Students() {
     }
   };
 
+  const handleClassroomUpdated = async (updatedClassroom: Classroom) => {
+    await reloadClassrooms();
+    setActiveClassroomId(updatedClassroom.id);
+  };
+
   return (
     <div className="students-page">
       <div className="students-header">
-        <h1 className="students-title">Students</h1>
+        <div className="students-header-main">
+          <div>
+            <h1 className="students-title">Students</h1>
+            <Link className="classwork-manage-link" to="/classes">Manage classes</Link>
+          </div>
+          <ClassroomPicker
+            classrooms={classrooms}
+            value={activeClassroomId}
+            onChange={setActiveClassroomId}
+            label="Class"
+          />
+        </div>
       </div>
+
+      {classroomsError && <div className="auth-error">{classroomsError}</div>}
+      {activeClassroom?.needs_setup && isTeacher && (
+        <ClassroomSetupBanner classroom={activeClassroom} onUpdated={handleClassroomUpdated} />
+      )}
 
       {/* Search */}
-      <div className="students-search">
-        <input
-          className="form-input"
-          type="text"
-          placeholder="Search for students..."
-          value={searchQuery}
-          onChange={(e) => handleSearch(e.target.value)}
-        />
-      </div>
+      {isTeacher && (
+        <div className="students-search">
+          <input
+            className="form-input"
+            type="text"
+            placeholder="Search for students..."
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+        </div>
+      )}
 
-      {searchQuery.trim() && searchResults.length > 0 && (
+      {isTeacher && searchQuery.trim() && searchResults.length > 0 && (
         <div className="students-search-results">
           {searchResults.map((u) => (
             <div key={u.id} className="students-roster-item">
@@ -117,29 +179,35 @@ export default function Students() {
         </div>
       )}
 
-      {searchQuery.trim() && searchResults.length === 0 && (
+      {isTeacher && searchQuery.trim() && searchResults.length === 0 && (
         <p className="students-empty">No students found</p>
       )}
 
       {/* Roster */}
       <div className="students-section-header">
-        <h2 className="students-section-title">Your Classroom</h2>
+        <h2 className="students-section-title">{activeClassroom?.name || 'Your Classroom'}</h2>
         <span className="students-count">{roster.length}</span>
       </div>
 
       {error && <div className="auth-error">{error}</div>}
 
-      {loading ? (
+      {classroomsLoading || loading ? (
         <div className="loading-screen"><div className="loading-spinner" /></div>
+      ) : !activeClassroom ? (
+        <p className="students-empty">No classroom selected yet.</p>
       ) : roster.length === 0 ? (
-        <p className="students-empty">No students in your classroom yet. Search above to add students.</p>
+        <p className="students-empty">
+          {isTeacher
+            ? 'No students in this class yet. Search above to add students.'
+            : 'No classmates are visible for this class yet.'}
+        </p>
       ) : (
         <div className="students-roster">
           {roster.map((s) => (
             <div
               key={s.id}
               className="students-roster-item students-roster-item--clickable"
-              onClick={() => navigate(`/students/${s.id}`)}
+              onClick={() => navigate(`/students/${s.id}?classroomId=${activeClassroom.id}`)}
             >
               <div className="students-avatar">
                 {(s.display_name || s.username).charAt(0).toUpperCase()}
@@ -149,12 +217,14 @@ export default function Students() {
                 <span className="students-name">{s.display_name || s.username}</span>
                 <span className="students-username">@{s.username}</span>
               </div>
-              <button
-                className="btn btn-small btn-danger"
-                onClick={(e) => { e.stopPropagation(); handleRemove(s.id); }}
-              >
-                Remove
-              </button>
+              {isTeacher && (
+                <button
+                  className="btn btn-small btn-danger"
+                  onClick={(e) => { e.stopPropagation(); handleRemove(s.id); }}
+                >
+                  Remove
+                </button>
+              )}
             </div>
           ))}
         </div>

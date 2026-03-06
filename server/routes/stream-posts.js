@@ -4,6 +4,7 @@ import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
 import { validate } from '../lib/validate.js';
 import { enrichAndInsertWords } from '../services/streamWordService.js';
+import { getClassroomTopics, getLegacyStreamContext } from '../services/classroomService.js';
 
 const router = Router();
 
@@ -22,13 +23,16 @@ const createPostBody = z.object({
   duration_minutes: z.number().optional(),
   recurrence: z.any().optional(),
 });
+const streamQuery = z.object({
+  classroomId: z.string().uuid('Invalid classroom ID').optional(),
+});
 
 // ---------------------------------------------------------------------------
 // GET /api/stream
 // Teachers get their own posts + topics; students get posts + topics from teachers.
 // ---------------------------------------------------------------------------
 
-router.get('/api/stream', authMiddleware, async (req, res) => {
+router.get('/api/stream', authMiddleware, validate({ query: streamQuery }), async (req, res) => {
   try {
     const { rows: userRows } = await pool.query(
       'SELECT account_type FROM users WHERE id = $1',
@@ -36,14 +40,24 @@ router.get('/api/stream', authMiddleware, async (req, res) => {
     );
     if (userRows.length === 0) return res.status(401).json({ error: 'User not found' });
     const isTeacher = userRows[0].account_type === 'teacher';
+    const classroomId = req.query.classroomId;
+    const classroomContext = classroomId
+      ? await getLegacyStreamContext(classroomId, req.userId)
+      : null;
+
+    if (classroomContext && !classroomContext.legacyTeacherId) {
+      const topics = await getClassroomTopics(classroomId);
+      return res.json({ topics, posts: [] });
+    }
 
     let posts;
     let topics;
+    const legacyTeacherId = classroomContext?.legacyTeacherId || null;
 
     if (isTeacher) {
       const { rows: topicRows } = await pool.query(
         'SELECT * FROM stream_topics WHERE teacher_id = $1 ORDER BY position ASC',
-        [req.userId],
+        [legacyTeacherId || req.userId],
       );
       topics = topicRows;
 
@@ -56,40 +70,71 @@ router.get('/api/stream', authMiddleware, async (req, res) => {
          ) wc ON wc.post_id = sp.id
          WHERE sp.teacher_id = $1
          ORDER BY sp.position ASC NULLS LAST, sp.created_at DESC`,
-        [req.userId],
+        [legacyTeacherId || req.userId],
       );
       posts = rows;
     } else {
-      const { rows: topicRows } = await pool.query(
-        `SELECT st.*, COALESCE(u.display_name, u.username) AS teacher_name
-         FROM stream_topics st
-         JOIN users u ON u.id = st.teacher_id
-         WHERE st.teacher_id IN (SELECT teacher_id FROM classroom_students WHERE student_id = $1)
-         ORDER BY st.position ASC`,
-        [req.userId],
-      );
-      topics = topicRows;
+      if (legacyTeacherId) {
+        const { rows: topicRows } = await pool.query(
+          `SELECT st.*, COALESCE(u.display_name, u.username) AS teacher_name
+           FROM stream_topics st
+           JOIN users u ON u.id = st.teacher_id
+           WHERE st.teacher_id = $1
+           ORDER BY st.position ASC`,
+          [legacyTeacherId],
+        );
+        topics = topicRows;
 
-      const { rows } = await pool.query(
-        `SELECT sp.*,
-           COALESCE(wc.cnt, 0)::int AS word_count,
-           u.display_name AS teacher_display_name,
-           u.username AS teacher_username
-         FROM stream_posts sp
-         JOIN users u ON u.id = sp.teacher_id
-         LEFT JOIN (
-           SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
-         ) wc ON wc.post_id = sp.id
-         WHERE sp.teacher_id IN (
-           SELECT teacher_id FROM classroom_students WHERE student_id = $1
-         )
-         ORDER BY sp.position ASC NULLS LAST, sp.created_at DESC`,
-        [req.userId],
-      );
-      posts = rows.map((p) => ({
-        ...p,
-        teacher_name: p.teacher_display_name || p.teacher_username,
-      }));
+        const { rows } = await pool.query(
+          `SELECT sp.*,
+             COALESCE(wc.cnt, 0)::int AS word_count,
+             u.display_name AS teacher_display_name,
+             u.username AS teacher_username
+           FROM stream_posts sp
+           JOIN users u ON u.id = sp.teacher_id
+           LEFT JOIN (
+             SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
+           ) wc ON wc.post_id = sp.id
+           WHERE sp.teacher_id = $1
+           ORDER BY sp.position ASC NULLS LAST, sp.created_at DESC`,
+          [legacyTeacherId],
+        );
+        posts = rows.map((p) => ({
+          ...p,
+          teacher_name: p.teacher_display_name || p.teacher_username,
+        }));
+      } else {
+        const { rows: topicRows } = await pool.query(
+          `SELECT st.*, COALESCE(u.display_name, u.username) AS teacher_name
+           FROM stream_topics st
+           JOIN users u ON u.id = st.teacher_id
+           WHERE st.teacher_id IN (SELECT teacher_id FROM classroom_students WHERE student_id = $1)
+           ORDER BY st.position ASC`,
+          [req.userId],
+        );
+        topics = topicRows;
+
+        const { rows } = await pool.query(
+          `SELECT sp.*,
+             COALESCE(wc.cnt, 0)::int AS word_count,
+             u.display_name AS teacher_display_name,
+             u.username AS teacher_username
+           FROM stream_posts sp
+           JOIN users u ON u.id = sp.teacher_id
+           LEFT JOIN (
+             SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
+           ) wc ON wc.post_id = sp.id
+           WHERE sp.teacher_id IN (
+             SELECT teacher_id FROM classroom_students WHERE student_id = $1
+           )
+           ORDER BY sp.position ASC NULLS LAST, sp.created_at DESC`,
+          [req.userId],
+        );
+        posts = rows.map((p) => ({
+          ...p,
+          teacher_name: p.teacher_display_name || p.teacher_username,
+        }));
+      }
     }
 
     // Fetch words for all word_list posts in one query

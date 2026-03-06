@@ -1,0 +1,418 @@
+import pool from '../db.js';
+import { userToSocket } from '../socket/presence.js';
+import { generateUniqueClassIdentity } from '../lib/classroomIdentity.js';
+
+async function getUserAccountType(userId) {
+  const { rows } = await pool.query(
+    'SELECT account_type FROM users WHERE id = $1',
+    [userId],
+  );
+  return rows[0]?.account_type || null;
+}
+
+function mapClassroomRow(row, roleOverride) {
+  return {
+    id: row.id,
+    name: row.name,
+    section: row.section,
+    subject: row.subject,
+    room: row.room,
+    class_code: row.class_code ?? null,
+    archived: !!row.archived_at,
+    is_default_migrated: !!row.is_default_migrated,
+    needs_setup: !!row.needs_setup,
+    teacher_count: Number(row.teacher_count || 0),
+    student_count: Number(row.student_count || 0),
+    teacher_names: row.teacher_names || [],
+    role: roleOverride || row.role || null,
+  };
+}
+
+async function getTeacherNameAggregateSubquery() {
+  return `
+    SELECT ct.classroom_id,
+           ARRAY_AGG(COALESCE(u.display_name, u.username) ORDER BY COALESCE(u.display_name, u.username)) AS teacher_names
+    FROM classroom_teachers ct
+    JOIN users u ON u.id = ct.teacher_id
+    GROUP BY ct.classroom_id
+  `;
+}
+
+export async function listVisibleClassrooms(userId) {
+  const accountType = await getUserAccountType(userId);
+  const teacherNamesSql = await getTeacherNameAggregateSubquery();
+  const baseSql = `
+    LEFT JOIN (
+      SELECT classroom_id, COUNT(*)::int AS teacher_count
+      FROM classroom_teachers
+      GROUP BY classroom_id
+    ) tc ON tc.classroom_id = c.id
+    LEFT JOIN (
+      SELECT classroom_id, COUNT(*)::int AS student_count
+      FROM classroom_enrollments
+      GROUP BY classroom_id
+    ) sc ON sc.classroom_id = c.id
+    LEFT JOIN (${teacherNamesSql}) tn ON tn.classroom_id = c.id
+  `;
+
+  if (accountType === 'teacher') {
+    const { rows } = await pool.query(
+      `SELECT c.*, ct.role,
+              COALESCE(tc.teacher_count, 0) AS teacher_count,
+              COALESCE(sc.student_count, 0) AS student_count,
+              COALESCE(tn.teacher_names, ARRAY[]::text[]) AS teacher_names
+       FROM classrooms c
+       JOIN classroom_teachers ct
+         ON ct.classroom_id = c.id
+        AND ct.teacher_id = $1
+       ${baseSql}
+       WHERE c.archived_at IS NULL
+       ORDER BY c.needs_setup DESC, c.is_default_migrated DESC, c.created_at ASC`,
+      [userId],
+    );
+    return rows.map((row) => mapClassroomRow(row));
+  }
+
+  const { rows } = await pool.query(
+    `SELECT c.*,
+            'student' AS role,
+            COALESCE(tc.teacher_count, 0) AS teacher_count,
+            COALESCE(sc.student_count, 0) AS student_count,
+            COALESCE(tn.teacher_names, ARRAY[]::text[]) AS teacher_names
+     FROM classrooms c
+     JOIN classroom_enrollments ce
+       ON ce.classroom_id = c.id
+      AND ce.student_id = $1
+     ${baseSql}
+     WHERE c.archived_at IS NULL
+     ORDER BY c.created_at ASC`,
+    [userId],
+  );
+  return rows.map((row) => mapClassroomRow(row, 'student'));
+}
+
+export async function getClassroomForUser(classroomId, userId) {
+  const accountType = await getUserAccountType(userId);
+  const teacherNamesSql = await getTeacherNameAggregateSubquery();
+  const membershipJoin = accountType === 'teacher'
+    ? `JOIN classroom_teachers m ON m.classroom_id = c.id AND m.teacher_id = $2`
+    : `JOIN classroom_enrollments m ON m.classroom_id = c.id AND m.student_id = $2`;
+  const roleField = accountType === 'teacher' ? 'm.role' : `'student'`;
+  const { rows } = await pool.query(
+    `SELECT c.*,
+            ${roleField} AS role,
+            COALESCE(tc.teacher_count, 0) AS teacher_count,
+            COALESCE(sc.student_count, 0) AS student_count,
+            COALESCE(tn.teacher_names, ARRAY[]::text[]) AS teacher_names
+     FROM classrooms c
+     ${membershipJoin}
+     LEFT JOIN (
+       SELECT classroom_id, COUNT(*)::int AS teacher_count
+       FROM classroom_teachers
+       GROUP BY classroom_id
+     ) tc ON tc.classroom_id = c.id
+     LEFT JOIN (
+       SELECT classroom_id, COUNT(*)::int AS student_count
+       FROM classroom_enrollments
+       GROUP BY classroom_id
+     ) sc ON sc.classroom_id = c.id
+     LEFT JOIN (${teacherNamesSql}) tn ON tn.classroom_id = c.id
+     WHERE c.id = $1
+     LIMIT 1`,
+    [classroomId, userId],
+  );
+  return rows[0] ? mapClassroomRow(rows[0]) : null;
+}
+
+export async function createClassroom({ teacherId, name, section, subject, room }) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { classCode, inviteToken } = await generateUniqueClassIdentity(client);
+    const { rows: classroomRows } = await client.query(
+      `INSERT INTO classrooms (
+         name, section, subject, room, class_code, invite_token, created_by
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [name, section || null, subject || null, room || null, classCode, inviteToken, teacherId],
+    );
+    const classroom = classroomRows[0];
+    await client.query(
+      `INSERT INTO classroom_teachers (classroom_id, teacher_id, role)
+       VALUES ($1, $2, 'owner')`,
+      [classroom.id, teacherId],
+    );
+    await client.query('COMMIT');
+    return getClassroomForUser(classroom.id, teacherId);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function updateClassroom({ classroomId, teacherId, patch }) {
+  const membership = await pool.query(
+    `SELECT role FROM classroom_teachers WHERE classroom_id = $1 AND teacher_id = $2`,
+    [classroomId, teacherId],
+  );
+  if (!membership.rows[0]) {
+    const err = new Error('Not in classroom');
+    err.status = 403;
+    throw err;
+  }
+
+  const fields = [];
+  const values = [];
+  for (const key of ['name', 'section', 'subject', 'room', 'needs_setup']) {
+    if (Object.prototype.hasOwnProperty.call(patch, key)) {
+      values.push(patch[key] ?? null);
+      fields.push(`${key} = $${values.length}`);
+    }
+  }
+  if (fields.length === 0) {
+    return getClassroomForUser(classroomId, teacherId);
+  }
+  values.push(classroomId);
+  await pool.query(
+    `UPDATE classrooms
+     SET ${fields.join(', ')}, updated_at = NOW()
+     WHERE id = $${values.length}`,
+    values,
+  );
+  return getClassroomForUser(classroomId, teacherId);
+}
+
+export async function getTeacherDefaultClassroom(teacherId) {
+  const { rows } = await pool.query(
+    `SELECT c.*
+     FROM classrooms c
+     JOIN classroom_teachers ct ON ct.classroom_id = c.id AND ct.teacher_id = $1
+     WHERE c.is_default_migrated = true
+     ORDER BY c.created_at ASC
+     LIMIT 1`,
+    [teacherId],
+  );
+  return rows[0] || null;
+}
+
+export async function getActiveCompatibleClassroomForTeacher(teacherId) {
+  const defaultClassroom = await getTeacherDefaultClassroom(teacherId);
+  if (defaultClassroom) return defaultClassroom;
+  const { rows } = await pool.query(
+    `SELECT c.*
+     FROM classrooms c
+     JOIN classroom_teachers ct ON ct.classroom_id = c.id AND ct.teacher_id = $1
+     WHERE c.archived_at IS NULL
+     ORDER BY c.created_at ASC
+     LIMIT 1`,
+    [teacherId],
+  );
+  return rows[0] || null;
+}
+
+export async function getClassroomTopics(classroomId) {
+  const { rows } = await pool.query(
+    `SELECT * FROM classroom_topics
+     WHERE classroom_id = $1
+     ORDER BY position ASC, created_at ASC`,
+    [classroomId],
+  );
+  return rows;
+}
+
+export async function createClassroomTopic(classroomId, title) {
+  const { rows: maxRows } = await pool.query(
+    `SELECT COALESCE(MAX(position), -1) AS max_pos
+     FROM classroom_topics
+     WHERE classroom_id = $1`,
+    [classroomId],
+  );
+  const nextPos = Number(maxRows[0]?.max_pos ?? -1) + 1;
+  const { rows } = await pool.query(
+    `INSERT INTO classroom_topics (classroom_id, title, position)
+     VALUES ($1, $2, $3)
+     RETURNING *`,
+    [classroomId, title, nextPos],
+  );
+  return rows[0];
+}
+
+export async function listClassroomStudents(classroomId) {
+  const result = await pool.query(
+    `SELECT ce.classroom_id, ce.created_at AS added_at,
+            u.id, u.username, u.display_name
+     FROM classroom_enrollments ce
+     JOIN users u ON u.id = ce.student_id
+     WHERE ce.classroom_id = $1
+     ORDER BY u.username ASC`,
+    [classroomId],
+  );
+  return result.rows.map((row) => ({
+    classroom_id: row.classroom_id,
+    id: row.id,
+    username: row.username,
+    display_name: row.display_name,
+    online: userToSocket.has(row.id),
+    added_at: row.added_at,
+  }));
+}
+
+export async function addStudentToClassroom(classroomId, studentId, actorTeacherId) {
+  const membership = await pool.query(
+    `SELECT 1 FROM classroom_teachers WHERE classroom_id = $1 AND teacher_id = $2`,
+    [classroomId, actorTeacherId],
+  );
+  if (membership.rows.length === 0) {
+    const err = new Error('Not in classroom');
+    err.status = 403;
+    throw err;
+  }
+
+  const studentCheck = await pool.query(
+    `SELECT account_type FROM users WHERE id = $1`,
+    [studentId],
+  );
+  if (!studentCheck.rows[0]) {
+    const err = new Error('Student not found');
+    err.status = 404;
+    throw err;
+  }
+  if (studentCheck.rows[0].account_type !== 'student') {
+    const err = new Error('Target user is not a student account');
+    err.status = 400;
+    throw err;
+  }
+
+  const { rows } = await pool.query(
+    `INSERT INTO classroom_enrollments (classroom_id, student_id)
+     VALUES ($1, $2)
+     RETURNING classroom_id`,
+    [classroomId, studentId],
+  );
+  return rows[0];
+}
+
+export async function removeStudentFromClassroom(classroomId, studentId, actorTeacherId) {
+  const membership = await pool.query(
+    `SELECT 1 FROM classroom_teachers WHERE classroom_id = $1 AND teacher_id = $2`,
+    [classroomId, actorTeacherId],
+  );
+  if (membership.rows.length === 0) {
+    const err = new Error('Not in classroom');
+    err.status = 403;
+    throw err;
+  }
+  const result = await pool.query(
+    `DELETE FROM classroom_enrollments
+     WHERE classroom_id = $1 AND student_id = $2
+     RETURNING classroom_id`,
+    [classroomId, studentId],
+  );
+  if (result.rows.length === 0) {
+    const err = new Error('Student not found in classroom');
+    err.status = 404;
+    throw err;
+  }
+}
+
+export async function getClassroomStudentStats(classroomId, studentId, actorTeacherId) {
+  const relationship = await pool.query(
+    `SELECT 1
+     FROM classroom_teachers ct
+     JOIN classroom_enrollments ce ON ce.classroom_id = ct.classroom_id
+     WHERE ct.classroom_id = $1
+       AND ct.teacher_id = $2
+       AND ce.student_id = $3`,
+    [classroomId, actorTeacherId, studentId],
+  );
+  if (relationship.rows.length === 0) {
+    const err = new Error('Student is not in your classroom');
+    err.status = 403;
+    throw err;
+  }
+
+  const studentResult = await pool.query(
+    `SELECT id, username, display_name FROM users WHERE id = $1`,
+    [studentId],
+  );
+  if (studentResult.rows.length === 0) {
+    const err = new Error('Student not found');
+    err.status = 404;
+    throw err;
+  }
+  const student = studentResult.rows[0];
+
+  const wordsResult = await pool.query(
+    `SELECT id, word, translation, part_of_speech, srs_interval, due_at,
+            last_reviewed_at, correct_count, incorrect_count, learning_step, created_at
+     FROM saved_words
+     WHERE user_id = $1
+       AND target_language = (SELECT target_language FROM users WHERE id = $1)
+     ORDER BY created_at DESC`,
+    [studentId],
+  );
+
+  const words = wordsResult.rows;
+  const now = new Date();
+  const totalWords = words.length;
+  const wordsLearned = words.filter((w) => w.learning_step === null && w.srs_interval > 0).length;
+  const wordsDue = words.filter((w) => w.due_at && new Date(w.due_at) <= now).length;
+  const wordsNew = words.filter((w) => w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at).length;
+  const wordsInLearning = words.filter((w) => w.learning_step !== null).length;
+  const totalCorrect = words.reduce((sum, w) => sum + (w.correct_count || 0), 0);
+  const totalIncorrect = words.reduce((sum, w) => sum + (w.incorrect_count || 0), 0);
+  const totalReviews = totalCorrect + totalIncorrect;
+  const accuracy = totalReviews > 0 ? totalCorrect / totalReviews : null;
+  const reviewDates = words.map((w) => w.last_reviewed_at).filter(Boolean);
+  const lastReviewedAt = reviewDates.length > 0
+    ? reviewDates.reduce((latest, date) => (new Date(date) > new Date(latest) ? date : latest))
+    : null;
+
+  return {
+    student,
+    stats: {
+      totalWords,
+      wordsLearned,
+      wordsDue,
+      wordsNew,
+      wordsInLearning,
+      totalReviews,
+      accuracy,
+      lastReviewedAt,
+    },
+    words: words.map((word) => ({
+      id: word.id,
+      word: word.word,
+      translation: word.translation,
+      part_of_speech: word.part_of_speech,
+    })),
+  };
+}
+
+export async function getLegacyStreamContext(classroomId, userId) {
+  if (!classroomId) return null;
+  const classroom = await getClassroomForUser(classroomId, userId);
+  if (!classroom) {
+    const err = new Error('Classroom not found');
+    err.status = 404;
+    throw err;
+  }
+  if (!classroom.is_default_migrated) {
+    return { classroom, legacyTeacherId: null };
+  }
+  const { rows } = await pool.query(
+    `SELECT teacher_id
+     FROM classroom_teachers
+     WHERE classroom_id = $1
+     ORDER BY CASE WHEN role = 'owner' THEN 0 ELSE 1 END, created_at ASC
+     LIMIT 1`,
+    [classroomId],
+  );
+  return {
+    classroom,
+    legacyTeacherId: rows[0]?.teacher_id || null,
+  };
+}

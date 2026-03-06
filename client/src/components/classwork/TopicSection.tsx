@@ -43,6 +43,7 @@ export function TopicSection({
   posts,
   topics,
   isTeacher,
+  allowTopicManagement = true,
   collapsed,
   onToggleCollapse,
   onDeletePost,
@@ -66,6 +67,7 @@ export function TopicSection({
   posts: StreamPost[];
   topics: StreamTopic[];
   isTeacher: boolean;
+  allowTopicManagement?: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
   onDeletePost: (id: string) => void;
@@ -91,8 +93,9 @@ export function TopicSection({
 
   const isNoTopic = topic === null;
   const topicId = topic?.id ?? null;
-  const isBeingDragged = !isNoTopic && dragItem?.id === topic?.id && dragItem?.kind === 'topic';
-  const isDropTarget = !isNoTopic && dragOverId === topic?.id && dragItem?.kind === 'topic';
+  const canManageTopics = isTeacher && allowTopicManagement;
+  const isBeingDragged = canManageTopics && !isNoTopic && dragItem?.id === topic?.id && dragItem?.kind === 'topic';
+  const isDropTarget = canManageTopics && !isNoTopic && dragOverId === topic?.id && dragItem?.kind === 'topic';
 
   const sortedPosts = [...posts].sort((a, b) =>
     (a.position ?? 0) - (b.position ?? 0) ||
@@ -114,16 +117,16 @@ export function TopicSection({
   return (
     <div
       className={`stream-topic-section${isNoTopic ? ' stream-no-topic-section' : ''}${isDropTarget ? ' stream-topic-section--drop-target' : ''}`}
-      onDragOver={!isNoTopic && isTeacher ? (e) => { if (dragItem?.kind === 'topic') { e.preventDefault(); onDragOverTopic(topic!.id); } } : undefined}
-      onDrop={!isNoTopic && isTeacher ? (e) => { if (dragItem?.kind === 'topic') onDropTopic(e, topic!.id); } : undefined}
+      onDragOver={!isNoTopic && canManageTopics ? (e) => { if (dragItem?.kind === 'topic') { e.preventDefault(); onDragOverTopic(topic!.id); } } : undefined}
+      onDrop={!isNoTopic && canManageTopics ? (e) => { if (dragItem?.kind === 'topic') onDropTopic(e, topic!.id); } : undefined}
     >
       <div
         className={`stream-topic-header${isBeingDragged ? ' stream-topic-header--dragging' : ''}`}
-        draggable={isTeacher && !isNoTopic}
-        onDragStart={isTeacher && !isNoTopic ? (e) => onDragStartTopic(e, topic!) : undefined}
-        onDragEnd={isTeacher && !isNoTopic ? () => {} : undefined}
+        draggable={canManageTopics && !isNoTopic}
+        onDragStart={canManageTopics && !isNoTopic ? (e) => onDragStartTopic(e, topic!) : undefined}
+        onDragEnd={canManageTopics && !isNoTopic ? () => {} : undefined}
       >
-        {isTeacher && !isNoTopic && (
+        {canManageTopics && !isNoTopic && (
           <span className="stream-topic-drag-handle">⠿</span>
         )}
 
@@ -156,7 +159,7 @@ export function TopicSection({
           <ChevronUpIcon size={14} strokeWidth={2.5} />
         </button>
 
-        {isTeacher && !isNoTopic && !renaming && (
+        {canManageTopics && !isNoTopic && !renaming && (
           <div style={{ position: 'relative' }}>
             <button
               className="stream-topic-menu-btn"

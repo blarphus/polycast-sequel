@@ -21,6 +21,7 @@ import Learn from './pages/Learn';
 import Students from './pages/Students';
 import StudentDetail from './pages/StudentDetail';
 import Classwork from './pages/Classwork';
+import Classes from './pages/Classes';
 import Watch from './pages/Watch';
 import Browse from './pages/Browse';
 import Channel from './pages/Channel';
@@ -229,6 +230,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Classwork />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/classes"
+          element={
+            <ProtectedRoute>
+              <Classes />
             </ProtectedRoute>
           }
         />

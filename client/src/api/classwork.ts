@@ -1,5 +1,11 @@
 import { request } from './core';
 
+function withClassroomQuery(path: string, classroomId?: string | null) {
+  if (!classroomId) return path;
+  const sep = path.includes('?') ? '&' : '?';
+  return `${path}${sep}classroomId=${encodeURIComponent(classroomId)}`;
+}
+
 export interface StreamAttachment {
   url: string;
   label: string;
@@ -79,8 +85,8 @@ export interface StreamTopic {
   teacher_name?: string;
 }
 
-export function getStream() {
-  return request<{ topics: StreamTopic[]; posts: StreamPost[] }>('/stream');
+export function getStream(classroomId?: string | null) {
+  return request<{ topics: StreamTopic[]; posts: StreamPost[] }>(withClassroomQuery('/stream', classroomId));
 }
 
 export function createPost(data: {

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import * as api from '../api';
 import type { StudentDetail as StudentDetailData } from '../api';
 import { ChevronLeftIcon } from '../components/icons';
@@ -12,20 +12,25 @@ import { formatDate as formatShortDate } from '../utils/dateFormat';
 export default function StudentDetail() {
   const { studentId } = useParams<{ studentId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const classroomId = searchParams.get('classroomId');
   const [data, setData] = useState<StudentDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (!studentId) return;
-    api.getStudentStats(studentId)
+    const loader = classroomId
+      ? api.getStudentStats(classroomId, studentId)
+      : api.getStudentStats(studentId);
+    loader
       .then(setData)
       .catch((err) => {
         console.error('Failed to load student stats:', err);
         setError(err instanceof Error ? err.message : 'Failed to load student data');
       })
       .finally(() => setLoading(false));
-  }, [studentId]);
+  }, [classroomId, studentId]);
 
   if (loading) {
     return <div className="loading-screen"><div className="loading-spinner" /></div>;
@@ -34,7 +39,7 @@ export default function StudentDetail() {
   if (error) {
     return (
       <div className="student-detail-page">
-        <button className="btn btn-back" onClick={() => navigate('/students')}>Back</button>
+        <button className="btn btn-back" onClick={() => navigate(classroomId ? `/students?classroomId=${classroomId}` : '/students')}>Back</button>
         <div className="auth-error">{error}</div>
       </div>
     );
@@ -56,7 +61,7 @@ export default function StudentDetail() {
 
   return (
     <div className="student-detail-page">
-      <button className="btn btn-back" onClick={() => navigate('/students')}>
+      <button className="btn btn-back" onClick={() => navigate(classroomId ? `/students?classroomId=${classroomId}` : '/students')}>
         <ChevronLeftIcon size={18} />
         Back
       </button>

@@ -2,13 +2,17 @@
 // pages/Classwork.tsx — Class stream (Google Classroom-style)
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useActiveClassroom } from '../hooks/useActiveClassroom';
 import * as api from '../api';
-import type { StreamPost, StreamTopic } from '../api';
+import type { Classroom, StreamPost, StreamTopic } from '../api';
 import { CreatePostModal, CreateMenu } from '../components/classwork/CreatePostModal';
 import EditModal from '../components/classwork/EditModal';
 import { TopicSection } from '../components/classwork/TopicSection';
+import ClassroomPicker from '../components/classroom/ClassroomPicker';
+import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
 import { PlusIcon, ChevronDownIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
@@ -18,6 +22,17 @@ import { PlusIcon, ChevronDownIcon } from '../components/icons';
 export default function Classwork() {
   const { user } = useAuth();
   const isTeacher = user?.account_type === 'teacher';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const classroomIdParam = searchParams.get('classroomId');
+  const {
+    classrooms,
+    activeClassroom,
+    activeClassroomId,
+    setActiveClassroomId,
+    loading: classroomsLoading,
+    error: classroomsError,
+    reloadClassrooms,
+  } = useActiveClassroom(classroomIdParam);
 
   const [topics, setTopics] = useState<StreamTopic[]>([]);
   const [posts, setPosts] = useState<StreamPost[]>([]);
@@ -34,9 +49,23 @@ export default function Classwork() {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const loadStream = useCallback(() => {
+    if (!activeClassroomId) {
+      setTopics([]);
+      setPosts([]);
+      setLoading(false);
+      return Promise.resolve();
+    }
+
     setLoading(true);
     setError('');
-    api.getStream()
+    const loader = activeClassroom?.is_default_migrated
+      ? api.getStream(activeClassroomId)
+      : api.getClassroomTopics(activeClassroomId).then((fetchedTopics) => ({
+          topics: fetchedTopics as StreamTopic[],
+          posts: [],
+        }));
+
+    return loader
       .then(({ topics: fetchedTopics, posts: fetchedPosts }) => {
         setTopics(fetchedTopics);
         setPosts(fetchedPosts);
@@ -46,9 +75,28 @@ export default function Classwork() {
         setError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [activeClassroom, activeClassroomId]);
 
   useEffect(() => { loadStream(); }, [loadStream]);
+
+  useEffect(() => {
+    setShowCreateMenu(false);
+    setCreateType(null);
+    setCreatingTopic(false);
+    setNewTopicTitle('');
+    setEditingPost(null);
+    setDragItem(null);
+    setDragOverId(null);
+  }, [activeClassroomId]);
+
+  useEffect(() => {
+    if (!activeClassroomId) return;
+    const next = new URLSearchParams(searchParams);
+    next.set('classroomId', activeClassroomId);
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [activeClassroomId, searchParams, setSearchParams]);
 
   // ---- Post handlers ----
 
@@ -142,7 +190,9 @@ export default function Classwork() {
   const handleCreateTopic = async () => {
     if (!newTopicTitle.trim()) { setCreatingTopic(false); return; }
     try {
-      const topic = await api.createTopic(newTopicTitle.trim());
+      const topic = activeClassroom?.is_default_migrated
+        ? await api.createTopic(newTopicTitle.trim())
+        : await api.createClassroomTopic(activeClassroomId!, newTopicTitle.trim());
       setTopics((prev) => [...prev, topic]);
     } catch (err: any) {
       console.error('Create topic failed:', err);
@@ -265,40 +315,86 @@ export default function Classwork() {
   // ---- Grouping ----
 
   const noTopicPosts = posts.filter((p) => !p.topic_id);
+  const allowLegacyStreamManagement = !!(isTeacher && activeClassroom?.is_default_migrated);
+  const showPhaseOnePlaceholder = !!activeClassroom && !activeClassroom.is_default_migrated && posts.length === 0;
 
   const isEmpty = posts.length === 0 && topics.length === 0 && !creatingTopic;
+
+  const handleClassroomChange = (classroomId: string) => {
+    setActiveClassroomId(classroomId);
+  };
+
+  const handleClassroomUpdated = async (updated: Classroom) => {
+    await reloadClassrooms();
+    setActiveClassroomId(updated.id);
+  };
 
   return (
     <div className="classwork-page">
       <div className="classwork-header">
-        <h1 className="classwork-title">Classwork</h1>
-        {isTeacher && (
+        <div className="classwork-header-main">
+          <div>
+            <h1 className="classwork-title">Classwork</h1>
+            <div className="classwork-header-links">
+              <Link className="classwork-manage-link" to="/classes">
+                {isTeacher ? 'Manage classes' : 'All classes'}
+              </Link>
+            </div>
+          </div>
+          <ClassroomPicker
+            classrooms={classrooms}
+            value={activeClassroomId}
+            onChange={handleClassroomChange}
+            label="Class"
+          />
+        </div>
+        {isTeacher && activeClassroom && (
           <div style={{ position: 'relative' }}>
-            <button
-              className="btn btn-primary btn-sm stream-create-btn"
-              onClick={() => setShowCreateMenu((prev) => !prev)}
-            >
-              <PlusIcon size={14} strokeWidth={2.5} />
-              Create
-              <ChevronDownIcon size={12} strokeWidth={2.5} style={{ marginLeft: '2px' }} />
-            </button>
-            {showCreateMenu && (
-              <CreateMenu
-                onSelect={handleCreateMenuSelect}
-                onClose={() => setShowCreateMenu(false)}
-              />
+            {allowLegacyStreamManagement ? (
+              <>
+                <button
+                  className="btn btn-primary btn-sm stream-create-btn"
+                  onClick={() => setShowCreateMenu((prev) => !prev)}
+                >
+                  <PlusIcon size={14} strokeWidth={2.5} />
+                  Create
+                  <ChevronDownIcon size={12} strokeWidth={2.5} style={{ marginLeft: '2px' }} />
+                </button>
+                {showCreateMenu && (
+                  <CreateMenu
+                    onSelect={handleCreateMenuSelect}
+                    onClose={() => setShowCreateMenu(false)}
+                  />
+                )}
+              </>
+            ) : (
+              <button
+                className="btn btn-primary btn-sm stream-create-btn"
+                onClick={() => setCreatingTopic(true)}
+              >
+                <PlusIcon size={14} strokeWidth={2.5} />
+                Create topic
+              </button>
             )}
           </div>
         )}
       </div>
 
+      {classroomsError && <div className="auth-error">{classroomsError}</div>}
       {error && <div className="auth-error">{error}</div>}
+      {activeClassroom?.needs_setup && isTeacher && (
+        <ClassroomSetupBanner classroom={activeClassroom} onUpdated={handleClassroomUpdated} />
+      )}
 
-      {loading ? (
+      {classroomsLoading || loading ? (
         <div className="loading-screen"><div className="loading-spinner" /></div>
       ) : isEmpty ? (
         <div className="classwork-empty">
-          {isTeacher
+          {showPhaseOnePlaceholder
+            ? isTeacher
+              ? 'Assignments for this class will appear here in the next phase. You can already add topics and manage the roster for it.'
+              : 'Assignments for this class will appear here once your teacher starts posting work to it.'
+            : isTeacher
             ? 'No posts yet. Click "Create" to share materials, lessons, or word lists.'
             : "Your teacher hasn't posted anything yet, or you haven't been added to a class."}
         </div>
@@ -312,6 +408,7 @@ export default function Classwork() {
               posts={noTopicPosts}
               topics={topics}
               isTeacher={isTeacher}
+              allowTopicManagement={allowLegacyStreamManagement}
               collapsed={collapsed.has('__no_topic__')}
               onToggleCollapse={() => toggleCollapse('__no_topic__')}
               onDeletePost={handleDeletePost}
@@ -341,6 +438,7 @@ export default function Classwork() {
               posts={posts.filter((p) => p.topic_id === topic.id)}
               topics={topics}
               isTeacher={isTeacher}
+              allowTopicManagement={allowLegacyStreamManagement}
               collapsed={collapsed.has(topic.id)}
               onToggleCollapse={() => toggleCollapse(topic.id)}
               onDeletePost={handleDeletePost}

@@ -1,188 +1,258 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import pool from '../db.js';
 import { authMiddleware, requireTeacher } from '../auth.js';
-import { userToSocket } from '../socket/presence.js';
 import { validate } from '../lib/validate.js';
+import {
+  addStudentToClassroom,
+  createClassroom,
+  createClassroomTopic,
+  getActiveCompatibleClassroomForTeacher,
+  getClassroomForUser,
+  getClassroomStudentStats,
+  getClassroomTopics,
+  listClassroomStudents,
+  listVisibleClassrooms,
+  removeStudentFromClassroom,
+  updateClassroom,
+} from '../services/classroomService.js';
 
 const router = Router();
 
+const classroomIdParam = z.object({ id: z.string().uuid('Invalid classroom ID') });
 const studentIdParam = z.object({ studentId: z.string().uuid('Invalid student ID') });
 const addStudentBody = z.object({ studentId: z.string().uuid('Invalid student ID') });
+const createClassroomBody = z.object({
+  name: z.string().min(1, 'Class name is required').trim(),
+  section: z.string().trim().optional().or(z.literal('')),
+  subject: z.string().trim().optional().or(z.literal('')),
+  room: z.string().trim().optional().or(z.literal('')),
+});
+const updateClassroomBody = z.object({
+  name: z.string().trim().optional(),
+  section: z.string().trim().optional().nullable(),
+  subject: z.string().trim().optional().nullable(),
+  room: z.string().trim().optional().nullable(),
+  needs_setup: z.boolean().optional(),
+});
+const createTopicBody = z.object({
+  title: z.string().min(1, 'Topic title is required').trim(),
+});
+const legacyClassroomQuery = z.object({
+  classroomId: z.string().uuid('Invalid classroom ID').optional(),
+});
+
+function normalizeOptionalText(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+async function resolveTeacherClassroomOrThrow(req, res) {
+  const classroomId = req.query.classroomId;
+  if (classroomId) {
+    const classroom = await getClassroomForUser(classroomId, req.userId);
+    if (!classroom || classroom.role === 'student') {
+      return res.status(403).json({ error: 'Not in classroom' });
+    }
+    return classroom;
+  }
+
+  const fallback = await getActiveCompatibleClassroomForTeacher(req.userId);
+  if (!fallback) {
+    return res.status(404).json({ error: 'No classroom found' });
+  }
+  const classroom = await getClassroomForUser(fallback.id, req.userId);
+  if (!classroom) {
+    return res.status(403).json({ error: 'Not in classroom' });
+  }
+  return classroom;
+}
+
+router.get('/api/classrooms', authMiddleware, async (req, res) => {
+  try {
+    const classrooms = await listVisibleClassrooms(req.userId);
+    return res.json(classrooms);
+  } catch (err) {
+    req.log.error({ err }, 'GET /api/classrooms error');
+    return res.status(500).json({ error: err.message || 'Failed to load classrooms' });
+  }
+});
+
+router.post('/api/classrooms', authMiddleware, requireTeacher, validate({ body: createClassroomBody }), async (req, res) => {
+  try {
+    const classroom = await createClassroom({
+      teacherId: req.userId,
+      name: req.body.name.trim(),
+      section: normalizeOptionalText(req.body.section),
+      subject: normalizeOptionalText(req.body.subject),
+      room: normalizeOptionalText(req.body.room),
+    });
+    return res.status(201).json(classroom);
+  } catch (err) {
+    req.log.error({ err }, 'POST /api/classrooms error');
+    return res.status(500).json({ error: err.message || 'Failed to create classroom' });
+  }
+});
+
+router.get('/api/classrooms/:id', authMiddleware, validate({ params: classroomIdParam }), async (req, res) => {
+  try {
+    const classroom = await getClassroomForUser(req.params.id, req.userId);
+    if (!classroom) {
+      return res.status(404).json({ error: 'Classroom not found' });
+    }
+    return res.json(classroom);
+  } catch (err) {
+    req.log.error({ err }, 'GET /api/classrooms/:id error');
+    return res.status(500).json({ error: err.message || 'Failed to load classroom' });
+  }
+});
+
+router.patch('/api/classrooms/:id', authMiddleware, validate({ params: classroomIdParam, body: updateClassroomBody }), async (req, res) => {
+  try {
+    const classroom = await updateClassroom({
+      classroomId: req.params.id,
+      teacherId: req.userId,
+      patch: {
+        ...(req.body.name !== undefined ? { name: req.body.name.trim() } : {}),
+        ...(req.body.section !== undefined ? { section: normalizeOptionalText(req.body.section) } : {}),
+        ...(req.body.subject !== undefined ? { subject: normalizeOptionalText(req.body.subject) } : {}),
+        ...(req.body.room !== undefined ? { room: normalizeOptionalText(req.body.room) } : {}),
+        ...(req.body.needs_setup !== undefined ? { needs_setup: req.body.needs_setup } : {}),
+      },
+    });
+    return res.json(classroom);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    req.log.error({ err }, 'PATCH /api/classrooms/:id error');
+    return res.status(500).json({ error: err.message || 'Failed to update classroom' });
+  }
+});
+
+router.get('/api/classrooms/:id/topics', authMiddleware, validate({ params: classroomIdParam }), async (req, res) => {
+  try {
+    const classroom = await getClassroomForUser(req.params.id, req.userId);
+    if (!classroom) return res.status(404).json({ error: 'Classroom not found' });
+    const topics = await getClassroomTopics(req.params.id);
+    return res.json(topics);
+  } catch (err) {
+    req.log.error({ err }, 'GET /api/classrooms/:id/topics error');
+    return res.status(500).json({ error: err.message || 'Failed to load classroom topics' });
+  }
+});
+
+router.post('/api/classrooms/:id/topics', authMiddleware, validate({ params: classroomIdParam, body: createTopicBody }), async (req, res) => {
+  try {
+    const classroom = await getClassroomForUser(req.params.id, req.userId);
+    if (!classroom || classroom.role === 'student') {
+      return res.status(403).json({ error: 'Not in classroom' });
+    }
+    const topic = await createClassroomTopic(req.params.id, req.body.title.trim());
+    return res.status(201).json(topic);
+  } catch (err) {
+    req.log.error({ err }, 'POST /api/classrooms/:id/topics error');
+    return res.status(500).json({ error: err.message || 'Failed to create classroom topic' });
+  }
+});
+
+router.get('/api/classrooms/:id/students', authMiddleware, validate({ params: classroomIdParam }), async (req, res) => {
+  try {
+    const classroom = await getClassroomForUser(req.params.id, req.userId);
+    if (!classroom || classroom.role === 'student') {
+      return res.status(403).json({ error: 'Not in classroom' });
+    }
+    const students = await listClassroomStudents(req.params.id);
+    return res.json(students);
+  } catch (err) {
+    req.log.error({ err }, 'GET /api/classrooms/:id/students error');
+    return res.status(500).json({ error: err.message || 'Failed to load classroom students' });
+  }
+});
+
+router.post('/api/classrooms/:id/students', authMiddleware, validate({ params: classroomIdParam, body: addStudentBody }), async (req, res) => {
+  try {
+    const result = await addStudentToClassroom(req.params.id, req.body.studentId, req.userId);
+    return res.status(201).json(result);
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Student already in classroom' });
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    req.log.error({ err }, 'POST /api/classrooms/:id/students error');
+    return res.status(500).json({ error: err.message || 'Failed to add classroom student' });
+  }
+});
+
+router.delete('/api/classrooms/:id/students/:studentId', authMiddleware, validate({ params: classroomIdParam.merge(studentIdParam) }), async (req, res) => {
+  try {
+    await removeStudentFromClassroom(req.params.id, req.params.studentId, req.userId);
+    return res.status(204).end();
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    req.log.error({ err }, 'DELETE /api/classrooms/:id/students/:studentId error');
+    return res.status(500).json({ error: err.message || 'Failed to remove classroom student' });
+  }
+});
+
+router.get('/api/classrooms/:id/students/:studentId/stats', authMiddleware, validate({ params: classroomIdParam.merge(studentIdParam) }), async (req, res) => {
+  try {
+    const data = await getClassroomStudentStats(req.params.id, req.params.studentId, req.userId);
+    return res.json(data);
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    req.log.error({ err }, 'GET /api/classrooms/:id/students/:studentId/stats error');
+    return res.status(500).json({ error: err.message || 'Failed to load student stats' });
+  }
+});
 
 /**
- * GET /api/classroom/students
- * List the teacher's classroom students with online status.
+ * Compatibility endpoints for the existing teacher-wide classroom UI.
  */
-router.get('/api/classroom/students', authMiddleware, requireTeacher, async (req, res) => {
+router.get('/api/classroom/students', authMiddleware, requireTeacher, validate({ query: legacyClassroomQuery }), async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT cs.id AS classroom_id, cs.created_at AS added_at,
-              u.id, u.username, u.display_name
-       FROM classroom_students cs
-       JOIN users u ON u.id = cs.student_id
-       WHERE cs.teacher_id = $1
-       ORDER BY u.username ASC`,
-      [req.userId],
-    );
-
-    const rows = result.rows.map((r) => ({
-      classroom_id: r.classroom_id,
-      id: r.id,
-      username: r.username,
-      display_name: r.display_name,
-      online: userToSocket.has(r.id),
-      added_at: r.added_at,
-    }));
-
-    return res.json(rows);
+    const classroom = await resolveTeacherClassroomOrThrow(req, res);
+    if (!classroom || res.headersSent) return;
+    const students = await listClassroomStudents(classroom.id);
+    return res.json(students);
   } catch (err) {
     req.log.error({ err }, 'GET /api/classroom/students error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-/**
- * POST /api/classroom/students
- * Add a student to the teacher's classroom.
- * Body: { studentId }
- */
-router.post('/api/classroom/students', authMiddleware, requireTeacher, validate({ body: addStudentBody }), async (req, res) => {
+router.post('/api/classroom/students', authMiddleware, requireTeacher, validate({ query: legacyClassroomQuery, body: addStudentBody }), async (req, res) => {
   try {
-    const { studentId } = req.body;
-
-    // Verify target is a student
-    const studentCheck = await pool.query(
-      `SELECT account_type FROM users WHERE id = $1`,
-      [studentId],
-    );
-    if (!studentCheck.rows[0]) {
-      return res.status(404).json({ error: 'Student not found' });
-    }
-    if (studentCheck.rows[0].account_type !== 'student') {
-      return res.status(400).json({ error: 'Target user is not a student account' });
-    }
-
-    const result = await pool.query(
-      `INSERT INTO classroom_students (teacher_id, student_id)
-       VALUES ($1, $2)
-       RETURNING *`,
-      [req.userId, studentId],
-    );
-
-    return res.status(201).json(result.rows[0]);
+    const classroom = await resolveTeacherClassroomOrThrow(req, res);
+    if (!classroom || res.headersSent) return;
+    const result = await addStudentToClassroom(classroom.id, req.body.studentId, req.userId);
+    return res.status(201).json(result);
   } catch (err) {
-    // Unique constraint violation — student already in classroom
-    if (err.code === '23505') {
-      return res.status(409).json({ error: 'Student already in classroom' });
-    }
+    if (err.code === '23505') return res.status(409).json({ error: 'Student already in classroom' });
+    if (err.status) return res.status(err.status).json({ error: err.message });
     req.log.error({ err }, 'POST /api/classroom/students error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-/**
- * DELETE /api/classroom/students/:studentId
- * Remove a student from the teacher's classroom.
- */
-router.delete('/api/classroom/students/:studentId', authMiddleware, validate({ params: studentIdParam }), async (req, res) => {
+router.delete('/api/classroom/students/:studentId', authMiddleware, validate({ params: studentIdParam, query: legacyClassroomQuery }), async (req, res) => {
   try {
-    const { studentId } = req.params;
-
-    const result = await pool.query(
-      `DELETE FROM classroom_students WHERE teacher_id = $1 AND student_id = $2 RETURNING id`,
-      [req.userId, studentId],
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Student not found in classroom' });
-    }
-
-    return res.status(204).send();
+    const classroom = await resolveTeacherClassroomOrThrow(req, res);
+    if (!classroom || res.headersSent) return;
+    await removeStudentFromClassroom(classroom.id, req.params.studentId, req.userId);
+    return res.status(204).end();
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     req.log.error({ err }, 'DELETE /api/classroom/students/:studentId error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-/**
- * GET /api/classroom/students/:studentId/stats
- * Get a student's info, aggregate stats, and full word list.
- * Requires the student to be in the teacher's classroom.
- */
-router.get('/api/classroom/students/:studentId/stats', authMiddleware, validate({ params: studentIdParam }), async (req, res) => {
+router.get('/api/classroom/students/:studentId/stats', authMiddleware, validate({ params: studentIdParam, query: legacyClassroomQuery }), async (req, res) => {
   try {
-    const { studentId } = req.params;
-
-    // Verify classroom relationship
-    const relationship = await pool.query(
-      `SELECT id FROM classroom_students WHERE teacher_id = $1 AND student_id = $2`,
-      [req.userId, studentId],
-    );
-    if (relationship.rows.length === 0) {
-      return res.status(403).json({ error: 'Student is not in your classroom' });
-    }
-
-    // Get student info
-    const studentResult = await pool.query(
-      `SELECT id, username, display_name FROM users WHERE id = $1`,
-      [studentId],
-    );
-    if (studentResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Student not found' });
-    }
-    const student = studentResult.rows[0];
-
-    // Get all words for stats computation + word list (scoped to student's current target language)
-    const wordsResult = await pool.query(
-      `SELECT id, word, translation, part_of_speech, srs_interval, due_at,
-              last_reviewed_at, correct_count, incorrect_count, learning_step, created_at
-       FROM saved_words
-       WHERE user_id = $1
-         AND target_language = (SELECT target_language FROM users WHERE id = $1)
-       ORDER BY created_at DESC`,
-      [studentId],
-    );
-
-    const words = wordsResult.rows;
-    const now = new Date();
-
-    const totalWords = words.length;
-    const wordsLearned = words.filter((w) => w.learning_step === null && w.srs_interval > 0).length;
-    const wordsDue = words.filter((w) => w.due_at && new Date(w.due_at) <= now).length;
-    const wordsNew = words.filter((w) => w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at).length;
-    const wordsInLearning = words.filter((w) => w.learning_step !== null).length;
-
-    const totalCorrect = words.reduce((sum, w) => sum + (w.correct_count || 0), 0);
-    const totalIncorrect = words.reduce((sum, w) => sum + (w.incorrect_count || 0), 0);
-    const totalReviews = totalCorrect + totalIncorrect;
-    const accuracy = totalReviews > 0 ? totalCorrect / totalReviews : null;
-
-    const reviewDates = words.map((w) => w.last_reviewed_at).filter(Boolean);
-    const lastReviewedAt = reviewDates.length > 0
-      ? reviewDates.reduce((latest, d) => (new Date(d) > new Date(latest) ? d : latest))
-      : null;
-
-    return res.json({
-      student,
-      stats: {
-        totalWords,
-        wordsLearned,
-        wordsDue,
-        wordsNew,
-        wordsInLearning,
-        totalReviews,
-        accuracy,
-        lastReviewedAt,
-      },
-      words: words.map((w) => ({
-        id: w.id,
-        word: w.word,
-        translation: w.translation,
-        part_of_speech: w.part_of_speech,
-      })),
-    });
+    const classroom = await resolveTeacherClassroomOrThrow(req, res);
+    if (!classroom || res.headersSent) return;
+    const data = await getClassroomStudentStats(classroom.id, req.params.studentId, req.userId);
+    return res.json(data);
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     req.log.error({ err }, 'GET /api/classroom/students/:studentId/stats error');
     return res.status(500).json({ error: 'Internal server error' });
   }
