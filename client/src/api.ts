@@ -778,81 +778,52 @@ export async function checkVideoPlayability(videoIds: string[]): Promise<{ block
   return { blocked, shorts };
 }
 
-export async function fetchTranscriptFromWorker(youtubeId: string, lang: string): Promise<TranscriptSegment[]> {
-  const url = `${CF_WORKER_URL}?videoId=${encodeURIComponent(youtubeId)}&lang=${encodeURIComponent(lang)}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-    throw new Error(body.error || `Worker returned ${res.status}`);
-  }
-  const data = await res.json();
-  if (!data.success || !Array.isArray(data.segments)) {
-    throw new Error(data.error || 'No segments returned');
-  }
-  // Worker returns seconds (start/dur) -- convert to milliseconds (offset/duration)
-  return data.segments.map((seg: { text: string; start: number; dur: number }) => ({
-    text: seg.text,
-    offset: Math.round(seg.start * 1000),
-    duration: Math.round(seg.dur * 1000),
-  }));
-}
-
 /**
- * Fetch transcript directly from YouTube's InnerTube API using the browser's
- * residential IP (bypasses datacenter IP blocks that break CF Worker / server fetches).
+ * Two-step client-side transcript fetch:
+ * 1. CF Worker scrapes YouTube watch page → returns caption track URLs (works from datacenter IPs)
+ * 2. Browser fetches timedtext directly from YouTube using user's residential IP
+ *    (YouTube blocks datacenter IPs but allows residential IPs)
  */
-export async function fetchTranscriptDirect(youtubeId: string, lang: string): Promise<TranscriptSegment[]> {
-  // Step 1: Call InnerTube player API to get caption track URLs
-  const playerRes = await fetch(
-    'https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        context: {
-          client: {
-            clientName: 'IOS',
-            clientVersion: '20.10.4',
-            hl: 'en',
-          },
-        },
-        videoId: youtubeId,
-      }),
-    },
+export async function fetchTranscriptFromWorker(youtubeId: string, lang: string): Promise<TranscriptSegment[]> {
+  // Step 1: Get caption track URLs from CF Worker
+  const captionRes = await fetch(
+    `${CF_WORKER_URL}?action=captions&videoId=${encodeURIComponent(youtubeId)}`,
   );
-
-  if (!playerRes.ok) {
-    throw new Error(`InnerTube player API returned ${playerRes.status}`);
+  if (!captionRes.ok) {
+    const body = await captionRes.json().catch(() => ({ error: `HTTP ${captionRes.status}` }));
+    throw new Error(body.error || `Worker returned ${captionRes.status}`);
+  }
+  const captionData = await captionRes.json();
+  if (!captionData.success || !Array.isArray(captionData.tracks) || captionData.tracks.length === 0) {
+    throw new Error(captionData.error || 'No caption tracks found');
   }
 
-  const playerData = await playerRes.json();
-  const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-  if (!Array.isArray(captionTracks) || captionTracks.length === 0) {
-    throw new Error('No caption tracks available');
-  }
-
-  // Step 2: Find best matching caption track
+  // Find matching language track
   const langPrefix = lang.split('-')[0].toLowerCase();
   const track =
-    captionTracks.find((t: any) => t.languageCode === lang) ||
-    captionTracks.find((t: any) => t.languageCode.split('-')[0].toLowerCase() === langPrefix) ||
-    captionTracks[0];
+    captionData.tracks.find((t: any) => t.languageCode === lang) ||
+    captionData.tracks.find((t: any) => t.languageCode.split('-')[0].toLowerCase() === langPrefix) ||
+    captionData.tracks[0];
 
-  // Step 3: Fetch timed text in json3 format
+  // Step 2: Fetch timedtext directly from YouTube (browser's residential IP)
   const separator = track.baseUrl.includes('?') ? '&' : '?';
-  const timedTextUrl = track.baseUrl + separator + 'fmt=json3';
-  const ttRes = await fetch(timedTextUrl);
+  const timedtextUrl = track.baseUrl + separator + 'fmt=json3';
+  const ttRes = await fetch(timedtextUrl);
   if (!ttRes.ok) {
-    throw new Error(`Timed text fetch failed: ${ttRes.status}`);
+    throw new Error(`Timedtext fetch failed: HTTP ${ttRes.status}`);
+  }
+  const ttText = await ttRes.text();
+  if (!ttText) {
+    throw new Error('Timedtext returned empty response');
   }
 
-  const ttData = await ttRes.json();
-  const events = ttData?.events;
+  // Parse json3 format
+  const json3 = JSON.parse(ttText);
+  const events = json3?.events;
   if (!Array.isArray(events)) {
-    throw new Error('No transcript events in json3 response');
+    throw new Error('No transcript events in response');
   }
 
-  // Step 4: Parse json3 events into TranscriptSegments (ms already)
   const segments: TranscriptSegment[] = [];
   for (const event of events) {
     if (!event.segs || event.tStartMs == null) continue;
@@ -868,7 +839,6 @@ export async function fetchTranscriptDirect(youtubeId: string, lang: string): Pr
   if (segments.length === 0) {
     throw new Error('Transcript parsed but no segments found');
   }
-
   return segments;
 }
 
