@@ -292,26 +292,23 @@ export default function Classes() {
 
                 <div className="gc-card-footer">
                   <div className="gc-card-footer-info">
-                    <span className="gc-card-footer-stat">
-                      <PeopleIcon size={16} />
-                      {classroom.student_count} student{classroom.student_count === 1 ? '' : 's'}
-                    </span>
                     {classroom.class_code && (
                       <span className="gc-card-footer-code">Code: {classroom.class_code}</span>
                     )}
                   </div>
-                  {isTeacher && (
-                    <div className="gc-card-footer-actions">
-                      <button
-                        className="gc-card-action"
-                        onClick={() => {
-                          setActiveClassroomId(classroom.id);
-                          navigate(`/students?classroomId=${classroom.id}`);
-                        }}
-                        title="Students"
-                      >
-                        <PeopleIcon size={20} />
-                      </button>
+                  <div className="gc-card-footer-actions">
+                    <button
+                      className="gc-card-action gc-card-action--students"
+                      onClick={() => {
+                        setActiveClassroomId(classroom.id);
+                        navigate(`/students?classroomId=${classroom.id}`);
+                      }}
+                      title="Students"
+                    >
+                      <PeopleIcon size={16} />
+                      <span>{classroom.student_count}</span>
+                    </button>
+                    {isTeacher && (
                       <div style={{ position: 'relative' }}>
                         <button
                           className="gc-card-action"
@@ -328,8 +325,8 @@ export default function Classes() {
                           />
                         )}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             );

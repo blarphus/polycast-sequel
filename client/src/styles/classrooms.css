@@ -400,6 +400,15 @@
   background: var(--bg-elevated);
 }
 
+.gc-card-action--students {
+  width: auto;
+  gap: 0.3rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 @media (max-width: 768px) {
   .classwork-header-main,
   .students-header-main,
