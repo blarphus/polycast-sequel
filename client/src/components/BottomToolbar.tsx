@@ -1,12 +1,12 @@
 // ---------------------------------------------------------------------------
-// components/BottomToolbar.tsx -- Bottom navigation bar (Home | Dictionary | Learn | Chats)
+// components/BottomToolbar.tsx -- Sidebar / bottom navigation bar
 // ---------------------------------------------------------------------------
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getPendingClasswork } from '../api';
-import { HomeIcon, PlayCircleIcon, BookIcon, TargetIcon, ChatBubbleIcon, ClassworkIcon, SettingsIcon } from './icons';
+import { HomeIcon, BookIcon, TargetIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, SettingsIcon } from './icons';
 
 export default function BottomToolbar() {
   const location = useLocation();
@@ -27,11 +27,11 @@ export default function BottomToolbar() {
   }, [isStudent]);
 
   const isHome = location.pathname === '/';
-  const isBrowse = location.pathname === '/browse' || location.pathname.startsWith('/channel/') || location.pathname.startsWith('/lesson/');
   const isDictionary = location.pathname === '/dictionary';
   const isPractice = location.pathname === '/practice' || location.pathname.startsWith('/practice/') || location.pathname === '/learn';
-  const isChats = location.pathname === '/chats';
+  const isSocial = location.pathname === '/chats';
   const isClasswork = location.pathname === '/classwork' || location.pathname.startsWith('/classwork/') || location.pathname === '/classes' || location.pathname === '/students' || location.pathname.startsWith('/students/');
+  const isBrowse = location.pathname === '/browse' || location.pathname.startsWith('/channel/') || location.pathname.startsWith('/lesson/');
   const isSettings = location.pathname === '/settings';
 
   return (
@@ -47,13 +47,6 @@ export default function BottomToolbar() {
         <span className="toolbar-label">Home</span>
       </button>
       <button
-        className={`toolbar-tab toolbar-tab--orange${isBrowse ? ' active' : ''}`}
-        onClick={() => navigate('/browse')}
-      >
-        <PlayCircleIcon size={22} />
-        <span className="toolbar-label">Watch</span>
-      </button>
-      <button
         className={`toolbar-tab toolbar-tab--red${isDictionary ? ' active' : ''}`}
         onClick={() => navigate('/dictionary')}
       >
@@ -67,6 +60,13 @@ export default function BottomToolbar() {
         <TargetIcon size={22} />
         <span className="toolbar-label">Practice</span>
       </button>
+      <button
+        className={`toolbar-tab toolbar-tab--purple${isSocial ? ' active' : ''}`}
+        onClick={() => navigate('/chats')}
+      >
+        <PeopleIcon size={22} />
+        <span className="toolbar-label">Social</span>
+      </button>
       {!isTeacher && (
         <button
           className={`toolbar-tab toolbar-tab--teal${isClasswork ? ' active' : ''}`}
@@ -79,13 +79,6 @@ export default function BottomToolbar() {
           <span className="toolbar-label">Classwork</span>
         </button>
       )}
-      <button
-        className={`toolbar-tab toolbar-tab--purple${isChats ? ' active' : ''}`}
-        onClick={() => navigate('/chats')}
-      >
-        <ChatBubbleIcon size={22} />
-        <span className="toolbar-label">Friends</span>
-      </button>
       {isTeacher && (
         <button
           className={`toolbar-tab toolbar-tab--teal${isClasswork ? ' active' : ''}`}
@@ -95,6 +88,13 @@ export default function BottomToolbar() {
           <span className="toolbar-label">Classwork</span>
         </button>
       )}
+      <button
+        className={`toolbar-tab toolbar-tab--orange${isBrowse ? ' active' : ''}`}
+        onClick={() => navigate('/browse')}
+      >
+        <PlayCircleIcon size={22} />
+        <span className="toolbar-label">Watch</span>
+      </button>
       <button
         className={`toolbar-tab toolbar-tab--settings${isSettings ? ' active' : ''}`}
         onClick={() => navigate('/settings')}
