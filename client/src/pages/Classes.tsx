@@ -1,11 +1,57 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import type { Classroom } from '../api';
 import { useAuth } from '../hooks/useAuth';
 import { useActiveClassroom } from '../hooks/useActiveClassroom';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
-import { PlusIcon } from '../components/icons';
+import { PlusIcon, PeopleIcon, MoreVerticalIcon } from '../components/icons';
+import { useClickOutside } from '../hooks/useClickOutside';
+
+// Stable color palette for card banners
+const BANNER_COLORS = [
+  '#1e88e5', // blue
+  '#0d9488', // teal
+  '#7c3aed', // purple
+  '#c2410c', // burnt orange
+  '#0891b2', // cyan
+  '#4f46e5', // indigo
+  '#b45309', // amber
+  '#0f766e', // dark teal
+  '#6d28d9', // violet
+  '#1d4ed8', // royal blue
+];
+
+function bannerColor(id: string) {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
+  }
+  return BANNER_COLORS[Math.abs(hash) % BANNER_COLORS.length];
+}
+
+// Three-dot menu for card actions
+function CardMenu({
+  classroom,
+  onEdit,
+  onDelete,
+  onClose,
+}: {
+  classroom: Classroom;
+  onEdit: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  useClickOutside(menuRef, onClose);
+
+  return (
+    <div ref={menuRef} className="stream-post-menu">
+      <button className="stream-post-menu-item" onClick={() => { onEdit(); onClose(); }}>Edit class</button>
+      <button className="stream-post-menu-item stream-post-menu-item--danger" onClick={() => { onDelete(); onClose(); }}>Delete class</button>
+    </div>
+  );
+}
 
 export default function Classes() {
   const navigate = useNavigate();
@@ -25,6 +71,7 @@ export default function Classes() {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   const sortedClassrooms = useMemo(
     () => [...classrooms].sort((a, b) => Number(b.needs_setup) - Number(a.needs_setup)),
@@ -72,6 +119,11 @@ export default function Classes() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const openClasswork = (classroom: Classroom) => {
+    setActiveClassroomId(classroom.id);
+    navigate(`/classwork?classroomId=${classroom.id}`);
   };
 
   return (
@@ -129,72 +181,69 @@ export default function Classes() {
         <div className="classes-grid">
           {sortedClassrooms.map((classroom) => {
             const isEditing = editingId === classroom.id;
+            const color = bannerColor(classroom.id);
             return (
-              <div key={classroom.id} className="classes-card">
-                <div className="classes-card-header">
-                  <div>
-                    <h2 className="classes-card-title">{classroom.name}</h2>
-                  </div>
-                  <div className="classes-badges">
-                    {classroom.is_default_migrated && <span className="classes-badge">Imported</span>}
-                    {classroom.needs_setup && <span className="classes-badge classes-badge--warning">Needs setup</span>}
+              <div key={classroom.id} className="gc-card">
+                <div
+                  className="gc-card-banner"
+                  style={{ background: color }}
+                  onClick={() => openClasswork(classroom)}
+                >
+                  <h2 className="gc-card-name">{classroom.name}</h2>
+                  {classroom.teacher_names.length > 0 && (
+                    <p className="gc-card-teacher">{classroom.teacher_names.join(', ')}</p>
+                  )}
+                  <div className="gc-card-banner-badges">
+                    {classroom.needs_setup && <span className="gc-card-badge">Needs setup</span>}
                   </div>
                 </div>
 
-                {classroom.teacher_names.length > 0 && (
-                  <p className="classes-card-detail">
-                    Teachers: {classroom.teacher_names.join(', ')}
+                <div className="gc-card-body">
+                  <p className="gc-card-detail">
+                    {classroom.student_count} student{classroom.student_count === 1 ? '' : 's'}
                   </p>
-                )}
-                <p className="classes-card-detail">
-                  {classroom.student_count} student{classroom.student_count === 1 ? '' : 's'}
-                </p>
-                {classroom.class_code && (
-                  <p className="classes-card-detail">Class code: {classroom.class_code}</p>
-                )}
+                  {classroom.class_code && (
+                    <p className="gc-card-detail">Code: {classroom.class_code}</p>
+                  )}
+                </div>
 
                 {isTeacher && isEditing && (
-                  <ClassroomSetupBanner classroom={classroom} onUpdated={handleUpdated} />
+                  <div className="gc-card-edit-section">
+                    <ClassroomSetupBanner classroom={classroom} onUpdated={handleUpdated} />
+                  </div>
                 )}
-                <div className="classes-card-actions">
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => {
-                      setActiveClassroomId(classroom.id);
-                      navigate(`/classwork?classroomId=${classroom.id}`);
-                    }}
-                  >
-                    Open classwork
-                  </button>
-                  {isTeacher ? (
-                    <>
+
+                {isTeacher && (
+                  <div className="gc-card-footer">
+                    <button
+                      className="gc-card-action"
+                      onClick={() => {
+                        setActiveClassroomId(classroom.id);
+                        navigate(`/students?classroomId=${classroom.id}`);
+                      }}
+                      title="Students"
+                    >
+                      <PeopleIcon size={20} />
+                    </button>
+                    <div style={{ position: 'relative' }}>
                       <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => {
-                          setActiveClassroomId(classroom.id);
-                          navigate(`/students?classroomId=${classroom.id}`);
-                        }}
+                        className="gc-card-action"
+                        onClick={() => setMenuOpenId((prev) => prev === classroom.id ? null : classroom.id)}
+                        title="More options"
                       >
-                        Open students
+                        <MoreVerticalIcon size={20} />
                       </button>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => {
-                          setEditingId((prev) => prev === classroom.id ? null : classroom.id);
-                        }}
-                      >
-                        {isEditing ? 'Close setup' : 'Edit class'}
-                      </button>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => handleDelete(classroom)}
-                        disabled={deletingId === classroom.id}
-                      >
-                        {deletingId === classroom.id ? 'Deleting...' : 'Delete'}
-                      </button>
-                    </>
-                  ) : null}
-                </div>
+                      {menuOpenId === classroom.id && (
+                        <CardMenu
+                          classroom={classroom}
+                          onEdit={() => setEditingId((prev) => prev === classroom.id ? null : classroom.id)}
+                          onDelete={() => handleDelete(classroom)}
+                          onClose={() => setMenuOpenId(null)}
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

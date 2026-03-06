@@ -32,7 +32,7 @@ export default function BottomToolbar() {
   const isLearn = location.pathname === '/learn';
   const isPractice = location.pathname === '/practice' || location.pathname.startsWith('/practice/');
   const isChats = location.pathname === '/chats';
-  const isClasswork = location.pathname === '/classwork' || location.pathname.startsWith('/classwork/');
+  const isClasswork = location.pathname === '/classwork' || location.pathname.startsWith('/classwork/') || location.pathname === '/classes';
   const isStudents = location.pathname === '/students' || location.pathname.startsWith('/students/');
   const isSettings = location.pathname === '/settings';
 
@@ -79,7 +79,7 @@ export default function BottomToolbar() {
       {!isTeacher && (
         <button
           className={`toolbar-tab toolbar-tab--teal${isClasswork ? ' active' : ''}`}
-          onClick={() => navigate('/classwork')}
+          onClick={() => navigate('/classes')}
         >
           <span className="toolbar-tab-icon-wrap">
             <ClassworkIcon size={22} />
@@ -99,7 +99,7 @@ export default function BottomToolbar() {
         <>
           <button
             className={`toolbar-tab toolbar-tab--teal${isClasswork ? ' active' : ''}`}
-            onClick={() => navigate('/classwork')}
+            onClick={() => navigate('/classes')}
           >
             <ClassworkIcon size={22} />
             <span className="toolbar-label">Classwork</span>
