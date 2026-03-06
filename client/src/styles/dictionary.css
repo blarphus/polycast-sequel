@@ -278,6 +278,11 @@
   gap: 0.75rem;
 }
 
+.dict-item-body--collapsed {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .dict-definition-card {
   padding: 0.75rem;
   border: 1px solid var(--border);

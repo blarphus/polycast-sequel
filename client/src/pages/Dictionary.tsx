@@ -437,8 +437,10 @@ export default function Dictionary() {
                         <DueStatusBadge word={group.entries[0]} />
                         <ChevronDownIcon size={18} className="dict-chevron" />
                       </button>
-                      {open && (
-                        <div className="dict-item-body">
+                      <div
+                        className={`dict-item-body${open ? '' : ' dict-item-body--collapsed'}`}
+                        aria-hidden={!open}
+                      >
                           {group.entries.map((w) => (
                             <div key={w.id} className="dict-definition-card">
                               <div className="dict-def-layout">
@@ -516,8 +518,7 @@ export default function Dictionary() {
                               </div>
                             </div>
                           ))}
-                        </div>
-                      )}
+                      </div>
                     </div>
                   );
                 })}
