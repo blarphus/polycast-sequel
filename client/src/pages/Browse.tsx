@@ -5,11 +5,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getTrendingVideos, searchVideos, checkVideoPlayability, getLessons, TrendingVideo, LessonSummary } from '../api';
+import { getTrendingVideos, searchVideos, getLessons, TrendingVideo, LessonSummary } from '../api';
 import { LANGUAGES } from '../components/classwork/languages';
 import { SearchIcon, CloseIcon } from '../components/icons';
+import LessonCard from '../components/cards/LessonCard';
 import Carousel from '../components/Carousel';
-import { formatVideoDuration } from '../utils/videoFormat';
+import { VideoGridCard, VideoGridSkeleton } from '../components/video/VideoGridCard';
 import { useVideoClick } from '../hooks/useVideoClick';
 import { filterUnplayableVideos } from '../utils/playabilityFilter';
 
@@ -161,28 +162,11 @@ export default function Browse() {
             </div>
           )}
           renderItem={(lesson) => (
-            <div
+            <LessonCard
               key={lesson.id}
-              className="home-carousel-card lesson-card home-carousel-card--clickable"
+              lesson={lesson}
               onClick={() => navigate(`/lesson/${lesson.id}`)}
-            >
-              <div className="home-channel-stack">
-                {lesson.thumbnails.slice(0, 3).reverse().map((thumb, i, arr) => (
-                  <img
-                    key={i}
-                    src={thumb}
-                    alt=""
-                    className={`home-channel-stack-img home-channel-stack-img--${arr.length - 1 - i}`}
-                  />
-                ))}
-              </div>
-              <div className="home-carousel-info">
-                <span className="home-carousel-title">{lesson.title}</span>
-                <span className="lesson-card-count">
-                  {lesson.videoCount} video{lesson.videoCount !== 1 ? 's' : ''}
-                </span>
-              </div>
-            </div>
+            />
           )}
         />
       )}
@@ -202,13 +186,7 @@ export default function Browse() {
       ) : loading ? (
         <div className="browse-grid">
           {Array.from({ length: 8 }, (_, i) => (
-            <div key={i} className="browse-card browse-card--skeleton">
-              <div className="browse-card-thumb browse-card-thumb--skeleton" />
-              <div className="browse-card-info">
-                <div className="home-skeleton-line" style={{ width: '85%' }} />
-                <div className="home-skeleton-line" style={{ width: '55%' }} />
-              </div>
-            </div>
+            <VideoGridSkeleton key={i} />
           ))}
         </div>
       ) : videos.length === 0 ? (
@@ -219,22 +197,12 @@ export default function Browse() {
         <>
           <div className="browse-grid">
             {videos.slice(0, visibleCount).map((v) => (
-              <div
+              <VideoGridCard
                 key={v.youtube_id}
-                className={`browse-card${addingVideoId === v.youtube_id ? ' browse-card--loading' : ''}`}
+                video={v}
+                loading={addingVideoId === v.youtube_id}
                 onClick={() => handleVideoClick(v)}
-              >
-                <div className="browse-card-thumb">
-                  <img src={v.thumbnail} alt={v.title} className="browse-card-thumb-img" />
-                  {v.duration_seconds != null && (
-                    <span className="browse-card-duration">{formatVideoDuration(v.duration_seconds)}</span>
-                  )}
-                </div>
-                <div className="browse-card-info">
-                  <span className="browse-card-title">{v.title}</span>
-                  <span className="browse-card-channel">{v.channel}</span>
-                </div>
-              </div>
+              />
             ))}
           </div>
           {visibleCount < videos.length && (

@@ -7,7 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getLessonVideos, TrendingVideo } from '../api';
 import { ChevronLeftIcon } from '../components/icons';
-import { formatVideoDuration } from '../utils/videoFormat';
+import { VideoGridCard, VideoGridSkeleton } from '../components/video/VideoGridCard';
 import { useVideoClick } from '../hooks/useVideoClick';
 
 
@@ -61,13 +61,7 @@ export default function Lesson() {
       ) : loading ? (
         <div className="browse-grid">
           {Array.from({ length: 8 }, (_, i) => (
-            <div key={i} className="browse-card browse-card--skeleton">
-              <div className="browse-card-thumb browse-card-thumb--skeleton" />
-              <div className="browse-card-info">
-                <div className="home-skeleton-line" style={{ width: '85%' }} />
-                <div className="home-skeleton-line" style={{ width: '55%' }} />
-              </div>
-            </div>
+            <VideoGridSkeleton key={i} />
           ))}
         </div>
       ) : videos.length === 0 ? (
@@ -77,25 +71,13 @@ export default function Lesson() {
       ) : (
         <div className="browse-grid">
           {videos.map((v) => (
-            <div
+            <VideoGridCard
               key={v.youtube_id}
-              className={`browse-card${addingVideoId === v.youtube_id ? ' browse-card--loading' : ''}`}
+              video={v}
+              loading={addingVideoId === v.youtube_id}
+              showCaptions
               onClick={() => handleVideoClick(v)}
-            >
-              <div className="browse-card-thumb">
-                <img src={v.thumbnail} alt={v.title} className="browse-card-thumb-img" />
-                {v.duration_seconds != null && (
-                  <span className="browse-card-duration">{formatVideoDuration(v.duration_seconds)}</span>
-                )}
-              </div>
-              <div className="browse-card-info">
-                <span className="browse-card-title">{v.title}</span>
-                <span className="browse-card-channel">{v.channel}</span>
-                <span className={`browse-card-captions${v.has_captions ? ' browse-card-captions--human' : ''}`}>
-                  {v.has_captions ? 'Human captions' : 'Auto captions'}
-                </span>
-              </div>
-            </div>
+            />
           ))}
         </div>
       )}

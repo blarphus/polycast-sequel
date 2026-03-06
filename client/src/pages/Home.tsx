@@ -12,6 +12,7 @@ import PendingClasswork from '../components/PendingClasswork';
 import UpcomingClasses from '../components/UpcomingClasses';
 import AddVideoModal from '../components/AddVideoModal';
 import Carousel from '../components/Carousel';
+import ChannelCard from '../components/cards/ChannelCard';
 import { FrequencyDots } from '../components/FrequencyDots';
 import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
 import { useVideoClick } from '../hooks/useVideoClick';
@@ -194,25 +195,11 @@ export default function Home() {
             </div>
           )}
           renderItem={(ch) => (
-            <div
+            <ChannelCard
               key={ch.handle}
-              className="home-carousel-card home-channel-card home-carousel-card--clickable"
+              channel={ch}
               onClick={() => navigate(`/channel/${ch.handle}`)}
-            >
-              <div className="home-channel-stack">
-                {ch.thumbnails.slice(0, 3).reverse().map((thumb, i, arr) => (
-                  <img
-                    key={i}
-                    src={thumb}
-                    alt=""
-                    className={`home-channel-stack-img home-channel-stack-img--${arr.length - 1 - i}`}
-                  />
-                ))}
-              </div>
-              <div className="home-carousel-info">
-                <span className="home-carousel-title">{ch.name}</span>
-              </div>
-            </div>
+            />
           )}
         />
       )}

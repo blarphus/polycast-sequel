@@ -4,29 +4,11 @@
 
 import React, { useState, useRef } from 'react';
 import * as api from '../../api';
-import type { StreamPost, StreamTopic, StreamPostWord, StreamAttachment, LessonItem } from '../../api';
-import { YouTubeIcon, FileIcon, ExternalLinkIcon, ChevronRightIcon, CheckIcon } from '../icons';
+import type { StreamPost, StreamTopic, StreamPostWord, LessonItem } from '../../api';
+import { ChevronRightIcon, CheckIcon } from '../icons';
 import { useClickOutside } from '../../hooks/useClickOutside';
-
-// ---------------------------------------------------------------------------
-// AttachmentLink (display only)
-// ---------------------------------------------------------------------------
-
-function AttachmentLink({ att }: { att: StreamAttachment }) {
-  const url = att.url;
-  const label = att.label || url;
-  const isYoutube = url.includes('youtube.com/watch') || url.includes('youtu.be/');
-  const isPdf = url.toLowerCase().endsWith('.pdf');
-
-  return (
-    <a className="stream-attachment-link" href={url} target="_blank" rel="noopener noreferrer">
-      {isYoutube && <YouTubeIcon size={16} />}
-      {isPdf && !isYoutube && <FileIcon size={16} />}
-      {!isYoutube && !isPdf && <ExternalLinkIcon size={16} />}
-      <span>{label}</span>
-    </a>
-  );
-}
+import AttachmentLink from '../AttachmentLink';
+import { formatLocalDate } from '../../utils/dateFormat';
 
 // ---------------------------------------------------------------------------
 // Lesson items display
@@ -178,7 +160,7 @@ export function TeacherPostCard({
         <span className={`stream-post-type-badge${post.type === 'lesson' ? ' stream-post-type-badge--lesson' : ''}`}>
           {badgeLabel}
         </span>
-        <span className="stream-post-date">{new Date(post.created_at).toLocaleDateString()}</span>
+        <span className="stream-post-date">{formatLocalDate(post.created_at)}</span>
         <div style={{ position: 'relative', marginLeft: 'auto' }}>
           <button
             className="stream-post-menu-btn"
@@ -310,7 +292,7 @@ export function StudentWordListCard({
         {post.target_language && (
           <span className="stream-lang-badge">{post.target_language.toUpperCase()}</span>
         )}
-        <span className="stream-post-date">{new Date(post.created_at).toLocaleDateString()}</span>
+        <span className="stream-post-date">{formatLocalDate(post.created_at)}</span>
       </div>
       {post.title && <h3 className="stream-post-title">{post.title}</h3>}
       {error && <div className="auth-error" style={{ marginBottom: '0.75rem' }}>{error}</div>}
@@ -364,7 +346,7 @@ export function StudentMaterialCard({ post }: { post: StreamPost }) {
     <div className="stream-post-card">
       <div className="stream-post-header">
         <span className="stream-post-type-badge">Material</span>
-        <span className="stream-post-date">{new Date(post.created_at).toLocaleDateString()}</span>
+        <span className="stream-post-date">{formatLocalDate(post.created_at)}</span>
       </div>
       {post.title && <h3 className="stream-post-title">{post.title}</h3>}
       {post.body && <p className="stream-post-body">{post.body}</p>}
@@ -382,7 +364,7 @@ export function StudentLessonCard({ post }: { post: StreamPost }) {
     <div className="stream-post-card stream-post-card--lesson">
       <div className="stream-post-header">
         <span className="stream-post-type-badge stream-post-type-badge--lesson">Lesson</span>
-        <span className="stream-post-date">{new Date(post.created_at).toLocaleDateString()}</span>
+        <span className="stream-post-date">{formatLocalDate(post.created_at)}</span>
       </div>
       {post.title && <h3 className="stream-post-title">{post.title}</h3>}
       <LessonItemsList items={post.lesson_items || []} />

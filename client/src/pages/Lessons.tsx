@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getLessons, LessonSummary } from '../api';
 import { ChevronLeftIcon } from '../components/icons';
-
+import LessonCard from '../components/cards/LessonCard';
 
 export default function Lessons() {
   const { user } = useAuth();
@@ -63,28 +63,11 @@ export default function Lessons() {
       ) : (
         <div className="lessons-grid">
           {lessons.map((lesson) => (
-            <div
+            <LessonCard
               key={lesson.id}
-              className="home-carousel-card lesson-card home-carousel-card--clickable"
+              lesson={lesson}
               onClick={() => navigate(`/lesson/${lesson.id}`)}
-            >
-              <div className="home-channel-stack">
-                {lesson.thumbnails.slice(0, 3).reverse().map((thumb, i, arr) => (
-                  <img
-                    key={i}
-                    src={thumb}
-                    alt=""
-                    className={`home-channel-stack-img home-channel-stack-img--${arr.length - 1 - i}`}
-                  />
-                ))}
-              </div>
-              <div className="home-carousel-info">
-                <span className="home-carousel-title">{lesson.title}</span>
-                <span className="lesson-card-count">
-                  {lesson.videoCount} video{lesson.videoCount !== 1 ? 's' : ''}
-                </span>
-              </div>
-            </div>
+            />
           ))}
         </div>
       )}

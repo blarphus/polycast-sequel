@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import type { StreamAttachment } from '../../api';
-import { AttachmentEditor } from './CreatePostModal';
+import AttachmentEditor from '../AttachmentEditor';
 
 export default function MaterialTab({
   onSubmit,

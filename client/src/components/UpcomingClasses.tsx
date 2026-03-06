@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getClassesToday, UpcomingClass } from '../api';
 import { CalendarIcon } from './classwork/ClassSessionCard';
+import { formatUsTime } from '../utils/dateFormat';
 
 export default function UpcomingClasses() {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export default function UpcomingClasses() {
       <div className="upcoming-classes-list">
         {classes.map((cls) => {
           const timeStr = cls.time || (cls.scheduled_at
-            ? new Date(cls.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+            ? formatUsTime(cls.scheduled_at)
             : '');
 
           return (

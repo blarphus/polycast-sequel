@@ -4,7 +4,8 @@
 
 import React, { useState } from 'react';
 import * as api from '../../api';
-import type { StreamPost, StreamAttachment, LessonItem } from '../../api';
+import type { StreamPost, LessonItem } from '../../api';
+import AttachmentEditor from '../AttachmentEditor';
 
 // ---------------------------------------------------------------------------
 // Edit modal (for editing existing posts)
@@ -21,10 +22,8 @@ export default function EditModal({
 }) {
   const [title, setTitle] = useState(post.title || '');
   const [body, setBody] = useState(post.body || '');
-  const [attachments, setAttachments] = useState<StreamAttachment[]>(post.attachments || []);
+  const [attachments, setAttachments] = useState(post.attachments || []);
   const [lessonItems, setLessonItems] = useState<LessonItem[]>(post.lesson_items || []);
-  const [newUrl, setNewUrl] = useState('');
-  const [newLabel, setNewLabel] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -43,13 +42,6 @@ export default function EditModal({
     } finally {
       setSaving(false);
     }
-  };
-
-  const addLink = () => {
-    if (!newUrl.trim()) return;
-    setAttachments((prev) => [...prev, { url: newUrl.trim(), label: newLabel.trim() || newUrl.trim() }]);
-    setNewUrl('');
-    setNewLabel('');
   };
 
   const updateLessonItem = (i: number, field: keyof LessonItem, value: string) => {
@@ -75,22 +67,7 @@ export default function EditModal({
               rows={4}
             />
             <label className="form-label">Links</label>
-            {attachments.map((att, i) => (
-              <div key={i} className="stream-attachment-row">
-                <span className="stream-attachment-url">{att.label || att.url}</span>
-                <button
-                  className="btn-small btn-danger"
-                  onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-            <div className="stream-add-link-row">
-              <input className="form-input" placeholder="URL" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} style={{ marginBottom: 0 }} />
-              <input className="form-input" placeholder="Label (optional)" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} style={{ marginBottom: 0 }} />
-              <button className="btn-small" onClick={addLink}>+ Add</button>
-            </div>
+            <AttachmentEditor attachments={attachments} onChange={setAttachments} />
           </>
         )}
         {post.type === 'lesson' && lessonItems.map((item, i) => (

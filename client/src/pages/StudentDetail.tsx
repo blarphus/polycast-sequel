@@ -7,6 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import type { StudentDetail as StudentDetailData } from '../api';
 import { ChevronLeftIcon } from '../components/icons';
+import { formatDate as formatShortDate } from '../utils/dateFormat';
 
 export default function StudentDetail() {
   const { studentId } = useParams<{ studentId: string }>();
@@ -50,8 +51,7 @@ export default function StudentDetail() {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'Never';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    return formatShortDate(dateStr);
   };
 
   return (

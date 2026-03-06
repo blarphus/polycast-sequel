@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import type { LessonItem } from '../../api';
-import { AttachmentEditor } from './CreatePostModal';
+import AttachmentEditor from '../AttachmentEditor';
 
 export function LessonItemEditor({
   item,

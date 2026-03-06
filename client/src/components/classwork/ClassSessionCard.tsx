@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import type { StreamPost, Recurrence } from '../../api';
 import { DAY_LABELS } from './languages';
 import { CalendarIcon } from '../icons';
+import { formatLocalDate, formatUsDateTime } from '../../utils/dateFormat';
 
 export { CalendarIcon } from '../icons';
 
@@ -23,14 +24,7 @@ function formatRecurrence(rec: Recurrence): string {
 }
 
 function formatScheduledAt(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  return formatUsDateTime(dateStr);
 }
 
 function isJoinable(post: StreamPost): boolean {
@@ -64,7 +58,7 @@ export function TeacherClassSessionCard({ post }: { post: StreamPost }) {
           <CalendarIcon />
           Class Session
         </span>
-        <span className="stream-post-date">{new Date(post.created_at).toLocaleDateString()}</span>
+        <span className="stream-post-date">{formatLocalDate(post.created_at)}</span>
       </div>
 
       {post.title && <h3 className="stream-post-title">{post.title}</h3>}
