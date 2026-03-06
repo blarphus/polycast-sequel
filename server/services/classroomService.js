@@ -17,6 +17,8 @@ function mapClassroomRow(row, roleOverride) {
     section: row.section,
     subject: row.subject,
     room: row.room,
+    target_language: row.target_language || null,
+    native_language: row.native_language || null,
     class_code: row.class_code ?? null,
     archived: !!row.archived_at,
     is_default_migrated: !!row.is_default_migrated,
@@ -124,18 +126,18 @@ export async function getClassroomForUser(classroomId, userId) {
   return rows[0] ? mapClassroomRow(rows[0]) : null;
 }
 
-export async function createClassroom({ teacherId, name, section, subject, room }) {
+export async function createClassroom({ teacherId, name, section, subject, room, target_language, native_language }) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const { classCode, inviteToken } = await generateUniqueClassIdentity(client);
     const { rows: classroomRows } = await client.query(
       `INSERT INTO classrooms (
-         name, section, subject, room, class_code, invite_token, created_by
+         name, section, subject, room, target_language, native_language, class_code, invite_token, created_by
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [name, section || null, subject || null, room || null, classCode, inviteToken, teacherId],
+      [name, section || null, subject || null, room || null, target_language || null, native_language || null, classCode, inviteToken, teacherId],
     );
     const classroom = classroomRows[0];
     await client.query(
@@ -166,7 +168,7 @@ export async function updateClassroom({ classroomId, teacherId, patch }) {
 
   const fields = [];
   const values = [];
-  for (const key of ['name', 'section', 'subject', 'room', 'needs_setup']) {
+  for (const key of ['name', 'section', 'subject', 'room', 'target_language', 'native_language', 'needs_setup']) {
     if (Object.prototype.hasOwnProperty.call(patch, key)) {
       values.push(patch[key] ?? null);
       fields.push(`${key} = $${values.length}`);

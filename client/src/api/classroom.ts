@@ -14,6 +14,8 @@ export interface Classroom {
   section: string | null;
   subject: string | null;
   room: string | null;
+  target_language: string | null;
+  native_language: string | null;
   class_code: string | null;
   archived: boolean;
   is_default_migrated: boolean;
@@ -69,7 +71,7 @@ export function getClassrooms() {
   return request<Classroom[]>('/classrooms');
 }
 
-export function createClassroom(data: { name: string; section?: string; subject?: string; room?: string }) {
+export function createClassroom(data: { name: string; section?: string; subject?: string; room?: string; target_language?: string; native_language?: string }) {
   return request<Classroom>('/classrooms', {
     method: 'POST',
     body: data,
@@ -85,6 +87,8 @@ export function updateClassroom(id: string, data: {
   section?: string | null;
   subject?: string | null;
   room?: string | null;
+  target_language?: string | null;
+  native_language?: string | null;
   needs_setup?: boolean;
 }) {
   return request<Classroom>(`/classrooms/${id}`, {

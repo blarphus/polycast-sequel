@@ -27,12 +27,16 @@ const createClassroomBody = z.object({
   section: z.string().trim().optional().or(z.literal('')),
   subject: z.string().trim().optional().or(z.literal('')),
   room: z.string().trim().optional().or(z.literal('')),
+  target_language: z.string().trim().optional().or(z.literal('')),
+  native_language: z.string().trim().optional().or(z.literal('')),
 });
 const updateClassroomBody = z.object({
   name: z.string().trim().optional(),
   section: z.string().trim().optional().nullable(),
   subject: z.string().trim().optional().nullable(),
   room: z.string().trim().optional().nullable(),
+  target_language: z.string().trim().optional().nullable(),
+  native_language: z.string().trim().optional().nullable(),
   needs_setup: z.boolean().optional(),
 });
 const createTopicBody = z.object({
@@ -88,6 +92,8 @@ router.post('/api/classrooms', authMiddleware, requireTeacher, validate({ body: 
       section: normalizeOptionalText(req.body.section),
       subject: normalizeOptionalText(req.body.subject),
       room: normalizeOptionalText(req.body.room),
+      target_language: normalizeOptionalText(req.body.target_language),
+      native_language: normalizeOptionalText(req.body.native_language),
     });
     return res.status(201).json(classroom);
   } catch (err) {
@@ -119,6 +125,8 @@ router.patch('/api/classrooms/:id', authMiddleware, validate({ params: classroom
         ...(req.body.section !== undefined ? { section: normalizeOptionalText(req.body.section) } : {}),
         ...(req.body.subject !== undefined ? { subject: normalizeOptionalText(req.body.subject) } : {}),
         ...(req.body.room !== undefined ? { room: normalizeOptionalText(req.body.room) } : {}),
+        ...(req.body.target_language !== undefined ? { target_language: normalizeOptionalText(req.body.target_language) } : {}),
+        ...(req.body.native_language !== undefined ? { native_language: normalizeOptionalText(req.body.native_language) } : {}),
         ...(req.body.needs_setup !== undefined ? { needs_setup: req.body.needs_setup } : {}),
       },
     });

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import * as api from '../../api';
 import type { Classroom } from '../../api';
+import { LANGUAGES } from '../classwork/languages';
 
 interface Props {
   classroom: Classroom;
@@ -9,11 +10,15 @@ interface Props {
 
 export default function ClassroomSetupBanner({ classroom, onUpdated }: Props) {
   const [name, setName] = useState(classroom.name);
+  const [targetLanguage, setTargetLanguage] = useState(classroom.target_language ?? '');
+  const [nativeLanguage, setNativeLanguage] = useState(classroom.native_language ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     setName(classroom.name);
+    setTargetLanguage(classroom.target_language ?? '');
+    setNativeLanguage(classroom.native_language ?? '');
     setError('');
   }, [classroom]);
 
@@ -24,6 +29,8 @@ export default function ClassroomSetupBanner({ classroom, onUpdated }: Props) {
     try {
       const updated = await api.updateClassroom(classroom.id, {
         name: name.trim() || classroom.name,
+        target_language: targetLanguage || null,
+        native_language: nativeLanguage || null,
         needs_setup: false,
       });
       onUpdated(updated);
@@ -37,8 +44,8 @@ export default function ClassroomSetupBanner({ classroom, onUpdated }: Props) {
 
   const title = classroom.needs_setup ? 'Set up this imported class' : 'Edit class details';
   const description = classroom.needs_setup
-    ? 'Rename it now. Existing classwork will keep working.'
-    : 'Update the class name.';
+    ? 'Rename it and set languages now. Existing classwork will keep working.'
+    : 'Update the class name and language settings.';
 
   return (
     <div className="classroom-setup-banner">
@@ -56,6 +63,26 @@ export default function ClassroomSetupBanner({ classroom, onUpdated }: Props) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Class name"
         />
+        <select
+          className="form-input"
+          value={targetLanguage}
+          onChange={(e) => setTargetLanguage(e.target.value)}
+        >
+          <option value="">Teaching language...</option>
+          {LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>{l.name}</option>
+          ))}
+        </select>
+        <select
+          className="form-input"
+          value={nativeLanguage}
+          onChange={(e) => setNativeLanguage(e.target.value)}
+        >
+          <option value="">Students speak...</option>
+          {LANGUAGES.map((l) => (
+            <option key={l.code} value={l.code}>{l.name}</option>
+          ))}
+        </select>
         <button className="btn btn-primary btn-sm" type="submit" disabled={saving}>
           {saving ? 'Saving...' : 'Save class'}
         </button>
