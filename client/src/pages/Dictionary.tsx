@@ -2,7 +2,7 @@
 // pages/Dictionary.tsx -- Personal dictionary with collapsible entries
 // ---------------------------------------------------------------------------
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
@@ -13,7 +13,7 @@ import WordLookupModal from '../components/WordLookupModal';
 import ImagePicker from '../components/ImagePicker';
 import { proxyImageUrl } from '../api';
 import type { SavedWord } from '../api';
-import { SearchIcon, SearchMinusIcon, BookPlusIcon, ChevronDownIcon, TrashIcon } from '../components/icons';
+import { SearchIcon, SearchMinusIcon, BookPlusIcon, ChevronDownIcon, TrashIcon, GripVerticalIcon } from '../components/icons';
 import { FrequencyDots, FREQUENCY_DOT_COLORS } from '../components/FrequencyDots';
 
 // -- DueStatusBadge: shows SRS status in collapsed header -------------------
@@ -66,9 +66,19 @@ function ReviewField({ word }: { word: SavedWord }) {
   );
 }
 
+// -- Helpers ----------------------------------------------------------------
+
+function isEntryNew(e: SavedWord): boolean {
+  return e.srs_interval === 0 && e.learning_step === null && !e.last_reviewed_at;
+}
+
+function isGroupNew(group: WordGroup): boolean {
+  return group.entries.some(isEntryNew);
+}
+
 // -- Sort options -----------------------------------------------------------
 
-type SortMode = 'date' | 'az' | 'freq-high' | 'freq-low' | 'due';
+type SortMode = 'queue' | 'date' | 'az' | 'freq-high' | 'freq-low' | 'due';
 
 interface WordGroup {
   key: string;
@@ -80,16 +90,24 @@ interface WordGroup {
 export default function Dictionary() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { words, loading, removeWord, addWord, updateImage, isDefinitionSaved } = useSavedWords();
+  const { words, loading, removeWord, addWord, updateImage, isDefinitionSaved, reorderQueueWords } = useSavedWords();
 
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<SortMode>('date');
+  const [sort, setSort] = useState<SortMode>('queue');
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lookupOpen, setLookupOpen] = useState(false);
   const [imagePickerWord, setImagePickerWord] = useState<SavedWord | null>(null);
   const [page, setPage] = useState(0);
   const WORDS_PER_PAGE = 20;
+
+  // DnD state
+  const [dragItem, setDragItem] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  // Bracket height measurement
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [bracketHeight, setBracketHeight] = useState(0);
 
   const toggle = (key: string) => {
     setExpandedKeys((prev) => {
@@ -126,6 +144,40 @@ export default function Dictionary() {
     const groups = Array.from(groupMap.values());
 
     switch (sort) {
+      case 'queue': {
+        groups.sort((a, b) => {
+          const aNew = isGroupNew(a);
+          const bNew = isGroupNew(b);
+          // New cards first
+          if (aNew && !bNew) return -1;
+          if (!aNew && bNew) return 1;
+
+          if (aNew && bNew) {
+            // queue_position ASC (null last)
+            const aPos = Math.min(...a.entries.map((e) => e.queue_position ?? Infinity));
+            const bPos = Math.min(...b.entries.map((e) => e.queue_position ?? Infinity));
+            if (aPos !== bPos) return aPos - bPos;
+            // priority DESC
+            const aPri = a.entries.some((e) => e.priority) ? 1 : 0;
+            const bPri = b.entries.some((e) => e.priority) ? 1 : 0;
+            if (aPri !== bPri) return bPri - aPri;
+            // frequency DESC
+            const aFreq = Math.max(...a.entries.map((e) => e.frequency ?? 0));
+            const bFreq = Math.max(...b.entries.map((e) => e.frequency ?? 0));
+            if (aFreq !== bFreq) return bFreq - aFreq;
+            // created_at ASC
+            const aTime = Math.min(...a.entries.map((e) => new Date(e.created_at).getTime()));
+            const bTime = Math.min(...b.entries.map((e) => new Date(e.created_at).getTime()));
+            return aTime - bTime;
+          }
+
+          // Both reviewed: due_at ASC
+          const aEarliest = Math.min(...a.entries.map((e) => e.due_at ? new Date(e.due_at).getTime() : Infinity));
+          const bEarliest = Math.min(...b.entries.map((e) => e.due_at ? new Date(e.due_at).getTime() : Infinity));
+          return aEarliest - bEarliest;
+        });
+        break;
+      }
       case 'az':
         groups.sort((a, b) => a.word.localeCompare(b.word));
         break;
@@ -161,6 +213,92 @@ export default function Dictionary() {
     return groups;
   }, [words, search, sort]);
 
+  // Bracket computation
+  const dailyNewLimit = user?.daily_new_limit ?? 5;
+  const bracketCount = useMemo(() => {
+    if (sort !== 'queue' || page !== 0) return 0;
+    let count = 0;
+    for (const g of wordGroups) {
+      if (isGroupNew(g)) count++;
+      else break;
+    }
+    return Math.min(dailyNewLimit, count);
+  }, [wordGroups, sort, page, dailyNewLimit]);
+
+  const totalPages = Math.ceil(wordGroups.length / WORDS_PER_PAGE);
+  const pageGroups = wordGroups.slice(page * WORDS_PER_PAGE, (page + 1) * WORDS_PER_PAGE);
+
+  // Measure bracket height after render
+  useEffect(() => {
+    if (bracketCount === 0) { setBracketHeight(0); return; }
+    let height = 0;
+    const keys = pageGroups.slice(0, bracketCount).map((g) => g.key);
+    for (let i = 0; i < keys.length; i++) {
+      const el = itemRefs.current.get(keys[i]);
+      if (el) {
+        height += el.offsetHeight;
+        if (i < keys.length - 1) height += 8; // gap (0.5rem)
+      }
+    }
+    setBracketHeight(height);
+  }, [bracketCount, pageGroups, expandedKeys]);
+
+  const setItemRef = useCallback((key: string, el: HTMLDivElement | null) => {
+    if (el) itemRefs.current.set(key, el);
+    else itemRefs.current.delete(key);
+  }, []);
+
+  // DnD handlers
+  const handleDragStart = (e: React.DragEvent, groupKey: string) => {
+    setDragItem(groupKey);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, groupKey: string) => {
+    e.preventDefault();
+    if (dragItem && dragItem !== groupKey) setDragOverId(groupKey);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetKey: string) => {
+    e.preventDefault();
+    if (!dragItem || dragItem === targetKey) {
+      setDragItem(null);
+      setDragOverId(null);
+      return;
+    }
+
+    // Only reorder among new-card groups on the current page
+    const newGroups = pageGroups.filter(isGroupNew);
+    const dragIndex = newGroups.findIndex((g) => g.key === dragItem);
+    const targetIndex = newGroups.findIndex((g) => g.key === targetKey);
+    if (dragIndex === -1 || targetIndex === -1) {
+      setDragItem(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const reordered = [...newGroups];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    // Build position updates for all entries in reordered new-card groups
+    const items: Array<{ id: string; queue_position: number }> = [];
+    reordered.forEach((g, gi) => {
+      for (const entry of g.entries) {
+        items.push({ id: entry.id, queue_position: gi });
+      }
+    });
+
+    reorderQueueWords(items);
+    setDragItem(null);
+    setDragOverId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragItem(null);
+    setDragOverId(null);
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -169,6 +307,8 @@ export default function Dictionary() {
       console.error('Logout error:', err);
     }
   };
+
+  const isQueueMode = sort === 'queue';
 
   return (
     <div className="dict-page">
@@ -207,10 +347,11 @@ export default function Dictionary() {
               value={sort}
               onChange={(e) => { setSort(e.target.value as SortMode); setPage(0); }}
             >
+              <option value="queue">Queue</option>
               <option value="date">Recent first</option>
               <option value="az">A-Z</option>
-              <option value="freq-high">Frequency high → low</option>
-              <option value="freq-low">Frequency low → high</option>
+              <option value="freq-high">Frequency high &rarr; low</option>
+              <option value="freq-low">Frequency low &rarr; high</option>
               <option value="due">Due soonest</option>
             </select>
             <span className="dict-count">{wordGroups.length} word{wordGroups.length !== 1 ? 's' : ''}</span>
@@ -239,147 +380,171 @@ export default function Dictionary() {
                 </>
               )}
             </div>
-          ) : (() => {
-            const totalPages = Math.ceil(wordGroups.length / WORDS_PER_PAGE);
-            const pageGroups = wordGroups.slice(page * WORDS_PER_PAGE, (page + 1) * WORDS_PER_PAGE);
-            return (
-              <div className="dict-container">
-                <div className="dict-list">
-                  {pageGroups.map((group) => {
-                    const open = expandedKeys.has(group.key);
-                    const maxFreq = Math.max(...group.entries.map((e) => e.frequency ?? 0)) || null;
-                    const freqColor = maxFreq != null ? FREQUENCY_DOT_COLORS[Math.ceil(maxFreq / 2) - 1] || FREQUENCY_DOT_COLORS[0] : undefined;
-                    return (
-                      <div
-                        key={group.key}
-                        className={`dict-item${open ? ' open' : ''}`}
-                        style={freqColor ? { borderLeftColor: freqColor } : undefined}
-                      >
-                        <button className="dict-item-header" onClick={() => toggle(group.key)}>
-                          <span className="dict-word">{group.word}</span>
-                          <FrequencyDots frequency={maxFreq} />
-                          {maxFreq != null && <span className="dict-freq-number">{maxFreq}/10</span>}
-                          {group.entries[0].part_of_speech && (
-                            <span className={`dict-pos-badge pos-${group.entries[0].part_of_speech.toLowerCase()}`}>{group.entries[0].part_of_speech}</span>
-                          )}
-                          {group.entries.some((e) => e.priority) && (
-                            <span className="assigned-badge">Assigned</span>
-                          )}
-                          {group.entries.length > 1 && (
-                            <span className="dict-def-count">{group.entries.length}</span>
-                          )}
-                          <DueStatusBadge word={group.entries[0]} />
-                          <ChevronDownIcon size={18} className="dict-chevron" />
-                        </button>
-                        {open && (
-                          <div className="dict-item-body">
-                            {group.entries.map((w) => (
-                              <div key={w.id} className="dict-definition-card">
-                                <div className="dict-def-layout">
-                                  <div className="dict-def-info">
-                                    {w.part_of_speech && (
-                                      <span className={`dict-pos-badge pos-${w.part_of_speech.toLowerCase()}`}>{w.part_of_speech}</span>
-                                    )}
-                                    <div className="dict-field">
-                                      <span className="dict-field-label">Translation</span>
-                                      <span className="dict-field-value">{w.translation}</span>
-                                    </div>
-                                    {w.definition && (
-                                      <div className="dict-field">
-                                        <span className="dict-field-label">Definition</span>
-                                        <span className="dict-field-value">{w.definition}</span>
-                                      </div>
-                                    )}
-                                    {w.forms && (() => {
-                                      try {
-                                        const fl: string[] = JSON.parse(w.forms);
-                                        return (
-                                          <div className="dict-field">
-                                            <span className="dict-field-label">Forms</span>
-                                            <span className="dict-field-value text-muted">{fl.join(', ')}</span>
-                                          </div>
-                                        );
-                                      } catch { return null; }
-                                    })()}
-                                    {w.example_sentence && (
-                                      <div className="dict-field">
-                                        <span className="dict-field-label">Example</span>
-                                        <span className="dict-field-value dict-example">
-                                          {renderTildeHighlight(w.example_sentence, 'dict-highlight')}
-                                        </span>
-                                      </div>
-                                    )}
-                                    <div className="dict-field">
-                                      <span className="dict-field-label">Saved</span>
-                                      <span className="dict-field-value text-muted">{formatDate(w.created_at)}</span>
-                                    </div>
-                                    <ReviewField word={w} />
-                                    {w.frequency_count != null && (
-                                      <div className="dict-field">
-                                        <span className="dict-field-label">Corpus count</span>
-                                        <span className="dict-field-value text-muted">
-                                          {w.frequency_count.toLocaleString()}
-                                        </span>
-                                      </div>
-                                    )}
-                                    <button className="dict-remove-btn" onClick={() => removeWord(w.id)}>
-                                      <TrashIcon size={16} />
-                                      Remove
-                                    </button>
-                                  </div>
-                                  <div className="dict-image-block">
-                                    {w.image_url ? (
-                                      <>
-                                        <img
-                                          className="dict-def-image dict-word-image--clickable"
-                                          src={proxyImageUrl(w.image_url)!}
-                                          alt={w.word}
-                                          loading="lazy"
-                                          onClick={() => setLightboxUrl(w.image_url!)}
-                                        />
-                                        <button className="dict-change-image-btn" onClick={() => setImagePickerWord(w)}>
-                                          Change image
-                                        </button>
-                                      </>
-                                    ) : (
-                                      <button className="dict-add-image-btn" onClick={() => setImagePickerWord(w)}>
-                                        + Add image
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                {totalPages > 1 && (
-                  <div className="dict-pagination">
-                    <button
-                      className="dict-page-btn"
-                      onClick={() => setPage((p) => p - 1)}
-                      disabled={page === 0}
-                    >
-                      ← Previous
-                    </button>
-                    <span className="dict-page-info">
-                      Page {page + 1} of {totalPages}
-                    </span>
-                    <button
-                      className="dict-page-btn"
-                      onClick={() => setPage((p) => p + 1)}
-                      disabled={page >= totalPages - 1}
-                    >
-                      Next →
-                    </button>
+          ) : (
+            <div className="dict-container">
+              <div className={`dict-list${isQueueMode ? ' dict-list--queue-view' : ''}`}>
+                {/* Bracket rail */}
+                {isQueueMode && page === 0 && bracketCount > 0 && bracketHeight > 0 && (
+                  <div className="dict-queue-bracket" style={{ height: bracketHeight }}>
+                    <span className="dict-queue-bracket-label">DUE NEXT</span>
                   </div>
                 )}
+                {pageGroups.map((group, groupIndex) => {
+                  const open = expandedKeys.has(group.key);
+                  const maxFreq = Math.max(...group.entries.map((e) => e.frequency ?? 0)) || null;
+                  const freqColor = maxFreq != null ? FREQUENCY_DOT_COLORS[Math.ceil(maxFreq / 2) - 1] || FREQUENCY_DOT_COLORS[0] : undefined;
+                  const groupIsNew = isGroupNew(group);
+                  const inBracket = isQueueMode && page === 0 && groupIndex < bracketCount;
+                  const isDraggable = isQueueMode && groupIsNew;
+                  const isDragOver = dragOverId === group.key;
+                  return (
+                    <div
+                      key={group.key}
+                      ref={(el) => setItemRef(group.key, el)}
+                      className={
+                        `dict-item${open ? ' open' : ''}` +
+                        `${inBracket ? ' dict-item--in-bracket' : ''}` +
+                        `${isDragOver ? ' dict-item--drag-over' : ''}`
+                      }
+                      style={freqColor ? { borderLeftColor: inBracket ? undefined : freqColor } : undefined}
+                      draggable={isDraggable}
+                      onDragStart={isDraggable ? (e) => handleDragStart(e, group.key) : undefined}
+                      onDragOver={isDraggable ? (e) => handleDragOver(e, group.key) : undefined}
+                      onDrop={isDraggable ? (e) => handleDrop(e, group.key) : undefined}
+                      onDragEnd={isDraggable ? handleDragEnd : undefined}
+                    >
+                      <button className="dict-item-header" onClick={() => toggle(group.key)}>
+                        {isDraggable && (
+                          <span
+                            className="dict-drag-handle"
+                            onMouseDown={(e) => e.stopPropagation()}
+                          >
+                            <GripVerticalIcon size={16} />
+                          </span>
+                        )}
+                        <span className="dict-word">{group.word}</span>
+                        <FrequencyDots frequency={maxFreq} />
+                        {maxFreq != null && <span className="dict-freq-number">{maxFreq}/10</span>}
+                        {group.entries[0].part_of_speech && (
+                          <span className={`dict-pos-badge pos-${group.entries[0].part_of_speech.toLowerCase()}`}>{group.entries[0].part_of_speech}</span>
+                        )}
+                        {group.entries.some((e) => e.priority) && (
+                          <span className="assigned-badge">Assigned</span>
+                        )}
+                        {group.entries.length > 1 && (
+                          <span className="dict-def-count">{group.entries.length}</span>
+                        )}
+                        <DueStatusBadge word={group.entries[0]} />
+                        <ChevronDownIcon size={18} className="dict-chevron" />
+                      </button>
+                      {open && (
+                        <div className="dict-item-body">
+                          {group.entries.map((w) => (
+                            <div key={w.id} className="dict-definition-card">
+                              <div className="dict-def-layout">
+                                <div className="dict-def-info">
+                                  {w.part_of_speech && (
+                                    <span className={`dict-pos-badge pos-${w.part_of_speech.toLowerCase()}`}>{w.part_of_speech}</span>
+                                  )}
+                                  <div className="dict-field">
+                                    <span className="dict-field-label">Translation</span>
+                                    <span className="dict-field-value">{w.translation}</span>
+                                  </div>
+                                  {w.definition && (
+                                    <div className="dict-field">
+                                      <span className="dict-field-label">Definition</span>
+                                      <span className="dict-field-value">{w.definition}</span>
+                                    </div>
+                                  )}
+                                  {w.forms && (() => {
+                                    try {
+                                      const fl: string[] = JSON.parse(w.forms);
+                                      return (
+                                        <div className="dict-field">
+                                          <span className="dict-field-label">Forms</span>
+                                          <span className="dict-field-value text-muted">{fl.join(', ')}</span>
+                                        </div>
+                                      );
+                                    } catch { return null; }
+                                  })()}
+                                  {w.example_sentence && (
+                                    <div className="dict-field">
+                                      <span className="dict-field-label">Example</span>
+                                      <span className="dict-field-value dict-example">
+                                        {renderTildeHighlight(w.example_sentence, 'dict-highlight')}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="dict-field">
+                                    <span className="dict-field-label">Saved</span>
+                                    <span className="dict-field-value text-muted">{formatDate(w.created_at)}</span>
+                                  </div>
+                                  <ReviewField word={w} />
+                                  {w.frequency_count != null && (
+                                    <div className="dict-field">
+                                      <span className="dict-field-label">Corpus count</span>
+                                      <span className="dict-field-value text-muted">
+                                        {w.frequency_count.toLocaleString()}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <button className="dict-remove-btn" onClick={() => removeWord(w.id)}>
+                                    <TrashIcon size={16} />
+                                    Remove
+                                  </button>
+                                </div>
+                                <div className="dict-image-block">
+                                  {w.image_url ? (
+                                    <>
+                                      <img
+                                        className="dict-def-image dict-word-image--clickable"
+                                        src={proxyImageUrl(w.image_url)!}
+                                        alt={w.word}
+                                        loading="lazy"
+                                        onClick={() => setLightboxUrl(w.image_url!)}
+                                      />
+                                      <button className="dict-change-image-btn" onClick={() => setImagePickerWord(w)}>
+                                        Change image
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button className="dict-add-image-btn" onClick={() => setImagePickerWord(w)}>
+                                      + Add image
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })()}
+              {totalPages > 1 && (
+                <div className="dict-pagination">
+                  <button
+                    className="dict-page-btn"
+                    onClick={() => setPage((p) => p - 1)}
+                    disabled={page === 0}
+                  >
+                    &larr; Previous
+                  </button>
+                  <span className="dict-page-info">
+                    Page {page + 1} of {totalPages}
+                  </span>
+                  <button
+                    className="dict-page-btn"
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={page >= totalPages - 1}
+                  >
+                    Next &rarr;
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       </main>
 

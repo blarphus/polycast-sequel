@@ -118,6 +118,7 @@ export interface SavedWord {
   forms: string | null;
   priority: boolean;
   image_term: string | null;
+  queue_position: number | null;
 }
 
 export function getSavedWords() {
@@ -153,5 +154,12 @@ export function reviewWord(id: string, answer: SrsAnswer) {
   return request<SavedWord>(`/dictionary/words/${id}/review`, {
     method: 'PATCH',
     body: { answer },
+  });
+}
+
+export function reorderQueue(items: Array<{ id: string; queue_position: number }>) {
+  return request<void>('/dictionary/queue-reorder', {
+    method: 'PATCH',
+    body: { items },
   });
 }

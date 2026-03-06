@@ -117,6 +117,73 @@
   gap: 0.5rem;
 }
 
+.dict-list--queue-view {
+  position: relative;
+  padding-left: 36px;
+}
+
+/* Bracket rail along the left side */
+.dict-queue-bracket {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  border-left: 3px solid var(--accent);
+  border-top: 3px solid var(--accent);
+  border-bottom: 3px solid var(--accent);
+  border-radius: 6px 0 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.dict-queue-bracket-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Accent left border for items inside the bracket */
+.dict-item--in-bracket {
+  border-left-color: var(--accent) !important;
+}
+
+/* Drag handle (grip dots) */
+.dict-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  opacity: 0;
+  cursor: grab;
+  transition: opacity 0.15s;
+  margin-right: -0.25rem;
+}
+
+.dict-item:hover .dict-drag-handle,
+.dict-drag-handle:focus {
+  opacity: 0.6;
+}
+
+.dict-drag-handle:hover {
+  opacity: 1 !important;
+}
+
+/* Drag-over outline */
+.dict-item--drag-over {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .dict-item {
   background: var(--bg-surface);
   border: 1px solid var(--border);

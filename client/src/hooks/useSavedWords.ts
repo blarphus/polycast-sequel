@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { getSavedWords, saveWord, deleteSavedWord, updateWordImage, SavedWord } from '../api';
+import { getSavedWords, saveWord, deleteSavedWord, updateWordImage, reorderQueue, SavedWord } from '../api';
 
 export function useSavedWords() {
   const [words, setWords] = useState<SavedWord[]>([]);
@@ -98,5 +98,23 @@ export function useSavedWords() {
     return updated;
   }, []);
 
-  return { words, loading, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, removeWord, updateImage };
+  const reorderQueueWords = useCallback(
+    (items: Array<{ id: string; queue_position: number }>) => {
+      // Optimistic: update local state immediately
+      setWords((prev) =>
+        prev.map((w) => {
+          const match = items.find((i) => i.id === w.id);
+          return match ? { ...w, queue_position: match.queue_position } : w;
+        }),
+      );
+      // Persist to backend; re-fetch on failure
+      reorderQueue(items).catch((err) => {
+        console.error('Queue reorder failed:', err);
+        getSavedWords().then(setWords).catch((e) => console.error('Re-fetch after reorder failure:', e));
+      });
+    },
+    [],
+  );
+
+  return { words, loading, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, removeWord, updateImage, reorderQueueWords };
 }

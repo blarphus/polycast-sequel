@@ -119,6 +119,20 @@
     width: 100%;
   }
 
+  /* Queue bracket: horizontal label on mobile */
+  .dict-list--queue-view {
+    padding-left: 24px;
+  }
+
+  .dict-queue-bracket {
+    width: 18px;
+  }
+
+  .dict-queue-bracket-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.06em;
+  }
+
   /* Flashcard responsive */
   .flashcard {
     width: min(85vw, 500px);

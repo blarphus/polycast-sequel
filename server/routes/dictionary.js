@@ -53,6 +53,13 @@ const reviewBody = z.object({
   answer: z.enum(['again', 'hard', 'good', 'easy'], { message: 'answer must be again, hard, good, or easy' }),
 });
 
+const queueReorderBody = z.object({
+  items: z.array(z.object({
+    id: z.string().uuid('Invalid ID'),
+    queue_position: z.number().int().min(0),
+  })).min(1),
+});
+
 const saveWordBody = z.object({
   word: z.string().min(1, 'word is required'),
   translation: z.string().optional(),
@@ -296,6 +303,39 @@ router.patch('/api/dictionary/words/:id/image', authMiddleware, validate({ param
 });
 
 // ---------------------------------------------------------------------------
+// Queue reorder — persist custom card ordering
+// ---------------------------------------------------------------------------
+
+/**
+ * PATCH /api/dictionary/queue-reorder -- Persist drag-and-drop queue positions
+ */
+router.patch('/api/dictionary/queue-reorder', authMiddleware, validate({ body: queueReorderBody }), async (req, res) => {
+  const { items } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const { id, queue_position } of items) {
+      const { rowCount } = await client.query(
+        'UPDATE saved_words SET queue_position = $1 WHERE id = $2 AND user_id = $3',
+        [queue_position, id, req.userId],
+      );
+      if (rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: `Word ${id} not found` });
+      }
+    }
+    await client.query('COMMIT');
+    return res.status(204).end();
+  } catch (err) {
+    await client.query('ROLLBACK');
+    req.log.error({ err }, 'Error reordering queue');
+    return res.status(500).json({ error: 'Failed to reorder queue' });
+  } finally {
+    client.release();
+  }
+});
+
+// ---------------------------------------------------------------------------
 // New cards for today (never-reviewed, capped by daily_new_limit)
 // ---------------------------------------------------------------------------
 
@@ -311,7 +351,12 @@ router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
          AND sw.target_language = u.target_language
          AND sw.due_at IS NULL
          AND sw.last_reviewed_at IS NULL
-       ORDER BY CASE WHEN sw.priority = true THEN 0 ELSE 1 END ASC, sw.frequency DESC NULLS LAST, sw.created_at ASC
+       ORDER BY
+         CASE WHEN sw.queue_position IS NOT NULL THEN 0 ELSE 1 END ASC,
+         sw.queue_position ASC NULLS LAST,
+         CASE WHEN sw.priority = true THEN 0 ELSE 1 END ASC,
+         sw.frequency DESC NULLS LAST,
+         sw.created_at ASC
        LIMIT (SELECT daily_new_limit FROM users WHERE id = $1)`,
       [req.userId],
     );
