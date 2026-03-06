@@ -44,8 +44,10 @@ declare namespace YT {
 
 /** Merge continuation lines back into their parent sentence.
  *  A segment is a continuation if it does NOT start with ">>" (speaker change),
- *  its first character is a lowercase Latin letter, and the gap from the previous
- *  segment's end is < 2 seconds. */
+ *  its first character is a lowercase Latin letter, the gap from the previous
+ *  segment's end is < 2 seconds, the previous segment doesn't end with sentence
+ *  punctuation, and the accumulated text hasn't exceeded 100 characters (prevents
+ *  runaway chaining in auto-generated captions where every line starts lowercase). */
 function mergeTranscriptSegments(segments: TranscriptSegment[]): TranscriptSegment[] {
   if (segments.length === 0) return segments;
 
@@ -58,10 +60,10 @@ function mergeTranscriptSegments(segments: TranscriptSegment[]): TranscriptSegme
     const gap = seg.offset - prevEnd;
     const firstChar = seg.text.charAt(0);
     const isLowerLatin = /^[a-z\u00E0-\u00FF]/.test(firstChar);
-
     const prevEndsWithPunctuation = /[.!?]$/.test(prev.text.trimEnd());
 
-    if (!seg.text.startsWith('>>') && isLowerLatin && gap < 2000 && !prevEndsWithPunctuation) {
+    if (!seg.text.startsWith('>>') && isLowerLatin && gap < 2000
+        && !prevEndsWithPunctuation && prev.text.length < 100) {
       prev.text += ' ' + seg.text;
       prev.duration = (seg.offset + seg.duration) - prev.offset;
     } else {
