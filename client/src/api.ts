@@ -797,6 +797,81 @@ export async function fetchTranscriptFromWorker(youtubeId: string, lang: string)
   }));
 }
 
+/**
+ * Fetch transcript directly from YouTube's InnerTube API using the browser's
+ * residential IP (bypasses datacenter IP blocks that break CF Worker / server fetches).
+ */
+export async function fetchTranscriptDirect(youtubeId: string, lang: string): Promise<TranscriptSegment[]> {
+  // Step 1: Call InnerTube player API to get caption track URLs
+  const playerRes = await fetch(
+    'https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        context: {
+          client: {
+            clientName: 'IOS',
+            clientVersion: '20.10.4',
+            hl: 'en',
+          },
+        },
+        videoId: youtubeId,
+      }),
+    },
+  );
+
+  if (!playerRes.ok) {
+    throw new Error(`InnerTube player API returned ${playerRes.status}`);
+  }
+
+  const playerData = await playerRes.json();
+  const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  if (!Array.isArray(captionTracks) || captionTracks.length === 0) {
+    throw new Error('No caption tracks available');
+  }
+
+  // Step 2: Find best matching caption track
+  const langPrefix = lang.split('-')[0].toLowerCase();
+  const track =
+    captionTracks.find((t: any) => t.languageCode === lang) ||
+    captionTracks.find((t: any) => t.languageCode.split('-')[0].toLowerCase() === langPrefix) ||
+    captionTracks[0];
+
+  // Step 3: Fetch timed text in json3 format
+  const separator = track.baseUrl.includes('?') ? '&' : '?';
+  const timedTextUrl = track.baseUrl + separator + 'fmt=json3';
+  const ttRes = await fetch(timedTextUrl);
+  if (!ttRes.ok) {
+    throw new Error(`Timed text fetch failed: ${ttRes.status}`);
+  }
+
+  const ttData = await ttRes.json();
+  const events = ttData?.events;
+  if (!Array.isArray(events)) {
+    throw new Error('No transcript events in json3 response');
+  }
+
+  // Step 4: Parse json3 events into TranscriptSegments (ms already)
+  const segments: TranscriptSegment[] = [];
+  for (const event of events) {
+    if (!event.segs || event.tStartMs == null) continue;
+    const text = event.segs.map((s: any) => s.utf8 || '').join('').trim();
+    if (!text) continue;
+    segments.push({
+      text,
+      offset: event.tStartMs,
+      duration: event.dDurMs || 0,
+    });
+  }
+
+  if (segments.length === 0) {
+    throw new Error('Transcript parsed but no segments found');
+  }
+
+  return segments;
+}
+
 export function uploadTranscript(videoId: string, segments: TranscriptSegment[]): Promise<VideoDetail> {
   return request<VideoDetail>(`/videos/${videoId}/transcript`, {
     method: 'PUT',

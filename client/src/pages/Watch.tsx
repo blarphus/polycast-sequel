@@ -6,11 +6,12 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
-import { getVideo, retryVideoTranscript, fetchTranscriptFromWorker, uploadTranscript, VideoDetail, TranscriptSegment } from '../api';
+import { getVideo, retryVideoTranscript, fetchTranscriptDirect, uploadTranscript, VideoDetail } from '../api';
 import TokenizedText from '../components/TokenizedText';
 import WordPopup from '../components/WordPopup';
 import { PopupState } from '../textTokens';
 import { ArrowDownIcon, TargetIcon } from '../components/icons';
+import { mergeTranscriptSegmentsForDisplay } from '../watchTranscript';
 
 // Minimal YT IFrame API type declarations
 declare global {
@@ -73,7 +74,7 @@ export default function Watch() {
   const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
 
   const mergedSegments = useMemo(
-    () => video?.transcript ?? [],
+    () => mergeTranscriptSegmentsForDisplay(video?.transcript ?? []),
     [video?.transcript],
   );
   const mergedSegmentsRef = useRef(mergedSegments);
@@ -123,7 +124,8 @@ export default function Watch() {
     return () => clearInterval(timer);
   }, [id, video?.transcript_status]);
 
-  // Client-side transcript fetch via CF Worker (browser has residential IP).
+  // Client-side transcript fetch — call YouTube InnerTube directly from the
+  // browser (residential IP) to bypass datacenter IP blocks.
   useEffect(() => {
     if (!video || !id) return;
     const hasTranscript = Array.isArray(video.transcript) && video.transcript.length > 0;
@@ -133,7 +135,7 @@ export default function Watch() {
     let cancelled = false;
     setClientFetching(true);
 
-    fetchTranscriptFromWorker(video.youtube_id, video.language)
+    fetchTranscriptDirect(video.youtube_id, video.language)
       .then((segments) => {
         if (cancelled) return;
         return uploadTranscript(id, segments);
@@ -143,7 +145,7 @@ export default function Watch() {
         setVideo(updated);
       })
       .catch((err) => {
-        console.error('[client-fetch] CF Worker transcript fetch failed:', err);
+        console.error('[client-fetch] Direct InnerTube transcript fetch failed:', err);
       })
       .finally(() => {
         if (!cancelled) setClientFetching(false);
