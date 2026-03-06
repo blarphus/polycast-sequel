@@ -3,6 +3,7 @@
    ========================================================================== */
 
 .dict-page {
+  width: 100%;
   margin: 0 auto;
   padding: 2rem 1.5rem 2rem;
   overflow-x: hidden;
@@ -12,9 +13,16 @@
 }
 
 .dict-main {
+  width: 100%;
   flex: 1;
   padding: 0;
   max-width: 100%;
+  min-width: 0;
+}
+
+.dict-page .home-section {
+  width: 100%;
+  min-width: 0;
 }
 
 .dict-container {
