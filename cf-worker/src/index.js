@@ -95,7 +95,7 @@ export default {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                context: { client: { clientName: 'IOS', clientVersion: '20.10.4' } },
+                context: { client: { clientName: 'WEB', clientVersion: '2.20250312.00.00' } },
                 videoId: id,
               }),
             },
@@ -150,7 +150,7 @@ export default {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            context: { client: { clientName: 'IOS', clientVersion: '20.10.4' } },
+            context: { client: { clientName: 'WEB', clientVersion: '2.20250312.00.00' } },
             videoId,
           }),
         },
