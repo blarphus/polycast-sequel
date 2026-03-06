@@ -16,6 +16,8 @@
 }
 
 .dict-container {
+  width: 100%;
+  box-sizing: border-box;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -185,6 +187,8 @@
 }
 
 .dict-item {
+  width: 100%;
+  box-sizing: border-box;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-left: 3px solid var(--border);
@@ -279,6 +283,8 @@
   display: flex;
   gap: 1rem;
   align-items: flex-start;
+  width: 100%;
+  min-width: 0;
 }
 
 .dict-def-info {
@@ -289,8 +295,12 @@
   gap: 0.6rem;
 }
 
+.dict-image-block {
+  flex: 0 0 180px;
+  width: 180px;
+}
+
 .dict-def-image {
-  flex-shrink: 0;
   width: 180px;
   height: 140px;
   border-radius: var(--radius-sm);
@@ -301,6 +311,11 @@
 @media (max-width: 600px) {
   .dict-def-layout {
     flex-direction: column-reverse;
+  }
+
+  .dict-image-block {
+    flex: none;
+    width: 100%;
   }
 
   .dict-def-image {

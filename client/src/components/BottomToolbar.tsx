@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getPendingClasswork } from '../api';
-import { HomeIcon, BookIcon, TargetIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, SettingsIcon } from './icons';
+import { HomeIcon, BookIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, SettingsIcon } from './icons';
 
 export default function BottomToolbar() {
   const location = useLocation();
@@ -47,18 +47,18 @@ export default function BottomToolbar() {
         <span className="toolbar-label">Home</span>
       </button>
       <button
+        className={`toolbar-tab toolbar-tab--yellow${isPractice ? ' active' : ''}`}
+        onClick={() => navigate('/practice')}
+      >
+        <BoltIcon size={22} />
+        <span className="toolbar-label">Practice</span>
+      </button>
+      <button
         className={`toolbar-tab toolbar-tab--red${isDictionary ? ' active' : ''}`}
         onClick={() => navigate('/dictionary')}
       >
         <BookIcon size={22} />
         <span className="toolbar-label">Dictionary</span>
-      </button>
-      <button
-        className={`toolbar-tab toolbar-tab--yellow${isPractice ? ' active' : ''}`}
-        onClick={() => navigate('/practice')}
-      >
-        <TargetIcon size={22} />
-        <span className="toolbar-label">Practice</span>
       </button>
       <button
         className={`toolbar-tab toolbar-tab--purple${isSocial ? ' active' : ''}`}
