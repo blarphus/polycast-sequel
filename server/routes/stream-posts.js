@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord, fetchWordImage } from '../enrichWord.js';
 import { validate } from '../lib/validate.js';
+import { enrichAndInsertWords } from '../services/streamWordService.js';
 
 const router = Router();
 
@@ -22,64 +22,6 @@ const createPostBody = z.object({
   duration_minutes: z.number().optional(),
   recurrence: z.any().optional(),
 });
-
-// ---------------------------------------------------------------------------
-// enrichAndInsertWords — shared helper for POST + PATCH word list routes
-// ---------------------------------------------------------------------------
-
-async function enrichAndInsertWords(client, postId, words, nativeLang, targetLang) {
-  const enriched = await Promise.all(
-    words.map(async (word, i) => {
-      const wordStr = typeof word === 'string' ? word.trim() : word.word;
-      if (typeof word === 'object' && word.translation) {
-        return {
-          word: wordStr, position: i,
-          translation: word.translation,
-          definition: word.definition ?? '',
-          part_of_speech: word.part_of_speech ?? null,
-          frequency: word.frequency ?? null,
-          frequency_count: word.frequency_count ?? null,
-          example_sentence: word.example_sentence ?? null,
-          image_url: word.image_url ?? null,
-          lemma: word.lemma ?? null,
-          forms: word.forms ?? null,
-          image_term: word.image_term ?? null,
-        };
-      }
-      const result = await enrichWord(wordStr, '', nativeLang, targetLang);
-      if (typeof word === 'object') {
-        if (word.image_url !== undefined) result.image_url = word.image_url;
-        if (word.definition !== undefined) result.definition = word.definition;
-        if (word.example_sentence !== undefined) result.example_sentence = word.example_sentence;
-      }
-      return { word: wordStr, position: i, ...result };
-    }),
-  );
-
-  // Deduplicate images: if multiple words got the same image_url, re-fetch alternatives
-  const usedUrls = new Set();
-  for (const w of enriched) {
-    if (w.image_url && usedUrls.has(w.image_url)) {
-      const alt = await fetchWordImage(w.image_term || w.word, usedUrls);
-      w.image_url = alt;
-    }
-    if (w.image_url) usedUrls.add(w.image_url);
-  }
-
-  for (const w of enriched) {
-    await client.query(
-      `INSERT INTO stream_post_words
-         (post_id, word, translation, definition, part_of_speech, position,
-          frequency, frequency_count, example_sentence, image_url, lemma, forms, image_term)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [
-        postId, w.word, w.translation, w.definition, w.part_of_speech, w.position,
-        w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
-        w.image_url ?? null, w.lemma ?? null, w.forms ?? null, w.image_term ?? null,
-      ],
-    );
-  }
-}
 
 // ---------------------------------------------------------------------------
 // GET /api/stream

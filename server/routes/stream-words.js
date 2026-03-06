@@ -3,9 +3,8 @@ import { z } from 'zod';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
 import { enrichWord, fetchWordImage, callGemini, fetchWiktSenses, fetchWiktTranslations } from '../enrichWord.js';
-import { applyCorpusFrequency } from '../lib/wordFrequency.js';
-import { normalizeForms, normalizeLemma } from '../lib/normalizeWordFields.js';
 import { validate } from '../lib/validate.js';
+import { lookupWordsForPost } from '../services/streamWordService.js';
 
 const router = Router();
 
@@ -34,52 +33,6 @@ const knownBody = z.object({
   postWordId: z.string().uuid('Invalid post word ID'),
   known: z.boolean(),
 });
-
-// ---------------------------------------------------------------------------
-// lookupWordForPost — quick translation/definition preview for word list creation
-// ---------------------------------------------------------------------------
-
-async function lookupWordForPost(word, nativeLang, targetLang) {
-  const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". The user's native language is ${nativeLang}.
-
-Return a JSON object with exactly these keys:
-{"translation":"...","definition":"...","part_of_speech":"...","example_sentence":"...","frequency":0,"lemma":"...","forms":"...","image_term":"..."}
-
-- translation: standard ${nativeLang} translation of "${word}", 1-3 words max
-- definition: what this word means in ${nativeLang}, 12 words max, no markdown
-- part_of_speech: one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle
-- example_sentence: a short sentence in ${targetLang} using "${word}", wrap the word with tildes like ~word~, 15 words max
-- frequency: integer 1-10 how common this word is (1-2 rare, 3-4 uncommon, 5-6 moderate, 7-8 common everyday, 9-10 essential top-500)
-- lemma: dictionary/base form (infinitive for verbs, singular for nouns). Same as word if already base form. Empty string for particles/prepositions.
-- forms: comma-separated inflected forms of the lemma (e.g. "run, runs, ran, running"). Empty string if uninflected.
-- image_term: an English search term for finding a photo of this word. Return an empty string if the word itself is already a clear, concrete, unambiguous noun that would return good image results (e.g. "cat", "bridge", "apple" → empty string). Only provide a custom term when: the word has multiple meanings and might return wrong images, the word is abstract/unlikely to have good photos, or it's a verb/adjective needing visual representation. Keep it 1-4 words.
-
-Respond with ONLY the JSON object, no other text.`;
-
-  const raw = await callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 400, responseMimeType: 'application/json' });
-  const parsed = JSON.parse(raw);
-  const image_url = await fetchWordImage(parsed.image_term || word);
-
-  const rawFrequency = typeof parsed.frequency === 'number' ? parsed.frequency : null;
-  const { frequency, frequency_count } = applyCorpusFrequency(word, targetLang, rawFrequency);
-
-  // Normalize forms and lemma
-  const forms = normalizeForms(parsed.forms);
-  const lemma = normalizeLemma(parsed.lemma, parsed.part_of_speech, targetLang);
-
-  return {
-    translation: parsed.translation || '',
-    definition: parsed.definition || '',
-    part_of_speech: parsed.part_of_speech || null,
-    example_sentence: parsed.example_sentence || null,
-    image_url,
-    frequency,
-    frequency_count,
-    lemma,
-    forms,
-    image_term: parsed.image_term || word,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // POST /api/stream/words/example — generate a single example sentence (teacher)
@@ -279,24 +232,8 @@ router.post('/api/stream/words/lookup', authMiddleware, requireTeacher, validate
   const { words, nativeLang, targetLang } = req.body;
 
   try {
-    const results = await Promise.all(
-      words.map(async (word, i) => {
-        const enriched = await lookupWordForPost(word.trim(), nativeLang, targetLang);
-        return { id: `preview-${i}`, word: word.trim(), position: i, ...enriched };
-      }),
-    );
-
-    // Deduplicate images: if multiple words got the same image_url, re-fetch alternatives
-    const usedUrls = new Set();
-    for (const w of results) {
-      if (w.image_url && usedUrls.has(w.image_url)) {
-        const alt = await fetchWordImage(w.image_term || w.word, usedUrls);
-        w.image_url = alt;
-      }
-      if (w.image_url) usedUrls.add(w.image_url);
-    }
-
-    return res.json({ words: results });
+    const previews = await lookupWordsForPost(words, nativeLang, targetLang);
+    return res.json({ words: previews });
   } catch (err) {
     req.log.error({ err }, 'POST /api/stream/words/lookup error');
     return res.status(500).json({ error: err.message || 'Word lookup failed' });
