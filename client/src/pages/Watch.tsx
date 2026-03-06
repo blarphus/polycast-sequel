@@ -42,34 +42,6 @@ declare namespace YT {
   };
 }
 
-/** Merge continuation lines back into their parent sentence.
- *  A segment is a continuation if it does NOT start with ">>" (speaker change),
- *  its first character is a lowercase Latin letter, and the gap from the previous
- *  segment's end is < 2 seconds. */
-function mergeTranscriptSegments(segments: TranscriptSegment[]): TranscriptSegment[] {
-  if (segments.length === 0) return segments;
-
-  const merged: TranscriptSegment[] = [{ ...segments[0] }];
-
-  for (let i = 1; i < segments.length; i++) {
-    const seg = segments[i];
-    const prev = merged[merged.length - 1];
-    const prevEnd = prev.offset + prev.duration;
-    const gap = seg.offset - prevEnd;
-    const firstChar = seg.text.charAt(0);
-    const isLowerLatin = /^[a-z\u00E0-\u00FF]/.test(firstChar);
-
-    if (!seg.text.startsWith('>>') && isLowerLatin && gap < 2000) {
-      prev.text += ' ' + seg.text;
-      prev.duration = (seg.offset + seg.duration) - prev.offset;
-    } else {
-      merged.push({ ...seg });
-    }
-  }
-
-  return merged;
-}
-
 function formatTimestamp(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
   const m = Math.floor(totalSec / 60);
@@ -101,7 +73,7 @@ export default function Watch() {
   const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
 
   const mergedSegments = useMemo(
-    () => video?.transcript ? mergeTranscriptSegments(video.transcript) : [],
+    () => video?.transcript ?? [],
     [video?.transcript],
   );
   const mergedSegmentsRef = useRef(mergedSegments);
