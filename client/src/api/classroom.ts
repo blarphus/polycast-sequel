@@ -93,6 +93,10 @@ export function updateClassroom(id: string, data: {
   });
 }
 
+export function deleteClassroom(id: string) {
+  return request<void>(`/classrooms/${id}`, { method: 'DELETE' });
+}
+
 export function getClassroomTopics(classroomId: string) {
   return request<ClassroomTopic[]>(`/classrooms/${classroomId}/topics`);
 }

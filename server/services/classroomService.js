@@ -185,6 +185,24 @@ export async function updateClassroom({ classroomId, teacherId, patch }) {
   return getClassroomForUser(classroomId, teacherId);
 }
 
+export async function deleteClassroom(classroomId, teacherId) {
+  const membership = await pool.query(
+    `SELECT role FROM classroom_teachers WHERE classroom_id = $1 AND teacher_id = $2`,
+    [classroomId, teacherId],
+  );
+  if (!membership.rows[0]) {
+    const err = new Error('Not in classroom');
+    err.status = 403;
+    throw err;
+  }
+  if (membership.rows[0].role !== 'owner') {
+    const err = new Error('Only the class owner can delete a classroom');
+    err.status = 403;
+    throw err;
+  }
+  await pool.query('DELETE FROM classrooms WHERE id = $1', [classroomId]);
+}
+
 export async function getTeacherDefaultClassroom(teacherId) {
   const { rows } = await pool.query(
     `SELECT c.*

@@ -24,6 +24,7 @@ export default function Classes() {
   const [createError, setCreateError] = useState('');
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const sortedClassrooms = useMemo(
     () => [...classrooms].sort((a, b) => Number(b.needs_setup) - Number(a.needs_setup)),
@@ -54,6 +55,23 @@ export default function Classes() {
     await reloadClassrooms();
     setActiveClassroomId(updated.id);
     setEditingId(null);
+  };
+
+  const handleDelete = async (classroom: Classroom) => {
+    const msg = classroom.student_count > 0
+      ? `Delete "${classroom.name}"? This will remove all ${classroom.student_count} student${classroom.student_count === 1 ? '' : 's'}, posts, and topics permanently.`
+      : `Delete "${classroom.name}"? All posts and topics will be permanently removed.`;
+    if (!confirm(msg)) return;
+    setDeletingId(classroom.id);
+    try {
+      await api.deleteClassroom(classroom.id);
+      await reloadClassrooms();
+    } catch (err) {
+      console.error('Failed to delete classroom:', err);
+      setCreateError(err instanceof Error ? err.message : 'Failed to delete classroom');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -166,6 +184,13 @@ export default function Classes() {
                         }}
                       >
                         {isEditing ? 'Close setup' : 'Edit class'}
+                      </button>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDelete(classroom)}
+                        disabled={deletingId === classroom.id}
+                      >
+                        {deletingId === classroom.id ? 'Deleting...' : 'Delete'}
                       </button>
                     </>
                   ) : null}

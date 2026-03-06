@@ -6,6 +6,7 @@ import {
   addStudentToClassroom,
   createClassroom,
   createClassroomTopic,
+  deleteClassroom,
   getActiveCompatibleClassroomForTeacher,
   getClassroomForUser,
   getClassroomStudentStats,
@@ -126,6 +127,17 @@ router.patch('/api/classrooms/:id', authMiddleware, validate({ params: classroom
     if (err.status) return res.status(err.status).json({ error: err.message });
     req.log.error({ err }, 'PATCH /api/classrooms/:id error');
     return res.status(500).json({ error: err.message || 'Failed to update classroom' });
+  }
+});
+
+router.delete('/api/classrooms/:id', authMiddleware, requireTeacher, validate({ params: classroomIdParam }), async (req, res) => {
+  try {
+    await deleteClassroom(req.params.id, req.userId);
+    return res.status(204).end();
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    req.log.error({ err }, 'DELETE /api/classrooms/:id error');
+    return res.status(500).json({ error: err.message || 'Failed to delete classroom' });
   }
 });
 
