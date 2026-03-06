@@ -15,7 +15,7 @@ import AddVideoModal from '../components/AddVideoModal';
 import Carousel from '../components/Carousel';
 import ChannelCard from '../components/cards/ChannelCard';
 import { FrequencyDots } from '../components/FrequencyDots';
-import { CalendarIcon, BoltIcon } from '../components/icons';
+import { CalendarIcon } from '../components/icons';
 import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
 import { formatUsTime } from '../utils/dateFormat';
 import { useVideoClick } from '../hooks/useVideoClick';
@@ -35,7 +35,7 @@ export default function Home() {
   const [channels, setChannels] = useState<ChannelSummary[]>([]);
   const [channelsLoading, setChannelsLoading] = useState(true);
   const [friends, setFriends] = useState<Friend[]>([]);
-  const [dueCount, setDueCount] = useState(0);
+  const [srsCounts, setSrsCounts] = useState({ new: 0, learning: 0, review: 0 });
   const [classesToday, setClassesToday] = useState<UpcomingClass[]>([]);
 
   const targetLang = user?.target_language;
@@ -53,7 +53,16 @@ export default function Home() {
       .finally(() => { if (!cancelled) setLoading(false); });
 
     getDueWords()
-      .then((words) => { if (!cancelled) setDueCount(words.length); })
+      .then((words) => {
+        if (cancelled) return;
+        let n = 0, l = 0, r = 0;
+        for (const w of words) {
+          if (w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at) n++;
+          else if (w.learning_step !== null) l++;
+          else r++;
+        }
+        setSrsCounts({ new: n, learning: l, review: r });
+      })
       .catch((err) => console.error('Failed to fetch due words:', err));
 
     getFriends()
@@ -283,16 +292,34 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Card 5: Quick Practice (3 cols) */}
+        {/* Card 5: SRS Counts (3 cols) */}
         <div className="home-dashboard-card home-card--practice">
-          <div className="home-dashboard-label">Practice</div>
-          <div className="home-square-card-content" onClick={() => navigate('/learn')}>
-            <div className="home-square-icon">
-              <BoltIcon size={28} />
-            </div>
-            <span className="home-square-count">{dueCount > 0 ? dueCount : ''}</span>
-            <span className="home-square-sublabel">{dueCount > 0 ? 'due' : 'All caught up!'}</span>
-          </div>
+          <div className="home-dashboard-label">Flashcards</div>
+          {(() => {
+            const total = srsCounts.new + srsCounts.learning + srsCounts.review;
+            return (
+              <div className="home-srs-card-content" onClick={() => navigate('/learn')}>
+                {total === 0 ? (
+                  <span className="home-srs-caught-up">All caught up!</span>
+                ) : (
+                  <div className="home-srs-rows">
+                    <div className="home-srs-row">
+                      <span className="home-srs-label">New:</span>
+                      <span className="home-srs-value home-srs-value--new">{srsCounts.new}</span>
+                    </div>
+                    <div className="home-srs-row">
+                      <span className="home-srs-label">Learning:</span>
+                      <span className="home-srs-value home-srs-value--learning">{srsCounts.learning}</span>
+                    </div>
+                    <div className="home-srs-row">
+                      <span className="home-srs-label">To Review:</span>
+                      <span className="home-srs-value home-srs-value--review">{srsCounts.review}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
 

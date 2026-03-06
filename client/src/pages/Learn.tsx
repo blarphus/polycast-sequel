@@ -296,9 +296,33 @@ export default function Learn() {
 
   return (
     <div className="learn-page">
-      {/* Progress */}
+      {/* Anki-style progress counts */}
       <div className="flashcard-progress">
-        <span>{currentIndex + 1} / {cards.length}</span>
+        {(() => {
+          const remaining = cards.slice(currentIndex + 1);
+          let newCount = 0, learningCount = 0, reviewCount = 0;
+          for (const c of remaining) {
+            if (c.srs_interval === 0 && c.learning_step === null && !c.last_reviewed_at) newCount++;
+            else if (c.learning_step !== null) learningCount++;
+            else reviewCount++;
+          }
+          // Classify current card
+          const cur = cards[currentIndex];
+          if (cur) {
+            if (cur.srs_interval === 0 && cur.learning_step === null && !cur.last_reviewed_at) newCount++;
+            else if (cur.learning_step !== null) learningCount++;
+            else reviewCount++;
+          }
+          return (
+            <>
+              <span className="srs-count srs-count--new">{newCount}</span>
+              <span className="srs-count-sep">+</span>
+              <span className="srs-count srs-count--learning">{learningCount}</span>
+              <span className="srs-count-sep">+</span>
+              <span className="srs-count srs-count--review">{reviewCount}</span>
+            </>
+          );
+        })()}
       </div>
 
       {/* Card container */}

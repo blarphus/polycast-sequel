@@ -420,6 +420,51 @@
   margin-bottom: 0.35rem;
 }
 
+/* SRS counts card */
+.home-srs-card-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100px;
+  cursor: pointer;
+}
+
+.home-srs-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.home-srs-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.home-srs-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.home-srs-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-srs-value--new { color: #3b82f6; }
+.home-srs-value--learning { color: #e74c3c; }
+.home-srs-value--review { color: #22a55e; }
+
+.home-srs-caught-up {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
 /* ---- Responsive ---- */
 
 @media (max-width: 768px) {
