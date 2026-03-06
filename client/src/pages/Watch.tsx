@@ -2,83 +2,50 @@
 // pages/Watch.tsx -- YouTube video player with synced clickable transcript
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
-import { getVideo, retryVideoTranscript, fetchTranscriptFromWorker, uploadTranscript, VideoDetail } from '../api';
-import TokenizedText from '../components/TokenizedText';
+import TranscriptList from '../components/watch/TranscriptList';
+import TranscriptStatus from '../components/watch/TranscriptStatus';
 import WordPopup from '../components/WordPopup';
 import { PopupState } from '../textTokens';
-import { ArrowDownIcon, TargetIcon } from '../components/icons';
+import { TargetIcon } from '../components/icons';
+import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
+import { useWatchVideoData } from '../hooks/useWatchVideoData';
+import { useYouTubePlayer } from '../hooks/useYouTubePlayer';
 import { mergeTranscriptSegmentsForDisplay } from '../watchTranscript';
-
-// Minimal YT IFrame API type declarations
-declare global {
-  interface Window {
-    YT: typeof YT;
-    onYouTubeIframeAPIReady: (() => void) | undefined;
-  }
-}
-
-declare namespace YT {
-  class Player {
-    constructor(el: string | HTMLElement, opts: PlayerOptions);
-    getCurrentTime(): number;
-    seekTo(seconds: number, allowSeekAhead?: boolean): void;
-    destroy(): void;
-  }
-  interface PlayerOptions {
-    videoId: string;
-    playerVars?: Record<string, number | string>;
-    events?: {
-      onReady?: (e: { target: Player }) => void;
-      onStateChange?: (e: { data: number }) => void;
-    };
-  }
-  const PlayerState: {
-    PLAYING: number;
-    PAUSED: number;
-    ENDED: number;
-  };
-}
-
-function formatTimestamp(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
 
 export default function Watch() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [video, setVideo] = useState<VideoDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [activeIndex, setActiveIndex] = useState(-1);
   const [popup, setPopup] = useState<PopupState | null>(null);
-  const [retryingTranscript, setRetryingTranscript] = useState(false);
-  const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const [clientFetching, setClientFetching] = useState(false);
-  const [videoEnded, setVideoEnded] = useState(false);
-
-  const playerRef = useRef<YT.Player | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const transcriptRef = useRef<HTMLDivElement>(null);
-  const autoScrollRef = useRef(true);
-  const segmentRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
+  const {
+    video,
+    loading,
+    error,
+    retryingTranscript,
+    handleRetryTranscript,
+    hasTranscript,
+  } = useWatchVideoData(id);
 
   const mergedSegments = useMemo(
     () => mergeTranscriptSegmentsForDisplay(video?.transcript ?? []),
     [video?.transcript],
   );
-  const mergedSegmentsRef = useRef(mergedSegments);
-  mergedSegmentsRef.current = mergedSegments;
+  const { activeIndex, videoEnded, seekToOffset } = useYouTubePlayer(video, mergedSegments);
+  const {
+    transcriptRef,
+    segmentRefs,
+    showScrollBtn,
+    handleTranscriptScroll,
+    handleResumeAutoScroll,
+    resetAutoScroll,
+  } = useTranscriptAutoScroll(activeIndex);
 
   // Keep the watch page pinned to viewport height so transcript scrolling
   // remains inside the transcript container (not the document body).
@@ -94,210 +61,14 @@ export default function Watch() {
     };
   }, []);
 
-  // Fetch video data
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    setLoading(true);
-    getVideo(id)
-      .then((v) => { if (!cancelled) setVideo(v); })
-      .catch((err) => {
-        console.error('Failed to fetch video:', err);
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [id]);
-
-  // Poll while transcript extraction is running in the background.
-  useEffect(() => {
-    if (!id || !video || video.transcript_status !== 'processing') return;
-
-    const timer = setInterval(() => {
-      getVideo(id)
-        .then((v) => setVideo(v))
-        .catch((err) => {
-          console.error('Failed to refresh video transcript status:', err);
-        });
-    }, 4000);
-
-    return () => clearInterval(timer);
-  }, [id, video?.transcript_status]);
-
-  // Client-side transcript fetch via CF Worker (browser has residential IP).
-  useEffect(() => {
-    if (!video || !id) return;
-    const hasTranscript = Array.isArray(video.transcript) && video.transcript.length > 0;
-    if (hasTranscript || video.transcript_status === 'ready') return;
-    if (clientFetching) return;
-
-    let cancelled = false;
-    setClientFetching(true);
-
-    fetchTranscriptFromWorker(video.youtube_id, video.language)
-      .then((segments) => {
-        if (cancelled) return;
-        return uploadTranscript(id, segments);
-      })
-      .then((updated) => {
-        if (cancelled || !updated) return;
-        setVideo(updated);
-      })
-      .catch((err) => {
-        console.error('[client-fetch] CF Worker transcript fetch failed:', err);
-      })
-      .finally(() => {
-        if (!cancelled) setClientFetching(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [id, video?.transcript_status]);
-
-  // Load YouTube IFrame API
-  useEffect(() => {
-    if (!video) return;
-
-    const loadApi = () => {
-      if (document.getElementById('yt-iframe-api')) return;
-      const tag = document.createElement('script');
-      tag.id = 'yt-iframe-api';
-      tag.src = 'https://www.youtube.com/iframe_api';
-      document.head.appendChild(tag);
-    };
-
-    const initPlayer = () => {
-      if (playerRef.current) return;
-      playerRef.current = new window.YT.Player('yt-player', {
-        videoId: video.youtube_id,
-        playerVars: {
-          cc_load_policy: 0,
-          rel: 0,
-          modestbranding: 1,
-        },
-        events: {
-          onReady: () => {
-            startPolling();
-          },
-          onStateChange: (e) => {
-            if (e.data === window.YT.PlayerState.PLAYING) {
-              startPolling();
-              setVideoEnded(false);
-            } else if (e.data === window.YT.PlayerState.ENDED) {
-              stopPolling();
-              setVideoEnded(true);
-            } else {
-              stopPolling();
-            }
-          },
-        },
-      });
-    };
-
-    const startPolling = () => {
-      stopPolling();
-      intervalRef.current = setInterval(() => {
-        if (!playerRef.current) return;
-        const currentMs = playerRef.current.getCurrentTime() * 1000;
-        const segs = mergedSegmentsRef.current;
-        if (segs.length === 0) return;
-
-        let idx = -1;
-        for (let i = segs.length - 1; i >= 0; i--) {
-          if (segs[i].offset <= currentMs) {
-            idx = i;
-            break;
-          }
-        }
-        setActiveIndex(idx);
-      }, 250);
-    };
-
-    const stopPolling = () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-
-    if (window.YT && window.YT.Player) {
-      initPlayer();
-    } else {
-      window.onYouTubeIframeAPIReady = initPlayer;
-      loadApi();
-    }
-
-    return () => {
-      stopPolling();
-      if (playerRef.current) {
-        playerRef.current.destroy();
-        playerRef.current = null;
-      }
-      window.onYouTubeIframeAPIReady = undefined;
-    };
-  }, [video]);
-
-  // Auto-scroll to active segment (inside transcript container only).
-  useEffect(() => {
-    if (activeIndex < 0 || !autoScrollRef.current) return;
-    const container = transcriptRef.current;
-    const el = segmentRefs.current[activeIndex];
-    if (!container || !el) return;
-
-    const targetTop = el.offsetTop;
-    container.scrollTo({
-      top: Math.max(0, targetTop),
-      behavior: 'smooth',
-    });
-  }, [activeIndex]);
-
-  // Track manual scroll to disable auto-scroll
-  const handleTranscriptScroll = useCallback(() => {
-    const el = transcriptRef.current;
-    if (!el) return;
-    const activeEl = segmentRefs.current[activeIndex];
-    if (!activeEl) return;
-    const threshold = 120;
-    const visible =
-      activeEl.offsetTop >= el.scrollTop - threshold &&
-      (activeEl.offsetTop + activeEl.clientHeight) <= (el.scrollTop + el.clientHeight + threshold);
-    autoScrollRef.current = visible;
-    setShowScrollBtn(!visible);
-  }, [activeIndex]);
-
   const handleTimestampClick = (offset: number) => {
-    if (playerRef.current) {
-      playerRef.current.seekTo(offset / 1000, true);
-      autoScrollRef.current = true;
-      setShowScrollBtn(false);
-    }
+    seekToOffset(offset);
+    resetAutoScroll();
   };
-
-  const handleResumeAutoScroll = useCallback(() => {
-    autoScrollRef.current = true;
-    setShowScrollBtn(false);
-    const container = transcriptRef.current;
-    const el = segmentRefs.current[activeIndex];
-    if (container && el) {
-      container.scrollTo({ top: Math.max(0, el.offsetTop), behavior: 'smooth' });
-    }
-  }, [activeIndex]);
 
   const handleWordClick = (e: React.MouseEvent<HTMLSpanElement>, word: string, sentence: string) => {
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setPopup({ word, sentence, rect });
-  };
-
-  const handleRetryTranscript = async () => {
-    if (!id) return;
-    setRetryingTranscript(true);
-    try {
-      const updated = await retryVideoTranscript(id);
-      setVideo(updated);
-    } catch (err) {
-      console.error('Failed to retry transcript fetch:', err);
-    } finally {
-      setRetryingTranscript(false);
-    }
   };
 
   if (loading) {
@@ -320,7 +91,6 @@ export default function Watch() {
   }
 
   if (!video) return null;
-  const hasTranscript = Array.isArray(video.transcript) && video.transcript.length > 0;
 
   return (
     <div className="watch-page">
@@ -347,78 +117,26 @@ export default function Watch() {
       </div>
 
       <div className="watch-transcript-area">
-        {/* Transcript lifecycle status */}
-        {!hasTranscript && video.transcript_status === 'processing' && (
-          <div className="watch-transcript-progress">
-            <div className="watch-transcript-progress-bar">
-              <div
-                className="watch-transcript-progress-fill"
-                style={{ width: `${video.transcript_progress}%` }}
-              />
-            </div>
-            <p className="watch-transcript-progress-text">
-              Fetching captions… {video.transcript_progress}%
-            </p>
-          </div>
-        )}
-        {!hasTranscript && video.transcript_status === 'failed' && (
-          <div className="watch-transcript-error-wrap">
-            <p className="watch-transcript-error">{video.transcript_error || 'Transcript temporarily unavailable'}</p>
-            <button className="btn-primary" onClick={handleRetryTranscript} disabled={retryingTranscript}>
-              {retryingTranscript ? 'Retrying...' : 'Retry transcript fetch'}
-            </button>
-          </div>
-        )}
+        <TranscriptStatus
+          video={video}
+          hasTranscript={hasTranscript}
+          retryingTranscript={retryingTranscript}
+          onRetryTranscript={handleRetryTranscript}
+        />
 
-        {/* Transcript */}
         {hasTranscript && (
-          <div className="watch-transcript-wrapper">
-            <div
-              className="watch-transcript"
-              ref={transcriptRef}
-              onScroll={handleTranscriptScroll}
-            >
-              {mergedSegments.map((seg, i) => (
-                <div
-                  key={i}
-                  ref={(el) => { segmentRefs.current[i] = el; }}
-                  className={`watch-segment${i === activeIndex ? ' watch-segment--active' : ''}`}
-                >
-                  <button
-                    className="watch-segment-time"
-                    onClick={() => handleTimestampClick(seg.offset)}
-                  >
-                    {formatTimestamp(seg.offset)}
-                  </button>
-                  <span className="watch-segment-text">
-                    <TokenizedText
-                      text={seg.text}
-                      savedWords={savedWordsSet}
-                      onWordClick={handleWordClick}
-                    />
-                  </span>
-                </div>
-              ))}
-            </div>
-            {showScrollBtn && (
-              <button className="watch-scroll-btn" onClick={handleResumeAutoScroll} title="Resume auto-scroll">
-                <ArrowDownIcon size={18} strokeWidth={2.5} />
-              </button>
-            )}
-          </div>
-        )}
-        {!hasTranscript && video.transcript_status === 'missing' && (
-          <div className="watch-transcript-progress">
-            <div className="watch-transcript-progress-bar">
-              <div
-                className="watch-transcript-progress-fill"
-                style={{ width: '0%' }}
-              />
-            </div>
-            <p className="watch-transcript-progress-text">
-              Fetching captions...
-            </p>
-          </div>
+          <TranscriptList
+            mergedSegments={mergedSegments}
+            activeIndex={activeIndex}
+            savedWords={savedWordsSet}
+            onWordClick={handleWordClick}
+            onTimestampClick={handleTimestampClick}
+            transcriptRef={transcriptRef}
+            segmentRefs={segmentRefs}
+            showScrollBtn={showScrollBtn}
+            onTranscriptScroll={handleTranscriptScroll}
+            onResumeAutoScroll={handleResumeAutoScroll}
+          />
         )}
       </div>
 
