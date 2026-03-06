@@ -13,7 +13,7 @@ import EditModal from '../components/classwork/EditModal';
 import { TopicSection } from '../components/classwork/TopicSection';
 import ClassroomPicker from '../components/classroom/ClassroomPicker';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
-import { PlusIcon, ChevronDownIcon, ChevronLeftIcon, CloseIcon } from '../components/icons';
+import { PlusIcon, ChevronDownIcon, ChevronLeftIcon, CloseIcon, PeopleIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Main Classwork component
@@ -405,7 +405,15 @@ export default function Classwork() {
           />
         </div>
         {isTeacher && activeClassroom && (
-          <div style={{ position: 'relative' }}>
+          <div className="classwork-header-actions">
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => navigate(`/students?classroomId=${activeClassroomId}`)}
+              title="Students"
+            >
+              <PeopleIcon size={14} />
+              Students
+            </button>
             {allowLegacyStreamManagement ? (
               <>
                 <button

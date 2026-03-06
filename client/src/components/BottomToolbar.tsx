@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getPendingClasswork } from '../api';
-import { HomeIcon, PlayCircleIcon, BookIcon, BoltIcon, TargetIcon, ChatBubbleIcon, PeopleIcon, ClassworkIcon, SettingsIcon } from './icons';
+import { HomeIcon, PlayCircleIcon, BookIcon, BoltIcon, TargetIcon, ChatBubbleIcon, ClassworkIcon, SettingsIcon } from './icons';
 
 export default function BottomToolbar() {
   const location = useLocation();
@@ -32,8 +32,7 @@ export default function BottomToolbar() {
   const isLearn = location.pathname === '/learn';
   const isPractice = location.pathname === '/practice' || location.pathname.startsWith('/practice/');
   const isChats = location.pathname === '/chats';
-  const isClasswork = location.pathname === '/classwork' || location.pathname.startsWith('/classwork/') || location.pathname === '/classes';
-  const isStudents = location.pathname === '/students' || location.pathname.startsWith('/students/');
+  const isClasswork = location.pathname === '/classwork' || location.pathname.startsWith('/classwork/') || location.pathname === '/classes' || location.pathname === '/students' || location.pathname.startsWith('/students/');
   const isSettings = location.pathname === '/settings';
 
   return (
@@ -96,22 +95,13 @@ export default function BottomToolbar() {
         <span className="toolbar-label">Friends</span>
       </button>
       {isTeacher && (
-        <>
-          <button
-            className={`toolbar-tab toolbar-tab--teal${isClasswork ? ' active' : ''}`}
-            onClick={() => navigate('/classes')}
-          >
-            <ClassworkIcon size={22} />
-            <span className="toolbar-label">Classwork</span>
-          </button>
-          <button
-            className={`toolbar-tab toolbar-tab--orange${isStudents ? ' active' : ''}`}
-            onClick={() => navigate('/students')}
-          >
-            <PeopleIcon size={22} />
-            <span className="toolbar-label">Students</span>
-          </button>
-        </>
+        <button
+          className={`toolbar-tab toolbar-tab--teal${isClasswork ? ' active' : ''}`}
+          onClick={() => navigate('/classes')}
+        >
+          <ClassworkIcon size={22} />
+          <span className="toolbar-label">Classwork</span>
+        </button>
       )}
       <button
         className={`toolbar-tab toolbar-tab--settings${isSettings ? ' active' : ''}`}

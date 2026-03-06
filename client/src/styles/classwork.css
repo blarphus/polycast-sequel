@@ -19,6 +19,13 @@
   margin-bottom: 1.5rem;
 }
 
+.classwork-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+}
+
 .classwork-title {
   font-size: 1.5rem;
   font-weight: 700;
