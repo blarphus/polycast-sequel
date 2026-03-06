@@ -215,7 +215,19 @@ export default function Practice() {
 
           <div className="practice-mode-cards">
             <button
-              className="practice-mode-card active"
+              className="practice-mode-card"
+              onClick={() => navigate('/learn')}
+            >
+              <div className="practice-mode-card-icon">
+                <BoltIcon size={28} strokeWidth={1.5} />
+              </div>
+              <div className="practice-mode-card-title">Flashcards</div>
+              <div className="practice-mode-card-desc">
+                Review due words with spaced repetition.
+              </div>
+            </button>
+            <button
+              className="practice-mode-card"
               onClick={() => startQuiz()}
             >
               <div className="practice-mode-card-icon">
