@@ -6,6 +6,30 @@ import { MOVIES_TV_UPLOADS_PLAYLIST, CHANNELS_BY_LANG } from '../data/channels.j
 import { cachedFetch } from '../lib/redisCache.js';
 import logger from '../logger.js';
 
+function fetchError(message, status) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
+async function fetchYouTubeJson(url, friendlyMessage, logPrefix) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.text();
+    logger.error('%s: %d %s', logPrefix, res.status, body);
+    throw fetchError(friendlyMessage, 502);
+  }
+  return res.json();
+}
+
+export function getYouTubeApiKey() {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) {
+    throw fetchError('YouTube API key not configured', 500);
+  }
+  return apiKey;
+}
+
 /**
  * Convert ISO 8601 duration (e.g. PT4M13S) to seconds.
  */
@@ -29,6 +53,77 @@ export function parseYouTubeId(url) {
     if (m) return m[1];
   }
   return null;
+}
+
+export async function fetchYouTubeVideoMetadata(youtubeId, apiKey) {
+  const metaUrl =
+    `https://www.googleapis.com/youtube/v3/videos` +
+    `?part=snippet,contentDetails&id=${youtubeId}&key=${apiKey}`;
+  const data = await fetchYouTubeJson(
+    metaUrl,
+    'Failed to fetch video metadata from YouTube',
+    'YouTube Data API error',
+  );
+  return data.items?.[0] || null;
+}
+
+export async function fetchYouTubePlaylistVideoIds(playlistId, apiKey, maxResults = 50) {
+  const plUrl =
+    `https://www.googleapis.com/youtube/v3/playlistItems` +
+    `?part=contentDetails&playlistId=${playlistId}` +
+    `&maxResults=${maxResults}&key=${apiKey}`;
+  const data = await fetchYouTubeJson(
+    plUrl,
+    'Failed to fetch playlist from YouTube',
+    'YouTube playlist API error',
+  );
+  return (data.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+}
+
+export async function fetchYouTubeVideoDetails(videoIds, apiKey, part = 'snippet,contentDetails') {
+  if (!videoIds.length) return [];
+  const detailUrl =
+    `https://www.googleapis.com/youtube/v3/videos` +
+    `?part=${part}&id=${videoIds.join(',')}` +
+    `&key=${apiKey}`;
+  const data = await fetchYouTubeJson(
+    detailUrl,
+    'Failed to fetch video details from YouTube',
+    'YouTube video details API error',
+  );
+  return data.items || [];
+}
+
+export async function searchCaptionedVideoIds(query, lang, regionCode, apiKey, maxResults = 25) {
+  const searchParams = new URLSearchParams({
+    part: 'snippet',
+    type: 'video',
+    videoCaption: 'closedCaption',
+    regionCode,
+    relevanceLanguage: lang,
+    maxResults: String(maxResults),
+    q: query,
+    key: apiKey,
+  });
+  const data = await fetchYouTubeJson(
+    `https://www.googleapis.com/youtube/v3/search?${searchParams}`,
+    'Failed to search YouTube',
+    'YouTube search API error',
+  );
+  return (data.items || []).map((item) => item.id.videoId).filter(Boolean);
+}
+
+export async function fetchTrendingPage(regionCode, apiKey, pageToken) {
+  const ytUrl =
+    `https://www.googleapis.com/youtube/v3/videos` +
+    `?part=snippet,contentDetails&chart=mostPopular` +
+    `&regionCode=${regionCode}&maxResults=50&key=${apiKey}` +
+    (pageToken ? `&pageToken=${pageToken}` : '');
+  return fetchYouTubeJson(
+    ytUrl,
+    'Failed to fetch trending videos from YouTube',
+    'YouTube trending API error',
+  );
 }
 
 /**
@@ -65,41 +160,14 @@ export function filterAndMapTrendingItems(items, userRegion, opts = {}) {
  * Fetch free movies & TV from YouTube's dedicated channel (English only).
  */
 export async function fetchMoviesAndTV(apiKey, userRegion) {
-  const plUrl =
-    `https://www.googleapis.com/youtube/v3/playlistItems` +
-    `?part=contentDetails&playlistId=${MOVIES_TV_UPLOADS_PLAYLIST}` +
-    `&maxResults=50&key=${apiKey}`;
-
-  const plRes = await fetch(plUrl);
-  if (!plRes.ok) {
-    const body = await plRes.text();
-    logger.error('YouTube Movies & TV playlist API error: %d %s', plRes.status, body);
-    throw new Error('Failed to fetch Movies & TV playlist from YouTube');
-  }
-
-  const plData = await plRes.json();
-  const videoIds = (plData.items || [])
-    .map((item) => item.contentDetails.videoId)
-    .filter(Boolean);
+  const videoIds = await fetchYouTubePlaylistVideoIds(MOVIES_TV_UPLOADS_PLAYLIST, apiKey);
 
   if (videoIds.length === 0) {
     throw new Error('Movies & TV playlist returned no videos');
   }
 
-  const detailUrl =
-    `https://www.googleapis.com/youtube/v3/videos` +
-    `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
-    `&key=${apiKey}`;
-
-  const detailRes = await fetch(detailUrl);
-  if (!detailRes.ok) {
-    const body = await detailRes.text();
-    logger.error('YouTube video details API error: %d %s', detailRes.status, body);
-    throw new Error('Failed to fetch video details from YouTube');
-  }
-
-  const detailData = await detailRes.json();
-  return filterAndMapTrendingItems(detailData.items, userRegion);
+  const items = await fetchYouTubeVideoDetails(videoIds, apiKey);
+  return filterAndMapTrendingItems(items, userRegion);
 }
 
 /**
@@ -115,26 +183,11 @@ export async function fetchAllChannelVideos(lang, apiKey, userRegion) {
 
       try {
         const { data } = await cachedFetch(cacheKey, async () => {
-          const plUrl =
-            `https://www.googleapis.com/youtube/v3/playlistItems` +
-            `?part=contentDetails&playlistId=${ch.uploadsPlaylist}` +
-            `&maxResults=50&key=${apiKey}`;
-          const plRes = await fetch(plUrl);
-          if (!plRes.ok) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
-
-          const plData = await plRes.json();
-          const videoIds = (plData.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+          const videoIds = await fetchYouTubePlaylistVideoIds(ch.uploadsPlaylist, apiKey).catch(() => []);
           if (videoIds.length === 0) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
 
-          const detailUrl =
-            `https://www.googleapis.com/youtube/v3/videos` +
-            `?part=snippet,contentDetails&id=${videoIds.join(',')}` +
-            `&key=${apiKey}`;
-          const detailRes = await fetch(detailUrl);
-          if (!detailRes.ok) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
-
-          const detailData = await detailRes.json();
-          const videos = filterAndMapTrendingItems(detailData.items, userRegion, { skipCaptionFilter: true });
+          const items = await fetchYouTubeVideoDetails(videoIds, apiKey).catch(() => []);
+          const videos = filterAndMapTrendingItems(items, userRegion, { skipCaptionFilter: true });
           videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
 
           return { channel: { name: ch.name, handle: ch.handle }, videos };
