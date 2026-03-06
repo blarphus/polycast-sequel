@@ -59,7 +59,9 @@ function mergeTranscriptSegments(segments: TranscriptSegment[]): TranscriptSegme
     const firstChar = seg.text.charAt(0);
     const isLowerLatin = /^[a-z\u00E0-\u00FF]/.test(firstChar);
 
-    if (!seg.text.startsWith('>>') && isLowerLatin && gap < 2000) {
+    const prevEndsWithPunctuation = /[.!?]$/.test(prev.text.trimEnd());
+
+    if (!seg.text.startsWith('>>') && isLowerLatin && gap < 2000 && !prevEndsWithPunctuation) {
       prev.text += ' ' + seg.text;
       prev.duration = (seg.offset + seg.duration) - prev.offset;
     } else {
