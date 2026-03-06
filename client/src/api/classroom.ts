@@ -24,6 +24,8 @@ export interface Classroom {
   student_count: number;
   teacher_names: string[];
   role: ClassroomRole | null;
+  next_class_title: string | null;
+  next_class_at: string | null;
 }
 
 export interface ClassroomTopic {

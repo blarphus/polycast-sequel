@@ -5,9 +5,10 @@ import type { Classroom } from '../api';
 import { useAuth } from '../hooks/useAuth';
 import { useActiveClassroom } from '../hooks/useActiveClassroom';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
-import { PlusIcon, PeopleIcon, MoreVerticalIcon, CloseIcon } from '../components/icons';
+import { PlusIcon, PeopleIcon, MoreVerticalIcon, CloseIcon, CalendarIcon } from '../components/icons';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { LANGUAGES } from '../components/classwork/languages';
+import { formatUsDateTime } from '../utils/dateFormat';
 
 // Banner images by language (Wikimedia Commons)
 const LANGUAGE_BANNERS: Record<string, string> = {
@@ -274,11 +275,12 @@ export default function Classes() {
                       {targetName}{nativeName ? ` (for ${nativeName} speakers)` : ''}
                     </p>
                   )}
-                  <p className="gc-card-detail">
-                    {classroom.student_count} student{classroom.student_count === 1 ? '' : 's'}
-                  </p>
-                  {classroom.class_code && (
-                    <p className="gc-card-detail gc-card-code">Code: {classroom.class_code}</p>
+                  {classroom.next_class_at && (
+                    <p className="gc-card-detail gc-card-next-lesson">
+                      <CalendarIcon size={14} />
+                      {classroom.next_class_title ? `${classroom.next_class_title} — ` : ''}
+                      {formatUsDateTime(classroom.next_class_at)}
+                    </p>
                   )}
                 </div>
 
@@ -288,36 +290,47 @@ export default function Classes() {
                   </div>
                 )}
 
-                {isTeacher && (
-                  <div className="gc-card-footer">
-                    <button
-                      className="gc-card-action"
-                      onClick={() => {
-                        setActiveClassroomId(classroom.id);
-                        navigate(`/students?classroomId=${classroom.id}`);
-                      }}
-                      title="Students"
-                    >
-                      <PeopleIcon size={20} />
-                    </button>
-                    <div style={{ position: 'relative' }}>
+                <div className="gc-card-footer">
+                  <div className="gc-card-footer-info">
+                    <span className="gc-card-footer-stat">
+                      <PeopleIcon size={16} />
+                      {classroom.student_count} student{classroom.student_count === 1 ? '' : 's'}
+                    </span>
+                    {classroom.class_code && (
+                      <span className="gc-card-footer-code">{classroom.class_code}</span>
+                    )}
+                  </div>
+                  {isTeacher && (
+                    <div className="gc-card-footer-actions">
                       <button
                         className="gc-card-action"
-                        onClick={() => setMenuOpenId((prev) => prev === classroom.id ? null : classroom.id)}
-                        title="More options"
+                        onClick={() => {
+                          setActiveClassroomId(classroom.id);
+                          navigate(`/students?classroomId=${classroom.id}`);
+                        }}
+                        title="Students"
                       >
-                        <MoreVerticalIcon size={20} />
+                        <PeopleIcon size={20} />
                       </button>
-                      {menuOpenId === classroom.id && (
-                        <CardMenu
-                          onEdit={() => setEditingId((prev) => prev === classroom.id ? null : classroom.id)}
-                          onDelete={() => handleDelete(classroom)}
-                          onClose={() => setMenuOpenId(null)}
-                        />
-                      )}
+                      <div style={{ position: 'relative' }}>
+                        <button
+                          className="gc-card-action"
+                          onClick={() => setMenuOpenId((prev) => prev === classroom.id ? null : classroom.id)}
+                          title="More options"
+                        >
+                          <MoreVerticalIcon size={20} />
+                        </button>
+                        {menuOpenId === classroom.id && (
+                          <CardMenu
+                            onEdit={() => setEditingId((prev) => prev === classroom.id ? null : classroom.id)}
+                            onDelete={() => handleDelete(classroom)}
+                            onClose={() => setMenuOpenId(null)}
+                          />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}

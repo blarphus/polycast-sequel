@@ -27,6 +27,8 @@ function mapClassroomRow(row, roleOverride) {
     student_count: Number(row.student_count || 0),
     teacher_names: row.teacher_names || [],
     role: roleOverride || row.role || null,
+    next_class_title: row.next_class_title || null,
+    next_class_at: row.next_class_at || null,
   };
 }
 
@@ -55,6 +57,15 @@ export async function listVisibleClassrooms(userId) {
       GROUP BY classroom_id
     ) sc ON sc.classroom_id = c.id
     LEFT JOIN (${teacherNamesSql}) tn ON tn.classroom_id = c.id
+    LEFT JOIN LATERAL (
+      SELECT sp.title AS next_class_title, sp.scheduled_at AS next_class_at
+      FROM stream_posts sp
+      JOIN classroom_teachers ct2 ON ct2.teacher_id = sp.teacher_id AND ct2.classroom_id = c.id
+      WHERE sp.type = 'class_session'
+        AND sp.scheduled_at >= NOW()
+      ORDER BY sp.scheduled_at ASC
+      LIMIT 1
+    ) nc ON true
   `;
 
   if (accountType === 'teacher') {
@@ -62,7 +73,9 @@ export async function listVisibleClassrooms(userId) {
       `SELECT c.*, ct.role,
               COALESCE(tc.teacher_count, 0) AS teacher_count,
               COALESCE(sc.student_count, 0) AS student_count,
-              COALESCE(tn.teacher_names, ARRAY[]::text[]) AS teacher_names
+              COALESCE(tn.teacher_names, ARRAY[]::text[]) AS teacher_names,
+              nc.next_class_title,
+              nc.next_class_at
        FROM classrooms c
        JOIN classroom_teachers ct
          ON ct.classroom_id = c.id
@@ -80,7 +93,9 @@ export async function listVisibleClassrooms(userId) {
             'student' AS role,
             COALESCE(tc.teacher_count, 0) AS teacher_count,
             COALESCE(sc.student_count, 0) AS student_count,
-            COALESCE(tn.teacher_names, ARRAY[]::text[]) AS teacher_names
+            COALESCE(tn.teacher_names, ARRAY[]::text[]) AS teacher_names,
+            nc.next_class_title,
+            nc.next_class_at
      FROM classrooms c
      JOIN classroom_enrollments ce
        ON ce.classroom_id = c.id
