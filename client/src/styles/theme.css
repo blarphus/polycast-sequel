@@ -459,6 +459,17 @@
   color: #f87171;
 }
 
+/* ---- Home dashboard cards (dark) ----------------------------------------- */
+
+[data-theme="dark"] .home-dashboard-card {
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .home-dashboard-card:hover {
+  box-shadow: var(--shadow);
+}
+
 /* ---- Dark theme sidebar -------------------------------------------------- */
 
 @media (min-width: 769px) {
