@@ -98,6 +98,7 @@ export default function Students() {
       setRoster(updated);
     } catch (err) {
       console.error('Failed to add student:', err);
+      setError('Failed to add student');
     }
   };
 
@@ -113,6 +114,7 @@ export default function Students() {
       });
     } catch (err) {
       console.error('Failed to remove student:', err);
+      setError('Failed to remove student');
     }
   };
 
