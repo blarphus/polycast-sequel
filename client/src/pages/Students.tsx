@@ -3,13 +3,14 @@
 // ---------------------------------------------------------------------------
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useActiveClassroom } from '../hooks/useActiveClassroom';
 import * as api from '../api';
 import type { Classroom, ClassroomStudent, UserResult } from '../api';
 import ClassroomPicker from '../components/classroom/ClassroomPicker';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
+import { ChevronLeftIcon } from '../components/icons';
 
 export default function Students() {
   const navigate = useNavigate();
@@ -128,8 +129,10 @@ export default function Students() {
       <div className="students-header">
         <div className="students-header-main">
           <div>
+            <button className="channel-back-btn" onClick={() => navigate(-1)}>
+              <ChevronLeftIcon size={18} /> Back
+            </button>
             <h1 className="students-title">Students</h1>
-            <Link className="classwork-manage-link" to="/classes">Manage classes</Link>
           </div>
           <ClassroomPicker
             classrooms={classrooms}

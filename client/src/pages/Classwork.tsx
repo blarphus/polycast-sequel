@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useActiveClassroom } from '../hooks/useActiveClassroom';
 import * as api from '../api';
@@ -13,13 +13,14 @@ import EditModal from '../components/classwork/EditModal';
 import { TopicSection } from '../components/classwork/TopicSection';
 import ClassroomPicker from '../components/classroom/ClassroomPicker';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
-import { PlusIcon, ChevronDownIcon, CloseIcon } from '../components/icons';
+import { PlusIcon, ChevronDownIcon, ChevronLeftIcon, CloseIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Main Classwork component
 // ---------------------------------------------------------------------------
 
 export default function Classwork() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isTeacher = user?.account_type === 'teacher';
   const [searchParams, setSearchParams] = useSearchParams();
@@ -391,12 +392,10 @@ export default function Classwork() {
       <div className="classwork-header">
         <div className="classwork-header-main">
           <div>
+            <button className="channel-back-btn" onClick={() => navigate(-1)}>
+              <ChevronLeftIcon size={18} /> Back
+            </button>
             <h1 className="classwork-title">Classwork</h1>
-            <div className="classwork-header-links">
-              <Link className="classwork-manage-link" to="/classes">
-                {isTeacher ? 'Manage classes' : 'All classes'}
-              </Link>
-            </div>
           </div>
           <ClassroomPicker
             classrooms={classrooms}
