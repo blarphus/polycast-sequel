@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { LANGUAGES } from '../components/classwork/languages';
 import PlacementTest from '../components/PlacementTest';
+import { ChevronLeftIcon } from '../components/icons';
 
 export default function Settings() {
   const { user, updateSettings } = useAuth();
@@ -67,6 +68,10 @@ export default function Settings() {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <button className="channel-back-btn" onClick={() => navigate(-1)}>
+          <ChevronLeftIcon size={18} />
+          Back
+        </button>
         <h1 className="auth-title">Settings</h1>
         <p className="auth-subtitle">Set your language preferences</p>
 
