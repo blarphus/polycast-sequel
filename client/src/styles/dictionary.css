@@ -167,9 +167,22 @@
   user-select: none;
 }
 
-/* Accent left border for items inside the bracket */
 .dict-item--in-bracket {
-  border-left-color: var(--accent) !important;
+  background:
+    linear-gradient(0deg, rgba(108, 99, 255, 0.045), rgba(108, 99, 255, 0.045)),
+    var(--bg-surface);
+}
+
+.dict-item--in-bracket .dict-item-header {
+  background: rgba(108, 99, 255, 0.02);
+}
+
+.dict-item--in-bracket .dict-item-header:hover {
+  background: rgba(108, 99, 255, 0.08);
+}
+
+.dict-item--in-bracket .dict-item-body {
+  background: rgba(108, 99, 255, 0.02);
 }
 
 /* Drag handle (grip dots) */

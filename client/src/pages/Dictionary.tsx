@@ -406,7 +406,7 @@ export default function Dictionary() {
                         `${inBracket ? ' dict-item--in-bracket' : ''}` +
                         `${isDragOver ? ' dict-item--drag-over' : ''}`
                       }
-                      style={freqColor ? { borderLeftColor: inBracket ? undefined : freqColor } : undefined}
+                      style={freqColor ? { borderLeftColor: freqColor } : undefined}
                       draggable={isDraggable}
                       onDragStart={isDraggable ? (e) => handleDragStart(e, group.key) : undefined}
                       onDragOver={isDraggable ? (e) => handleDragOver(e, group.key) : undefined}
