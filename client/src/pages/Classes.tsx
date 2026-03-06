@@ -7,10 +7,6 @@ import { useActiveClassroom } from '../hooks/useActiveClassroom';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
 import { PlusIcon } from '../components/icons';
 
-function formatClassMeta(classroom: Classroom) {
-  return [classroom.section, classroom.subject, classroom.room].filter(Boolean).join(' · ');
-}
-
 export default function Classes() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -25,9 +21,6 @@ export default function Classes() {
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createName, setCreateName] = useState('');
-  const [createSection, setCreateSection] = useState('');
-  const [createSubject, setCreateSubject] = useState('');
-  const [createRoom, setCreateRoom] = useState('');
   const [createError, setCreateError] = useState('');
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -44,16 +37,10 @@ export default function Classes() {
     try {
       const classroom = await api.createClassroom({
         name: createName.trim(),
-        section: createSection.trim() || undefined,
-        subject: createSubject.trim() || undefined,
-        room: createRoom.trim() || undefined,
       });
       await reloadClassrooms();
       setActiveClassroomId(classroom.id);
       setCreateName('');
-      setCreateSection('');
-      setCreateSubject('');
-      setCreateRoom('');
       setShowCreateForm(false);
     } catch (err) {
       console.error('Failed to create classroom:', err);
@@ -101,24 +88,6 @@ export default function Classes() {
               placeholder="Class name"
               required
             />
-            <input
-              className="form-input"
-              value={createSection}
-              onChange={(e) => setCreateSection(e.target.value)}
-              placeholder="Section"
-            />
-            <input
-              className="form-input"
-              value={createSubject}
-              onChange={(e) => setCreateSubject(e.target.value)}
-              placeholder="Subject"
-            />
-            <input
-              className="form-input"
-              value={createRoom}
-              onChange={(e) => setCreateRoom(e.target.value)}
-              placeholder="Room"
-            />
           </div>
           <div className="classes-form-actions">
             <button className="btn btn-primary btn-sm" type="submit" disabled={creating}>
@@ -147,9 +116,6 @@ export default function Classes() {
                 <div className="classes-card-header">
                   <div>
                     <h2 className="classes-card-title">{classroom.name}</h2>
-                    {formatClassMeta(classroom) && (
-                      <p className="classes-card-meta">{formatClassMeta(classroom)}</p>
-                    )}
                   </div>
                   <div className="classes-badges">
                     {classroom.is_default_migrated && <span className="classes-badge">Imported</span>}

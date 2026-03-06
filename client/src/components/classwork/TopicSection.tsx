@@ -1,12 +1,11 @@
 // ---------------------------------------------------------------------------
-// components/classwork/TopicSection.tsx — Topic section with post grouping
+// components/classwork/TopicSection.tsx — Topic section with compact post rows
 // ---------------------------------------------------------------------------
 
 import React, { useState, useRef } from 'react';
 import * as api from '../../api';
 import type { StreamPost, StreamTopic } from '../../api';
-import { TeacherPostCard, StudentWordListCard, StudentMaterialCard, StudentLessonCard } from './PostCards';
-import { TeacherClassSessionCard, StudentClassSessionCard } from './ClassSessionCard';
+import { PostRow } from './PostRow';
 import { ChevronUpIcon } from '../icons';
 import { useClickOutside } from '../../hooks/useClickOutside';
 
@@ -51,6 +50,8 @@ export function TopicSection({
   onMovePost,
   onRenameTopic,
   onDeleteTopic,
+  expandedPosts,
+  onToggleExpandPost,
   dragItem,
   dragOverId,
   onDragStartPost,
@@ -75,6 +76,8 @@ export function TopicSection({
   onMovePost: (postId: string, topicId: string | null) => void;
   onRenameTopic: (updated: StreamTopic) => void;
   onDeleteTopic: (topicId: string) => void;
+  expandedPosts: Set<string>;
+  onToggleExpandPost: (postId: string) => void;
   dragItem: { id: string; kind: 'post' | 'topic' } | null;
   dragOverId: string | null;
   onDragStartPost: (e: React.DragEvent, post: StreamPost) => void;
@@ -149,8 +152,6 @@ export function TopicSection({
           </span>
         )}
 
-        <span className="stream-topic-count">{posts.length}</span>
-
         <button
           className={`stream-topic-chevron${collapsed ? ' stream-topic-chevron--collapsed' : ''}`}
           onClick={onToggleCollapse}
@@ -186,79 +187,27 @@ export function TopicSection({
               {isNoTopic ? 'No unassigned posts.' : 'No posts in this topic.'}
             </div>
           )}
-          {sortedPosts.map((post) => {
-            if (isTeacher) {
-              // Class sessions get their own specialized card
-              if (post.type === 'class_session') {
-                return (
-                  <div
-                    key={post.id}
-                    className={dragOverId === post.id && dragItem?.kind === 'post' ? 'stream-post-drop-indicator' : ''}
-                    draggable={true}
-                    onDragStart={(e) => onDragStartPost(e, post)}
-                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragItem?.kind === 'post') onDragOverPost(post.id); }}
-                    onDrop={(e) => { e.stopPropagation(); onDropPost(e, post.id, topicId); }}
-                    onDragEnd={onDragEndPost}
-                  >
-                    <TeacherClassSessionCard post={post} />
-                  </div>
-                );
-              }
-              return (
-                <div
-                  key={post.id}
-                  className={dragOverId === post.id && dragItem?.kind === 'post' ? 'stream-post-drop-indicator' : ''}
-                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragItem?.kind === 'post') onDragOverPost(post.id); }}
-                  onDrop={(e) => { e.stopPropagation(); onDropPost(e, post.id, topicId); }}
-                >
-                  <TeacherPostCard
-                    post={post}
-                    topics={topics}
-                    onDelete={onDeletePost}
-                    onEdit={onEditPost}
-                    onMoveTo={(newTopicId) => onMovePost(post.id, newTopicId)}
-                    isDragOver={dragOverId === post.id && dragItem?.kind === 'post'}
-                    draggable={true}
-                    onDragStart={(e) => onDragStartPost(e, post)}
-                    onDragEnd={onDragEndPost}
-                    enrichingIds={enrichingWordIds.get(post.id)}
-                  />
-                </div>
-              );
-            }
-
-            // Student view
-            const showTeacherLabel = !isNoTopic && !!post.teacher_name;
-            if (post.type === 'class_session') {
-              return (
-                <React.Fragment key={post.id}>
-                  {showTeacherLabel && <div className="stream-teacher-label">{post.teacher_name}</div>}
-                  <StudentClassSessionCard post={post} />
-                </React.Fragment>
-              );
-            } else if (post.type === 'word_list') {
-              return (
-                <React.Fragment key={post.id}>
-                  {showTeacherLabel && <div className="stream-teacher-label">{post.teacher_name}</div>}
-                  <StudentWordListCard post={post} onUpdate={onStudentUpdate} />
-                </React.Fragment>
-              );
-            } else if (post.type === 'lesson') {
-              return (
-                <React.Fragment key={post.id}>
-                  {showTeacherLabel && <div className="stream-teacher-label">{post.teacher_name}</div>}
-                  <StudentLessonCard post={post} />
-                </React.Fragment>
-              );
-            } else {
-              return (
-                <React.Fragment key={post.id}>
-                  {showTeacherLabel && <div className="stream-teacher-label">{post.teacher_name}</div>}
-                  <StudentMaterialCard post={post} />
-                </React.Fragment>
-              );
-            }
-          })}
+          {sortedPosts.map((post) => (
+            <PostRow
+              key={post.id}
+              post={post}
+              topics={topics}
+              isTeacher={isTeacher}
+              expanded={expandedPosts.has(post.id)}
+              onToggleExpand={() => onToggleExpandPost(post.id)}
+              onDeletePost={onDeletePost}
+              onEditPost={onEditPost}
+              onMovePost={onMovePost}
+              onStudentUpdate={onStudentUpdate}
+              enrichingIds={enrichingWordIds.get(post.id)}
+              draggable={isTeacher && canManageTopics}
+              onDragStart={(e) => onDragStartPost(e, post)}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragItem?.kind === 'post') onDragOverPost(post.id); }}
+              onDrop={(e) => { e.stopPropagation(); onDropPost(e, post.id, topicId); }}
+              onDragEnd={onDragEndPost}
+              isDragOver={dragOverId === post.id && dragItem?.kind === 'post'}
+            />
+          ))}
         </div>
       )}
     </div>

@@ -13,7 +13,7 @@ import EditModal from '../components/classwork/EditModal';
 import { TopicSection } from '../components/classwork/TopicSection';
 import ClassroomPicker from '../components/classroom/ClassroomPicker';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
-import { PlusIcon, ChevronDownIcon } from '../components/icons';
+import { PlusIcon, ChevronDownIcon, CloseIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Main Classwork component
@@ -47,6 +47,8 @@ export default function Classwork() {
   const [newTopicTitle, setNewTopicTitle] = useState('');
   const [dragItem, setDragItem] = useState<{ id: string; kind: 'post' | 'topic' } | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+  const [filterTopicId, setFilterTopicId] = useState<string | null>(null);
 
   const loadStream = useCallback(() => {
     if (!activeClassroomId) {
@@ -87,6 +89,8 @@ export default function Classwork() {
     setEditingPost(null);
     setDragItem(null);
     setDragOverId(null);
+    setExpandedPosts(new Set());
+    setFilterTopicId(null);
   }, [activeClassroomId]);
 
   useEffect(() => {
@@ -220,6 +224,26 @@ export default function Classwork() {
     });
   };
 
+  // ---- Expand / Collapse all posts ----
+
+  const toggleExpandPost = (postId: string) => {
+    setExpandedPosts((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) next.delete(postId); else next.add(postId);
+      return next;
+    });
+  };
+
+  const anyExpanded = expandedPosts.size > 0;
+
+  const handleCollapseExpandAll = () => {
+    if (anyExpanded) {
+      setExpandedPosts(new Set());
+    } else {
+      setExpandedPosts(new Set(posts.map((p) => p.id)));
+    }
+  };
+
   // ---- Drag and drop ----
 
   const handleDragStartPost = (e: React.DragEvent, post: StreamPost) => {
@@ -320,6 +344,14 @@ export default function Classwork() {
 
   const isEmpty = posts.length === 0 && topics.length === 0 && !creatingTopic;
 
+  // ---- Topic filtering ----
+
+  const filteredTopics = filterTopicId
+    ? topics.filter((t) => t.id === filterTopicId)
+    : topics;
+
+  const showNoTopic = filterTopicId === null;
+
   const handleClassroomChange = (classroomId: string) => {
     setActiveClassroomId(classroomId);
   };
@@ -327,6 +359,31 @@ export default function Classwork() {
   const handleClassroomUpdated = async (updated: Classroom) => {
     await reloadClassrooms();
     setActiveClassroomId(updated.id);
+  };
+
+  // Shared topic section props
+  const topicSectionProps = {
+    topics,
+    isTeacher,
+    allowTopicManagement: allowLegacyStreamManagement,
+    onDeletePost: handleDeletePost,
+    onEditPost: handleEditPost,
+    onMovePost: handleMovePost,
+    onRenameTopic: handleRenameTopic,
+    onDeleteTopic: handleDeleteTopic,
+    expandedPosts,
+    onToggleExpandPost: toggleExpandPost,
+    dragItem,
+    dragOverId,
+    onDragStartPost: handleDragStartPost,
+    onDragOverPost: handleDragOverPost,
+    onDropPost: handleDropPost,
+    onDragEndPost: handleDragEndPost,
+    onDragStartTopic: handleDragStartTopic,
+    onDragOverTopic: handleDragOverTopic,
+    onDropTopic: handleDropTopic,
+    onStudentUpdate: handleStudentUpdate,
+    enrichingWordIds,
   };
 
   return (
@@ -380,6 +437,26 @@ export default function Classwork() {
         )}
       </div>
 
+      {/* Toolbar: topic filter + collapse/expand all */}
+      {!isEmpty && !loading && !classroomsLoading && (
+        <div className="classwork-toolbar">
+          <select
+            className="classwork-topic-filter"
+            value={filterTopicId ?? ''}
+            onChange={(e) => setFilterTopicId(e.target.value || null)}
+          >
+            <option value="">All topics</option>
+            {topics.map((t) => (
+              <option key={t.id} value={t.id}>{t.title}</option>
+            ))}
+          </select>
+          <button className="classwork-collapse-all" onClick={handleCollapseExpandAll}>
+            <CloseIcon size={14} strokeWidth={2.5} />
+            {anyExpanded ? 'Collapse all' : 'Expand all'}
+          </button>
+        </div>
+      )}
+
       {classroomsError && <div className="auth-error">{classroomsError}</div>}
       {error && <div className="auth-error">{error}</div>}
       {activeClassroom?.needs_setup && isTeacher && (
@@ -402,61 +479,25 @@ export default function Classwork() {
         <div className="classwork-feed">
 
           {/* No-topic section */}
-          {(noTopicPosts.length > 0 || (isTeacher && posts.length === 0 && topics.length === 0)) && (
+          {showNoTopic && (noTopicPosts.length > 0 || (isTeacher && posts.length === 0 && topics.length === 0)) && (
             <TopicSection
               topic={null}
               posts={noTopicPosts}
-              topics={topics}
-              isTeacher={isTeacher}
-              allowTopicManagement={allowLegacyStreamManagement}
               collapsed={collapsed.has('__no_topic__')}
               onToggleCollapse={() => toggleCollapse('__no_topic__')}
-              onDeletePost={handleDeletePost}
-              onEditPost={handleEditPost}
-              onMovePost={handleMovePost}
-              onRenameTopic={handleRenameTopic}
-              onDeleteTopic={handleDeleteTopic}
-              dragItem={dragItem}
-              dragOverId={dragOverId}
-              onDragStartPost={handleDragStartPost}
-              onDragOverPost={handleDragOverPost}
-              onDropPost={handleDropPost}
-              onDragEndPost={handleDragEndPost}
-              onDragStartTopic={handleDragStartTopic}
-              onDragOverTopic={handleDragOverTopic}
-              onDropTopic={handleDropTopic}
-              onStudentUpdate={handleStudentUpdate}
-              enrichingWordIds={enrichingWordIds}
+              {...topicSectionProps}
             />
           )}
 
           {/* Named topic sections */}
-          {topics.map((topic) => (
+          {filteredTopics.map((topic) => (
             <TopicSection
               key={topic.id}
               topic={topic}
               posts={posts.filter((p) => p.topic_id === topic.id)}
-              topics={topics}
-              isTeacher={isTeacher}
-              allowTopicManagement={allowLegacyStreamManagement}
               collapsed={collapsed.has(topic.id)}
               onToggleCollapse={() => toggleCollapse(topic.id)}
-              onDeletePost={handleDeletePost}
-              onEditPost={handleEditPost}
-              onMovePost={handleMovePost}
-              onRenameTopic={handleRenameTopic}
-              onDeleteTopic={handleDeleteTopic}
-              dragItem={dragItem}
-              dragOverId={dragOverId}
-              onDragStartPost={handleDragStartPost}
-              onDragOverPost={handleDragOverPost}
-              onDropPost={handleDropPost}
-              onDragEndPost={handleDragEndPost}
-              onDragStartTopic={handleDragStartTopic}
-              onDragOverTopic={handleDragOverTopic}
-              onDropTopic={handleDropTopic}
-              onStudentUpdate={handleStudentUpdate}
-              enrichingWordIds={enrichingWordIds}
+              {...topicSectionProps}
             />
           ))}
 
@@ -466,7 +507,7 @@ export default function Classwork() {
               <div className="stream-topic-header">
                 <input
                   className="stream-topic-rename-input"
-                  placeholder="Topic name…"
+                  placeholder="Topic name..."
                   value={newTopicTitle}
                   onChange={(e) => setNewTopicTitle(e.target.value)}
                   onBlur={handleCreateTopic}
