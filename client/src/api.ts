@@ -778,68 +778,23 @@ export async function checkVideoPlayability(videoIds: string[]): Promise<{ block
   return { blocked, shorts };
 }
 
-/**
- * Two-step client-side transcript fetch:
- * 1. CF Worker scrapes YouTube watch page → returns caption track URLs (works from datacenter IPs)
- * 2. Browser fetches timedtext directly from YouTube using user's residential IP
- *    (YouTube blocks datacenter IPs but allows residential IPs)
- */
 export async function fetchTranscriptFromWorker(youtubeId: string, lang: string): Promise<TranscriptSegment[]> {
-  // Step 1: Get caption track URLs from CF Worker
-  const captionRes = await fetch(
-    `${CF_WORKER_URL}?action=captions&videoId=${encodeURIComponent(youtubeId)}`,
-  );
-  if (!captionRes.ok) {
-    const body = await captionRes.json().catch(() => ({ error: `HTTP ${captionRes.status}` }));
-    throw new Error(body.error || `Worker returned ${captionRes.status}`);
+  const url = `${CF_WORKER_URL}?videoId=${encodeURIComponent(youtubeId)}&lang=${encodeURIComponent(lang)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(body.error || `Worker returned ${res.status}`);
   }
-  const captionData = await captionRes.json();
-  if (!captionData.success || !Array.isArray(captionData.tracks) || captionData.tracks.length === 0) {
-    throw new Error(captionData.error || 'No caption tracks found');
+  const data = await res.json();
+  if (!data.success || !Array.isArray(data.segments)) {
+    throw new Error(data.error || 'No segments returned');
   }
-
-  // Find matching language track
-  const langPrefix = lang.split('-')[0].toLowerCase();
-  const track =
-    captionData.tracks.find((t: any) => t.languageCode === lang) ||
-    captionData.tracks.find((t: any) => t.languageCode.split('-')[0].toLowerCase() === langPrefix) ||
-    captionData.tracks[0];
-
-  // Step 2: Fetch timedtext directly from YouTube (browser's residential IP)
-  const separator = track.baseUrl.includes('?') ? '&' : '?';
-  const timedtextUrl = track.baseUrl + separator + 'fmt=json3';
-  const ttRes = await fetch(timedtextUrl);
-  if (!ttRes.ok) {
-    throw new Error(`Timedtext fetch failed: HTTP ${ttRes.status}`);
-  }
-  const ttText = await ttRes.text();
-  if (!ttText) {
-    throw new Error('Timedtext returned empty response');
-  }
-
-  // Parse json3 format
-  const json3 = JSON.parse(ttText);
-  const events = json3?.events;
-  if (!Array.isArray(events)) {
-    throw new Error('No transcript events in response');
-  }
-
-  const segments: TranscriptSegment[] = [];
-  for (const event of events) {
-    if (!event.segs || event.tStartMs == null) continue;
-    const text = event.segs.map((s: any) => s.utf8 || '').join('').trim();
-    if (!text) continue;
-    segments.push({
-      text,
-      offset: event.tStartMs,
-      duration: event.dDurMs || 0,
-    });
-  }
-
-  if (segments.length === 0) {
-    throw new Error('Transcript parsed but no segments found');
-  }
-  return segments;
+  // Worker returns seconds (start/dur) -- convert to milliseconds (offset/duration)
+  return data.segments.map((seg: { text: string; start: number; dur: number }) => ({
+    text: seg.text,
+    offset: Math.round(seg.start * 1000),
+    duration: Math.round(seg.dur * 1000),
+  }));
 }
 
 export function uploadTranscript(videoId: string, segments: TranscriptSegment[]): Promise<VideoDetail> {
