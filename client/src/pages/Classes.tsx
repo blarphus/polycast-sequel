@@ -297,7 +297,7 @@ export default function Classes() {
                       {classroom.student_count} student{classroom.student_count === 1 ? '' : 's'}
                     </span>
                     {classroom.class_code && (
-                      <span className="gc-card-footer-code">{classroom.class_code}</span>
+                      <span className="gc-card-footer-code">Code: {classroom.class_code}</span>
                     )}
                   </div>
                   {isTeacher && (
