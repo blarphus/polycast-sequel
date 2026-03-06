@@ -149,7 +149,6 @@
   border-radius: var(--radius-lg);
   background: var(--bg-surface);
   box-shadow: var(--shadow);
-  overflow: hidden;
   transition: box-shadow var(--transition);
 }
 
@@ -167,6 +166,8 @@
   justify-content: flex-end;
   cursor: pointer;
   position: relative;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  overflow: hidden;
 }
 
 .gc-card-name {
