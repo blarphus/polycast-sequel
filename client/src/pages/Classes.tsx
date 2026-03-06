@@ -5,7 +5,7 @@ import type { Classroom } from '../api';
 import { useAuth } from '../hooks/useAuth';
 import { useActiveClassroom } from '../hooks/useActiveClassroom';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
-import { PlusIcon, PeopleIcon, MoreVerticalIcon } from '../components/icons';
+import { PlusIcon, PeopleIcon, MoreVerticalIcon, CloseIcon } from '../components/icons';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { LANGUAGES } from '../components/classwork/languages';
 
@@ -161,46 +161,77 @@ export default function Classes() {
       {error && <div className="auth-error">{error}</div>}
 
       {isTeacher && showCreateForm && (
-        <form className="classes-form-card" onSubmit={handleCreate}>
-          <div className="classes-form-grid">
-            <input
-              className="form-input"
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              placeholder="Class name"
-              required
-            />
-            <select
-              className="form-input"
-              value={createTargetLang}
-              onChange={(e) => setCreateTargetLang(e.target.value)}
-            >
-              <option value="">Teaching language...</option>
-              {LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code}>{l.name}</option>
-              ))}
-            </select>
-            <select
-              className="form-input"
-              value={createNativeLang}
-              onChange={(e) => setCreateNativeLang(e.target.value)}
-            >
-              <option value="">Students speak...</option>
-              {LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code}>{l.name}</option>
-              ))}
-            </select>
+        <div className="create-class-overlay" onClick={() => setShowCreateForm(false)}>
+          <div className="create-class-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="create-class-modal-header">
+              <h2 className="create-class-modal-title">Create a new class</h2>
+              <button
+                className="create-class-modal-close"
+                type="button"
+                onClick={() => setShowCreateForm(false)}
+              >
+                <CloseIcon size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreate}>
+              <div className="create-class-modal-body">
+                <label className="create-class-field">
+                  <span className="create-class-label">Class name</span>
+                  <input
+                    className="form-input"
+                    value={createName}
+                    onChange={(e) => setCreateName(e.target.value)}
+                    placeholder="e.g. Spanish 101"
+                    required
+                    autoFocus
+                  />
+                </label>
+
+                <label className="create-class-field">
+                  <span className="create-class-label">Teaching language</span>
+                  <select
+                    className="form-input"
+                    value={createTargetLang}
+                    onChange={(e) => setCreateTargetLang(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>Select a language...</option>
+                    {LANGUAGES.map((l) => (
+                      <option key={l.code} value={l.code}>{l.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="create-class-field">
+                  <span className="create-class-label">Students speak</span>
+                  <select
+                    className="form-input"
+                    value={createNativeLang}
+                    onChange={(e) => setCreateNativeLang(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>Select a language...</option>
+                    {LANGUAGES.map((l) => (
+                      <option key={l.code} value={l.code}>{l.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                {createError && <div className="auth-error">{createError}</div>}
+              </div>
+
+              <div className="create-class-modal-footer">
+                <button className="btn btn-secondary" type="button" onClick={() => setShowCreateForm(false)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" type="submit" disabled={creating}>
+                  {creating ? 'Creating...' : 'Create class'}
+                </button>
+              </div>
+            </form>
           </div>
-          <div className="classes-form-actions">
-            <button className="btn btn-primary btn-sm" type="submit" disabled={creating}>
-              {creating ? 'Creating...' : 'Create'}
-            </button>
-            <button className="btn btn-secondary btn-sm" type="button" onClick={() => setShowCreateForm(false)}>
-              Cancel
-            </button>
-          </div>
-          {createError && <div className="auth-error">{createError}</div>}
-        </form>
+        </div>
       )}
 
       {loading ? (

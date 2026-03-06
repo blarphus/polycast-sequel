@@ -235,6 +235,16 @@
   box-shadow: var(--shadow-lg);
 }
 
+/* ---- Create class modal -------------------------------------------------- */
+
+[data-theme="dark"] .create-class-overlay {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"] .create-class-modal {
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+
 [data-theme="dark"] .imgpicker-thumb {
   border-color: rgba(255, 255, 255, 0.1);
 }
