@@ -8,6 +8,7 @@ import { getSavedWords, saveWord, deleteSavedWord, updateWordImage, reorderQueue
 export function useSavedWords() {
   const [words, setWords] = useState<SavedWord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [optimisticWords, setOptimisticWords] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -22,9 +23,9 @@ export function useSavedWords() {
     return () => { cancelled = true; };
   }, []);
 
-  // Set of lowercased words for O(1) highlighting lookups (includes all inflected forms)
+  // Set of lowercased words for O(1) highlighting lookups (includes all inflected forms + optimistic)
   const savedWordsSet = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>(optimisticWords);
     for (const w of words) {
       set.add(w.word.toLowerCase());
       if (w.forms) {
@@ -37,7 +38,7 @@ export function useSavedWords() {
       }
     }
     return set;
-  }, [words]);
+  }, [words, optimisticWords]);
 
   const isWordSaved = useCallback(
     (word: string) => savedWordsSet.has(word.toLowerCase()),
@@ -75,6 +76,19 @@ export function useSavedWords() {
       lemma?: string | null;
       forms?: string | null;
     }) => {
+      // Optimistically add word (and its forms) so it turns blue instantly
+      setOptimisticWords((prev) => {
+        const next = new Set(prev);
+        next.add(data.word.toLowerCase());
+        if (data.forms) {
+          try {
+            const fl: string[] = JSON.parse(data.forms);
+            for (const f of fl) next.add(f.toLowerCase());
+          } catch { /* skip malformed */ }
+        }
+        return next;
+      });
+
       const saved = await saveWord(data);
       if (saved._created) {
         setWords((prev) => {
