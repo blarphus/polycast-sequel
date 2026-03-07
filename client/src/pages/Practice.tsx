@@ -15,7 +15,7 @@ import {
   type QuizSessionResult,
 } from '../api';
 import { playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
-import { TargetIcon, BoltIcon, CheckCircleIcon, CloseIcon } from '../components/icons';
+import { TargetIcon, BoltIcon, CheckCircleIcon, CloseIcon, MicIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -248,6 +248,18 @@ export default function Practice() {
               <div className="practice-mode-card-title">Conjugation Drill</div>
               <div className="practice-mode-card-desc">
                 Fast-paced verb drill. Type conjugations, instant feedback.
+              </div>
+            </button>
+            <button
+              className="practice-mode-card"
+              onClick={() => navigate('/practice/voice')}
+            >
+              <div className="practice-mode-card-icon">
+                <MicIcon size={28} strokeWidth={1.5} />
+              </div>
+              <div className="practice-mode-card-title">Voice Translation</div>
+              <div className="practice-mode-card-desc">
+                See a sentence in your language, say it in your target language, get concise spoken feedback.
               </div>
             </button>
           </div>

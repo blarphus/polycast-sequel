@@ -32,6 +32,7 @@ import ReadArticle from './pages/ReadArticle';
 import NewsCollection from './pages/collections/NewsCollection';
 import Practice from './pages/Practice';
 import DrillPicker from './pages/DrillPicker';
+import VoicePractice from './pages/VoicePractice';
 import IncomingCall from './components/IncomingCall';
 import PhraseTranslator from './components/PhraseTranslator';
 import BottomToolbar from './components/BottomToolbar';
@@ -289,6 +290,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <DrillPicker />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/practice/voice"
+          element={
+            <ProtectedRoute>
+              <VoicePractice />
             </ProtectedRoute>
           }
         />

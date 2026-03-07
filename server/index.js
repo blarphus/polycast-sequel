@@ -31,6 +31,7 @@ import placementRoutes from './routes/placement.js';
 import newsRoutes from './routes/news.js';
 import practiceRoutes from './routes/practice.js';
 import translateRoutes from './routes/translate.js';
+import voicePracticeRoutes from './routes/voicePractice.js';
 import { startTranscriptWorker, backfillCefrLevels } from './services/videoTranscriptQueue.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -130,6 +131,7 @@ async function main() {
   app.use(placementRoutes);
   app.use(newsRoutes);
   app.use(practiceRoutes);
+  app.use(voicePracticeRoutes);
   app.use(translateRoutes);
 
   // ------ SPA fallback ------
