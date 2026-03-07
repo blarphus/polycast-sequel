@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVoicePracticeSession } from '../hooks/useVoicePracticeSession';
-import { ChevronLeftIcon, CheckCircleIcon, CloseIcon, MicIcon, MicOffIcon, TargetIcon } from '../components/icons';
+import { ChevronLeftIcon, CheckCircleIcon, CloseIcon, MicIcon, MicOffIcon, SpeakerIcon, TargetIcon } from '../components/icons';
+import { playAiSpeech } from '../utils/aiSpeech';
 
 function renderAnnotatedAnswer(text: string) {
   const parts = text.split(/(~~.*?~~)/g).filter(Boolean);
@@ -11,6 +12,16 @@ function renderAnnotatedAnswer(text: string) {
     }
     return <span key={index}>{part}</span>;
   });
+}
+
+function renderSuccessConfetti() {
+  return (
+    <div className="voice-practice-success-confetti" aria-hidden="true">
+      {Array.from({ length: 8 }, (_, index) => (
+        <span key={index} className={`voice-practice-confetti-bit bit-${index + 1}`} />
+      ))}
+    </div>
+  );
 }
 
 export default function VoicePractice() {
@@ -25,8 +36,14 @@ export default function VoicePractice() {
     totalPrompts,
     currentTranscript,
     currentGrade,
+    repeatTarget,
+    repeatTranscript,
+    repeatComplete,
+    isRepeatStage,
     listening,
     grading,
+    committing,
+    audioPeaks,
     connectionState,
     feedbackLanguageMode,
     counts,
@@ -34,6 +51,8 @@ export default function VoicePractice() {
     stopListening,
     skipPrompt,
     nextPrompt,
+    redoPrompt,
+    canRedoCurrentPrompt,
     formatDuration,
   } = useVoicePracticeSession();
 
@@ -121,6 +140,10 @@ export default function VoicePractice() {
           <span className="voice-practice-feedback-mode">Feedback: {feedbackLanguageMode}</span>
         </div>
 
+        <div className="voice-practice-reminder">
+          Translate into {session.targetLanguage}. If you do not know a word, say that word in your native language and do your best. You can ask the tutor to speak in either language.
+        </div>
+
         <div className="voice-practice-card">
           <div className="voice-practice-card-label">
             <TargetIcon size={16} strokeWidth={1.8} />
@@ -135,19 +158,49 @@ export default function VoicePractice() {
             </div>
           </div>
 
+          {isRepeatStage && (
+            <div className={`voice-practice-repeat-block ${repeatComplete ? 'is-complete' : ''}`}>
+              <div className="voice-practice-repeat-label">Repeat this once, then we move on</div>
+              <div className="voice-practice-repeat-target">{repeatTarget}</div>
+              <div className={`voice-practice-repeat-transcript ${repeatTranscript ? 'has-text' : ''}`}>
+                {repeatTranscript || 'Your repetition will appear here.'}
+              </div>
+              {repeatComplete && (
+                <div className="voice-practice-repeat-status">Repetition captured.</div>
+              )}
+            </div>
+          )}
+
           {currentGrade && (
             <div className={`voice-practice-feedback-block result-${currentGrade.result}`}>
+              {currentGrade.result === 'correct' && renderSuccessConfetti()}
               <div className="voice-practice-feedback-header">
                 <span className="voice-practice-feedback-result">{currentGrade.result}</span>
                 <span className="voice-practice-feedback-score">{currentGrade.score}</span>
               </div>
+              {currentGrade.result !== 'correct' && (
+                <div className="voice-practice-feedback-row">
+                  <div className="voice-practice-feedback-label">Annotated answer</div>
+                  <div className="voice-practice-feedback-text">{renderAnnotatedAnswer(currentGrade.annotatedUserAnswer)}</div>
+                </div>
+              )}
               <div className="voice-practice-feedback-row">
-                <div className="voice-practice-feedback-label">Annotated answer</div>
-                <div className="voice-practice-feedback-text">{renderAnnotatedAnswer(currentGrade.annotatedUserAnswer)}</div>
-              </div>
-              <div className="voice-practice-feedback-row">
-                <div className="voice-practice-feedback-label">Correct answer</div>
-                <div className="voice-practice-feedback-text">{currentGrade.correctedAnswer}</div>
+                <div className="voice-practice-feedback-label">
+                  {currentGrade.result === 'correct' ? 'Nice work' : 'Correct answer'}
+                </div>
+                <div className="voice-practice-feedback-text voice-practice-feedback-text--with-audio">
+                  <span>{currentGrade.correctedAnswer}</span>
+                  {currentGrade.result !== 'correct' && (
+                    <button
+                      type="button"
+                      className="voice-practice-audio-btn"
+                      onClick={() => { void playAiSpeech(currentGrade.correctedAnswer, session.targetLanguage); }}
+                      aria-label="Play pronunciation again"
+                    >
+                      <SpeakerIcon size={18} />
+                    </button>
+                  )}
+                </div>
               </div>
               {currentGrade.issueNotes.length > 0 && (
                 <div className="voice-practice-feedback-row">
@@ -168,22 +221,67 @@ export default function VoicePractice() {
         <div className="voice-practice-actions">
           {!currentGrade ? (
             <>
-              <button
-                className={`voice-practice-mic ${listening ? 'is-listening' : ''}`}
-                onClick={listening ? stopListening : startListening}
-                disabled={connectionState !== 'ready' || grading}
-              >
-                {listening ? <MicOffIcon size={22} /> : <MicIcon size={22} />}
-                {listening ? 'Stop' : 'Speak'}
-              </button>
+              <div className="voice-practice-recording-row">
+                <button
+                  className={`voice-practice-mic ${listening ? 'is-listening' : ''}`}
+                  onClick={listening ? stopListening : startListening}
+                  disabled={connectionState !== 'ready' || grading || committing}
+                >
+                  {listening ? <MicOffIcon size={22} /> : <MicIcon size={22} />}
+                  {listening ? 'Done speaking' : committing ? 'Sending…' : 'Start speaking'}
+                </button>
+                <div className={`voice-practice-wave ${listening ? 'is-active' : ''}`} aria-hidden="true">
+                  {audioPeaks.map((peak, index) => (
+                    <span
+                      key={index}
+                      className="voice-practice-wave-bar"
+                      style={{ transform: `scaleY(${peak})` }}
+                    />
+                  ))}
+                </div>
+              </div>
+              {canRedoCurrentPrompt && !listening && !committing && (
+                <button className="btn btn-secondary" onClick={redoPrompt}>
+                  Redo this one
+                </button>
+              )}
               <button className="btn btn-secondary" onClick={skipPrompt} disabled={grading}>
                 Skip
               </button>
             </>
           ) : (
-            <button className="btn btn-primary voice-practice-next" onClick={nextPrompt}>
-              {currentIndex === totalPrompts - 1 ? 'Finish session' : 'Next sentence'}
-            </button>
+            <>
+              {canRedoCurrentPrompt && (
+                <button className="btn btn-secondary" onClick={redoPrompt}>
+                  Redo this one
+                </button>
+              )}
+              {isRepeatStage && !repeatComplete ? (
+                <div className="voice-practice-recording-row">
+                  <button
+                    className={`voice-practice-mic ${listening ? 'is-listening' : ''}`}
+                    onClick={listening ? stopListening : startListening}
+                    disabled={connectionState !== 'ready' || grading || committing}
+                  >
+                    {listening ? <MicOffIcon size={22} /> : <MicIcon size={22} />}
+                    {listening ? 'Done repeating' : committing ? 'Sending…' : 'Repeat sentence'}
+                  </button>
+                  <div className={`voice-practice-wave ${listening ? 'is-active' : ''}`} aria-hidden="true">
+                    {audioPeaks.map((peak, index) => (
+                      <span
+                        key={index}
+                        className="voice-practice-wave-bar"
+                        style={{ transform: `scaleY(${peak})` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <button className="btn btn-primary voice-practice-next" onClick={nextPrompt}>
+                  {currentIndex === totalPrompts - 1 ? 'Finish session' : 'Next sentence'}
+                </button>
+              )}
+            </>
           )}
         </div>
 

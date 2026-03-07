@@ -2,64 +2,61 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   completeVoicePracticeSession,
   createVoicePracticeSession,
-  createVoiceRealtimeToken,
   gradeVoicePracticeTurn,
+  transcribeVoicePracticeTurn,
   type FeedbackLanguageMode,
   type VoiceGradeResult,
   type VoicePracticeSentence,
   type VoicePracticeSummary,
   type VoicePracticeSession,
 } from '../api/voicePractice';
+import { playAiSpeech, stopAiSpeech } from '../utils/aiSpeech';
+import { playCorrectSound, playIncorrectSound } from '../utils/sounds';
 
-type ConnectionState = 'idle' | 'connecting' | 'ready' | 'error';
+type ConnectionState = 'idle' | 'ready' | 'error';
 
 interface TurnRecord {
   sentenceId: string;
   result: 'correct' | 'partial' | 'incorrect' | 'skipped';
 }
 
-function getEphemeralToken(payload: Record<string, any>) {
-  return payload?.client_secret?.value || payload?.client_secret || payload?.ephemeral_key || null;
-}
-
-function parseTranscriptEvent(event: any) {
-  if (event?.type !== 'conversation.item.input_audio_transcription.completed') {
-    return null;
-  }
-  if (typeof event.transcript === 'string') {
-    return event.transcript;
-  }
-  const itemContent = event.item?.content;
-  if (Array.isArray(itemContent)) {
-    const transcriptPart = itemContent.find((part: any) => typeof part?.transcript === 'string');
-    return transcriptPart?.transcript || null;
-  }
-  return null;
-}
-
-function parseToolCall(event: any) {
-  if (event?.type === 'response.function_call_arguments.done') {
-    return {
-      name: event.name,
-      arguments: event.arguments || '{}',
-      callId: event.call_id,
-    };
-  }
-  const item = event?.item;
-  if (event?.type === 'response.output_item.done' && item?.type === 'function_call') {
-    return {
-      name: item.name,
-      arguments: item.arguments || '{}',
-      callId: item.call_id,
-    };
-  }
-  return null;
-}
-
 function formatDuration(seconds: number) {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+}
+
+async function blobToBase64(blob: Blob) {
+  const buffer = await blob.arrayBuffer();
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function shouldOfferRedo(grade: VoiceGradeResult | null, transcript: string) {
+  if (!grade) return false;
+  const transcriptWordCount = transcript.trim().split(/\s+/).filter(Boolean).length;
+  const noteText = grade.issueNotes.map((note) => `${note.type} ${note.message}`.toLowerCase()).join(' ');
+
+  if (grade.issueNotes.some((note) => note.type === 'pronunciation_heard_as')) return true;
+  if (grade.score <= 15) return true;
+  if (transcriptWordCount <= 2 && grade.result === 'incorrect') return true;
+  if (
+    noteText.includes('unrelated')
+    || noteText.includes('did not translate')
+    || noteText.includes('wrong sentence')
+    || noteText.includes('bad audio')
+    || noteText.includes('unclear')
+    || noteText.includes('noise')
+    || noteText.includes('english instead')
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export function useVoicePracticeSession() {
@@ -73,21 +70,52 @@ export function useVoicePracticeSession() {
   const [currentGrade, setCurrentGrade] = useState<VoiceGradeResult | null>(null);
   const [listening, setListening] = useState(false);
   const [grading, setGrading] = useState(false);
+  const [committing, setCommitting] = useState(false);
   const [summary, setSummary] = useState<VoicePracticeSummary | null>(null);
+  const [audioPeaks, setAudioPeaks] = useState<number[]>(() => Array.from({ length: 72 }, () => 0.08));
+  const [repeatTarget, setRepeatTarget] = useState('');
+  const [repeatTranscript, setRepeatTranscript] = useState('');
+  const [repeatComplete, setRepeatComplete] = useState(false);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const dataChannelRef = useRef<RTCDataChannel | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const localTrackRef = useRef<MediaStreamTrack | null>(null);
-  const introPlayedRef = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const waveformFrameCounterRef = useRef(0);
+  const audioChunksRef = useRef<Blob[]>([]);
   const turnRecordsRef = useRef<TurnRecord[]>([]);
   const issueCountsRef = useRef<Record<string, number>>({});
   const sessionStartRef = useRef<number>(Date.now());
-  const gradingInFlightRef = useRef(false);
-
+  const initStartedRef = useRef(false);
+  const sessionRef = useRef<VoicePracticeSession | null>(null);
+  const currentSentenceRef = useRef<VoicePracticeSentence | null>(null);
+  const feedbackLanguageModeRef = useRef<FeedbackLanguageMode>('native');
+  const currentIndexRef = useRef(0);
+  const repeatTargetRef = useRef('');
   const currentSentence = session?.sentences[currentIndex] || null;
   const isLastPrompt = session ? currentIndex >= session.sentences.length - 1 : false;
+  const isRepeatStage = Boolean(repeatTarget);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    currentSentenceRef.current = currentSentence;
+  }, [currentSentence]);
+
+  useEffect(() => {
+    feedbackLanguageModeRef.current = feedbackLanguageMode;
+  }, [feedbackLanguageMode]);
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    repeatTargetRef.current = repeatTarget;
+  }, [repeatTarget]);
 
   const counts = useMemo(() => {
     const result = { correct: 0, partial: 0, incorrect: 0, skipped: 0 };
@@ -100,239 +128,47 @@ export function useVoicePracticeSession() {
     return result;
   }, [currentGrade, currentIndex, summary]);
 
-  const sendRealtimeEvent = useCallback((payload: Record<string, unknown>) => {
-    const channel = dataChannelRef.current;
-    if (!channel || channel.readyState !== 'open') return;
-    channel.send(JSON.stringify(payload));
-  }, []);
-
-  const speakMessage = useCallback((text: string) => {
+  const speakFeedback = useCallback(async (text: string, languageCode: string) => {
     if (!text.trim()) return;
-    sendRealtimeEvent({
-      type: 'response.create',
-      response: {
-        modalities: ['audio'],
-        instructions: `Say this exactly, naturally, and concisely: ${text}`,
-      },
-    });
-  }, [sendRealtimeEvent]);
-
-  const applyToolCall = useCallback((toolCall: { name: string; arguments: string; callId?: string }) => {
-    if (toolCall.name !== 'set_feedback_language') return;
-    let mode: FeedbackLanguageMode = 'native';
     try {
-      const parsed = JSON.parse(toolCall.arguments || '{}');
-      if (parsed.mode === 'target') {
-        mode = 'target';
-      }
-    } catch {
-      mode = 'native';
-    }
-    setFeedbackLanguageMode(mode);
-    if (toolCall.callId) {
-      sendRealtimeEvent({
-        type: 'conversation.item.create',
-        item: {
-          type: 'function_call_output',
-          call_id: toolCall.callId,
-          output: JSON.stringify({ ok: true, mode }),
-        },
-      });
-      sendRealtimeEvent({
-        type: 'response.create',
-        response: {
-          modalities: ['audio'],
-          instructions: mode === 'target'
-            ? 'Confirm briefly that you will now speak in the target language.'
-            : 'Confirm briefly that you will now speak in the native language.',
-        },
-      });
-    }
-  }, [sendRealtimeEvent]);
-
-  const finishTurn = useCallback(async (transcript: string) => {
-    if (!session || !currentSentence || gradingInFlightRef.current || currentGrade) return;
-    const normalized = transcript.trim();
-    if (!normalized) return;
-    gradingInFlightRef.current = true;
-    setGrading(true);
-    setCurrentTranscript(normalized);
-    setListening(false);
-    if (localTrackRef.current) {
-      localTrackRef.current.enabled = false;
-    }
-    try {
-      const result = await gradeVoicePracticeTurn(session.sessionId, {
-        sentenceId: currentSentence.id,
-        userTranscript: normalized,
-        feedbackLanguageMode,
-      });
-      setCurrentGrade(result);
-      turnRecordsRef.current = [
-        ...turnRecordsRef.current,
-        { sentenceId: currentSentence.id, result: result.result },
-      ];
-      const nextIssueCounts = { ...issueCountsRef.current };
-      for (const [issueType, count] of Object.entries(result.issueTypeCounts || {})) {
-        nextIssueCounts[issueType] = (nextIssueCounts[issueType] || 0) + count;
-      }
-      issueCountsRef.current = nextIssueCounts;
-      speakMessage(result.spokenFeedback);
-    } catch (err: any) {
-      setError(err.message || 'Failed to grade spoken answer');
-    } finally {
-      gradingInFlightRef.current = false;
-      setGrading(false);
-    }
-  }, [currentGrade, currentSentence, feedbackLanguageMode, session, speakMessage]);
-
-  const initializeRealtime = useCallback(async (voiceSession: VoicePracticeSession) => {
-    setConnectionState('connecting');
-    const tokenPayload = await createVoiceRealtimeToken({
-      nativeLanguage: voiceSession.nativeLanguage,
-      targetLanguage: voiceSession.targetLanguage,
-      feedbackLanguageMode: voiceSession.feedbackLanguageMode,
-    });
-    const ephemeralToken = getEphemeralToken(tokenPayload as Record<string, any>);
-    if (!ephemeralToken) {
-      throw new Error('OpenAI realtime token was missing from the server response');
-    }
-
-    const audio = document.createElement('audio');
-    audio.autoplay = true;
-    audioRef.current = audio;
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    localStreamRef.current = stream;
-    const track = stream.getAudioTracks()[0];
-    if (!track) {
-      throw new Error('No microphone track available');
-    }
-    track.enabled = false;
-    localTrackRef.current = track;
-
-    const pc = new RTCPeerConnection();
-    peerConnectionRef.current = pc;
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'connected') setConnectionState('ready');
-      if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-        setConnectionState('error');
-      }
-    };
-    pc.ontrack = (event) => {
-      audio.srcObject = event.streams[0];
-    };
-
-    stream.getTracks().forEach((mediaTrack) => pc.addTrack(mediaTrack, stream));
-
-    const dataChannel = pc.createDataChannel('oai-events');
-    dataChannelRef.current = dataChannel;
-    dataChannel.onmessage = (message) => {
-      try {
-        const event = JSON.parse(message.data);
-        const transcript = parseTranscriptEvent(event);
-        if (transcript) {
-          finishTurn(transcript);
-          return;
-        }
-        const toolCall = parseToolCall(event);
-        if (toolCall) {
-          applyToolCall(toolCall);
-          return;
-        }
-        if (event?.type === 'error') {
-          setError(event.error?.message || 'OpenAI realtime error');
-          setConnectionState('error');
-        }
-      } catch (err) {
-        console.error('Failed to parse realtime event:', err);
-      }
-    };
-    dataChannel.onopen = () => {
-      setConnectionState('ready');
-      if (!introPlayedRef.current) {
-        introPlayedRef.current = true;
-        speakMessage(
-          'In the learner’s native language, give a very short welcome and remind them once that they should translate into the target language, that if they do not know a word they can say that word in their native language and do their best, and that they can ask you to speak in either language.'
-        );
-      }
-    };
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-
-    const response = await fetch(`https://api.openai.com/v1/realtime?model=gpt-realtime`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${ephemeralToken}`,
-        'Content-Type': 'application/sdp',
-      },
-      body: offer.sdp,
-    });
-
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      throw new Error(body || 'Failed to establish OpenAI realtime session');
-    }
-
-    const answerSdp = await response.text();
-    await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-  }, [applyToolCall, finishTurn, speakMessage]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function init() {
-      setLoading(true);
-      setError('');
-      try {
-        const voiceSession = await createVoicePracticeSession(10, 'native');
-        if (cancelled) return;
-        setSession(voiceSession);
-        setFeedbackLanguageMode(voiceSession.feedbackLanguageMode);
-        setCurrentIndex(voiceSession.initialPromptIndex || 0);
-        await initializeRealtime(voiceSession);
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(err.message || 'Failed to start voice practice');
-          setConnectionState('error');
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    init();
-
-    return () => {
-      cancelled = true;
-      dataChannelRef.current?.close();
-      peerConnectionRef.current?.close();
-      localStreamRef.current?.getTracks().forEach((track) => track.stop());
-      audioRef.current?.remove();
-    };
-  }, [initializeRealtime]);
-
-  const startListening = useCallback(() => {
-    if (!currentSentence || !session || connectionState !== 'ready' || grading) return;
-    setError('');
-    setCurrentTranscript('');
-    setCurrentGrade(null);
-    setListening(true);
-    if (localTrackRef.current) {
-      localTrackRef.current.enabled = true;
-    }
-    sendRealtimeEvent({ type: 'input_audio_buffer.clear' });
-  }, [connectionState, currentSentence, grading, sendRealtimeEvent, session]);
-
-  const stopListening = useCallback(() => {
-    setListening(false);
-    if (localTrackRef.current) {
-      localTrackRef.current.enabled = false;
+      await playAiSpeech(text, languageCode);
+    } catch (err) {
+      console.error('OpenAI TTS playback failed', err);
     }
   }, []);
+
+  const stopWaveform = useCallback(() => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+      setAudioPeaks(Array.from({ length: 72 }, () => 0.08));
+  }, []);
+
+  const startWaveform = useCallback(() => {
+    const analyser = analyserRef.current;
+    if (!analyser) return;
+
+    const data = new Uint8Array(analyser.fftSize);
+    const tick = () => {
+      analyser.getByteTimeDomainData(data);
+      let peak = 0;
+      for (let i = 0; i < data.length; i++) {
+        const normalized = Math.abs((data[i] - 128) / 128);
+        if (normalized > peak) peak = normalized;
+      }
+      const visualPeak = Math.max(0.08, Math.min(1, peak * 2.4));
+      waveformFrameCounterRef.current += 1;
+      if (waveformFrameCounterRef.current % 9 === 0) {
+        setAudioPeaks((prev) => [...prev.slice(1), visualPeak]);
+      }
+      animationFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    stopWaveform();
+    waveformFrameCounterRef.current = 0;
+    animationFrameRef.current = requestAnimationFrame(tick);
+  }, [stopWaveform]);
 
   const finalizeSession = useCallback(async () => {
     if (!session) return;
@@ -353,6 +189,197 @@ export function useVoicePracticeSession() {
     }
   }, [feedbackLanguageMode, session]);
 
+  const advanceAfterPrompt = useCallback(async () => {
+    if (!sessionRef.current) return;
+    if (currentIndexRef.current >= sessionRef.current.sentences.length - 1) {
+      await finalizeSession();
+      return;
+    }
+    setCurrentIndex((prev) => prev + 1);
+    setCurrentTranscript('');
+    setCurrentGrade(null);
+    setRepeatTarget('');
+    setRepeatTranscript('');
+    setRepeatComplete(false);
+  }, [finalizeSession]);
+
+  const gradeTranscript = useCallback(async (transcript: string) => {
+    const activeSession = sessionRef.current;
+    const activeSentence = currentSentenceRef.current;
+    const activeFeedbackLanguageMode = feedbackLanguageModeRef.current;
+    if (!activeSession || !activeSentence) return;
+    const normalized = transcript.trim();
+    if (!normalized) {
+      setError('No speech detected. Try again.');
+      setCommitting(false);
+      return;
+    }
+
+    setCurrentTranscript(normalized);
+    setGrading(true);
+    setCommitting(false);
+    try {
+      const result = await gradeVoicePracticeTurn(activeSession.sessionId, {
+        sentenceId: activeSentence.id,
+        userTranscript: normalized,
+        feedbackLanguageMode: activeFeedbackLanguageMode,
+      });
+      setCurrentGrade(result);
+      if (result.result === 'correct') {
+        playCorrectSound();
+      } else {
+        playIncorrectSound();
+        setRepeatTarget(result.correctedAnswer);
+        setRepeatTranscript('');
+        setRepeatComplete(false);
+      }
+      turnRecordsRef.current = [
+        ...turnRecordsRef.current,
+        { sentenceId: activeSentence.id, result: result.result },
+      ];
+      const nextIssueCounts = { ...issueCountsRef.current };
+      for (const [issueType, count] of Object.entries(result.issueTypeCounts || {})) {
+        nextIssueCounts[issueType] = (nextIssueCounts[issueType] || 0) + count;
+      }
+      issueCountsRef.current = nextIssueCounts;
+      if (result.result !== 'correct') {
+        void speakFeedback(result.correctedAnswer, activeSession.targetLanguage);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to grade spoken answer');
+    } finally {
+      setGrading(false);
+    }
+  }, [speakFeedback]);
+
+  useEffect(() => {
+    async function init() {
+      if (initStartedRef.current) return;
+      initStartedRef.current = true;
+      setLoading(true);
+      setError('');
+      try {
+        const voiceSession = await createVoicePracticeSession(10, 'native');
+        setSession(voiceSession);
+        setFeedbackLanguageMode(voiceSession.feedbackLanguageMode);
+        setCurrentIndex(voiceSession.initialPromptIndex || 0);
+        setConnectionState('ready');
+      } catch (err: any) {
+        setError(err.message || 'Failed to start voice practice');
+        setConnectionState('error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    init();
+
+    return () => {
+      mediaRecorderRef.current?.stop();
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      audioContextRef.current?.close().catch(() => {});
+      stopAiSpeech();
+      stopWaveform();
+    };
+  }, [stopWaveform]);
+
+  const ensureRecorder = useCallback(async () => {
+    if (mediaRecorderRef.current && mediaStreamRef.current) {
+      return mediaRecorderRef.current;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaStreamRef.current = stream;
+
+    const audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamSource(stream);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.82;
+    source.connect(analyser);
+    analyserRef.current = analyser;
+    audioContextRef.current = audioContext;
+
+    const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    recorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        audioChunksRef.current.push(event.data);
+      }
+    };
+    recorder.onstop = async () => {
+      const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+      audioChunksRef.current = [];
+      if (currentSentenceRef.current && repeatTargetRef.current) {
+        setRepeatTranscript('Transcribing…');
+      } else {
+        setCurrentTranscript('Transcribing…');
+      }
+      try {
+        const audioBase64 = await blobToBase64(blob);
+        const transcription = await transcribeVoicePracticeTurn({
+          audioBase64,
+          mimeType: blob.type || 'audio/webm',
+          nativeLanguage: sessionRef.current?.nativeLanguage,
+          targetLanguage: sessionRef.current?.targetLanguage,
+        });
+        const normalized = transcription.transcript.trim();
+        if (repeatTargetRef.current) {
+          if (!normalized) {
+            setRepeatTranscript('');
+            setCommitting(false);
+            setError('No speech detected. Try repeating the correction once.');
+            return;
+          }
+          setRepeatTranscript(normalized);
+          setCommitting(false);
+          setRepeatComplete(true);
+          playCorrectSound();
+          return;
+        }
+        await gradeTranscript(transcription.transcript);
+      } catch (err: any) {
+        if (repeatTargetRef.current) {
+          setRepeatTranscript('');
+        } else {
+          setCurrentTranscript('');
+        }
+        setCommitting(false);
+        setError(err.message || 'Failed to transcribe audio');
+      }
+    };
+    mediaRecorderRef.current = recorder;
+    return recorder;
+  }, [advanceAfterPrompt, gradeTranscript]);
+
+  const startListening = useCallback(async () => {
+    if (!currentSentence || !session || connectionState !== 'ready' || grading || committing) return;
+    setError('');
+    if (isRepeatStage) {
+      setRepeatTranscript('');
+    } else {
+      setCurrentTranscript('');
+      setCurrentGrade(null);
+    }
+    setListening(true);
+    try {
+      const recorder = await ensureRecorder();
+      audioChunksRef.current = [];
+      recorder.start();
+      startWaveform();
+    } catch (err: any) {
+      setListening(false);
+      setError(err.message || 'Failed to start recording');
+    }
+  }, [committing, connectionState, currentSentence, ensureRecorder, grading, isRepeatStage, session, startWaveform]);
+
+  const stopListening = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || !listening) return;
+    setListening(false);
+    setCommitting(true);
+    stopWaveform();
+    recorder.stop();
+  }, [listening, stopWaveform]);
+
   const skipPrompt = useCallback(async () => {
     if (!currentSentence || !session) return;
     turnRecordsRef.current = [
@@ -361,6 +388,9 @@ export function useVoicePracticeSession() {
     ];
     setCurrentTranscript('');
     setCurrentGrade(null);
+    setRepeatTarget('');
+    setRepeatTranscript('');
+    setRepeatComplete(false);
     if (isLastPrompt) {
       await finalizeSession();
       return;
@@ -370,14 +400,35 @@ export function useVoicePracticeSession() {
 
   const nextPrompt = useCallback(async () => {
     if (!session) return;
-    if (isLastPrompt) {
-      await finalizeSession();
-      return;
+    await advanceAfterPrompt();
+  }, [advanceAfterPrompt, session]);
+
+  const redoPrompt = useCallback(() => {
+    if (!currentSentence || !currentGrade) return;
+
+    const nextRecords = [...turnRecordsRef.current];
+    for (let i = nextRecords.length - 1; i >= 0; i--) {
+      if (nextRecords[i].sentenceId === currentSentence.id) {
+        nextRecords.splice(i, 1);
+        break;
+      }
     }
-    setCurrentIndex((prev) => prev + 1);
+    turnRecordsRef.current = nextRecords;
+
+    const nextIssueCounts = { ...issueCountsRef.current };
+    for (const [issueType, count] of Object.entries(currentGrade.issueTypeCounts || {})) {
+      nextIssueCounts[issueType] = Math.max(0, (nextIssueCounts[issueType] || 0) - count);
+    }
+    issueCountsRef.current = nextIssueCounts;
+
+    stopAiSpeech();
+    setError('');
     setCurrentTranscript('');
     setCurrentGrade(null);
-  }, [finalizeSession, isLastPrompt, session]);
+    setRepeatTarget('');
+    setRepeatTranscript('');
+    setRepeatComplete(false);
+  }, [currentGrade, currentSentence]);
 
   return {
     loading,
@@ -389,8 +440,14 @@ export function useVoicePracticeSession() {
     totalPrompts: session?.sentences.length || 0,
     currentTranscript,
     currentGrade,
+    repeatTarget,
+    repeatTranscript,
+    repeatComplete,
+    isRepeatStage,
     listening,
     grading,
+    committing,
+    audioPeaks,
     connectionState,
     feedbackLanguageMode,
     counts,
@@ -398,6 +455,8 @@ export function useVoicePracticeSession() {
     stopListening,
     skipPrompt,
     nextPrompt,
+    redoPrompt,
+    canRedoCurrentPrompt: shouldOfferRedo(currentGrade, currentTranscript),
     formatDuration,
   };
 }

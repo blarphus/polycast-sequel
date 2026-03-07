@@ -5,6 +5,7 @@ import pool from '../db.js';
 import { enrichWord as enrichWordHelper, callGemini, searchAllImages, fetchWiktSenses } from '../enrichWord.js';
 import { validate } from '../lib/validate.js';
 import { computeNextReview } from '../lib/srsAlgorithm.js';
+import { synthesizeVoiceFeedback } from '../services/ttsService.js';
 
 const router = Router();
 
@@ -69,6 +70,7 @@ const saveWordBody = z.object({
   frequency: z.number().nullable().optional(),
   frequency_count: z.number().nullable().optional(),
   example_sentence: z.string().nullable().optional(),
+  sentence_translation: z.string().nullable().optional(),
   part_of_speech: z.string().nullable().optional(),
   image_url: z.string().nullable().optional(),
   lemma: z.string().nullable().optional(),
@@ -303,6 +305,56 @@ router.patch('/api/dictionary/words/:id/image', authMiddleware, validate({ param
 });
 
 // ---------------------------------------------------------------------------
+// TTS audio — cached per word
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/dictionary/words/:id/audio
+ * Returns cached TTS audio (MP3) for a saved word, generating on first request.
+ */
+router.get('/api/dictionary/words/:id/audio', authMiddleware, validate({ params: uuidParam }), async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT tts_audio, example_sentence, word, target_language FROM saved_words WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.userId],
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Word not found' });
+
+    const row = rows[0];
+
+    // Serve from cache if available
+    if (row.tts_audio) {
+      res.set('Content-Type', 'audio/mpeg');
+      res.set('Cache-Control', 'private, max-age=31536000, immutable');
+      return res.send(row.tts_audio);
+    }
+
+    // Generate TTS
+    const text = row.example_sentence
+      ? row.example_sentence.replace(/~([^~]+)~/g, '$1')
+      : row.word;
+
+    const audioBuffer = await synthesizeVoiceFeedback({
+      text,
+      languageCode: row.target_language,
+    });
+
+    // Cache in DB
+    await pool.query(
+      'UPDATE saved_words SET tts_audio = $1 WHERE id = $2 AND user_id = $3',
+      [audioBuffer, req.params.id, req.userId],
+    );
+
+    res.set('Content-Type', 'audio/mpeg');
+    res.set('Cache-Control', 'private, max-age=31536000, immutable');
+    return res.send(audioBuffer);
+  } catch (err) {
+    req.log.error({ err }, 'Error serving word audio');
+    return res.status(500).json({ error: 'Failed to generate audio' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Queue reorder — persist custom card ordering
 // ---------------------------------------------------------------------------
 
@@ -473,7 +525,7 @@ router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
  * POST /api/dictionary/words -- Save a word to the personal dictionary
  */
 router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBody }), async (req, res) => {
-  const { word, translation, definition, target_language, sentence_context, frequency, frequency_count, example_sentence, part_of_speech, image_url, lemma, forms, image_term } = req.body;
+  const { word, translation, definition, target_language, sentence_context, frequency, frequency_count, example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, image_term } = req.body;
 
   try {
     // Check if this exact definition already exists
@@ -488,10 +540,10 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
 
     // Insert new definition
     const { rows } = await pool.query(
-      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, part_of_speech, image_url, lemma, forms, frequency_count, image_term)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, frequency_count, image_term)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
-      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, part_of_speech || null, image_url || null, lemma || null, forms || null, frequency_count ?? null, image_term || null],
+      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, sentence_translation || null, part_of_speech || null, image_url || null, lemma || null, forms || null, frequency_count ?? null, image_term || null],
     );
     return res.status(201).json({ ...rows[0], _created: true });
   } catch (err) {

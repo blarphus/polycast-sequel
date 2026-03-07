@@ -33,6 +33,10 @@ Rules:
 - Only speak when explicitly asked by the client to deliver the one-time intro or concise feedback.
 - Keep feedback concise: usually one short sentence.
 - If the learner asks you to switch spoken feedback language, call the set_feedback_language tool.
+- Always listen for learner speech in either ${nativeName} or ${targetName}.
+- The learner may answer mostly in ${targetName} but leave one or more unknown words in ${nativeName}.
+- Do not get confused or treat that mixed-language speech as invalid input.
+- Transcribe what the learner actually said, even if the utterance mixes ${nativeName} and ${targetName}.
 - At session start, when asked for the intro, remind them once in ${nativeName} that:
   1. they should translate into ${targetName}
   2. if they do not know a word, they can say that word in ${nativeName} and do their best
@@ -65,12 +69,13 @@ export async function createRealtimeVoiceSession({
         targetLanguage,
         feedbackLanguageMode,
       }),
-      input_audio_transcription: {
-        model: 'gpt-4o-transcribe',
-      },
-      turn_detection: {
-        type: 'server_vad',
-        create_response: false,
+      audio: {
+        input: {
+          transcription: {
+            model: 'gpt-4o-transcribe',
+          },
+          turn_detection: null,
+        },
       },
       tools: [
         {

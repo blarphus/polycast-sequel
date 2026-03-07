@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import { validate } from '../lib/validate.js';
+import pool from '../db.js';
 import { createRealtimeVoiceSession } from '../services/openaiRealtimeService.js';
 import {
   completeVoicePracticeSession,
@@ -9,6 +10,7 @@ import {
   getVoicePracticeSession,
   gradeVoicePracticeTurn,
 } from '../services/voicePracticeSessionService.js';
+import { synthesizeVoiceFeedback } from '../services/ttsService.js';
 
 const router = Router();
 
@@ -43,6 +45,59 @@ const tokenBody = z.object({
   targetLanguage: z.string().min(2),
   feedbackLanguageMode: z.enum(['native', 'target']).optional(),
 });
+
+const speakBody = z.object({
+  text: z.string().min(1, 'Text is required').max(400),
+  languageCode: z.string().min(2).optional(),
+});
+
+const transcribeBody = z.object({
+  audioBase64: z.string().min(1, 'Audio payload is required'),
+  mimeType: z.string().min(1).optional(),
+  nativeLanguage: z.string().min(2).optional(),
+  targetLanguage: z.string().min(2).optional(),
+});
+
+async function transcribeVoiceAudio({
+  audioBase64,
+  mimeType,
+  nativeLanguage,
+  targetLanguage,
+}) {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) {
+    throw new Error('MISTRAL_API_KEY is not configured');
+  }
+
+  const bytes = Buffer.from(audioBase64, 'base64');
+  const form = new FormData();
+  form.append('model', 'voxtral-mini-latest');
+  const languageContext = [
+    nativeLanguage ? `Native language: ${nativeLanguage}.` : null,
+    targetLanguage ? `Target language being learned: ${targetLanguage}.` : null,
+    'Transcribe exactly what the speaker says.',
+    'The speaker may mix words from both languages in one response.',
+    'Do not normalize toward an expected answer. Just transcribe the spoken words as faithfully as possible.',
+  ].filter(Boolean).join(' ');
+  form.append('context', languageContext);
+  form.append('file', new Blob([bytes], { type: mimeType || 'audio/webm' }), 'voice-practice.webm');
+
+  const response = await fetch('https://api.mistral.ai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: form,
+  });
+
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => '');
+    throw new Error(errBody || 'Mistral transcription failed');
+  }
+
+  const data = await response.json();
+  return typeof data.text === 'string' ? data.text : '';
+}
 
 router.post('/api/practice/voice/sessions', authMiddleware, validate({ body: createSessionBody }), async (req, res) => {
   try {
@@ -119,6 +174,36 @@ router.post('/api/practice/voice/realtime-token', authMiddleware, validate({ bod
   } catch (err) {
     req.log.error({ err }, 'POST /api/practice/voice/realtime-token error');
     return res.status(500).json({ error: err.message || 'Failed to create realtime token' });
+  }
+});
+
+router.post('/api/practice/voice/speak', authMiddleware, validate({ body: speakBody }), async (req, res) => {
+  try {
+    const audioBuffer = await synthesizeVoiceFeedback({
+      text: req.body.text,
+      languageCode: req.body.languageCode,
+    });
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'no-store');
+    return res.send(audioBuffer);
+  } catch (err) {
+    req.log.error({ err }, 'POST /api/practice/voice/speak error');
+    return res.status(500).json({ error: err.message || 'Failed to synthesize voice feedback' });
+  }
+});
+
+router.post('/api/practice/voice/transcribe', authMiddleware, validate({ body: transcribeBody }), async (req, res) => {
+  try {
+    const transcript = await transcribeVoiceAudio({
+      audioBase64: req.body.audioBase64,
+      mimeType: req.body.mimeType,
+      nativeLanguage: req.body.nativeLanguage,
+      targetLanguage: req.body.targetLanguage,
+    });
+    return res.json({ transcript });
+  } catch (err) {
+    req.log.error({ err }, 'POST /api/practice/voice/transcribe error');
+    return res.status(500).json({ error: err.message || 'Failed to transcribe voice audio' });
   }
 });
 

@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { getDueWords, reviewWord, proxyImageUrl, type SavedWord, type SrsAnswer } from '../api';
 import { getButtonTimeLabel, getNextDueSeconds } from '../utils/srs';
 import { renderTildeHighlight, renderCloze, stripTildes } from '../utils/tildeMarkup';
+import { playAiSpeech, stopAiSpeech, preloadCardAudio } from '../utils/aiSpeech';
 import { playFlipSound, playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
 import { BookIcon, CheckCircleIcon, SpeakerIcon, TapIcon, CloseIcon, CheckIcon } from '../components/icons';
 
@@ -43,6 +44,9 @@ export default function Learn() {
   // Audio played tracker (once per card)
   const audioPlayedRef = useRef<Set<number>>(new Set());
 
+  // Preloaded TTS audio: word ID → object URL
+  const preloadedAudioRef = useRef<Map<string, string>>(new Map());
+
   // Holds the API response so the re-queue timeout can use the updated card
   const reviewedCardRef = useRef<SavedWord | null>(null);
 
@@ -60,18 +64,37 @@ export default function Learn() {
       });
   }, []);
 
+  // Preload TTS audio for all cards sequentially
+  useEffect(() => {
+    if (cards.length === 0) return;
+
+    let cancelled = false;
+
+    (async () => {
+      for (const card of cards) {
+        if (cancelled) break;
+        if (preloadedAudioRef.current.has(card.id)) continue;
+        try {
+          const url = await preloadCardAudio(card.id);
+          if (!cancelled) preloadedAudioRef.current.set(card.id, url);
+        } catch (err) {
+          console.error(`Failed to preload audio for ${card.id}:`, err);
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [cards]);
+
   const currentCard = cards[currentIndex];
 
   // ---------------------------------------------------------------------------
-  // Audio playback (Web Speech API)
+  // Audio playback (OpenAI TTS)
   // ---------------------------------------------------------------------------
 
-  const playAudio = useCallback((text: string, lang?: string | null) => {
-    if (!window.speechSynthesis) return;
-    speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    if (lang) utterance.lang = lang;
-    speechSynthesis.speak(utterance);
+  const playAudio = useCallback((text: string, lang?: string | null, wordId?: string) => {
+    const preloaded = wordId ? preloadedAudioRef.current.get(wordId) : undefined;
+    void playAiSpeech(text, lang || undefined, preloaded);
   }, []);
 
   // Auto-play on flip (once per card)
@@ -83,7 +106,7 @@ export default function Learn() {
     const textToSpeak = currentCard.example_sentence
       ? stripTildes(currentCard.example_sentence)
       : currentCard.word;
-    playAudio(textToSpeak, currentCard.target_language);
+    playAudio(textToSpeak, currentCard.target_language, currentCard.id);
   }, [isFlipped, currentIndex, currentCard, playAudio]);
 
   // Play celebratory sound when session is complete
@@ -92,6 +115,15 @@ export default function Learn() {
       playCompleteSound();
     }
   }, [currentIndex, cards.length, loading]);
+
+  useEffect(() => () => {
+    stopAiSpeech();
+    // Revoke all preloaded object URLs
+    for (const url of preloadedAudioRef.current.values()) {
+      URL.revokeObjectURL(url);
+    }
+    preloadedAudioRef.current.clear();
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Answer handling
@@ -360,7 +392,12 @@ export default function Learn() {
             {/* Back */}
             <div className="flashcard-back">
               {hasExample ? (
-                <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+                <>
+                  <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+                  {card.sentence_translation && (
+                    <p className="flashcard-sentence-translation">{renderTildeHighlight(card.sentence_translation, 'flashcard-highlighted')}</p>
+                  )}
+                </>
               ) : (
                 <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
               )}
@@ -385,7 +422,7 @@ export default function Learn() {
                   const text = hasExample
                     ? stripTildes(card.example_sentence!)
                     : card.word;
-                  playAudio(text, card.target_language);
+                  playAudio(text, card.target_language, card.id);
                 }}
               >
                 <SpeakerIcon size={20} />

@@ -297,6 +297,8 @@ const FIELD_FREQUENCY = `- FREQUENCY: An integer 1-10 rating how common this wor
   9-10: Essential high-frequency words (top 500 most used)`;
 const FIELD_EXAMPLE = (targetLang) =>
   `- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.`;
+const FIELD_SENTENCE_TRANSLATION = (nativeLang) =>
+  `- SENTENCE_TRANSLATION: A natural translation of the EXAMPLE sentence into ${nativeLang}. Wrap the translated equivalent of the target word with tildes like ~word~. Keep the same meaning and tone.`;
 const FIELD_IMAGE_TERM = `- IMAGE_TERM: An English search term for finding a photo of this word. Return an empty string if the word itself is already a clear, concrete, unambiguous noun that would return good image results (e.g. "cat", "bridge", "apple" → empty string). Only provide a custom term when: (1) the word has multiple common meanings and the image search might return the wrong one (e.g. "bat" in a sports unit → "baseball bat"), (2) the word is abstract/unlikely to have good photo results (e.g. "freedom" → "open bird cage"), or (3) the word is a verb/adjective that needs a visual representation (e.g. "fragile" → "cracked glass"). Keep it 1-4 words.`;
 const FIELD_LEMMA = `- LEMMA: The dictionary/base form of this word in the target language.
   For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
@@ -334,6 +336,7 @@ ${fieldNames}
 ${FIELD_TRANSLATION(nativeLang)}
 ${extraFieldDescs}${FIELD_FREQUENCY}
 ${FIELD_EXAMPLE(targetLang)}
+${FIELD_SENTENCE_TRANSLATION(nativeLang)}
 ${FIELD_IMAGE_TERM}
 ${FIELD_LEMMA}
 ${FIELD_FORMS}`;
@@ -361,7 +364,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     }
   }
 
-  let translation, definition, part_of_speech, frequency, example_sentence, geminiImageTerm, lemma, geminiFormsRaw;
+  let translation, definition, part_of_speech, frequency, example_sentence, sentence_translation, geminiImageTerm, lemma, geminiFormsRaw;
 
   // Path C: senseIndex pre-identified by /lookup — use directly, skip sense-picking
   const hasSenseIndex = typeof senseIndex === 'number' && senseIndex >= 0;
@@ -371,7 +374,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
     const prompt = buildEnrichPrompt({
       word, sentence, nativeLang, targetLang,
-      fieldNames: 'TRANSLATION // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA // FORMS',
+      fieldNames: 'TRANSLATION // FREQUENCY // EXAMPLE // SENTENCE_TRANSLATION // IMAGE_TERM // LEMMA // FORMS',
       extraFieldDescs: '',
       contextLine: `The word means: "${definition}" (${part_of_speech || 'unknown POS'}).`,
       senseListBlock: '',
@@ -379,16 +382,17 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
     const raw = await callGemini(prompt);
     const parts = raw.split('//').map((s) => s.trim());
-    if (parts.length < 6) {
-      logger.error('Gemini enrich (Path C) returned %d parts instead of 6: %s', parts.length, raw.slice(0, 300));
+    if (parts.length < 7) {
+      logger.error('Gemini enrich (Path C) returned %d parts instead of 7: %s', parts.length, raw.slice(0, 300));
     }
 
     translation = parts[0] || '';
     frequency = parseFrequency(parts[1]);
     example_sentence = parts[2] || null;
-    geminiImageTerm = parts[3]?.trim() || null;
-    lemma = parts[4]?.trim() || null;
-    geminiFormsRaw = parts[5]?.trim() || null;
+    sentence_translation = parts[3] || null;
+    geminiImageTerm = parts[4]?.trim() || null;
+    lemma = parts[5]?.trim() || null;
+    geminiFormsRaw = parts[6]?.trim() || null;
   } else if (hasSenseIndex && (wiktSenses.length === 0 || senseIndex >= wiktSenses.length)) {
     // senseIndex provided but invalid (senses changed between lookup and enrich) — fall through
     logger.error('enrich: senseIndex %d out of range for %d senses — falling through to Path A/B', senseIndex, wiktSenses.length);
@@ -402,7 +406,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
       const prompt = buildEnrichPrompt({
         word, sentence, nativeLang, targetLang,
-        fieldNames: 'TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA // FORMS',
+        fieldNames: 'TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // SENTENCE_TRANSLATION // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA // FORMS',
         extraFieldDescs: `- SENSE_INDEX: The integer index (0-${wiktSenses.length - 1}) of the sense that best matches how "${word}" is used in the sentence.\n- FALLBACK_DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown. Only used if SENSE_INDEX is invalid.\n`,
         contextLine: '',
         senseListBlock: `\nHere are the dictionary senses for "${word}":\n${senseList}\n`,
@@ -411,8 +415,8 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       const raw = await callGemini(prompt);
 
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 8) {
-        logger.error('Gemini enrich (wikt) returned %d parts instead of 8: %s', parts.length, raw.slice(0, 300));
+      if (parts.length < 9) {
+        logger.error('Gemini enrich (wikt) returned %d parts instead of 9: %s', parts.length, raw.slice(0, 300));
       }
 
       translation = parts[0] || '';
@@ -424,20 +428,21 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
         part_of_speech = wiktSenses[resolvedSenseIndex].pos || null;
       } else {
         logger.error('Gemini returned invalid SENSE_INDEX: %s (valid: 0-%d)', parts[1], wiktSenses.length - 1);
-        definition = parts[5] || '';
+        definition = parts[6] || '';
         part_of_speech = null;
       }
 
       frequency = parseFrequency(parts[2]);
       example_sentence = parts[3] || null;
-      geminiImageTerm = parts[4]?.trim() || null;
-      lemma = parts[6]?.trim() || null;
-      geminiFormsRaw = parts[7]?.trim() || null;
+      sentence_translation = parts[4] || null;
+      geminiImageTerm = parts[5]?.trim() || null;
+      lemma = parts[7]?.trim() || null;
+      geminiFormsRaw = parts[8]?.trim() || null;
     } else {
       // Path B: No Wiktionary senses — full Gemini generation
       const prompt = buildEnrichPrompt({
         word, sentence, nativeLang, targetLang,
-        fieldNames: 'TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // IMAGE_TERM // LEMMA // FORMS',
+        fieldNames: 'TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // SENTENCE_TRANSLATION // IMAGE_TERM // LEMMA // FORMS',
         extraFieldDescs: `- DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.\n- PART_OF_SPEECH: One of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle. Lowercase English.\n`,
         contextLine: '',
         senseListBlock: '',
@@ -446,17 +451,18 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       const raw = await callGemini(prompt);
 
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 8) {
-        logger.error('Gemini enrich returned %d parts instead of 8: %s', parts.length, raw.slice(0, 300));
+      if (parts.length < 9) {
+        logger.error('Gemini enrich returned %d parts instead of 9: %s', parts.length, raw.slice(0, 300));
       }
       translation = parts[0] || '';
       definition = parts[1] || '';
       part_of_speech = parts[2] || null;
       frequency = parseFrequency(parts[3]);
       example_sentence = parts[4] || null;
-      geminiImageTerm = parts[5]?.trim() || null;
-      lemma = parts[6]?.trim() || null;
-      geminiFormsRaw = parts[7]?.trim() || null;
+      sentence_translation = parts[5] || null;
+      geminiImageTerm = parts[6]?.trim() || null;
+      lemma = parts[7]?.trim() || null;
+      geminiFormsRaw = parts[8]?.trim() || null;
     }
   } // end if (translation === undefined) — Path A/B
 
@@ -473,5 +479,5 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
   const imageSearchTerm = geminiImageTerm || word;
   const image_url = await fetchWordImage(imageSearchTerm);
 
-  return { word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, image_url, lemma, forms, image_term: geminiImageTerm || word };
+  return { word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term: geminiImageTerm || word };
 }

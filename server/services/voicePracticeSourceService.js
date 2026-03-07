@@ -216,6 +216,8 @@ ${sourceText}`;
       (source_type, source_ref_id, target_language, native_language, target_sentence,
        native_prompt, difficulty, focus_words_json, assignment_priority, content_hash)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
+     ON CONFLICT (content_hash) DO UPDATE
+       SET updated_at = NOW()
      RETURNING *`,
     [
       sourceType,

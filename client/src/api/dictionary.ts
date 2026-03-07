@@ -87,6 +87,7 @@ export interface SaveWordData {
   frequency?: number | null;
   frequency_count?: number | null;
   example_sentence?: string | null;
+  sentence_translation?: string | null;
   part_of_speech?: string | null;
   image_url?: string | null;
   lemma?: string | null;
@@ -105,6 +106,7 @@ export interface SavedWord {
   frequency: number | null;
   frequency_count: number | null;
   example_sentence: string | null;
+  sentence_translation: string | null;
   part_of_speech: string | null;
   srs_interval: number;
   due_at: string | null;

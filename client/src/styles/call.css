@@ -11,6 +11,12 @@
   overflow: hidden;
 }
 
+@media (min-width: 769px) {
+  .call-page {
+    left: var(--sidebar-width);
+  }
+}
+
 .call-video-area {
   flex: 1;
   position: relative;

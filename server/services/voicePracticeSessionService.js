@@ -44,7 +44,6 @@ export async function createVoicePracticeSession({
   if (!user.native_language || !user.target_language) {
     throw new Error('Set both native and target language before starting voice practice');
   }
-
   const cefrLevel = user.cefr_levels?.[user.target_language] || null;
   const sentences = await buildVoicePracticeSentenceSet({
     userId,
