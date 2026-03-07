@@ -56,7 +56,7 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
       return res.status(400).json({ error: `Unsupported language: ${lang}` });
     }
 
-    const cacheKey = `news5:${lang}`;
+    const cacheKey = `news6:${lang}`;
 
     // Try Redis cache first
     let cached = null;
@@ -176,7 +176,7 @@ function cleanExtractedArticleContent(content) {
     .trim();
 }
 
-function buildArticlePreview(rawBody, maxChars = 280) {
+function buildArticlePreview(rawBody, maxChars = 900) {
   const normalized = rawBody
     .replace(/^##\s+/gm, '')
     .replace(/\*\*(.*?)\*\*/g, '$1')
@@ -284,6 +284,7 @@ router.get('/api/news/article', authMiddleware, validate({ query: articleQuery }
     // Find the cached news list — try new key first, then legacy patterns
     let newsListJson = null;
     const cachePatterns = [
+      `news6:${lang}`,
       `news5:${lang}`,
       `news4:${lang}`,
       `news:${lang}`,

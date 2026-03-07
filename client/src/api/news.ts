@@ -8,6 +8,7 @@ export interface NewsArticle {
   source: string;
   link: string;
   image: string | null;
+  preview: string | null;
 }
 
 export interface ArticleDetail {

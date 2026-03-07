@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CollectionGridPage from '../../components/collections/CollectionGridPage';
 import type { CollectionGridTileSize } from '../../components/collections/CollectionGrid';
 import { getNews, type NewsArticle } from '../../api';
 import { useAuth } from '../../hooks/useAuth';
 import { LANGUAGES } from '../../components/classwork/languages';
-import { CEFR_COLORS } from '../../utils/videoFormat';
+import { useCollectionCardTextFit } from '../../hooks/useCollectionCardTextFit';
 
 interface NewsCollectionItem {
   article: NewsArticle;
@@ -14,6 +14,11 @@ interface NewsCollectionItem {
 
 function getNewsTileSize(_article: NewsArticle, index: number): CollectionGridTileSize {
   if (index === 0) return 'feature';
+  if (index === 1) return 'standard';
+  // Repeating 7-item cycle: wide, std, std, std, std, std, wide
+  // Rows: [8+4] [4+4+4] [4+8] — fills 12-col grid cleanly
+  const pos = (index - 2) % 7;
+  if (pos === 0 || pos === 6) return 'wide';
   return 'standard';
 }
 
@@ -44,106 +49,18 @@ function NewsTile({
   size: CollectionGridTileSize;
   onOpen: () => void;
 }) {
-  const bodyRef = useRef<HTMLDivElement | null>(null);
-  const titleRef = useRef<HTMLHeadingElement | null>(null);
-  const sourceRef = useRef<HTMLSpanElement | null>(null);
-  const metaRef = useRef<HTMLDivElement | null>(null);
-  const [titleStyle, setTitleStyle] = useState<React.CSSProperties>({});
-
-  useEffect(() => {
-    let frame = 0;
-    const bodyEl = bodyRef.current;
-    const titleEl = titleRef.current;
-
-    if (!bodyEl || !titleEl) return undefined;
-
-    const measure = () => {
-      frame = 0;
-      try {
-        const sourceEl = sourceRef.current;
-        const metaEl = metaRef.current;
-        const computedBody = window.getComputedStyle(bodyEl);
-        const gap = parseFloat(computedBody.rowGap || computedBody.gap || '0') || 0;
-        const nonTitleCount = [sourceEl, metaEl].filter(Boolean).length;
-        const nonTitleHeight =
-          (sourceEl?.offsetHeight || 0) +
-          (metaEl?.offsetHeight || 0) +
-          gap * nonTitleCount;
-        const availableHeight = Math.max(48, bodyEl.clientHeight - nonTitleHeight);
-        const availableWidth = Math.max(140, titleEl.clientWidth || bodyEl.clientWidth);
-        const lineHeightRatio = size === 'feature' ? 1.05 : size === 'wide' ? 1.1 : 1.14;
-        const maxFontSize = Math.min(
-          size === 'feature' ? 56 : size === 'wide' ? 34 : 28,
-          availableHeight / lineHeightRatio,
-        );
-        const minFontSize = size === 'feature' ? 20 : 16;
-
-        const probe = document.createElement('div');
-        const computedTitle = window.getComputedStyle(titleEl);
-        probe.textContent = article.simplified_title;
-        probe.style.position = 'absolute';
-        probe.style.visibility = 'hidden';
-        probe.style.pointerEvents = 'none';
-        probe.style.inset = '0 auto auto 0';
-        probe.style.width = `${availableWidth}px`;
-        probe.style.fontFamily = computedTitle.fontFamily;
-        probe.style.fontWeight = computedTitle.fontWeight;
-        probe.style.letterSpacing = computedTitle.letterSpacing;
-        probe.style.whiteSpace = 'normal';
-        probe.style.wordBreak = 'break-word';
-        bodyEl.appendChild(probe);
-
-        let low = minFontSize;
-        let high = maxFontSize;
-        let best = minFontSize;
-
-        for (let i = 0; i < 10; i += 1) {
-          const mid = (low + high) / 2;
-          probe.style.fontSize = `${mid}px`;
-          probe.style.lineHeight = String(lineHeightRatio);
-          const measuredHeight = probe.getBoundingClientRect().height;
-          if (measuredHeight <= availableHeight) {
-            best = mid;
-            low = mid;
-          } else {
-            high = mid;
-          }
-        }
-
-        probe.remove();
-        const nextStyle = {
-          fontSize: `${best.toFixed(2)}px`,
-          lineHeight: String(lineHeightRatio),
-        };
-
-        setTitleStyle((prev) => (
-          prev.fontSize === nextStyle.fontSize &&
-          prev.lineHeight === nextStyle.lineHeight
-            ? prev
-            : nextStyle
-        ));
-      } catch (error) {
-        console.error('Failed to dynamically size news title:', error);
-      }
-    };
-
-    const scheduleMeasure = () => {
-      if (frame) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(measure);
-    };
-
-    const resizeObserver = new ResizeObserver(scheduleMeasure);
-    resizeObserver.observe(bodyEl);
-    const cardEl = bodyEl.closest('.collection-card');
-    if (cardEl) resizeObserver.observe(cardEl);
-
-    scheduleMeasure();
-
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      resizeObserver.disconnect();
-    };
-  }, [article.simplified_title, size]);
+  const {
+    bodyRef,
+    textRef,
+    titleRef,
+    titleStyle,
+    secondaryStyle,
+    showSecondary,
+  } = useCollectionCardTextFit({
+    title: article.simplified_title,
+    secondaryText: article.preview,
+    variant: size,
+  });
 
   return (
     <button
@@ -164,23 +81,20 @@ function NewsTile({
 
       <div className="collection-card-body" ref={bodyRef}>
         {!article.image ? (
-          <span className="collection-card-source" ref={sourceRef}>{article.source}</span>
+          <span className="collection-card-source">{article.source}</span>
         ) : null}
 
-        <h2 className="collection-card-title" ref={titleRef} style={titleStyle}>
-          {article.simplified_title}
-        </h2>
+        <div className="collection-card-text" ref={textRef}>
+          <h2 className="collection-card-title" ref={titleRef} style={titleStyle}>
+            {article.simplified_title}
+          </h2>
 
-        <div className="collection-card-meta" ref={metaRef}>
-          {article.difficulty ? (
-            <span
-              className="collection-card-pill"
-              style={{ background: CEFR_COLORS[article.difficulty] || 'var(--accent)' }}
-            >
-              {article.difficulty}
-            </span>
+          {article.preview && showSecondary ? (
+            <p className="collection-card-preview" style={secondaryStyle}>{article.preview}</p>
           ) : null}
+        </div>
 
+        <div className="collection-card-meta">
           {article.words.slice(0, article.image ? 3 : 4).map((word) => (
             <span key={word.word} className="collection-card-tag">
               {word.word}
@@ -234,13 +148,21 @@ export default function NewsCollection() {
             : bestIndex;
         }, -1);
 
-        if (heroCandidateIndex <= 0) {
-          setArticles(collectionItems);
-          return;
+        if (heroCandidateIndex > 0) {
+          const [heroCandidate] = collectionItems.splice(heroCandidateIndex, 1);
+          collectionItems.unshift(heroCandidate);
         }
 
-        const [heroCandidate] = collectionItems.splice(heroCandidateIndex, 1);
-        setArticles([heroCandidate, ...collectionItems]);
+        // Ensure index 1 (beside hero) has an image
+        if (collectionItems.length > 2 && !collectionItems[1].article.image) {
+          const firstImageIdx = collectionItems.findIndex((item, i) => i > 1 && item.article.image);
+          if (firstImageIdx !== -1) {
+            const [imageItem] = collectionItems.splice(firstImageIdx, 1);
+            collectionItems.splice(1, 0, imageItem);
+          }
+        }
+
+        setArticles(collectionItems);
       })
       .catch((error) => {
         console.error('Failed to fetch news collection:', error);
