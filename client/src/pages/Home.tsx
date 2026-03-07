@@ -245,45 +245,38 @@ export default function Home() {
           )}
         </div>
 
-        {/* Card 3: To Do (6 cols) */}
-        <div className="home-dashboard-card home-card--todo">
-          <div className="home-dashboard-label">To do</div>
-          {(() => {
-            const totalDue = srsCounts.new + srsCounts.learning + srsCounts.review;
-            const hasItems = totalDue > 0 || pendingPosts.length > 0;
-            if (!hasItems) {
-              return <p className="home-todo-empty">All caught up!</p>;
-            }
-            return (
-              <div className="home-todo-list">
-                {totalDue > 0 && (
-                  <div className="home-todo-row" onClick={() => navigate('/learn')}>
-                    <div className="home-todo-circle" />
-                    <div className="home-todo-row-text">
-                      <span className="home-todo-title">Review flashcards</span>
-                    </div>
-                    <span className="home-todo-count">{totalDue}</span>
+        {/* Card 3: To Do (6 cols) — hidden when empty */}
+        {(srsCounts.new + srsCounts.learning + srsCounts.review > 0 || pendingPosts.length > 0) && (
+          <div className="home-dashboard-card home-card--todo">
+            <div className="home-dashboard-label">To do</div>
+            <div className="home-todo-list">
+              {srsCounts.new + srsCounts.learning + srsCounts.review > 0 && (
+                <div className="home-todo-row" onClick={() => navigate('/learn')}>
+                  <div className="home-todo-circle" />
+                  <div className="home-todo-row-text">
+                    <span className="home-todo-title">Review flashcards</span>
                   </div>
-                )}
-                {pendingPosts.map((p) => (
-                  <div key={p.id} className="home-todo-row" onClick={() => navigate('/classwork')}>
-                    <div className="home-todo-circle" />
-                    <div className="home-todo-row-text">
-                      <span className="home-todo-title">{p.title}</span>
-                      <span className="home-todo-meta">{p.word_count} {p.word_count === 1 ? 'word' : 'words'}</span>
-                    </div>
-                    <ChevronRightIcon size={16} />
+                  <span className="home-todo-count">{srsCounts.new + srsCounts.learning + srsCounts.review}</span>
+                </div>
+              )}
+              {pendingPosts.map((p) => (
+                <div key={p.id} className="home-todo-row" onClick={() => navigate('/classwork')}>
+                  <div className="home-todo-circle" />
+                  <div className="home-todo-row-text">
+                    <span className="home-todo-title">{p.title}</span>
+                    <span className="home-todo-meta">{p.word_count} {p.word_count === 1 ? 'word' : 'words'}</span>
                   </div>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
+                  <ChevronRightIcon size={16} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-        {/* Card 4: Next Class (3 cols) */}
-        <div className="home-dashboard-card home-card--class">
-          <div className="home-dashboard-label">Next class</div>
-          {nextClass ? (
+        {/* Card 4: Next Class (3 cols) — hidden when no classes */}
+        {nextClass && (
+          <div className="home-dashboard-card home-card--class">
+            <div className="home-dashboard-label">Next class</div>
             <div className="home-class-row">
               <div className="home-class-icon">
                 <CalendarIcon size={20} />
@@ -300,34 +293,31 @@ export default function Home() {
                 Join
               </button>
             </div>
-          ) : (
-            <p className="home-class-empty">No classes scheduled today</p>
-          )}
-        </div>
-
-        {/* Card 5: Friends Online (3 cols) */}
-        <div className="home-dashboard-card home-card--friends">
-          <div className="home-dashboard-label">Friends</div>
-          <div className="home-square-card-content" onClick={() => navigate('/chats')}>
-            <div className="home-friend-avatars">
-              {onlineFriends.slice(0, 3).map((f) => (
-                <div key={f.id} className="home-friend-avatar">
-                  {(f.display_name || f.username).charAt(0).toUpperCase()}
-                </div>
-              ))}
-              {onlineFriends.length > 3 && (
-                <div className="home-friend-avatar home-friend-avatar--overflow">
-                  +{onlineFriends.length - 3}
-                </div>
-              )}
-              {onlineFriends.length === 0 && (
-                <div className="home-friend-avatar" style={{ opacity: 0.4 }}>-</div>
-              )}
-            </div>
-            <span className="home-square-count">{onlineFriends.length}</span>
-            <span className="home-square-sublabel">online</span>
           </div>
-        </div>
+        )}
+
+        {/* Card 5: Friends Online (3 cols) — hidden when none online */}
+        {onlineFriends.length > 0 && (
+          <div className="home-dashboard-card home-card--friends">
+            <div className="home-dashboard-label">Friends</div>
+            <div className="home-square-card-content" onClick={() => navigate('/chats')}>
+              <div className="home-friend-avatars">
+                {onlineFriends.slice(0, 3).map((f) => (
+                  <div key={f.id} className="home-friend-avatar">
+                    {(f.display_name || f.username).charAt(0).toUpperCase()}
+                  </div>
+                ))}
+                {onlineFriends.length > 3 && (
+                  <div className="home-friend-avatar home-friend-avatar--overflow">
+                    +{onlineFriends.length - 3}
+                  </div>
+                )}
+              </div>
+              <span className="home-square-count">{onlineFriends.length}</span>
+              <span className="home-square-sublabel">online</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Section 2: Trending videos */}
