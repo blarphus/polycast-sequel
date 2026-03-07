@@ -56,7 +56,7 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
       return res.status(400).json({ error: `Unsupported language: ${lang}` });
     }
 
-    const cacheKey = `news3:${lang}`;
+    const cacheKey = `news5:${lang}`;
 
     // Try Redis cache first
     let cached = null;
@@ -111,8 +111,17 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
 
     const items = allItems.slice(0, 10);
 
+    const extractedItems = await Promise.all(
+      items.map((item, index) => extractAndCacheRawArticle({
+        req,
+        lang,
+        index,
+        link: item.link,
+      })),
+    );
+
     // Build response with offline CEFR estimation (no Gemini)
-    const result = items.map((item) => ({
+    const result = items.map((item, index) => ({
       original_title: item.title,
       simplified_title: item.title,
       difficulty: estimateCefrLevel([{ text: item.title }], lang),
@@ -120,6 +129,7 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
       source: item.source,
       link: item.link,
       image: item.image,
+      preview: buildArticlePreview(extractedItems[index]?.rawBody || '') || item.preview,
     }));
 
     // Cache in Redis for 6 hours
@@ -145,6 +155,115 @@ const LANG_NAMES = {
   fr: 'French', ja: 'Japanese', de: 'German',
 };
 
+function cleanExtractedArticleContent(content) {
+  return content
+    .replace(/<figure[\s\S]*?<\/figure>/gi, '')
+    .replace(/<section[\s\S]*?<\/section>/gi, '')
+    .replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, '\n\n## $1\n\n')
+    .replace(/<(b|strong)>([\s\S]*?)<\/\1>/gi, '**$2**')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/div>/gi, '\n\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function buildArticlePreview(rawBody, maxChars = 280) {
+  const normalized = rawBody
+    .replace(/^##\s+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized) return null;
+  if (normalized.length <= maxChars) return normalized;
+
+  const snippet = normalized.slice(0, maxChars);
+  const sentenceBoundary = Math.max(
+    snippet.lastIndexOf('. '),
+    snippet.lastIndexOf('! '),
+    snippet.lastIndexOf('? '),
+  );
+  if (sentenceBoundary > maxChars * 0.45) {
+    return snippet.slice(0, sentenceBoundary + 1).trim();
+  }
+
+  const clauseBoundary = Math.max(
+    snippet.lastIndexOf('; '),
+    snippet.lastIndexOf(': '),
+    snippet.lastIndexOf(', '),
+  );
+  if (clauseBoundary > maxChars * 0.55) {
+    return snippet.slice(0, clauseBoundary + 1).trim();
+  }
+
+  const wordBoundary = snippet.lastIndexOf(' ');
+  const cutAt = wordBoundary > maxChars * 0.65 ? wordBoundary : maxChars;
+  return `${snippet.slice(0, cutAt).trim()}...`;
+}
+
+async function readCachedArticleBody(rawCacheKey, req) {
+  try {
+    if (redisClient.isReady) {
+      return await redisClient.get(rawCacheKey);
+    }
+  } catch (cacheErr) {
+    req.log.warn('Redis read failed for raw article: %s', cacheErr.message);
+  }
+
+  return null;
+}
+
+async function writeCachedArticleBody(rawCacheKey, rawBody, req) {
+  try {
+    if (redisClient.isReady) {
+      await redisClient.set(rawCacheKey, rawBody, { EX: 21600 });
+    }
+  } catch (cacheErr) {
+    req.log.warn('Redis write failed for raw article: %s', cacheErr.message);
+  }
+}
+
+async function extractAndCacheRawArticle({ req, lang, index, link }) {
+  const rawCacheKey = `article3:raw:${lang}:${index}`;
+  const cachedBody = await readCachedArticleBody(rawCacheKey, req);
+  if (cachedBody) {
+    return { rawBody: cachedBody, extractionFailed: false };
+  }
+
+  if (!link) {
+    return { rawBody: null, extractionFailed: true };
+  }
+
+  try {
+    const extracted = await extract(link, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Polycast/1.0)' },
+    });
+    if (!extracted?.content) {
+      return { rawBody: null, extractionFailed: true };
+    }
+
+    const rawBody = truncateAtSentence(cleanExtractedArticleContent(extracted.content));
+    if (!rawBody) {
+      return { rawBody: null, extractionFailed: true };
+    }
+
+    await writeCachedArticleBody(rawCacheKey, rawBody, req);
+    return { rawBody, extractionFailed: false };
+  } catch (extractErr) {
+    req.log.error('Article extraction failed for %s: %s', link, extractErr.message);
+    return { rawBody: null, extractionFailed: true };
+  }
+}
+
 /**
  * GET /api/news/article
  * Extract full article text and optionally rewrite at a CEFR level.
@@ -165,7 +284,8 @@ router.get('/api/news/article', authMiddleware, validate({ query: articleQuery }
     // Find the cached news list — try new key first, then legacy patterns
     let newsListJson = null;
     const cachePatterns = [
-      `news3:${lang}`,
+      `news5:${lang}`,
+      `news4:${lang}`,
       `news:${lang}`,
       `news2:${lang}:${userRows[0]?.cefr_level || 'raw'}:${nativeLang}`,
       `news2:${lang}:raw:${nativeLang}`,
@@ -196,68 +316,12 @@ router.get('/api/news/article', authMiddleware, validate({ query: articleQuery }
     const link = article.link || '';
     const image = article.image || null;
 
-    // Step 1: Extract raw article text (cached 6h)
-    const rawCacheKey = `article3:raw:${lang}:${index}`;
-    let rawBody = null;
-
-    try {
-      if (redisClient.isReady) {
-        rawBody = await redisClient.get(rawCacheKey);
-      }
-    } catch (cacheErr) {
-      req.log.warn('Redis read failed for raw article: %s', cacheErr.message);
-    }
-
-    let extractionFailed = false;
-
-    if (rawBody === null) {
-      try {
-        const extracted = await extract(link, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Polycast/1.0)' },
-        });
-        if (extracted && extracted.content) {
-          // Clean extracted HTML into formatted plain text
-          rawBody = extracted.content
-            // Remove figure blocks (images + captions — hero image shown separately)
-            .replace(/<figure[\s\S]*?<\/figure>/gi, '')
-            // Remove BBC metadata section (author, reading time)
-            .replace(/<section[\s\S]*?<\/section>/gi, '')
-            // Convert headings to ## markers before stripping tags
-            .replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, '\n\n## $1\n\n')
-            // Mark bold/strong lead text
-            .replace(/<(b|strong)>([\s\S]*?)<\/\1>/gi, '**$2**')
-            // Convert block-level HTML to newlines
-            .replace(/<br\s*\/?>/gi, '\n')
-            .replace(/<\/p>/gi, '\n\n')
-            .replace(/<\/div>/gi, '\n\n')
-            .replace(/<\/li>/gi, '\n')
-            // Strip remaining tags
-            .replace(/<[^>]+>/g, '')
-            .replace(/&nbsp;/g, ' ')
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'")
-            .replace(/\n{3,}/g, '\n\n')
-            .trim();
-          rawBody = truncateAtSentence(rawBody);
-
-          try {
-            if (redisClient.isReady) {
-              await redisClient.set(rawCacheKey, rawBody, { EX: 21600 });
-            }
-          } catch (cacheErr) {
-            req.log.warn('Redis write failed for raw article: %s', cacheErr.message);
-          }
-        } else {
-          extractionFailed = true;
-        }
-      } catch (extractErr) {
-        req.log.error('Article extraction failed: %s', extractErr.message);
-        extractionFailed = true;
-      }
-    }
+    const { rawBody, extractionFailed } = await extractAndCacheRawArticle({
+      req,
+      lang,
+      index,
+      link,
+    });
 
     if (extractionFailed || !rawBody) {
       return res.json({ title, source, link, image, body: null, level: null, extractionFailed: true });
