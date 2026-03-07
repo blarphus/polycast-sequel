@@ -62,7 +62,7 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
       return res.status(400).json({ error: `Unsupported language: ${lang}` });
     }
 
-    const cacheKey = `news6:${lang}`;
+    const cacheKey = `news7:${lang}`;
 
     // Try Redis cache first
     let cached = null;
@@ -104,12 +104,14 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
       }),
     );
 
-    // Merge all items, sort by pubDate descending, take first 10
-    const allItems = feedResults.flat().sort((a, b) => {
-      const da = a.pubDate ? new Date(a.pubDate).getTime() : 0;
-      const db = b.pubDate ? new Date(b.pubDate).getTime() : 0;
-      return db - da;
-    });
+    // Merge all items, keep only those with images, sort by pubDate descending, take first 10
+    const allItems = feedResults.flat()
+      .filter((item) => item.image)
+      .sort((a, b) => {
+        const da = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+        const db = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+        return db - da;
+      });
 
     if (allItems.length === 0) {
       return res.json([]);
@@ -314,6 +316,7 @@ async function getCachedNewsContext(req, lang, index) {
 
   let newsListJson = null;
   const cachePatterns = [
+    `news7:${lang}`,
     `news6:${lang}`,
     `news5:${lang}`,
     `news4:${lang}`,

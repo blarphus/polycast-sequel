@@ -5,17 +5,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getNewToday, getTrendingVideos, getNews, getChannels, getDueWords, getClassesToday, getFriends, SavedWord, TrendingVideo, NewsArticle, ChannelSummary, UpcomingClass, Friend } from '../api';
+import { getNewToday, getTrendingVideos, getNews, getChannels, getDueWords, getClassesToday, getFriends, getPendingClasswork, SavedWord, TrendingVideo, NewsArticle, ChannelSummary, UpcomingClass, Friend, PendingWordList } from '../api';
 import { proxyImageUrl } from '../api/dictionary';
 import { LANGUAGES } from '../components/classwork/languages';
 import { LANGUAGE_BANNERS } from '../utils/languageBanners';
 import FriendRequests from '../components/FriendRequests';
-import PendingClasswork from '../components/PendingClasswork';
 import AddVideoModal from '../components/AddVideoModal';
 import Carousel from '../components/Carousel';
 import ChannelCard from '../components/cards/ChannelCard';
 import { FrequencyDots } from '../components/FrequencyDots';
-import { CalendarIcon } from '../components/icons';
+import { CalendarIcon, ChevronRightIcon } from '../components/icons';
 import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
 import { formatUsTime } from '../utils/dateFormat';
 import { useVideoClick } from '../hooks/useVideoClick';
@@ -37,6 +36,7 @@ export default function Home() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [srsCounts, setSrsCounts] = useState({ new: 0, learning: 0, review: 0 });
   const [classesToday, setClassesToday] = useState<UpcomingClass[]>([]);
+  const [pendingPosts, setPendingPosts] = useState<PendingWordList[]>([]);
 
   const targetLang = user?.target_language;
   const langName = LANGUAGES.find((l) => l.code === targetLang)?.name || targetLang || '';
@@ -72,6 +72,12 @@ export default function Home() {
     getClassesToday()
       .then(({ classes: c }) => { if (!cancelled) setClassesToday(c); })
       .catch((err) => console.error('Failed to fetch today\'s classes:', err));
+
+    if (user?.account_type === 'student') {
+      getPendingClasswork()
+        .then((data) => { if (!cancelled) setPendingPosts(data.posts); })
+        .catch((err) => console.error('Failed to fetch pending classwork:', err));
+    }
 
     if (targetLang) {
       getTrendingVideos(targetLang)
@@ -123,9 +129,6 @@ export default function Home() {
     <div className="home-page">
       {/* Pending friend requests */}
       <FriendRequests />
-
-      {/* Pending classwork (students only) */}
-      {user?.account_type === 'student' && <PendingClasswork />}
 
       {/* Hero banner */}
       <div className="home-banner" style={bannerStyle}>
@@ -242,7 +245,42 @@ export default function Home() {
           )}
         </div>
 
-        {/* Card 3: Next Class (6 cols) */}
+        {/* Card 3: To Do (6 cols) */}
+        <div className="home-dashboard-card home-card--todo">
+          <div className="home-dashboard-label">To do</div>
+          {(() => {
+            const totalDue = srsCounts.new + srsCounts.learning + srsCounts.review;
+            const hasItems = totalDue > 0 || pendingPosts.length > 0;
+            if (!hasItems) {
+              return <p className="home-todo-empty">All caught up!</p>;
+            }
+            return (
+              <div className="home-todo-list">
+                {totalDue > 0 && (
+                  <div className="home-todo-row" onClick={() => navigate('/learn')}>
+                    <div className="home-todo-circle" />
+                    <div className="home-todo-row-text">
+                      <span className="home-todo-title">Review flashcards</span>
+                    </div>
+                    <span className="home-todo-count">{totalDue}</span>
+                  </div>
+                )}
+                {pendingPosts.map((p) => (
+                  <div key={p.id} className="home-todo-row" onClick={() => navigate('/classwork')}>
+                    <div className="home-todo-circle" />
+                    <div className="home-todo-row-text">
+                      <span className="home-todo-title">{p.title}</span>
+                      <span className="home-todo-meta">{p.word_count} {p.word_count === 1 ? 'word' : 'words'}</span>
+                    </div>
+                    <ChevronRightIcon size={16} />
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Card 4: Next Class (3 cols) */}
         <div className="home-dashboard-card home-card--class">
           <div className="home-dashboard-label">Next class</div>
           {nextClass ? (
@@ -267,7 +305,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* Card 4: Friends Online (3 cols) */}
+        {/* Card 5: Friends Online (3 cols) */}
         <div className="home-dashboard-card home-card--friends">
           <div className="home-dashboard-label">Friends</div>
           <div className="home-square-card-content" onClick={() => navigate('/chats')}>
@@ -289,36 +327,6 @@ export default function Home() {
             <span className="home-square-count">{onlineFriends.length}</span>
             <span className="home-square-sublabel">online</span>
           </div>
-        </div>
-
-        {/* Card 5: SRS Counts (3 cols) */}
-        <div className="home-dashboard-card home-card--practice">
-          <div className="home-dashboard-label">Flashcards</div>
-          {(() => {
-            const total = srsCounts.new + srsCounts.learning + srsCounts.review;
-            return (
-              <div className="home-srs-card-content" onClick={() => navigate('/learn')}>
-                {total === 0 ? (
-                  <span className="home-srs-caught-up">All caught up!</span>
-                ) : (
-                  <div className="home-srs-rows">
-                    <div className="home-srs-row">
-                      <span className="home-srs-label">New:</span>
-                      <span className="home-srs-value home-srs-value--new">{srsCounts.new}</span>
-                    </div>
-                    <div className="home-srs-row">
-                      <span className="home-srs-label">Learning:</span>
-                      <span className="home-srs-value home-srs-value--learning">{srsCounts.learning}</span>
-                    </div>
-                    <div className="home-srs-row">
-                      <span className="home-srs-label">To Review:</span>
-                      <span className="home-srs-value home-srs-value--review">{srsCounts.review}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
         </div>
       </div>
 

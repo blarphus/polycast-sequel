@@ -183,9 +183,9 @@
 
 .home-card--words { grid-column: span 7; }
 .home-card--news { grid-column: span 5; }
-.home-card--class { grid-column: span 6; }
+.home-card--todo { grid-column: span 6; }
+.home-card--class { grid-column: span 3; }
 .home-card--friends { grid-column: span 3; }
-.home-card--practice { grid-column: span 3; }
 
 /* ---- Featured word (inside words card) ---- */
 
@@ -465,6 +465,78 @@
   padding: 1.5rem 0;
 }
 
+/* ---- To-Do card ---- */
+
+.home-todo-empty {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.home-todo-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-todo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+
+.home-todo-row:last-child {
+  border-bottom: none;
+}
+
+.home-todo-row:hover {
+  opacity: 0.75;
+}
+
+.home-todo-circle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+.home-todo-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.home-todo-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-todo-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.home-todo-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
 /* ---- Responsive ---- */
 
 @media (max-width: 768px) {
@@ -474,13 +546,13 @@
 
   .home-card--words,
   .home-card--news,
+  .home-card--todo,
   .home-card--class {
     grid-column: span 12;
   }
 
-  .home-card--friends,
-  .home-card--practice {
-    grid-column: span 6;
+  .home-card--friends {
+    grid-column: span 12;
   }
 }
 
