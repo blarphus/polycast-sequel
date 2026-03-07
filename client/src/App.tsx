@@ -33,6 +33,7 @@ import NewsCollection from './pages/collections/NewsCollection';
 import Practice from './pages/Practice';
 import DrillPicker from './pages/DrillPicker';
 import IncomingCall from './components/IncomingCall';
+import PhraseTranslator from './components/PhraseTranslator';
 import BottomToolbar from './components/BottomToolbar';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -86,6 +87,7 @@ function AuthenticatedShell() {
   return (
     <>
       <IncomingCall />
+      <PhraseTranslator />
       {!hideToolbar && <BottomToolbar />}
     </>
   );

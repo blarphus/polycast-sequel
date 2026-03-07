@@ -1,0 +1,43 @@
+.phrase-popup {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.12s ease;
+  overflow: hidden;
+}
+
+.phrase-popup-phrase {
+  padding: 0.55rem 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  max-height: 3.6em;
+  overflow: hidden;
+}
+
+.phrase-popup-divider {
+  height: 1px;
+  background: var(--border);
+}
+
+.phrase-popup-translation {
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--accent);
+}
+
+.phrase-popup-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.7rem;
+}
+
+.phrase-popup-error {
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}

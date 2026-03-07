@@ -205,7 +205,9 @@ export default function NewsCollection() {
         <NewsTile
           article={item.article}
           size={size}
-          onOpen={() => navigate(`/read/${targetLang}/${item.originalIndex}`)}
+          onOpen={() => navigate(`/read/${targetLang}/${item.originalIndex}`, {
+            state: { title: item.article.simplified_title, source: item.article.source, image: item.article.image, link: item.article.link },
+          })}
         />
       )}
     />

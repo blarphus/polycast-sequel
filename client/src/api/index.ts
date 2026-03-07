@@ -13,3 +13,4 @@ export * from './videos';
 export * from './news';
 export * from './groupCall';
 export * from './practice';
+export * from './translate';

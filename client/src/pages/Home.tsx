@@ -215,7 +215,9 @@ export default function Home() {
                 <div
                   key={i}
                   className="home-news-item"
-                  onClick={() => navigate(`/read/${targetLang}/${i}`)}
+                  onClick={() => navigate(`/read/${targetLang}/${i}`, {
+                    state: { title: n.simplified_title, source: n.source, image: n.image, link: n.link },
+                  })}
                 >
                   <span className="home-news-item-title">{n.simplified_title}</span>
                   <div className="home-news-item-meta">
@@ -417,7 +419,9 @@ export default function Home() {
             <div
               key={i}
               className={`home-carousel-card home-carousel-card--clickable home-carousel-card--news${n.image ? '' : ' home-carousel-card--no-thumb'}`}
-              onClick={() => navigate(`/read/${targetLang}/${i}`)}
+              onClick={() => navigate(`/read/${targetLang}/${i}`, {
+                state: { title: n.simplified_title, source: n.source, image: n.image, link: n.link },
+              })}
             >
               {n.image && (
                 <div className="home-carousel-thumb home-carousel-thumb--news">

@@ -2,57 +2,156 @@
 // pages/ReadArticle.tsx -- In-app news article reader with CEFR level switching
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
-import { getNewsArticle, type ArticleDetail } from '../api';
+import { getNewsArticle, streamNewsArticleRewrite, type ArticleDetail } from '../api';
 import type { PopupState } from '../textTokens';
 import TokenizedText from '../components/TokenizedText';
 import WordPopup from '../components/WordPopup';
 
 const CEFR_LEVELS = ['Original', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
+interface NavState {
+  title?: string;
+  source?: string;
+  image?: string | null;
+  link?: string;
+}
+
 export default function ReadArticle() {
   const { lang, index } = useParams<{ lang: string; index: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const location = useLocation();
+  const navState = (location.state || {}) as NavState;
+  const { user, loading: authLoading } = useAuth();
   const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
 
-  const defaultLevel = user?.cefr_level || 'Original';
-  const [selectedLevel, setSelectedLevel] = useState(defaultLevel);
-  const [article, setArticle] = useState<ArticleDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [levelLoading, setLevelLoading] = useState(false);
+  const profileLevel = user?.cefr_level || 'Original';
+  const [selectedLevel, setSelectedLevel] = useState('Original');
+  const [article, setArticle] = useState<ArticleDetail | null>(
+    navState.title
+      ? { title: navState.title, source: navState.source || '', link: navState.link || '', image: navState.image || null, body: null, level: null }
+      : null,
+  );
+  const [bodyLoading, setBodyLoading] = useState(true);
   const [error, setError] = useState('');
   const [popup, setPopup] = useState<PopupState | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
+  const streamQueueRef = useRef<string[]>([]);
+  const streamTimerRef = useRef<number | null>(null);
+  const streamDoneRef = useRef<ArticleDetail | null>(null);
 
   const idx = parseInt(index || '0', 10);
 
+  const clearStreamState = useCallback(() => {
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    streamQueueRef.current = [];
+    streamDoneRef.current = null;
+    if (streamTimerRef.current) {
+      window.clearTimeout(streamTimerRef.current);
+      streamTimerRef.current = null;
+    }
+  }, []);
+
+  const flushStreamQueue = useCallback(() => {
+    if (streamTimerRef.current) return;
+
+    const step = () => {
+      const nextBatch = streamQueueRef.current.splice(0, 2).join('');
+      if (nextBatch) {
+        setArticle((prev) => (
+          prev
+            ? { ...prev, body: `${prev.body || ''}${nextBatch}` }
+            : prev
+        ));
+      }
+
+      if (streamQueueRef.current.length > 0) {
+        streamTimerRef.current = window.setTimeout(step, 24);
+        return;
+      }
+
+      streamTimerRef.current = null;
+      if (streamDoneRef.current) {
+        const finalArticle = streamDoneRef.current;
+        streamDoneRef.current = null;
+        setArticle((prev) => (prev ? { ...prev, ...finalArticle } : finalArticle));
+        setBodyLoading(false);
+      }
+    };
+
+    streamTimerRef.current = window.setTimeout(step, 24);
+  }, []);
+
   const fetchArticle = useCallback(async (level: string, isLevelSwitch: boolean) => {
     if (!lang) return;
-    if (isLevelSwitch) {
-      setLevelLoading(true);
-    } else {
-      setLoading(true);
-    }
+    clearStreamState();
+    setBodyLoading(true);
     setError('');
 
+    // On level switch, clear the body so the old text doesn't linger
+    if (isLevelSwitch) {
+      setArticle((prev) => prev ? { ...prev, body: null } : prev);
+    }
+
     try {
-      const data = await getNewsArticle(lang, idx, level !== 'Original' ? level : null);
+      if (level !== 'Original') {
+        const controller = new AbortController();
+        streamAbortRef.current = controller;
+
+        await streamNewsArticleRewrite(lang, idx, level, {
+          signal: controller.signal,
+          onMeta: (meta) => {
+            setArticle((prev) => ({
+              ...(prev || { body: null, extractionFailed: false, rewriteFailed: false }),
+              ...meta,
+              body: '',
+            }));
+          },
+          onChunk: (text) => {
+            const tokens = text.match(/\S+\s*|\s+/g) || [text];
+            streamQueueRef.current.push(...tokens);
+            flushStreamQueue();
+          },
+          onDone: (finalArticle) => {
+            streamDoneRef.current = finalArticle;
+            if (!streamQueueRef.current.length && !streamTimerRef.current) {
+              setArticle((prev) => (prev ? { ...prev, ...finalArticle } : finalArticle));
+              setBodyLoading(false);
+              streamDoneRef.current = null;
+            }
+          },
+        });
+
+        return;
+      }
+
+      const data = await getNewsArticle(lang, idx, null);
       setArticle(data);
+      setBodyLoading(false);
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        return;
+      }
       console.error('Failed to fetch article:', err);
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-      setLevelLoading(false);
+      setBodyLoading(false);
     }
-  }, [lang, idx]);
+  }, [clearStreamState, flushStreamQueue, lang, idx]);
 
   useEffect(() => {
-    fetchArticle(defaultLevel, false);
-  }, [fetchArticle]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!lang || authLoading || Number.isNaN(idx)) return;
+
+    setSelectedLevel(profileLevel);
+    setPopup(null);
+    fetchArticle(profileLevel, false);
+    return () => {
+      clearStreamState();
+    };
+  }, [authLoading, clearStreamState, fetchArticle, idx, lang, profileLevel]);
 
   function handleLevelChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const level = e.target.value;
@@ -67,12 +166,18 @@ export default function ReadArticle() {
   }
 
   const paragraphs = article?.body?.split(/\n\n+/) || [];
+  const hasBody = article?.body != null && article.body.length > 0;
+  const isRewriting = bodyLoading && selectedLevel !== 'Original';
+  const isRewritten = !bodyLoading && selectedLevel !== 'Original' && hasBody && !article?.extractionFailed;
+
+  // Show the header if we have metadata from nav state or from the API
+  const showHeader = article != null;
 
   return (
     <div className="read-page">
       {/* Top bar */}
       <div className="read-topbar">
-        <button className="watch-back-btn" onClick={() => navigate('/')}>
+        <button className="watch-back-btn" onClick={() => navigate(-1)}>
           <span className="watch-back-arrow">&lsaquo;</span> Back
         </button>
 
@@ -80,7 +185,7 @@ export default function ReadArticle() {
           className="read-level-selector"
           value={selectedLevel}
           onChange={handleLevelChange}
-          disabled={loading || !article?.body}
+          disabled={authLoading || (!hasBody && bodyLoading)}
         >
           {CEFR_LEVELS.map((lvl) => (
             <option key={lvl} value={lvl}>{lvl}</option>
@@ -88,15 +193,15 @@ export default function ReadArticle() {
         </select>
       </div>
 
-      {/* Loading state */}
-      {loading && (
+      {/* Full-page loading only if we have no metadata at all */}
+      {!showHeader && authLoading && (
         <div className="read-loading">
           <div className="loading-spinner" />
         </div>
       )}
 
       {/* Error state */}
-      {!loading && error && (
+      {!bodyLoading && error && (
         <div className="read-extraction-failed">
           <p>{error}</p>
           <button className="read-external-btn" onClick={() => navigate('/')}>
@@ -105,12 +210,19 @@ export default function ReadArticle() {
         </div>
       )}
 
-      {/* Article content */}
-      {!loading && !error && article && (
+      {/* Article content — header + image shown immediately */}
+      {showHeader && (
         <>
           {/* Header */}
           <div className="read-header">
-            <h1 className="read-title">{article.title}</h1>
+            <a
+              className="read-title-link"
+              href={article.link}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <h1 className="read-title">{article.title}</h1>
+            </a>
             {article.source && (
               <span className="read-source">{article.source}</span>
             )}
@@ -138,11 +250,31 @@ export default function ReadArticle() {
             </div>
           ) : (
             <div className="read-body">
-              {/* Level loading overlay */}
-              {levelLoading && (
-                <div className="read-level-loading">
-                  <div className="loading-spinner" />
-                  <span>Rewriting at {selectedLevel}...</span>
+              {/* Rewriting indicator while streaming */}
+              {isRewriting && (
+                <div className="read-level-banner read-level-banner--loading">
+                  <div className="loading-spinner loading-spinner--small" />
+                  <span>Rewriting article at {selectedLevel} level...</span>
+                </div>
+              )}
+
+              {/* Rewritten banner after loading */}
+              {isRewritten && (
+                <div className="read-level-banner">
+                  <span>
+                    This article has been rewritten at <strong>{selectedLevel}</strong> level.{' '}
+                    <button
+                      className="read-level-banner-link"
+                      type="button"
+                      onClick={() => {
+                        setSelectedLevel('Original');
+                        setPopup(null);
+                        fetchArticle('Original', true);
+                      }}
+                    >
+                      See original text
+                    </button>
+                  </span>
                 </div>
               )}
 
@@ -183,6 +315,13 @@ export default function ReadArticle() {
                   </p>
                 );
               })}
+
+              {/* Body loading indicator (original text) */}
+              {bodyLoading && !hasBody && !isRewriting && (
+                <div className="read-body-loading">
+                  <div className="loading-spinner" />
+                </div>
+              )}
             </div>
           )}
         </>
