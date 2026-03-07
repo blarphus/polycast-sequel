@@ -231,10 +231,7 @@ export default function Home() {
               {news.length > 3 && (
                 <button
                   className="home-news-see-all"
-                  onClick={() => {
-                    const newsSection = document.querySelector('.home-news-carousel');
-                    newsSection?.scrollIntoView({ behavior: 'smooth' });
-                  }}
+                  onClick={() => navigate('/news')}
                 >
                   See all {news.length} articles
                 </button>

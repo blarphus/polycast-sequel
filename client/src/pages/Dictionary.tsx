@@ -3,7 +3,6 @@
 // ---------------------------------------------------------------------------
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
 import { getDueStatus, formatDuration } from '../utils/srs';
@@ -87,9 +86,41 @@ interface WordGroup {
   entries: SavedWord[];
 }
 
+function buildQueueTintStyles(
+  hue: number,
+  intensity: number,
+  darkness: number,
+  shadowStrength: number,
+  shadowSize: number,
+) {
+  const alpha = 0.03 + (intensity / 100) * 0.2;
+  const headerAlpha = alpha * 0.72;
+  const hoverAlpha = alpha * 1.35;
+  const borderAlpha = 0.06 + (intensity / 100) * 0.18;
+  const shadowAlpha = 0.08 + (shadowStrength / 100) * 0.34;
+  const baseLightness = 92 - (darkness / 100) * 44;
+  const borderLightness = Math.max(24, baseLightness - 18);
+  const shadowLightness = Math.max(14, baseLightness - 40 - (shadowStrength / 100) * 8);
+  const shadowBlur = 10 + (shadowSize / 100) * 34;
+  const shadowSpread = -14 + (shadowSize / 100) * 10;
+  const shadowOffsetY = 6 + (shadowSize / 100) * 16;
+
+  return {
+    '--queue-tint': `hsla(${hue} 88% ${baseLightness}% / ${alpha.toFixed(3)})`,
+    '--queue-tint-header': `hsla(${hue} 88% ${baseLightness}% / ${headerAlpha.toFixed(3)})`,
+    '--queue-tint-hover': `hsla(${hue} 88% ${baseLightness}% / ${hoverAlpha.toFixed(3)})`,
+    '--queue-tint-border': `hsla(${hue} 78% ${borderLightness}% / ${borderAlpha.toFixed(3)})`,
+    '--queue-tint-shadow': `hsla(${hue} 78% ${shadowLightness}% / ${shadowAlpha.toFixed(3)})`,
+    '--queue-shadow-y': `${shadowOffsetY.toFixed(1)}px`,
+    '--queue-shadow-blur': `${shadowBlur.toFixed(1)}px`,
+    '--queue-shadow-spread': `${shadowSpread.toFixed(1)}px`,
+  } as React.CSSProperties;
+}
+
+const QUEUE_TINT_STYLES = buildQueueTintStyles(220, 38, 29, 35, 44);
+
 export default function Dictionary() {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { words, loading, removeWord, addWord, updateImage, isDefinitionSaved, reorderQueueWords } = useSavedWords();
 
   const [search, setSearch] = useState('');
@@ -299,33 +330,10 @@ export default function Dictionary() {
     setDragOverId(null);
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
-  };
-
   const isQueueMode = sort === 'queue';
 
   return (
-    <div className="dict-page">
-      <header className="home-header">
-        <div className="home-header-left">
-          <h1 className="home-logo">Polycast</h1>
-        </div>
-        <div className="home-header-right">
-          <button className="btn btn-secondary" onClick={() => navigate('/settings')}>
-            Settings
-          </button>
-          <button className="btn btn-secondary" onClick={handleLogout}>
-            Logout
-          </button>
-        </div>
-      </header>
-
+    <div className="dict-page" style={QUEUE_TINT_STYLES}>
       <main className="dict-main">
         <section className="home-section">
           <h2 className="section-title">My Dictionary</h2>

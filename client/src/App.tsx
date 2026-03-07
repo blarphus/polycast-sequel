@@ -29,6 +29,7 @@ import Lesson from './pages/Lesson';
 import Lessons from './pages/Lessons';
 import GroupCall from './pages/GroupCall';
 import ReadArticle from './pages/ReadArticle';
+import NewsCollection from './pages/collections/NewsCollection';
 import Practice from './pages/Practice';
 import DrillPicker from './pages/DrillPicker';
 import IncomingCall from './components/IncomingCall';
@@ -254,6 +255,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <GroupCall />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/news"
+          element={
+            <ProtectedRoute>
+              <NewsCollection />
             </ProtectedRoute>
           }
         />

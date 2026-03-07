@@ -169,23 +169,55 @@
 
 .dict-item--in-bracket {
   background:
-    linear-gradient(0deg, rgba(108, 99, 255, 0.09), rgba(108, 99, 255, 0.09)),
+    linear-gradient(0deg, var(--queue-tint), var(--queue-tint)),
     var(--bg-surface);
+  overflow: visible;
   box-shadow:
-    inset 0 0 0 1px rgba(108, 99, 255, 0.08),
+    0 0.55rem 1.1rem -0.95rem rgba(15, 23, 42, 0.18),
+    0 calc(var(--queue-shadow-y) * 0.7) calc(var(--queue-shadow-blur) * 0.6) calc(var(--queue-shadow-spread) * 0.6) var(--queue-tint-shadow),
+    inset 0 0 0 1px var(--queue-tint-border),
     var(--shadow-sm);
 }
 
 .dict-item--in-bracket .dict-item-header {
-  background: rgba(108, 99, 255, 0.05);
+  background: var(--queue-tint-header);
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  overflow: visible;
+  box-shadow:
+    inset 0 -1px 0 rgba(15, 23, 42, 0.07),
+    0 0.55rem 0.85rem -0.75rem rgba(15, 23, 42, 0.16);
+}
+
+.dict-item--in-bracket .dict-item-header::after {
+  content: '';
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: -0.35rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  background: var(--queue-tint-shadow);
+  transform: translateY(calc(var(--queue-shadow-y) * 0.18));
+  filter: blur(calc(var(--queue-shadow-blur) * 0.48));
+  opacity: 0.95;
+  box-shadow: 0 0.45rem 0.8rem -0.65rem rgba(15, 23, 42, 0.14);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dict-item--in-bracket .dict-item-header > * {
+  position: relative;
+  z-index: 1;
 }
 
 .dict-item--in-bracket .dict-item-header:hover {
-  background: rgba(108, 99, 255, 0.11);
+  background: var(--queue-tint-hover);
 }
 
 .dict-item--in-bracket .dict-item-body {
-  background: rgba(108, 99, 255, 0.05);
+  background: var(--queue-tint-header);
 }
 
 /* Drag handle (grip dots) */

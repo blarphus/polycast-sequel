@@ -37,7 +37,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const [bgTexture, setBgTextureState] = useState<BgTexture>(() => {
     const stored = localStorage.getItem(TEXTURE_KEY);
-    return VALID_TEXTURES.includes(stored as BgTexture) ? (stored as BgTexture) : 'none';
+    return VALID_TEXTURES.includes(stored as BgTexture) ? (stored as BgTexture) : 'dots';
   });
 
   useEffect(() => {
