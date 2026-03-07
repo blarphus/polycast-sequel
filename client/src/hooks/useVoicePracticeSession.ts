@@ -134,6 +134,7 @@ export function useVoicePracticeSession() {
       await playAiSpeech(text, languageCode);
     } catch (err) {
       console.error('OpenAI TTS playback failed', err);
+      setError(err instanceof Error ? err.message : 'OpenAI TTS playback failed');
     }
   }, []);
 
@@ -277,7 +278,11 @@ export function useVoicePracticeSession() {
     return () => {
       mediaRecorderRef.current?.stop();
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
-      audioContextRef.current?.close().catch(() => {});
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch((err) => {
+          console.error('Failed to close voice practice audio context', err);
+        });
+      }
       stopAiSpeech();
       stopWaveform();
     };

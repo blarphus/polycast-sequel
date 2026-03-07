@@ -5,9 +5,19 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getSavedWords, saveWord, deleteSavedWord, updateWordImage, reorderQueue, SavedWord } from '../api';
 
+function parseWordForms(rawForms: string | null | undefined, word: string) {
+  if (!rawForms) return [];
+  const parsed = JSON.parse(rawForms);
+  if (!Array.isArray(parsed)) {
+    throw new Error(`Saved forms payload for "${word}" is not an array`);
+  }
+  return parsed.filter((value): value is string => typeof value === 'string');
+}
+
 export function useSavedWords() {
   const [words, setWords] = useState<SavedWord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [optimisticWords, setOptimisticWords] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -16,7 +26,10 @@ export function useSavedWords() {
       .then((data) => {
         if (!cancelled) setWords(data);
       })
-      .catch((err) => console.error('Failed to load saved words:', err))
+      .catch((err) => {
+        console.error('Failed to load saved words:', err);
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -29,12 +42,8 @@ export function useSavedWords() {
     for (const w of words) {
       set.add(w.word.toLowerCase());
       if (w.forms) {
-        try {
-          const formsList: string[] = JSON.parse(w.forms);
-          for (const form of formsList) set.add(form.toLowerCase());
-        } catch (err) {
-          console.error('Failed to parse forms for word:', w.word, err);
-        }
+        const formsList = parseWordForms(w.forms, w.word);
+        for (const form of formsList) set.add(form.toLowerCase());
       }
     }
     return set;
@@ -51,10 +60,8 @@ export function useSavedWords() {
         if (w.definition !== definition) return false;
         if (w.word.toLowerCase() === word.toLowerCase()) return true;
         if (w.forms) {
-          try {
-            const fl: string[] = JSON.parse(w.forms);
-            if (fl.some(f => f.toLowerCase() === word.toLowerCase())) return true;
-          } catch { /* skip malformed */ }
+          const fl = parseWordForms(w.forms, w.word);
+          if (fl.some(f => f.toLowerCase() === word.toLowerCase())) return true;
         }
         return false;
       }),
@@ -81,10 +88,8 @@ export function useSavedWords() {
         const next = new Set(prev);
         next.add(data.word.toLowerCase());
         if (data.forms) {
-          try {
-            const fl: string[] = JSON.parse(data.forms);
-            for (const f of fl) next.add(f.toLowerCase());
-          } catch { /* skip malformed */ }
+          const fl = parseWordForms(data.forms, data.word);
+          for (const f of fl) next.add(f.toLowerCase());
         }
         return next;
       });
@@ -113,7 +118,8 @@ export function useSavedWords() {
   }, []);
 
   const reorderQueueWords = useCallback(
-    (items: Array<{ id: string; queue_position: number }>) => {
+    async (items: Array<{ id: string; queue_position: number }>) => {
+      const previousWords = words;
       // Optimistic: update local state immediately
       setWords((prev) =>
         prev.map((w) => {
@@ -121,14 +127,17 @@ export function useSavedWords() {
           return match ? { ...w, queue_position: match.queue_position } : w;
         }),
       );
-      // Persist to backend; re-fetch on failure
-      reorderQueue(items).catch((err) => {
+      setError('');
+      try {
+        await reorderQueue(items);
+      } catch (err) {
         console.error('Queue reorder failed:', err);
-        getSavedWords().then(setWords).catch((e) => console.error('Re-fetch after reorder failure:', e));
-      });
+        setWords(previousWords);
+        setError(err instanceof Error ? err.message : String(err));
+      }
     },
-    [],
+    [words],
   );
 
-  return { words, loading, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, removeWord, updateImage, reorderQueueWords };
+  return { words, loading, error, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, removeWord, updateImage, reorderQueueWords };
 }

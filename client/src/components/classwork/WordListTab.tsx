@@ -269,7 +269,7 @@ export default function WordListTab({
           </button>
           {imagePickerIdx !== null && (
             <ImagePicker
-              initialQuery={preview[imagePickerIdx].image_term || preview[imagePickerIdx].word}
+              initialQuery={preview[imagePickerIdx].image_term || preview[imagePickerIdx].translation || preview[imagePickerIdx].word}
               onSelect={async (url) => {
                 setPreview(prev => prev
                   ? prev.map((p, j) => j === imagePickerIdx ? { ...p, image_url: url } : p)

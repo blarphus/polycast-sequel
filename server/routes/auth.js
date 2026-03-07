@@ -102,7 +102,7 @@ router.post('/api/login', loginLimiter, validate({ body: loginSchema }), async (
     const { username, password } = req.body;
 
     const result = await pool.query(
-      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, account_type, cefr_levels FROM users WHERE LOWER(username) = LOWER($1)',
+      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, account_type, cefr_levels FROM users WHERE LOWER(username::text) = LOWER($1::text)',
       [username],
     );
 

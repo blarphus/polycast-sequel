@@ -56,7 +56,9 @@ router.get('/api/classes/today', authMiddleware, async (req, res) => {
                 u.display_name AS teacher_name, u.id AS teacher_id
          FROM stream_posts sp
          JOIN users u ON u.id = sp.teacher_id
-         JOIN classroom_students cs ON cs.teacher_id = sp.teacher_id AND cs.student_id = $1
+         JOIN classroom_teachers ct ON ct.teacher_id = sp.teacher_id
+         JOIN classrooms c ON c.id = ct.classroom_id AND c.is_default_migrated = true AND c.archived_at IS NULL
+         JOIN classroom_enrollments ce ON ce.classroom_id = c.id AND ce.student_id = $1
          WHERE sp.type = 'class_session'
            AND (
              sp.scheduled_at::date = CURRENT_DATE
@@ -127,7 +129,11 @@ router.post('/api/group-call/:postId/join', authMiddleware, validate({ params: p
     }
     if (user.account_type === 'student') {
       const { rows: enrollment } = await pool.query(
-        `SELECT 1 FROM classroom_students WHERE teacher_id = $1 AND student_id = $2`,
+        `SELECT 1
+         FROM classroom_teachers ct
+         JOIN classrooms c ON c.id = ct.classroom_id AND c.is_default_migrated = true AND c.archived_at IS NULL
+         JOIN classroom_enrollments ce ON ce.classroom_id = c.id
+         WHERE ct.teacher_id = $1 AND ce.student_id = $2`,
         [post.teacher_id, userId],
       );
       if (enrollment.length === 0) {

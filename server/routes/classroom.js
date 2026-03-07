@@ -7,7 +7,6 @@ import {
   createClassroom,
   createClassroomTopic,
   deleteClassroom,
-  getActiveCompatibleClassroomForTeacher,
   getClassroomForUser,
   getClassroomStudentStats,
   getClassroomTopics,
@@ -55,20 +54,13 @@ function normalizeOptionalText(value) {
 
 async function resolveTeacherClassroomOrThrow(req, res) {
   const classroomId = req.query.classroomId;
-  if (classroomId) {
-    const classroom = await getClassroomForUser(classroomId, req.userId);
-    if (!classroom || classroom.role === 'student') {
-      return res.status(403).json({ error: 'Not in classroom' });
-    }
-    return classroom;
+  if (!classroomId) {
+    return res.status(400).json({
+      error: 'classroomId is required for legacy classroom endpoints',
+    });
   }
-
-  const fallback = await getActiveCompatibleClassroomForTeacher(req.userId);
-  if (!fallback) {
-    return res.status(404).json({ error: 'No classroom found' });
-  }
-  const classroom = await getClassroomForUser(fallback.id, req.userId);
-  if (!classroom) {
+  const classroom = await getClassroomForUser(classroomId, req.userId);
+  if (!classroom || classroom.role === 'student') {
     return res.status(403).json({ error: 'Not in classroom' });
   }
   return classroom;

@@ -10,6 +10,7 @@ import { useMediaToggles } from '../hooks/useMediaToggles';
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
 import { MutedSpeakerIcon } from '../components/icons';
 import socket from '../socket';
+import { TranscriptionService } from '../transcription';
 
 export default function GroupCall() {
   const { postId } = useParams<{ postId: string }>();
@@ -30,6 +31,7 @@ export default function GroupCall() {
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(localStreamRef);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const screenStreamRef = useRef<MediaStream | null>(null);
+  const transcriptionRef = useRef<TranscriptionService | null>(null);
 
   // Transcription state
   const [liveSubtitle, setLiveSubtitle] = useState<{ text: string; userId: string } | null>(null);
@@ -49,6 +51,22 @@ export default function GroupCall() {
       localVideoRef.current.srcObject = localStreamRef.current;
     }
   }, [streamReady, localStreamRef]);
+
+  useEffect(() => {
+    if (callStatus !== 'connected' || !localStreamRef.current) return undefined;
+    if (transcriptionRef.current) return undefined;
+
+    const service = new TranscriptionService(postId!);
+    transcriptionRef.current = service;
+    service.start(localStreamRef.current);
+
+    return () => {
+      if (transcriptionRef.current === service) {
+        service.stop();
+        transcriptionRef.current = null;
+      }
+    };
+  }, [callStatus, localStreamRef, postId]);
 
   // Transcript socket events
   useEffect(() => {
@@ -72,6 +90,8 @@ export default function GroupCall() {
 
   // Leave and navigate back
   const handleLeave = useCallback(() => {
+    transcriptionRef.current?.stop();
+    transcriptionRef.current = null;
     leave();
     navigate(-1);
   }, [leave, navigate]);

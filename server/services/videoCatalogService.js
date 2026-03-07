@@ -86,7 +86,11 @@ export async function searchVideosForLanguage(query, lang = 'en', userRegion) {
 
 export async function getChannelSummaries(lang = 'en') {
   const channels = CHANNELS_BY_LANG[lang];
-  if (!channels) return [];
+  if (!channels) {
+    const err = new Error('No channels for this language');
+    err.status = 404;
+    throw err;
+  }
 
   const cacheKey = `channels:${lang}`;
   const apiKey = getYouTubeApiKey();
@@ -94,19 +98,15 @@ export async function getChannelSummaries(lang = 'en') {
   const { data } = await cachedFetch(cacheKey, async () => {
     return Promise.all(
       channels.map(async (ch) => {
-        try {
-          const videoIds = await fetchYouTubePlaylistVideoIds(ch.uploadsPlaylist, apiKey, 5);
-          if (videoIds.length === 0) {
-            return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
-          }
-          const items = await fetchYouTubeVideoDetails(videoIds, apiKey, 'snippet');
-          const thumbnails = items
-            .slice(0, 3)
-            .map((item) => item.snippet.thumbnails?.medium?.url || `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`);
-          return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails };
-        } catch {
+        const videoIds = await fetchYouTubePlaylistVideoIds(ch.uploadsPlaylist, apiKey, 5);
+        if (videoIds.length === 0) {
           return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
         }
+        const items = await fetchYouTubeVideoDetails(videoIds, apiKey, 'snippet');
+        const thumbnails = items
+          .slice(0, 3)
+          .map((item) => item.snippet.thumbnails?.medium?.url || `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`);
+        return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails };
       }),
     );
   }, 43200);

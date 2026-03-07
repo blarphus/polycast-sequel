@@ -4,7 +4,11 @@ import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
 import { validate } from '../lib/validate.js';
 import { enrichAndInsertWords } from '../services/streamWordService.js';
-import { getClassroomTopics, getLegacyStreamContext } from '../services/classroomService.js';
+import {
+  getClassroomTopics,
+  getLegacyStreamContext,
+  listLegacyTeacherIdsForStudent,
+} from '../services/classroomService.js';
 
 const router = Router();
 
@@ -104,13 +108,18 @@ router.get('/api/stream', authMiddleware, validate({ query: streamQuery }), asyn
           teacher_name: p.teacher_display_name || p.teacher_username,
         }));
       } else {
+        const visibleTeacherIds = await listLegacyTeacherIdsForStudent(req.userId);
+        if (visibleTeacherIds.length === 0) {
+          return res.json({ topics: [], posts: [] });
+        }
+
         const { rows: topicRows } = await pool.query(
           `SELECT st.*, COALESCE(u.display_name, u.username) AS teacher_name
            FROM stream_topics st
            JOIN users u ON u.id = st.teacher_id
-           WHERE st.teacher_id IN (SELECT teacher_id FROM classroom_students WHERE student_id = $1)
+           WHERE st.teacher_id = ANY($1::uuid[])
            ORDER BY st.position ASC`,
-          [req.userId],
+          [visibleTeacherIds],
         );
         topics = topicRows;
 
@@ -124,11 +133,9 @@ router.get('/api/stream', authMiddleware, validate({ query: streamQuery }), asyn
            LEFT JOIN (
              SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
            ) wc ON wc.post_id = sp.id
-           WHERE sp.teacher_id IN (
-             SELECT teacher_id FROM classroom_students WHERE student_id = $1
-           )
+           WHERE sp.teacher_id = ANY($1::uuid[])
            ORDER BY sp.position ASC NULLS LAST, sp.created_at DESC`,
-          [req.userId],
+          [visibleTeacherIds],
         );
         posts = rows.map((p) => ({
           ...p,
@@ -218,25 +225,28 @@ router.get('/api/stream/pending', authMiddleware, async (req, res) => {
       return res.json({ count: 0, posts: [] });
     }
 
+    const visibleTeacherIds = await listLegacyTeacherIdsForStudent(req.userId);
+    if (visibleTeacherIds.length === 0) {
+      return res.json({ count: 0, posts: [] });
+    }
+
     const { rows } = await pool.query(
       `SELECT sp.id, sp.title, sp.created_at,
               COALESCE(wc.cnt, 0)::int AS word_count,
               COALESCE(u.display_name, u.username) AS teacher_name
-       FROM stream_posts sp
-       JOIN users u ON u.id = sp.teacher_id
-       LEFT JOIN (
-         SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
-       ) wc ON wc.post_id = sp.id
-       WHERE sp.type = 'word_list'
-         AND sp.teacher_id IN (
-           SELECT teacher_id FROM classroom_students WHERE student_id = $1
-         )
-         AND NOT EXISTS (
-           SELECT 1 FROM stream_word_list_completions swlc
-           WHERE swlc.post_id = sp.id AND swlc.student_id = $1
+           FROM stream_posts sp
+           JOIN users u ON u.id = sp.teacher_id
+           LEFT JOIN (
+             SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
+           ) wc ON wc.post_id = sp.id
+           WHERE sp.type = 'word_list'
+             AND sp.teacher_id = ANY($2::uuid[])
+            AND NOT EXISTS (
+              SELECT 1 FROM stream_word_list_completions swlc
+              WHERE swlc.post_id = sp.id AND swlc.student_id = $1
          )
        ORDER BY sp.created_at DESC`,
-      [req.userId],
+      [req.userId, visibleTeacherIds],
     );
 
     return res.json({ count: rows.length, posts: rows });

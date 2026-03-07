@@ -15,7 +15,9 @@ const CACHE_TTL = 5 * 60 * 1000;
 async function getMeteredTurnServers() {
   const apiKey = process.env.METERED_API_KEY;
   const appName = process.env.METERED_APP_NAME;
-  if (!apiKey || !appName) return [];
+  if (!apiKey || !appName) {
+    throw new Error('Metered TURN credentials are not configured');
+  }
 
   const now = Date.now();
   if (cachedTurnServers && (now - cacheTimestamp) < CACHE_TTL) {
@@ -51,19 +53,20 @@ router.get('/api/ice-servers', authMiddleware, async (req, res) => {
       username: turnUsername,
       credential: turnCredential,
     });
+    return res.json({ iceServers });
   }
 
-  // Metered.ca dynamic TURN credentials (free tier: 500 GB/month)
   try {
     const metered = await getMeteredTurnServers();
-    if (metered.length > 0) {
-      iceServers.push(...metered);
+    if (!Array.isArray(metered) || metered.length === 0) {
+      throw new Error('Metered TURN returned no servers');
     }
+    iceServers.push(...metered);
+    return res.json({ iceServers });
   } catch (err) {
     req.log.error('[ice-servers] Failed to fetch Metered TURN credentials: %s', err.message);
+    return res.status(500).json({ error: err.message || 'ICE server configuration failed' });
   }
-
-  res.json({ iceServers });
 });
 
 export default router;

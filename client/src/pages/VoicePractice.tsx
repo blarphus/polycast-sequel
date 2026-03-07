@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVoicePracticeSession } from '../hooks/useVoicePracticeSession';
-import { ChevronLeftIcon, CheckCircleIcon, CloseIcon, MicIcon, MicOffIcon, SpeakerIcon, TargetIcon } from '../components/icons';
+import { useSavedWords } from '../hooks/useSavedWords';
+import { proxyImageUrl } from '../api';
+import { CheckCircleIcon, CloseIcon, MicIcon, MicOffIcon, SpeakerIcon, TargetIcon } from '../components/icons';
 import { playAiSpeech } from '../utils/aiSpeech';
+import TokenizedText, { type WordHint } from '../components/TokenizedText';
+import WordPopup from '../components/WordPopup';
 
 function renderAnnotatedAnswer(text: string) {
   const parts = text.split(/(~~.*?~~)/g).filter(Boolean);
@@ -26,6 +30,29 @@ function renderSuccessConfetti() {
 
 export default function VoicePractice() {
   const navigate = useNavigate();
+  const { words, savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
+
+  // Map native translations → image hints for highlighting in the native prompt
+  const nativeWordHints = useMemo(() => {
+    const map = new Map<string, WordHint>();
+    for (const w of words) {
+      if (!w.translation) continue;
+      // Translation can be multi-word; split and map each word
+      for (const part of w.translation.toLowerCase().split(/\s+/)) {
+        const cleaned = part.replace(/[^a-zA-Z\u00C0-\u024F]/g, '');
+        if (cleaned && !map.has(cleaned)) {
+          map.set(cleaned, { imageUrl: proxyImageUrl(w.image_url) });
+        }
+      }
+    }
+    return map;
+  }, [words]);
+  const [popup, setPopup] = useState<{ word: string; sentence: string; rect: DOMRect; isNative?: boolean } | null>(null);
+
+  function handleWordClick(e: React.MouseEvent<HTMLSpanElement>, word: string, sentence: string) {
+    setPopup({ word, sentence, rect: (e.target as HTMLElement).getBoundingClientRect() });
+  }
+
   const {
     loading,
     error,
@@ -45,7 +72,6 @@ export default function VoicePractice() {
     committing,
     audioPeaks,
     connectionState,
-    feedbackLanguageMode,
     counts,
     startListening,
     stopListening,
@@ -79,7 +105,6 @@ export default function VoicePractice() {
               <CheckCircleIcon size={52} strokeWidth={1.6} />
             </div>
             <h2>Session complete</h2>
-            <p>{summary.correctCount} correct, {summary.partialCount} partial, {summary.incorrectCount} incorrect, {summary.skippedCount} skipped.</p>
             <div className="voice-practice-summary-grid">
               <div className="voice-practice-summary-card">
                 <span className="voice-practice-summary-value">{summary.promptCount}</span>
@@ -90,8 +115,12 @@ export default function VoicePractice() {
                 <span className="voice-practice-summary-label">Duration</span>
               </div>
               <div className="voice-practice-summary-card">
-                <span className="voice-practice-summary-value">{summary.feedbackLanguageMode}</span>
-                <span className="voice-practice-summary-label">Feedback</span>
+                <span className="voice-practice-summary-value">
+                  {(summary.correctCount + summary.partialCount + summary.incorrectCount) > 0
+                    ? `${Math.round((summary.correctCount / (summary.correctCount + summary.partialCount + summary.incorrectCount)) * 100)}%`
+                    : '--'}
+                </span>
+                <span className="voice-practice-summary-label">Accuracy</span>
               </div>
             </div>
             <button className="btn btn-primary" onClick={() => navigate('/practice')}>
@@ -123,25 +152,12 @@ export default function VoicePractice() {
 
       <div className="voice-practice-shell">
         <div className="voice-practice-header">
-          <button className="voice-practice-back" onClick={() => navigate('/practice')}>
-            <ChevronLeftIcon size={16} />
-            Practice
-          </button>
           <div className="voice-practice-progress">
             <span>{currentIndex + 1} / {totalPrompts}</span>
-            <span className={`voice-practice-conn conn-${connectionState}`}>{connectionState}</span>
+            {connectionState === 'error' && (
+              <span className="voice-practice-conn conn-error">{connectionState}</span>
+            )}
           </div>
-        </div>
-
-        <div className="voice-practice-meta">
-          <span className="voice-practice-badge">{currentSentence.source_type}</span>
-          {currentSentence.difficulty && <span className="voice-practice-badge">{currentSentence.difficulty}</span>}
-          {currentSentence.assignment_priority && <span className="voice-practice-badge voice-practice-badge--priority">assigned</span>}
-          <span className="voice-practice-feedback-mode">Feedback: {feedbackLanguageMode}</span>
-        </div>
-
-        <div className="voice-practice-reminder">
-          Translate into {session.targetLanguage}. If you do not know a word, say that word in your native language and do your best. You can ask the tutor to speak in either language.
         </div>
 
         <div className="voice-practice-card">
@@ -149,25 +165,20 @@ export default function VoicePractice() {
             <TargetIcon size={16} strokeWidth={1.8} />
             Translate into {session.targetLanguage}
           </div>
-          <p className="voice-practice-prompt">{currentSentence.native_prompt}</p>
+          <p className="voice-practice-prompt">
+            <TokenizedText
+              text={currentSentence.native_prompt}
+              wordHints={nativeWordHints}
+              onWordClick={(e, word) => setPopup({ word, sentence: currentSentence.native_prompt, rect: (e.target as HTMLElement).getBoundingClientRect(), isNative: true })}
+            />
+          </p>
 
-          <div className="voice-practice-transcript-block">
-            <div className="voice-practice-transcript-label">What you said</div>
-            <div className={`voice-practice-transcript ${currentTranscript ? 'has-text' : ''}`}>
-              {currentTranscript || 'Your spoken answer will appear here.'}
-            </div>
-          </div>
-
-          {isRepeatStage && (
-            <div className={`voice-practice-repeat-block ${repeatComplete ? 'is-complete' : ''}`}>
-              <div className="voice-practice-repeat-label">Repeat this once, then we move on</div>
-              <div className="voice-practice-repeat-target">{repeatTarget}</div>
-              <div className={`voice-practice-repeat-transcript ${repeatTranscript ? 'has-text' : ''}`}>
-                {repeatTranscript || 'Your repetition will appear here.'}
+          {currentTranscript && !currentGrade && (
+            <div className="voice-practice-transcript-block voice-practice-slide-in">
+              <div className="voice-practice-transcript-label">What you said</div>
+              <div className="voice-practice-transcript has-text">
+                {currentTranscript}
               </div>
-              {repeatComplete && (
-                <div className="voice-practice-repeat-status">Repetition captured.</div>
-              )}
             </div>
           )}
 
@@ -180,28 +191,34 @@ export default function VoicePractice() {
               </div>
               {currentGrade.result !== 'correct' && (
                 <div className="voice-practice-feedback-row">
-                  <div className="voice-practice-feedback-label">Annotated answer</div>
+                  <div className="voice-practice-feedback-label">Your answer</div>
                   <div className="voice-practice-feedback-text">{renderAnnotatedAnswer(currentGrade.annotatedUserAnswer)}</div>
                 </div>
               )}
-              <div className="voice-practice-feedback-row">
-                <div className="voice-practice-feedback-label">
-                  {currentGrade.result === 'correct' ? 'Nice work' : 'Correct answer'}
-                </div>
-                <div className="voice-practice-feedback-text voice-practice-feedback-text--with-audio">
-                  <span>{currentGrade.correctedAnswer}</span>
+              {!isRepeatStage && (
+                <div className="voice-practice-feedback-row">
                   {currentGrade.result !== 'correct' && (
-                    <button
-                      type="button"
-                      className="voice-practice-audio-btn"
-                      onClick={() => { void playAiSpeech(currentGrade.correctedAnswer, session.targetLanguage); }}
-                      aria-label="Play pronunciation again"
-                    >
-                      <SpeakerIcon size={18} />
-                    </button>
+                    <div className="voice-practice-feedback-label">Answer</div>
                   )}
+                  <div className="voice-practice-feedback-text voice-practice-feedback-text--with-audio">
+                    <TokenizedText
+                      text={currentGrade.correctedAnswer}
+                      savedWords={savedWordsSet}
+                      onWordClick={(e, word) => handleWordClick(e, word, currentGrade.correctedAnswer)}
+                    />
+                    {currentGrade.result !== 'correct' && (
+                      <button
+                        type="button"
+                        className="voice-practice-audio-btn"
+                        onClick={() => { void playAiSpeech(currentGrade.correctedAnswer, session.targetLanguage); }}
+                        aria-label="Play pronunciation again"
+                      >
+                        <SpeakerIcon size={18} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
               {currentGrade.issueNotes.length > 0 && (
                 <div className="voice-practice-feedback-row">
                   <div className="voice-practice-feedback-label">Notes</div>
@@ -213,6 +230,33 @@ export default function VoicePractice() {
                 </div>
               )}
             </div>
+          )}
+
+          {isRepeatStage && (
+            <div className={`voice-practice-repeat-block ${repeatComplete ? 'is-complete' : ''}`}>
+              <div className="voice-practice-repeat-label">Repeat</div>
+              <div className="voice-practice-repeat-target">{repeatTarget}</div>
+              {repeatTranscript && (
+                <div className="voice-practice-repeat-transcript has-text">
+                  {repeatTranscript}
+                </div>
+              )}
+            </div>
+          )}
+
+          {popup && session && (
+            <WordPopup
+              word={popup.word}
+              sentence={popup.sentence}
+              nativeLang={session.nativeLanguage}
+              targetLang={session.targetLanguage}
+              anchorRect={popup.rect}
+              onClose={() => setPopup(null)}
+              isWordSaved={isWordSaved}
+              isDefinitionSaved={isDefinitionSaved}
+              onSaveWord={addWord}
+              isNative={popup.isNative}
+            />
           )}
         </div>
 
@@ -286,11 +330,21 @@ export default function VoicePractice() {
         </div>
 
         <div className="voice-practice-footer">
-          <span>{counts.correct} correct</span>
-          <span>{counts.partial} partial</span>
-          <span>{counts.incorrect} incorrect</span>
-          <span>{counts.skipped} skipped</span>
-          {grading && <span>grading…</span>}
+          <div className="voice-practice-progress-bar">
+            {counts.correct > 0 && (
+              <div className="voice-practice-progress-fill fill-correct" style={{ flex: counts.correct }} />
+            )}
+            {counts.partial > 0 && (
+              <div className="voice-practice-progress-fill fill-partial" style={{ flex: counts.partial }} />
+            )}
+            {counts.incorrect > 0 && (
+              <div className="voice-practice-progress-fill fill-incorrect" style={{ flex: counts.incorrect }} />
+            )}
+            {counts.skipped > 0 && (
+              <div className="voice-practice-progress-fill fill-skipped" style={{ flex: counts.skipped }} />
+            )}
+          </div>
+          {grading && <span className="voice-practice-grading-label">grading...</span>}
         </div>
       </div>
     </div>

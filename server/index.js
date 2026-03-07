@@ -32,6 +32,7 @@ import newsRoutes from './routes/news.js';
 import practiceRoutes from './routes/practice.js';
 import translateRoutes from './routes/translate.js';
 import voicePracticeRoutes from './routes/voicePractice.js';
+import homeRoutes from './routes/home.js';
 import { startTranscriptWorker, backfillCefrLevels } from './services/videoTranscriptQueue.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -71,7 +72,8 @@ async function main() {
     transcriptWorker = await startTranscriptWorker({ redisClient, pool });
     backfillCefrLevels(pool).catch((err) => logger.error({ err }, '[cefr-backfill] Error'));
   } catch (err) {
-    logger.error({ err }, 'Failed to connect to Redis (will retry in background)');
+    logger.error({ err }, 'Failed to initialize Redis-backed services. Exiting.');
+    process.exit(1);
   }
 
   // ------ Express app ------
@@ -130,6 +132,7 @@ async function main() {
   app.use(groupClassRoutes);
   app.use(placementRoutes);
   app.use(newsRoutes);
+  app.use(homeRoutes);
   app.use(practiceRoutes);
   app.use(voicePracticeRoutes);
   app.use(translateRoutes);

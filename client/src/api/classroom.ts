@@ -1,9 +1,15 @@
 import { request } from './core';
 
-function withClassroomQuery(path: string, classroomId?: string | null) {
-  if (!classroomId) return path;
+function withClassroomQuery(path: string, classroomId: string) {
   const sep = path.includes('?') ? '&' : '?';
   return `${path}${sep}classroomId=${encodeURIComponent(classroomId)}`;
+}
+
+function requireClassroomId(classroomId?: string | null) {
+  if (!classroomId) {
+    throw new Error('classroomId is required');
+  }
+  return classroomId;
 }
 
 export type ClassroomRole = 'owner' | 'co_teacher' | 'student';
@@ -115,24 +121,13 @@ export function createClassroomTopic(classroomId: string, title: string) {
 }
 
 export function getClassroomStudents(classroomId?: string | null) {
-  return request<ClassroomStudent[]>(withClassroomQuery('/classroom/students', classroomId));
-}
-
-export function getClassroomStudentsById(classroomId: string) {
-  return request<ClassroomStudent[]>(`/classrooms/${classroomId}/students`);
+  return request<ClassroomStudent[]>(withClassroomQuery('/classroom/students', requireClassroomId(classroomId)));
 }
 
 export function addClassroomStudent(classroomIdOrStudentId: string, maybeStudentId?: string) {
   const classroomId = maybeStudentId ? classroomIdOrStudentId : undefined;
   const studentId = maybeStudentId ?? classroomIdOrStudentId;
-  return request<{ classroom_id: string }>(withClassroomQuery('/classroom/students', classroomId), {
-    method: 'POST',
-    body: { studentId },
-  });
-}
-
-export function addClassroomStudentById(classroomId: string, studentId: string) {
-  return request<{ classroom_id: string }>(`/classrooms/${classroomId}/students`, {
+  return request<{ classroom_id: string }>(withClassroomQuery('/classroom/students', requireClassroomId(classroomId)), {
     method: 'POST',
     body: { studentId },
   });
@@ -141,19 +136,11 @@ export function addClassroomStudentById(classroomId: string, studentId: string) 
 export function removeClassroomStudent(classroomIdOrStudentId: string, maybeStudentId?: string) {
   const classroomId = maybeStudentId ? classroomIdOrStudentId : undefined;
   const studentId = maybeStudentId ?? classroomIdOrStudentId;
-  return request<void>(withClassroomQuery(`/classroom/students/${studentId}`, classroomId), { method: 'DELETE' });
-}
-
-export function removeClassroomStudentById(classroomId: string, studentId: string) {
-  return request<void>(`/classrooms/${classroomId}/students/${studentId}`, { method: 'DELETE' });
+  return request<void>(withClassroomQuery(`/classroom/students/${studentId}`, requireClassroomId(classroomId)), { method: 'DELETE' });
 }
 
 export function getStudentStats(classroomIdOrStudentId: string, maybeStudentId?: string) {
   const classroomId = maybeStudentId ? classroomIdOrStudentId : undefined;
   const studentId = maybeStudentId ?? classroomIdOrStudentId;
-  return request<StudentDetail>(withClassroomQuery(`/classroom/students/${studentId}/stats`, classroomId));
-}
-
-export function getStudentStatsByClassroom(classroomId: string, studentId: string) {
-  return request<StudentDetail>(`/classrooms/${classroomId}/students/${studentId}/stats`);
+  return request<StudentDetail>(withClassroomQuery(`/classroom/students/${studentId}/stats`, requireClassroomId(classroomId)));
 }

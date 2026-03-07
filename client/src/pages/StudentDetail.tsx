@@ -20,10 +20,12 @@ export default function StudentDetail() {
 
   useEffect(() => {
     if (!studentId) return;
-    const loader = classroomId
-      ? api.getStudentStats(classroomId, studentId)
-      : api.getStudentStats(studentId);
-    loader
+    if (!classroomId) {
+      setError('A classroom context is required to view student details.');
+      setLoading(false);
+      return;
+    }
+    api.getStudentStats(classroomId, studentId)
       .then(setData)
       .catch((err) => {
         console.error('Failed to load student stats:', err);

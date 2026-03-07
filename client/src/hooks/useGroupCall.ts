@@ -144,7 +144,11 @@ export function useGroupCall(postId: string) {
         const { iceServers } = await getIceServers();
         iceServersRef.current = iceServers;
       } catch (err) {
-        console.warn('[group-call] Could not fetch ICE servers, using defaults:', err);
+        console.error('[group-call] Could not fetch ICE servers:', err);
+        stream.getTracks().forEach((track) => track.stop());
+        localStreamRef.current = null;
+        setStreamReady(false);
+        throw err;
       }
 
       // 3. REST join (registers in DB, returns current participants)

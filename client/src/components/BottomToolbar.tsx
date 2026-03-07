@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getPendingClasswork } from '../api';
+import { getStudentDashboard } from '../api';
 import { HomeIcon, BookIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, SettingsIcon } from './icons';
 
 export default function BottomToolbar() {
@@ -16,13 +16,22 @@ export default function BottomToolbar() {
   const isTeacher = user?.account_type === 'teacher';
   const isStudent = user?.account_type === 'student';
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingError, setPendingError] = useState(false);
 
   useEffect(() => {
     if (!isStudent) return;
     let cancelled = false;
-    getPendingClasswork()
-      .then((data) => { if (!cancelled) setPendingCount(data.count); })
-      .catch((err) => console.error('Failed to fetch pending classwork count:', err));
+    getStudentDashboard()
+      .then((data) => {
+        if (!cancelled) {
+          setPendingCount(data.pendingClasswork.count);
+          setPendingError(false);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch pending classwork count:', err);
+        if (!cancelled) setPendingError(true);
+      });
     return () => { cancelled = true; };
   }, [isStudent]);
 
@@ -74,7 +83,7 @@ export default function BottomToolbar() {
         >
           <span className="toolbar-tab-icon-wrap">
             <ClassworkIcon size={22} />
-            {pendingCount > 0 && <span className="toolbar-badge">{pendingCount}</span>}
+            {(pendingCount > 0 || pendingError) && <span className="toolbar-badge">{pendingError ? '!' : pendingCount}</span>}
           </span>
           <span className="toolbar-label">Classwork</span>
         </button>

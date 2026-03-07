@@ -106,7 +106,7 @@ export default function ReadArticle() {
           signal: controller.signal,
           onMeta: (meta) => {
             setArticle((prev) => ({
-              ...(prev || { body: null, extractionFailed: false, rewriteFailed: false }),
+              ...(prev || { body: null }),
               ...meta,
               body: '',
             }));
@@ -168,7 +168,7 @@ export default function ReadArticle() {
   const paragraphs = article?.body?.split(/\n\n+/) || [];
   const hasBody = article?.body != null && article.body.length > 0;
   const isRewriting = bodyLoading && selectedLevel !== 'Original';
-  const isRewritten = !bodyLoading && selectedLevel !== 'Original' && hasBody && !article?.extractionFailed;
+  const isRewritten = !bodyLoading && selectedLevel !== 'Original' && hasBody;
 
   // Show the header if we have metadata from nav state or from the API
   const showHeader = article != null;
@@ -235,21 +235,7 @@ export default function ReadArticle() {
             </div>
           )}
 
-          {/* Extraction failed */}
-          {article.extractionFailed ? (
-            <div className="read-extraction-failed">
-              <p>Could not load article text. The source may be behind a paywall or blocking extraction.</p>
-              <a
-                className="read-external-btn"
-                href={article.link}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Read on {article.source || 'source'}
-              </a>
-            </div>
-          ) : (
-            <div className="read-body">
+          <div className="read-body">
               {/* Rewriting indicator while streaming */}
               {isRewriting && (
                 <div className="read-level-banner read-level-banner--loading">
@@ -276,12 +262,6 @@ export default function ReadArticle() {
                     </button>
                   </span>
                 </div>
-              )}
-
-              {article.rewriteFailed && (
-                <p className="read-rewrite-warning">
-                  Could not rewrite at the selected level. Showing original text.
-                </p>
               )}
 
               {paragraphs.map((p, i) => {
@@ -323,7 +303,6 @@ export default function ReadArticle() {
                 </div>
               )}
             </div>
-          )}
         </>
       )}
 

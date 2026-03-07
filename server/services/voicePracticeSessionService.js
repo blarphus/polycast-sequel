@@ -148,9 +148,10 @@ Return JSON only with exactly these fields:
 - spokenFeedback: one short sentence in the requested spoken feedback language
 
 Rules:
+- Accept valid synonyms that preserve the meaning (e.g. "regra" vs "norma" for "rule", "casa" vs "lar" for "home"). Do NOT mark synonym choices as errors — the student is translating from meaning, not matching a specific wording.
 - Minor accent or spelling slips that do not change meaning can still be correct.
 - If the student leaves one or more words in the native language but the rest is good, prefer "partial" over "incorrect".
-- Use issueNotes sparingly.
+- Use issueNotes sparingly — only flag genuine errors, not stylistic preferences.
 - Do not include any extra fields or commentary.`;
 
   const raw = await callGemini(prompt, {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPendingClasswork, PendingWordList } from '../api';
+import { getStudentDashboard, PendingWordList } from '../api';
 import { ChevronRightIcon } from './icons';
 
 interface Props {
@@ -15,11 +15,11 @@ export default function PendingClasswork({ onCountChange }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    getPendingClasswork()
+    getStudentDashboard()
       .then((data) => {
         if (cancelled) return;
-        setPosts(data.posts);
-        onCountChange?.(data.count);
+        setPosts(data.pendingClasswork.posts);
+        onCountChange?.(data.pendingClasswork.count);
       })
       .catch((err) => {
         console.error('Failed to load pending classwork:', err);

@@ -61,11 +61,6 @@ export interface VoicePracticeSummary {
   sourceBreakdown: Record<string, number>;
 }
 
-export interface RealtimeSessionResponse {
-  client_secret?: { value?: string | null } | null;
-  [key: string]: unknown;
-}
-
 export function createVoicePracticeSession(count = 10, feedbackLanguageMode: FeedbackLanguageMode = 'native') {
   return request<VoicePracticeSession>('/practice/voice/sessions', {
     method: 'POST',
@@ -105,17 +100,6 @@ export function completeVoicePracticeSession(
   },
 ) {
   return request<VoicePracticeSummary>(`/practice/voice/sessions/${sessionId}/complete`, {
-    method: 'POST',
-    body: data,
-  });
-}
-
-export function createVoiceRealtimeToken(data: {
-  nativeLanguage: string;
-  targetLanguage: string;
-  feedbackLanguageMode: FeedbackLanguageMode;
-}) {
-  return request<RealtimeSessionResponse>('/practice/voice/realtime-token', {
     method: 'POST',
     body: data,
   });

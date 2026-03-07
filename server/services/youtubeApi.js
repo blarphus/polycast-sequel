@@ -180,24 +180,18 @@ export async function fetchAllChannelVideos(lang, apiKey, userRegion) {
   const allVideos = await Promise.all(
     channels.map(async (ch) => {
       const cacheKey = `channel3:${ch.handle}:${userRegion}`;
+      const { data } = await cachedFetch(cacheKey, async () => {
+        const videoIds = await fetchYouTubePlaylistVideoIds(ch.uploadsPlaylist, apiKey);
+        if (videoIds.length === 0) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
 
-      try {
-        const { data } = await cachedFetch(cacheKey, async () => {
-          const videoIds = await fetchYouTubePlaylistVideoIds(ch.uploadsPlaylist, apiKey).catch(() => []);
-          if (videoIds.length === 0) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
+        const items = await fetchYouTubeVideoDetails(videoIds, apiKey);
+        const videos = filterAndMapTrendingItems(items, userRegion, { skipCaptionFilter: true });
+        videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
 
-          const items = await fetchYouTubeVideoDetails(videoIds, apiKey).catch(() => []);
-          const videos = filterAndMapTrendingItems(items, userRegion, { skipCaptionFilter: true });
-          videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
+        return { channel: { name: ch.name, handle: ch.handle }, videos };
+      }, 21600);
 
-          return { channel: { name: ch.name, handle: ch.handle }, videos };
-        }, 21600);
-
-        return data.videos || [];
-      } catch (err) {
-        logger.error({ err }, 'Failed to fetch videos for channel %s', ch.handle);
-        return [];
-      }
+      return data.videos || [];
     }),
   );
 

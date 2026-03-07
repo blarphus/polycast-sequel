@@ -256,6 +256,25 @@
   background: rgba(91, 156, 245, 0.15);
 }
 
+.subtitle-word.has-hint {
+  position: relative;
+  color: #5b9cf5;
+}
+
+.subtitle-word-hint-img {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-top: 4px;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
 .chat-bubble.sent .subtitle-word.saved {
   color: #a8d4ff;
 }
@@ -422,6 +441,19 @@
   letter-spacing: 0.02em;
   color: #fff;
   background: linear-gradient(135deg, var(--accent), #a855f7);
+}
+
+.word-popup-native {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem 0.8rem;
+}
+
+.word-popup-native-word {
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--accent);
 }
 
 .word-popup-invalid {

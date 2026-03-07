@@ -5,7 +5,21 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getNewToday, getTrendingVideos, getNews, getChannels, getDueWords, getClassesToday, getFriends, getPendingClasswork, SavedWord, TrendingVideo, NewsArticle, ChannelSummary, UpcomingClass, Friend, PendingWordList } from '../api';
+import {
+  getStudentDashboard,
+  getTrendingVideos,
+  getNews,
+  getChannels,
+  getClassesToday,
+  getFriends,
+  SavedWord,
+  TrendingVideo,
+  NewsArticle,
+  ChannelSummary,
+  UpcomingClass,
+  Friend,
+  PendingWordList,
+} from '../api';
 import { proxyImageUrl } from '../api/dictionary';
 import { LANGUAGES } from '../components/classwork/languages';
 import { LANGUAGE_BANNERS } from '../utils/languageBanners';
@@ -44,39 +58,45 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
-    getNewToday()
-      .then((words) => { if (!cancelled) setNewWords(words); })
-      .catch((err) => {
-        console.error('Failed to fetch new words:', err);
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-
-    getDueWords()
-      .then((words) => {
-        if (cancelled) return;
-        let n = 0, l = 0, r = 0;
-        for (const w of words) {
-          if (w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at) n++;
-          else if (w.learning_step !== null) l++;
-          else r++;
-        }
-        setSrsCounts({ new: n, learning: l, review: r });
-      })
-      .catch((err) => console.error('Failed to fetch due words:', err));
-
     getFriends()
       .then((f) => { if (!cancelled) setFriends(f); })
-      .catch((err) => console.error('Failed to fetch friends:', err));
+      .catch((err) => {
+        console.error('Failed to fetch friends:', err);
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      });
 
     getClassesToday()
       .then(({ classes: c }) => { if (!cancelled) setClassesToday(c); })
-      .catch((err) => console.error('Failed to fetch today\'s classes:', err));
+      .catch((err) => {
+        console.error('Failed to fetch today\'s classes:', err);
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      });
 
     if (user?.account_type === 'student') {
-      getPendingClasswork()
-        .then((data) => { if (!cancelled) setPendingPosts(data.posts); })
-        .catch((err) => console.error('Failed to fetch pending classwork:', err));
+      getStudentDashboard()
+        .then((dashboard) => {
+          if (cancelled) return;
+          setNewWords(dashboard.newToday);
+          setPendingPosts(dashboard.pendingClasswork.posts);
+          let n = 0;
+          let l = 0;
+          let r = 0;
+          for (const w of dashboard.dueWords) {
+            if (w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at) n += 1;
+            else if (w.learning_step !== null) l += 1;
+            else r += 1;
+          }
+          setSrsCounts({ new: n, learning: l, review: r });
+        })
+        .catch((err) => {
+          console.error('Failed to fetch student dashboard:', err);
+          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    } else {
+      setLoading(false);
     }
 
     if (targetLang) {
@@ -86,17 +106,26 @@ export default function Home() {
           setTrending(v);
           filterUnplayableVideos(v, setTrending);
         })
-        .catch((err) => console.error('Failed to fetch trending videos:', err))
+        .catch((err) => {
+          console.error('Failed to fetch trending videos:', err);
+          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        })
         .finally(() => { if (!cancelled) setTrendingLoading(false); });
 
       getNews(targetLang, user?.cefr_level)
         .then((articles) => { if (!cancelled) setNews(articles); })
-        .catch((err) => console.error('Failed to fetch news:', err))
+        .catch((err) => {
+          console.error('Failed to fetch news:', err);
+          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        })
         .finally(() => { if (!cancelled) setNewsLoading(false); });
 
       getChannels(targetLang)
         .then((ch) => { if (!cancelled) setChannels(ch); })
-        .catch((err) => console.error('Failed to fetch channels:', err))
+        .catch((err) => {
+          console.error('Failed to fetch channels:', err);
+          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        })
         .finally(() => { if (!cancelled) setChannelsLoading(false); });
     } else {
       setTrendingLoading(false);

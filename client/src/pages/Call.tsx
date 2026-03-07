@@ -207,7 +207,12 @@ export default function Call() {
         const config = await getIceServers();
         iceServers = config.iceServers;
       } catch (err) {
-        console.warn('[call] Failed to fetch ICE servers, using STUN only:', err);
+        console.error('[call] Failed to fetch ICE servers:', err);
+        setCallStatus(err instanceof Error ? err.message : 'Failed to load ICE servers');
+        cleanupTranscription();
+        cleanupPeer();
+        setTimeout(() => navigate('/chats'), 2500);
+        return;
       }
 
       if (cleaned) return;

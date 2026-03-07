@@ -164,8 +164,17 @@ export async function fetchTranscriptFromWorker(youtubeId: string, lang: string)
   const url = `${CF_WORKER_URL}?videoId=${encodeURIComponent(youtubeId)}&lang=${encodeURIComponent(lang)}`;
   const res = await fetch(url);
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-    throw new Error(body.error || `Worker returned ${res.status}`);
+    const bodyText = await res.text();
+    let message = `Worker returned ${res.status}`;
+    if (bodyText) {
+      try {
+        const parsed = JSON.parse(bodyText);
+        message = parsed.error || message;
+      } catch {
+        message = bodyText;
+      }
+    }
+    throw new Error(message);
   }
   const data = await res.json();
   if (!data.success || !Array.isArray(data.segments)) {

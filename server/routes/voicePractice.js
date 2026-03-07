@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import { validate } from '../lib/validate.js';
 import pool from '../db.js';
-import { createRealtimeVoiceSession } from '../services/openaiRealtimeService.js';
 import {
   completeVoicePracticeSession,
   createVoicePracticeSession,
@@ -38,12 +37,6 @@ const completeBody = z.object({
   durationSeconds: z.number().int().min(0),
   feedbackLanguageMode: z.enum(['native', 'target']).optional(),
   issueCounts: z.record(z.number().int().min(0)).optional(),
-});
-
-const tokenBody = z.object({
-  nativeLanguage: z.string().min(2),
-  targetLanguage: z.string().min(2),
-  feedbackLanguageMode: z.enum(['native', 'target']).optional(),
 });
 
 const speakBody = z.object({
@@ -160,20 +153,6 @@ router.post('/api/practice/voice/sessions/:id/complete', authMiddleware, validat
   } catch (err) {
     req.log.error({ err }, 'POST /api/practice/voice/sessions/:id/complete error');
     return res.status(err.status || 500).json({ error: err.message || 'Failed to complete voice practice session' });
-  }
-});
-
-router.post('/api/practice/voice/realtime-token', authMiddleware, validate({ body: tokenBody }), async (req, res) => {
-  try {
-    const session = await createRealtimeVoiceSession({
-      nativeLanguage: req.body.nativeLanguage,
-      targetLanguage: req.body.targetLanguage,
-      feedbackLanguageMode: req.body.feedbackLanguageMode || 'native',
-    });
-    return res.json(session);
-  } catch (err) {
-    req.log.error({ err }, 'POST /api/practice/voice/realtime-token error');
-    return res.status(500).json({ error: err.message || 'Failed to create realtime token' });
   }
 });
 

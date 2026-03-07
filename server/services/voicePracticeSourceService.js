@@ -6,6 +6,13 @@ import { callGemini } from '../enrichWord.js';
 const MAX_TARGET_SENTENCE_WORDS = 16;
 const MIN_TARGET_SENTENCE_WORDS = 4;
 
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
 function normalizeWhitespace(text) {
   return String(text || '').replace(/\s+/g, ' ').trim();
 }
@@ -16,6 +23,9 @@ function cleanSentenceCandidate(text) {
     .replace(/\s+[—-]\s+/g, ' ')
     .trim();
   if (!normalized) return null;
+  if (/(copyright|all rights reserved|latest news|globo communication|participations s\\.a\\.?|terms of use|privacy policy)/i.test(normalized)) {
+    return null;
+  }
   if (/days$/i.test(normalized)) return null;
   if (normalized.includes('  ')) return null;
   if (/^[[({]/.test(normalized)) return null;
@@ -54,7 +64,13 @@ async function fetchPendingWordListCandidates(userId, targetLanguage) {
       WHERE sp.type = 'word_list'
         AND sp.target_language = $2
         AND sp.teacher_id IN (
-          SELECT teacher_id FROM classroom_students WHERE student_id = $1
+          SELECT DISTINCT ct.teacher_id
+          FROM classroom_enrollments ce
+          JOIN classroom_teachers ct ON ct.classroom_id = ce.classroom_id
+          JOIN classrooms c ON c.id = ce.classroom_id
+          WHERE ce.student_id = $1
+            AND c.is_default_migrated = true
+            AND c.archived_at IS NULL
         )
         AND NOT EXISTS (
           SELECT 1 FROM stream_word_list_completions swlc
@@ -133,11 +149,15 @@ async function fetchVideoCandidates(targetLanguage) {
 }
 
 async function fetchNewsCandidates(targetLanguage) {
-  if (!redisClient.isReady) return [];
+  if (!redisClient.isReady) {
+    throw new Error('Redis is not connected for news-backed voice practice sourcing');
+  }
 
   const newsKey = `news7:${targetLanguage}`;
-  const raw = await redisClient.get(newsKey).catch(() => null);
-  if (!raw) return [];
+  const raw = await redisClient.get(newsKey);
+  if (!raw) {
+    throw new Error(`News cache is empty for target language ${targetLanguage}`);
+  }
 
   const items = JSON.parse(raw);
   return items.flatMap((item, index) => {
@@ -204,8 +224,14 @@ ${sourceText}`;
   });
 
   const parsed = JSON.parse(raw);
-  const expectedTarget = cleanSentenceCandidate(parsed.expected_target || sourceText) || sourceText;
+  const expectedTarget = cleanSentenceCandidate(parsed.expected_target);
+  if (!expectedTarget) {
+    throw new Error('Voice practice card generation returned an invalid expected_target');
+  }
   const nativePrompt = normalizeWhitespace(parsed.native_prompt);
+  if (!nativePrompt) {
+    throw new Error('Voice practice card generation returned an empty native_prompt');
+  }
   const difficulty = typeof parsed.difficulty === 'string' ? parsed.difficulty : null;
   const normalizedFocusWords = Array.isArray(parsed.focus_words)
     ? parsed.focus_words.filter((word) => typeof word === 'string').slice(0, 4)
@@ -259,12 +285,11 @@ export async function buildVoicePracticeSentenceSet({
     fetchNewsCandidates(targetLanguage),
   ]);
 
-  const orderedCandidates = dedupeCandidates([
-    ...pending,
-    ...saved,
-    ...video,
-    ...news,
-  ]).slice(0, count * 3);
+  const deduped = dedupeCandidates([...pending, ...saved, ...video, ...news]);
+  const assigned = deduped.filter(c => c.assignmentPriority);
+  const rest = deduped.filter(c => !c.assignmentPriority);
+  shuffleArray(rest);
+  const orderedCandidates = [...assigned, ...rest].slice(0, count * 3);
 
   if (orderedCandidates.length === 0) {
     throw new Error('No suitable sentences available for voice practice');

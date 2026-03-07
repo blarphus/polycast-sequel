@@ -13,8 +13,7 @@ const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
 export async function searchPixabay(query, perPage = 3) {
   const pixabayKey = process.env.PIXABAY_API_KEY;
   if (!pixabayKey) {
-    logger.error('PIXABAY_API_KEY is not set — skipping Pixabay search');
-    return [];
+    throw new Error('PIXABAY_API_KEY is not configured');
   }
   const params = new URLSearchParams({
     key: pixabayKey,
@@ -25,8 +24,7 @@ export async function searchPixabay(query, perPage = 3) {
   });
   const res = await fetch(`https://pixabay.com/api/?${params}`);
   if (!res.ok) {
-    logger.error('Pixabay search failed: %d', res.status);
-    return [];
+    throw new Error(`Pixabay search failed with status ${res.status}`);
   }
   const data = await res.json();
   return (data.hits || []).map(h => h.webformatURL);
@@ -45,23 +43,17 @@ async function searchWikimedia(query, limit = 5) {
     format: 'json',
     origin: '*',
   });
-  try {
-    const res = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, {
-      headers: API_HEADERS,
-    });
-    if (!res.ok) {
-      logger.error('Wikimedia search failed: %d', res.status);
-      return [];
-    }
-    const data = await res.json();
-    const pages = data.query?.pages || {};
-    return Object.values(pages)
-      .map(p => p.imageinfo?.[0]?.thumburl)
-      .filter(Boolean);
-  } catch (err) {
-    logger.error({ err }, 'Wikimedia search error');
-    return [];
+  const res = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, {
+    headers: API_HEADERS,
+  });
+  if (!res.ok) {
+    throw new Error(`Wikimedia search failed with status ${res.status}`);
   }
+  const data = await res.json();
+  const pages = data.query?.pages || {};
+  return Object.values(pages)
+    .map(p => p.imageinfo?.[0]?.thumburl)
+    .filter(Boolean);
 }
 
 export async function searchAllImages(query, perPage = 5) {
@@ -80,16 +72,11 @@ export async function searchAllImages(query, perPage = 5) {
 }
 
 export async function fetchWordImage(searchTerm, excludeUrls = null) {
-  try {
-    const urls = await searchAllImages(searchTerm, 5);
-    if (excludeUrls) {
-      return urls.find(u => !excludeUrls.has(u)) || null;
-    }
-    return urls[0] || null;
-  } catch (err) {
-    logger.error({ err }, 'fetchWordImage error');
-    return null;
+  const urls = await searchAllImages(searchTerm, 5);
+  if (excludeUrls) {
+    return urls.find(u => !excludeUrls.has(u)) || null;
   }
+  return urls[0] || null;
 }
 
 function parseFrequency(str) {
@@ -227,8 +214,7 @@ export async function fetchWiktSenses(word, targetLang, nativeLang) {
 
   if (response.status === 404) return [];
   if (!response.ok) {
-    logger.error('WiktApi error: %d %s', response.status, await response.text().catch(() => ''));
-    return [];
+    throw new Error(`WiktApi senses request failed with status ${response.status}`);
   }
 
   const data = await response.json();
@@ -262,8 +248,7 @@ export async function fetchWiktTranslations(word, nativeLang) {
 
   if (response.status === 404) return [];
   if (!response.ok) {
-    logger.error('WiktApi translations error: %d %s', response.status, await response.text().catch(() => ''));
-    return [];
+    throw new Error(`WiktApi translations request failed with status ${response.status}`);
   }
 
   const data = await response.json();
@@ -286,6 +271,30 @@ export async function fetchWiktTranslations(word, nativeLang) {
   return Array.from(sensesMap.values());
 }
 
+export async function fetchNativeTranslations(word, nativeLang, targetLang) {
+  const edition = WIKT_EDITIONS.has(nativeLang) ? nativeLang : 'en';
+  const url = `https://api.wiktapi.dev/v1/${edition}/word/${encodeURIComponent(word)}/translations?lang=${edition}`;
+  const response = await fetch(url, { headers: API_HEADERS });
+
+  if (response.status === 404) return [];
+  if (!response.ok) {
+    throw new Error(`WiktApi native translations request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  const results = [];
+  for (const posGroup of data.translations || []) {
+    const pos = posGroup.pos || '';
+    for (const entry of posGroup.translations || []) {
+      if (entry.code === targetLang && entry.word) {
+        results.push({ sense: entry.sense || '', pos, word: entry.word });
+      }
+    }
+  }
+  return results;
+}
+
 // Shared field descriptions used by all enrichment prompts
 const FIELD_TRANSLATION = (nativeLang) =>
   `- TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.`;
@@ -299,7 +308,7 @@ const FIELD_EXAMPLE = (targetLang) =>
   `- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.`;
 const FIELD_SENTENCE_TRANSLATION = (nativeLang) =>
   `- SENTENCE_TRANSLATION: A natural translation of the EXAMPLE sentence into ${nativeLang}. Wrap the translated equivalent of the target word with tildes like ~word~. Keep the same meaning and tone.`;
-const FIELD_IMAGE_TERM = `- IMAGE_TERM: An English search term for finding a photo of this word. Return an empty string if the word itself is already a clear, concrete, unambiguous noun that would return good image results (e.g. "cat", "bridge", "apple" → empty string). Only provide a custom term when: (1) the word has multiple common meanings and the image search might return the wrong one (e.g. "bat" in a sports unit → "baseball bat"), (2) the word is abstract/unlikely to have good photo results (e.g. "freedom" → "open bird cage"), or (3) the word is a verb/adjective that needs a visual representation (e.g. "fragile" → "cracked glass"). Keep it 1-4 words.`;
+const FIELD_IMAGE_TERM = `- IMAGE_TERM: An English search term (1-4 words) for finding a stock photo of this word. Always return an English term, even if the target language is not English. For clear concrete nouns, just return the English translation (e.g. "gato" → "cat", "ponte" → "bridge"). For words with multiple meanings, disambiguate (e.g. "bat" in sports → "baseball bat"). For abstract words, suggest a visual representation (e.g. "freedom" → "open bird cage"). For verbs/adjectives, suggest a depictable scene (e.g. "fragile" → "cracked glass"). Never return an empty string.`;
 const FIELD_LEMMA = `- LEMMA: The dictionary/base form of this word in the target language.
   For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
   For nouns: the singular (e.g. "cat" not "cats").
@@ -355,14 +364,9 @@ ${FIELD_FORMS}`;
  */
 export async function enrichWord(word, sentence, nativeLang, targetLang, senseIndex = null) {
   // Try to fetch Wiktionary senses for standardized definitions
-  let wiktSenses = [];
-  if (targetLang) {
-    try {
-      wiktSenses = await fetchWiktSenses(word, targetLang, nativeLang);
-    } catch (err) {
-      logger.error({ err }, 'fetchWiktSenses error in enrich');
-    }
-  }
+  const wiktSenses = targetLang
+    ? await fetchWiktSenses(word, targetLang, nativeLang)
+    : [];
 
   let translation, definition, part_of_speech, frequency, example_sentence, sentence_translation, geminiImageTerm, lemma, geminiFormsRaw;
 
@@ -383,7 +387,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     const raw = await callGemini(prompt);
     const parts = raw.split('//').map((s) => s.trim());
     if (parts.length < 7) {
-      logger.error('Gemini enrich (Path C) returned %d parts instead of 7: %s', parts.length, raw.slice(0, 300));
+      throw new Error(`Gemini enrich returned ${parts.length} parts instead of 7 for Path C`);
     }
 
     translation = parts[0] || '';
@@ -394,8 +398,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     lemma = parts[5]?.trim() || null;
     geminiFormsRaw = parts[6]?.trim() || null;
   } else if (hasSenseIndex && (wiktSenses.length === 0 || senseIndex >= wiktSenses.length)) {
-    // senseIndex provided but invalid (senses changed between lookup and enrich) — fall through
-    logger.error('enrich: senseIndex %d out of range for %d senses — falling through to Path A/B', senseIndex, wiktSenses.length);
+    throw new Error(`Sense index ${senseIndex} is invalid for ${wiktSenses.length} available senses`);
   }
 
   // Path A/B: only run if Path C didn't set translation (i.e. it was skipped)
@@ -416,7 +419,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
       const parts = raw.split('//').map((s) => s.trim());
       if (parts.length < 9) {
-        logger.error('Gemini enrich (wikt) returned %d parts instead of 9: %s', parts.length, raw.slice(0, 300));
+        throw new Error(`Gemini enrich returned ${parts.length} parts instead of 9 for the Wiktionary path`);
       }
 
       translation = parts[0] || '';
@@ -427,9 +430,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
         definition = wiktSenses[resolvedSenseIndex].gloss;
         part_of_speech = wiktSenses[resolvedSenseIndex].pos || null;
       } else {
-        logger.error('Gemini returned invalid SENSE_INDEX: %s (valid: 0-%d)', parts[1], wiktSenses.length - 1);
-        definition = parts[6] || '';
-        part_of_speech = null;
+        throw new Error(`Gemini returned invalid sense index "${parts[1]}" for ${wiktSenses.length} senses`);
       }
 
       frequency = parseFrequency(parts[2]);
@@ -452,7 +453,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
       const parts = raw.split('//').map((s) => s.trim());
       if (parts.length < 9) {
-        logger.error('Gemini enrich returned %d parts instead of 9: %s', parts.length, raw.slice(0, 300));
+        throw new Error(`Gemini enrich returned ${parts.length} parts instead of 9 for the direct generation path`);
       }
       translation = parts[0] || '';
       definition = parts[1] || '';
@@ -475,9 +476,9 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
   const forms = normalizeForms(geminiFormsRaw);
   lemma = normalizeLemma(lemma, part_of_speech, targetLang);
 
-  // Fetch image: use Gemini's IMAGE_TERM from enrichment, or raw word as last resort
-  const imageSearchTerm = geminiImageTerm || word;
+  // Fetch image: use Gemini's IMAGE_TERM, then native translation (English gets better results), then target word
+  const imageSearchTerm = geminiImageTerm || translation || word;
   const image_url = await fetchWordImage(imageSearchTerm);
 
-  return { word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term: geminiImageTerm || word };
+  return { word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term: geminiImageTerm || translation || word };
 }

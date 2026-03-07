@@ -11,6 +11,7 @@ export * from './classwork';
 export * from './templates';
 export * from './videos';
 export * from './news';
+export * from './home';
 export * from './groupCall';
 export * from './practice';
 export * from './voicePractice';

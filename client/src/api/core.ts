@@ -12,6 +12,7 @@ export async function request<T>(path: string, opts: ApiOptions = {}): Promise<T
   const fetchOpts: RequestInit = {
     method,
     credentials: 'include',
+    cache: 'no-store',
     headers: { ...headers },
   };
 
@@ -25,6 +26,9 @@ export async function request<T>(path: string, opts: ApiOptions = {}): Promise<T
   const res = await fetch(`${BASE}${path}`, fetchOpts);
 
   if (!res.ok) {
+    if (res.status === 304) {
+      throw new Error(`${method} ${path} returned 304 without a fresh response body`);
+    }
     let payload: any;
     try {
       payload = await res.json();

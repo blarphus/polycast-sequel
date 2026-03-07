@@ -2,9 +2,10 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord, fetchWordImage, callGemini, fetchWiktSenses, fetchWiktTranslations } from '../enrichWord.js';
+import { enrichWord, fetchWordImage } from '../enrichWord.js';
 import { validate } from '../lib/validate.js';
-import { lookupWordsForPost } from '../services/streamWordService.js';
+import { ensureStudentHasLegacyPostAccess } from '../services/classroomService.js';
+import { batchTranslateWordList, lookupWordsForPreview } from '../services/wordSemanticsService.js';
 
 const router = Router();
 
@@ -66,157 +67,7 @@ router.post('/api/stream/words/batch-translate', authMiddleware, requireTeacher,
   const { words, nativeLang, allWords } = req.body;
 
   try {
-    // 1. Fetch translations from English Wiktionary for each word
-    const translationsPerWord = await Promise.all(
-      words.map(async (w) => {
-        try {
-          return await fetchWiktTranslations(w.word, nativeLang);
-        } catch (err) {
-          req.log.error({ err }, 'Wikt translations failed for "%s"', w.word);
-          return [];
-        }
-      }),
-    );
-
-    // 2. For words with NO senses at all, fall back to native-edition glosses
-    const needsFallback = [];
-    for (let i = 0; i < words.length; i++) {
-      if (translationsPerWord[i].length === 0) needsFallback.push(i);
-    }
-
-    const fallbackSensesMap = {};
-    if (needsFallback.length > 0) {
-      const fallbackResults = await Promise.all(
-        needsFallback.map(async (i) => {
-          try {
-            return await fetchWiktSenses(words[i].word, 'en', nativeLang);
-          } catch (err) {
-            req.log.error({ err }, 'Wikt fallback failed for "%s"', words[i].word);
-            return [];
-          }
-        }),
-      );
-      for (let j = 0; j < needsFallback.length; j++) {
-        fallbackSensesMap[needsFallback[j]] = fallbackResults[j];
-      }
-    }
-
-    // 3. Build results + collect ambiguous words for Gemini
-    const results = new Array(words.length).fill(null);
-    const ambiguous = [];
-
-    for (let i = 0; i < words.length; i++) {
-      const txns = translationsPerWord[i];
-      const withWords = txns.filter(t => t.words.length > 0);
-
-      if (withWords.length === 1) {
-        // Single sense with native translation — use directly
-        results[i] = { translation: withWords[0].words[0], definition: withWords[0].sense };
-      } else if (withWords.length > 1) {
-        // Multiple senses with native translations — Gemini picks sense
-        ambiguous.push({
-          index: i, word: words[i].word, definition: words[i].definition,
-          senses: withWords.map(t => ({
-            label: `[${t.pos}] ${t.sense} → ${t.words.join(', ')}`,
-            translation: t.words[0],
-            definition: t.sense,
-          })),
-        });
-      } else if (txns.length > 0) {
-        // Senses exist but no native translations — Gemini picks sense AND translates
-        ambiguous.push({
-          index: i, word: words[i].word, definition: words[i].definition,
-          needsTranslation: true,
-          senses: txns.map(t => ({
-            label: `[${t.pos}] ${t.sense}`,
-            translation: null,
-            definition: t.sense,
-          })),
-        });
-      } else {
-        // No senses at all — use fallback glosses
-        const senses = fallbackSensesMap[i] || [];
-        if (senses.length === 1) {
-          results[i] = { translation: senses[0].gloss, definition: senses[0].gloss };
-        } else if (senses.length > 1) {
-          ambiguous.push({
-            index: i, word: words[i].word, definition: words[i].definition,
-            senses: senses.map(s => ({
-              label: `[${s.pos}] ${s.gloss}`,
-              translation: s.gloss,
-              definition: s.gloss,
-            })),
-          });
-        }
-        // senses.length === 0 → results[i] stays null
-      }
-    }
-
-    // 4. If there are ambiguous words, use ONE Gemini call to disambiguate
-    //    (and translate entries that have no native-language words)
-    const unitWordList = Array.isArray(allWords) && allWords.length > 0
-      ? allWords
-      : words.map(w => w.word);
-
-    if (ambiguous.length > 0) {
-      const anyNeedTranslation = ambiguous.some(a => a.needsTranslation);
-
-      const wordEntries = ambiguous.map((a, entryIdx) => {
-        const senseList = a.senses.map((s, si) => `  ${si}: ${s.label}`).join('\n');
-        const tag = a.needsTranslation ? ' [TRANSLATE]' : '';
-        return `WORD ${entryIdx}: "${a.word}" (English definition: "${a.definition}")${tag}\n${senseList}`;
-      }).join('\n\n');
-
-      const translateInstruction = anyNeedTranslation
-        ? `\nFor words marked [TRANSLATE], no dictionary translations exist for ${nativeLang} — also provide a concise ${nativeLang} translation (1-3 words) in the "translation" field.\nFor other words, omit the "translation" field.`
-        : '';
-
-      const responseFormat = anyNeedTranslation
-        ? '{"sense_index": <int>} or {"sense_index": <int>, "translation": "..."} for [TRANSLATE] words'
-        : '{"sense_index": <int>}';
-
-      const prompt = `You are a vocabulary-list translation assistant.
-
-A teacher is translating an English vocabulary unit into ${nativeLang}.
-The unit contains these words: ${unitWordList.join(', ')}
-
-For each word below, pick the dictionary sense index that best matches the word's intended meaning in this thematic unit.
-${translateInstruction}
-
-${wordEntries}
-
-Respond with ONLY a JSON array of objects, one per word above, in order:
-[${responseFormat}, ...]
-
-Each sense_index must be a valid index from the senses listed for that word.`;
-
-      try {
-        const raw = await callGemini(prompt, {
-          thinkingConfig: { thinkingBudget: 0 },
-          maxOutputTokens: 400,
-          responseMimeType: 'application/json',
-        });
-        const picks = JSON.parse(raw);
-
-        for (let j = 0; j < ambiguous.length; j++) {
-          const a = ambiguous[j];
-          const pick = picks[j];
-          const si = typeof pick?.sense_index === 'number' ? pick.sense_index : 0;
-          const sense = a.senses[si] || a.senses[0];
-          const translation = sense.translation || pick?.translation || '';
-          results[a.index] = { translation, definition: sense.definition };
-        }
-      } catch (err) {
-        req.log.error({ err }, 'Gemini disambiguation failed, falling back to first sense');
-        for (const a of ambiguous) {
-          const sense = a.senses[0];
-          results[a.index] = sense.translation
-            ? { translation: sense.translation, definition: sense.definition }
-            : null;
-        }
-      }
-    }
-
+    const results = await batchTranslateWordList({ words, nativeLang, allWords });
     return res.json({ translations: results });
   } catch (err) {
     req.log.error({ err }, 'POST /api/stream/words/batch-translate error');
@@ -232,7 +83,7 @@ router.post('/api/stream/words/lookup', authMiddleware, requireTeacher, validate
   const { words, nativeLang, targetLang } = req.body;
 
   try {
-    const previews = await lookupWordsForPost(words, nativeLang, targetLang);
+    const previews = await lookupWordsForPreview(words, nativeLang, targetLang);
     return res.json({ words: previews });
   } catch (err) {
     req.log.error({ err }, 'POST /api/stream/words/lookup error');
@@ -306,17 +157,16 @@ router.post('/api/stream/posts/:postId/known', authMiddleware, validate({ params
   const { postWordId, known } = req.body;
 
   try {
-    const { rows: postRows } = await pool.query(
-      'SELECT teacher_id FROM stream_posts WHERE id = $1',
+    const { rows: postExistsRows } = await pool.query(
+      'SELECT 1 FROM stream_posts WHERE id = $1',
       [req.params.postId],
     );
-    if (postRows.length === 0) return res.status(404).json({ error: 'Post not found' });
+    if (postExistsRows.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
 
-    const { rows: enrollRows } = await pool.query(
-      'SELECT 1 FROM classroom_students WHERE teacher_id = $1 AND student_id = $2',
-      [postRows[0].teacher_id, req.userId],
-    );
-    if (enrollRows.length === 0) {
+    const accessiblePost = await ensureStudentHasLegacyPostAccess(req.params.postId, req.userId);
+    if (!accessiblePost) {
       return res.status(403).json({ error: 'Not enrolled in this classroom' });
     }
 
@@ -347,21 +197,20 @@ router.post('/api/stream/posts/:postId/known', authMiddleware, validate({ params
 
 router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, validate({ params: postIdParam }), async (req, res) => {
   try {
-    const { rows: postRows } = await pool.query(
-      'SELECT * FROM stream_posts WHERE id = $1',
+    const { rows: postExistsRows } = await pool.query(
+      'SELECT 1 FROM stream_posts WHERE id = $1',
       [req.params.postId],
     );
-    if (postRows.length === 0) return res.status(404).json({ error: 'Post not found' });
-    if (postRows[0].type !== 'word_list') {
-      return res.status(400).json({ error: 'Post is not a word list' });
+    if (postExistsRows.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
     }
 
-    const { rows: enrollRows } = await pool.query(
-      'SELECT 1 FROM classroom_students WHERE teacher_id = $1 AND student_id = $2',
-      [postRows[0].teacher_id, req.userId],
-    );
-    if (enrollRows.length === 0) {
+    const accessiblePost = await ensureStudentHasLegacyPostAccess(req.params.postId, req.userId);
+    if (!accessiblePost) {
       return res.status(403).json({ error: 'Not enrolled in this classroom' });
+    }
+    if (accessiblePost.type !== 'word_list') {
+      return res.status(400).json({ error: 'Post is not a word list' });
     }
 
     const { rows: wordsToAdd } = await pool.query(
@@ -379,7 +228,7 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, valid
       'SELECT target_language FROM users WHERE id = $1',
       [req.userId],
     );
-    const targetLanguage = postRows[0].target_language || studentRows[0]?.target_language || null;
+    const targetLanguage = accessiblePost.target_language || studentRows[0]?.target_language || null;
 
     let added = 0;
     let skipped = 0;

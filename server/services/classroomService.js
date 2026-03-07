@@ -233,21 +233,6 @@ export async function getTeacherDefaultClassroom(teacherId) {
   return rows[0] || null;
 }
 
-export async function getActiveCompatibleClassroomForTeacher(teacherId) {
-  const defaultClassroom = await getTeacherDefaultClassroom(teacherId);
-  if (defaultClassroom) return defaultClassroom;
-  const { rows } = await pool.query(
-    `SELECT c.*
-     FROM classrooms c
-     JOIN classroom_teachers ct ON ct.classroom_id = c.id AND ct.teacher_id = $1
-     WHERE c.archived_at IS NULL
-     ORDER BY c.created_at ASC
-     LIMIT 1`,
-    [teacherId],
-  );
-  return rows[0] || null;
-}
-
 export async function getClassroomTopics(classroomId) {
   const { rows } = await pool.query(
     `SELECT * FROM classroom_topics
@@ -450,4 +435,35 @@ export async function getLegacyStreamContext(classroomId, userId) {
     classroom,
     legacyTeacherId: rows[0]?.teacher_id || null,
   };
+}
+
+export async function listLegacyTeacherIdsForStudent(studentId) {
+  const { rows } = await pool.query(
+    `SELECT DISTINCT ct.teacher_id
+     FROM classroom_enrollments ce
+     JOIN classroom_teachers ct ON ct.classroom_id = ce.classroom_id
+     JOIN classrooms c ON c.id = ce.classroom_id
+     WHERE ce.student_id = $1
+       AND c.is_default_migrated = true
+       AND c.archived_at IS NULL`,
+    [studentId],
+  );
+  return rows.map((row) => row.teacher_id);
+}
+
+export async function ensureStudentHasLegacyPostAccess(postId, studentId) {
+  const { rows } = await pool.query(
+    `SELECT sp.*, c.id AS classroom_id
+     FROM stream_posts sp
+     JOIN classroom_teachers ct ON ct.teacher_id = sp.teacher_id
+     JOIN classrooms c ON c.id = ct.classroom_id
+     JOIN classroom_enrollments ce ON ce.classroom_id = c.id
+     WHERE sp.id = $1
+       AND ce.student_id = $2
+       AND c.is_default_migrated = true
+       AND c.archived_at IS NULL
+     LIMIT 1`,
+    [postId, studentId],
+  );
+  return rows[0] || null;
 }

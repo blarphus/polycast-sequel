@@ -2,10 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord as enrichWordHelper, callGemini, searchAllImages, fetchWiktSenses } from '../enrichWord.js';
+import { enrichWord as enrichWordHelper, searchAllImages, fetchWiktSenses } from '../enrichWord.js';
 import { validate } from '../lib/validate.js';
 import { computeNextReview } from '../lib/srsAlgorithm.js';
 import { synthesizeVoiceFeedback } from '../services/ttsService.js';
+import { resolveDictionaryLookup } from '../services/wordSemanticsService.js';
 
 const router = Router();
 
@@ -16,6 +17,7 @@ const lookupQuery = z.object({
   sentence: z.string().min(1, 'sentence is required'),
   nativeLang: z.string().min(1, 'nativeLang is required'),
   targetLang: z.string().optional(),
+  isNative: z.string().optional(),
 });
 
 const wiktLookupQuery = z.object({
@@ -83,77 +85,17 @@ const saveWordBody = z.object({
  * Uses Gemini to provide translation, definition, and POS.
  */
 router.get('/api/dictionary/lookup', authMiddleware, validate({ query: lookupQuery }), async (req, res) => {
-  const { word, sentence, nativeLang, targetLang } = req.query;
+  const { word, sentence, nativeLang, targetLang, isNative } = req.query;
 
   try {
-    // Fetch Wiktionary senses when targetLang is available (for sense-aware picking)
-    let wiktSenses = [];
-    if (targetLang) {
-      try {
-        wiktSenses = await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang);
-      } catch (err) {
-        req.log.error({ err }, 'fetchWiktSenses error in lookup');
-      }
-    }
-
-    const hasSenses = wiktSenses.length > 0;
-    const senseBlock = hasSenses
-      ? `\nHere are the dictionary senses for "${word}":\n${wiktSenses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n')}\n`
-      : '';
-    const jsonKeys = hasSenses
-      ? `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","sense_index":N,"lemma":"..."}`
-      : `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","lemma":"..."}`;
-    const senseIndexDesc = hasSenses
-      ? `\n- "sense_index": the integer index (0-${wiktSenses.length - 1}) of the sense above that best matches how "${word}" is used in the sentence. Use -1 if none match.`
-      : '';
-
-    const prompt = `Translate and define the ${targetLang || 'foreign'} word "${word}". Use the surrounding sentence to determine the correct sense: "${sentence}". The user's native language is ${nativeLang}.
-
-If this word is not a recognized word in ${targetLang || 'the target language'}, set valid to false and leave other fields empty.
-${senseBlock}
-Return a JSON object with exactly these keys:
-${jsonKeys}
-
-- "valid": true if this is a real word in ${targetLang || 'the target language'}, false otherwise (numbers, gibberish, fragments, etc.)
-- "translation": the standard ${nativeLang} translation of "${word}" in this sense — give the general-purpose dictionary translation, not a sentence-specific paraphrase, 1-3 words max
-- "definition": what this word means in ${nativeLang}, 12 words max, no markdown — define the word itself, not its role in the sentence
-- "part_of_speech": one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle${senseIndexDesc}
-- "lemma": The dictionary/base form of this word in the target language.
-  For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
-  For nouns: the singular form (e.g. "cat" not "cats").
-  For adjectives/adverbs: the positive form (e.g. "big" not "bigger").
-  If the word is already in its base form, return it unchanged.
-
-Respond with ONLY the JSON object, no other text.`;
-
-    const raw = await callGemini(prompt, {
-      thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 200,
-      responseMimeType: 'application/json',
+    const result = await resolveDictionaryLookup({
+      word,
+      sentence,
+      nativeLang,
+      targetLang,
+      isNative: isNative === 'true',
     });
-
-    const parsed = JSON.parse(raw);
-    const valid = parsed.valid ?? true;
-    if (valid && !parsed.definition) {
-      req.log.error('Gemini lookup returned incomplete JSON: %s', raw.slice(0, 300));
-    }
-    const translation = parsed.translation || '';
-    const definition = parsed.definition || '';
-    const part_of_speech = parsed.part_of_speech || null;
-    const lemma = parsed.lemma || null;
-
-    // Resolve sense_index + matched_gloss from Wiktionary senses
-    let sense_index = null;
-    let matched_gloss = null;
-    if (wiktSenses.length > 0) {
-      const idx = parsed.sense_index;
-      if (typeof idx === 'number' && idx >= 0 && idx < wiktSenses.length) {
-        sense_index = idx;
-        matched_gloss = wiktSenses[idx].gloss;
-      }
-    }
-
-    return res.json({ word, valid, translation, definition, part_of_speech, sense_index, matched_gloss, lemma });
+    return res.json(result);
   } catch (err) {
     req.log.error({ err }, 'Dictionary lookup error');
     return res.status(500).json({ error: err.message || 'Lookup failed' });
@@ -185,35 +127,19 @@ router.post('/api/dictionary/translate', authMiddleware, validate({ body: transl
   const { sentence, fromLang, toLang } = req.body;
 
   try {
-    const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
-    if (!apiKey) throw new Error('GOOGLE_TRANSLATE_API_KEY is not configured');
-
-    const params = new URLSearchParams({
-      q: sentence,
-      target: toLang,
-      key: apiKey,
-      format: 'text',
-    });
-    if (fromLang) params.set('source', fromLang);
-
-    const response = await fetch(
-      `https://translation.googleapis.com/language/translate/v2?${params}`,
-      { method: 'POST' },
-    );
-
+    const sl = fromLang || 'auto';
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sl)}&tl=${encodeURIComponent(toLang)}&dt=t&q=${encodeURIComponent(sentence)}`;
+    const response = await fetch(url);
     if (!response.ok) {
-      const err = await response.text();
-      req.log.error('Google Translate API error: %s', err);
+      req.log.error('Google Translate error: status %d', response.status);
       throw new Error('Translation request failed');
     }
 
     const data = await response.json();
-    const translation = data.data?.translations?.[0]?.translatedText;
-    if (!translation) {
-      req.log.error('Google Translate returned unexpected structure: %s', JSON.stringify(data).slice(0, 500));
-    }
+    const segments = data[0] || [];
+    const translation = segments.map((seg) => seg[0]).join('');
 
-    return res.json({ translation: translation || '' });
+    return res.json({ translation });
   } catch (err) {
     req.log.error({ err }, 'Sentence translation error');
     return res.status(500).json({ error: err.message || 'Translation failed' });

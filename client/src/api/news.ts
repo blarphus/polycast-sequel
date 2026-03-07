@@ -18,8 +18,6 @@ export interface ArticleDetail {
   image: string | null;
   body: string | null;
   level: string | null;
-  extractionFailed?: boolean;
-  rewriteFailed?: boolean;
 }
 
 export interface StreamedArticleMeta {

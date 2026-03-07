@@ -18,11 +18,13 @@ export function getNewToday() {
   return request<SavedWord[]>('/dictionary/new-today');
 }
 
-export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
+export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string, isNative?: boolean) {
   const params = new URLSearchParams({ word, sentence, nativeLang });
   if (targetLang) params.set('targetLang', targetLang);
+  if (isNative) params.set('isNative', 'true');
   return request<{
     word: string;
+    target_word: string;
     valid: boolean;
     translation: string;
     definition: string;
@@ -30,6 +32,7 @@ export function lookupWord(word: string, sentence: string, nativeLang: string, t
     sense_index: number | null;
     matched_gloss: string | null;
     lemma: string | null;
+    is_native: boolean;
   }>(`/dictionary/lookup?${params}`);
 }
 

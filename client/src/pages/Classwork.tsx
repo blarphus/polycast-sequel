@@ -166,11 +166,13 @@ export default function Classwork() {
   const handleMovePost = async (postId: string, newTopicId: string | null) => {
     const post = posts.find((p) => p.id === postId);
     if (!post) return;
+    setError('');
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, topic_id: newTopicId } : p)));
     try {
       await api.reorderStream([{ id: postId, kind: 'post', position: post.position ?? 0, topic_id: newTopicId }]);
     } catch (err: any) {
       console.error('Move post failed:', err);
+      setError(err instanceof Error ? err.message : String(err));
       setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, topic_id: post.topic_id } : p)));
     }
   };
@@ -184,23 +186,27 @@ export default function Classwork() {
   const handleDeleteTopic = async (topicId: string) => {
     if (!confirm('Delete this topic? Posts will be moved to "No Topic".')) return;
     try {
+      setError('');
       await api.deleteTopic(topicId);
       setTopics((prev) => prev.filter((t) => t.id !== topicId));
       setPosts((prev) => prev.map((p) => (p.topic_id === topicId ? { ...p, topic_id: null } : p)));
     } catch (err: any) {
       console.error('Delete topic failed:', err);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
   const handleCreateTopic = async () => {
     if (!newTopicTitle.trim()) { setCreatingTopic(false); return; }
     try {
+      setError('');
       const topic = activeClassroom?.is_default_migrated
         ? await api.createTopic(newTopicTitle.trim())
         : await api.createClassroomTopic(activeClassroomId!, newTopicTitle.trim());
       setTopics((prev) => [...prev, topic]);
     } catch (err: any) {
       console.error('Create topic failed:', err);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setNewTopicTitle('');
       setCreatingTopic(false);
@@ -282,6 +288,7 @@ export default function Classwork() {
 
     const items = reordered.map((p, i) => ({ id: p.id, kind: 'post' as const, position: i, topic_id: topicId }));
 
+    const previousPosts = posts;
     setPosts((prev) => {
       const others = prev.filter((p) => normalizeId(p.topic_id) !== topicId);
       return [...others, ...reordered.map((p, i) => ({ ...p, position: i }))];
@@ -289,7 +296,8 @@ export default function Classwork() {
 
     api.reorderStream(items).catch((err: any) => {
       console.error('Reorder posts failed:', err);
-      loadStream();
+      setError(err instanceof Error ? err.message : String(err));
+      setPosts(previousPosts);
     });
 
     setDragItem(null);
@@ -326,11 +334,13 @@ export default function Classwork() {
     const [moved] = reordered.splice(dragIndex, 1);
     reordered.splice(targetIndex, 0, moved);
 
+    const previousTopics = topics;
     setTopics(reordered.map((t, i) => ({ ...t, position: i })));
 
     api.reorderStream(reordered.map((t, i) => ({ id: t.id, kind: 'topic' as const, position: i }))).catch((err: any) => {
       console.error('Reorder topics failed:', err);
-      loadStream();
+      setError(err instanceof Error ? err.message : String(err));
+      setTopics(previousTopics);
     });
 
     setDragItem(null);

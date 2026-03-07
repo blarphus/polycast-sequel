@@ -64,43 +64,32 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
 
     const cacheKey = `news7:${lang}`;
 
-    // Try Redis cache first
-    let cached = null;
-    try {
-      if (redisClient.isReady) {
-        cached = await redisClient.get(cacheKey);
-      }
-    } catch (cacheErr) {
-      req.log.warn('Redis read failed for news cache: %s', cacheErr.message);
+    if (!redisClient.isReady) {
+      throw new Error('Redis is not ready for news cache access');
     }
+
+    const cached = await redisClient.get(cacheKey);
 
     if (cached) {
       return res.json(JSON.parse(cached));
     }
 
-    // Cache miss — fetch all RSS feeds for this language in parallel
     const feedResults = await Promise.all(
       feeds.map(async (feed) => {
-        try {
-          const rssRes = await fetch(feed.url, {
-            headers: { 'User-Agent': 'Polycast/1.0' },
-          });
-          if (!rssRes.ok) {
-            req.log.error('RSS fetch error for %s (%s): %d', feed.source, feed.url, rssRes.status);
-            return [];
-          }
-          // Decode using the feed's declared charset (some feeds use ISO-8859-1)
-          const buf = Buffer.from(await rssRes.arrayBuffer());
-          const ctCharset = rssRes.headers.get('content-type')?.match(/charset=([^\s;]+)/i)?.[1];
-          const xmlCharset = buf.toString('ascii').match(/<\?xml[^>]+encoding=["']([^"']+)["']/i)?.[1];
-          const charset = (ctCharset || xmlCharset || 'utf-8').toLowerCase();
-          const decoder = new TextDecoder(charset === 'iso-8859-1' || charset === 'latin1' ? 'windows-1252' : charset);
-          const rssXml = decoder.decode(buf);
-          return parseRssItems(rssXml, feed.source);
-        } catch (fetchErr) {
-          req.log.error('RSS fetch failed for %s (%s): %s', feed.source, feed.url, fetchErr.message);
-          return [];
+        const rssRes = await fetch(feed.url, {
+          headers: { 'User-Agent': 'Polycast/1.0' },
+        });
+        if (!rssRes.ok) {
+          throw new Error(`RSS fetch failed for ${feed.source} with status ${rssRes.status}`);
         }
+
+        const buf = Buffer.from(await rssRes.arrayBuffer());
+        const ctCharset = rssRes.headers.get('content-type')?.match(/charset=([^\s;]+)/i)?.[1];
+        const xmlCharset = buf.toString('ascii').match(/<\?xml[^>]+encoding=["']([^"']+)["']/i)?.[1];
+        const charset = (ctCharset || xmlCharset || 'utf-8').toLowerCase();
+        const decoder = new TextDecoder(charset === 'iso-8859-1' || charset === 'latin1' ? 'windows-1252' : charset);
+        const rssXml = decoder.decode(buf);
+        return parseRssItems(rssXml, feed.source);
       }),
     );
 
@@ -140,15 +129,8 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
       preview: buildArticlePreview(extractedItems[index]?.rawBody || '') || item.preview,
     }));
 
-    // Cache in Redis for 6 hours
     if (result.length > 0) {
-      try {
-        if (redisClient.isReady) {
-          await redisClient.set(cacheKey, JSON.stringify(result), { EX: 21600 });
-        }
-      } catch (cacheErr) {
-        req.log.warn('Redis write failed for news cache: %s', cacheErr.message);
-      }
+      await redisClient.set(cacheKey, JSON.stringify(result), { EX: 21600 });
     }
 
     res.json(result);
@@ -254,57 +236,44 @@ async function streamExistingText(res, text) {
 }
 
 async function readCachedArticleBody(rawCacheKey, req) {
-  try {
-    if (redisClient.isReady) {
-      return await redisClient.get(rawCacheKey);
-    }
-  } catch (cacheErr) {
-    req.log.warn('Redis read failed for raw article: %s', cacheErr.message);
+  if (!redisClient.isReady) {
+    throw new Error('Redis is not ready for article cache access');
   }
-
-  return null;
+  return redisClient.get(rawCacheKey);
 }
 
 async function writeCachedArticleBody(rawCacheKey, rawBody, req) {
-  try {
-    if (redisClient.isReady) {
-      await redisClient.set(rawCacheKey, rawBody, { EX: 21600 });
-    }
-  } catch (cacheErr) {
-    req.log.warn('Redis write failed for raw article: %s', cacheErr.message);
+  if (!redisClient.isReady) {
+    throw new Error('Redis is not ready for article cache writes');
   }
+  await redisClient.set(rawCacheKey, rawBody, { EX: 21600 });
 }
 
 async function extractAndCacheRawArticle({ req, lang, index, link }) {
   const rawCacheKey = `article3:raw:${lang}:${index}`;
   const cachedBody = await readCachedArticleBody(rawCacheKey, req);
   if (cachedBody) {
-    return { rawBody: cachedBody, extractionFailed: false };
+    return cachedBody;
   }
 
   if (!link) {
-    return { rawBody: null, extractionFailed: true };
+    throw new Error('Article link is missing');
   }
 
-  try {
-    const extracted = await extract(link, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Polycast/1.0)' },
-    });
-    if (!extracted?.content) {
-      return { rawBody: null, extractionFailed: true };
-    }
-
-    const rawBody = truncateAtSentence(cleanExtractedArticleContent(extracted.content));
-    if (!rawBody) {
-      return { rawBody: null, extractionFailed: true };
-    }
-
-    await writeCachedArticleBody(rawCacheKey, rawBody, req);
-    return { rawBody, extractionFailed: false };
-  } catch (extractErr) {
-    req.log.error('Article extraction failed for %s: %s', link, extractErr.message);
-    return { rawBody: null, extractionFailed: true };
+  const extracted = await extract(link, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Polycast/1.0)' },
+  });
+  if (!extracted?.content) {
+    throw new Error(`Article extraction returned no content for ${link}`);
   }
+
+  const rawBody = truncateAtSentence(cleanExtractedArticleContent(extracted.content));
+  if (!rawBody) {
+    throw new Error(`Article extraction returned empty body for ${link}`);
+  }
+
+  await writeCachedArticleBody(rawCacheKey, rawBody, req);
+  return rawBody;
 }
 
 async function getCachedNewsContext(req, lang, index) {
@@ -314,30 +283,14 @@ async function getCachedNewsContext(req, lang, index) {
   );
   const nativeLang = userRows[0]?.native_language || 'en';
 
-  let newsListJson = null;
-  const cachePatterns = [
-    `news7:${lang}`,
-    `news6:${lang}`,
-    `news5:${lang}`,
-    `news4:${lang}`,
-    `news:${lang}`,
-    `news2:${lang}:${userRows[0]?.cefr_level || 'raw'}:${nativeLang}`,
-    `news2:${lang}:raw:${nativeLang}`,
-  ];
-
-  for (const key of cachePatterns) {
-    try {
-      if (redisClient.isReady) {
-        newsListJson = await redisClient.get(key);
-        if (newsListJson) break;
-      }
-    } catch (cacheErr) {
-      req.log.warn('Redis read failed for news list: %s', cacheErr.message);
-    }
+  if (!redisClient.isReady) {
+    return { error: 'Redis is not ready for news lookups.' };
   }
 
+  const newsListJson = await redisClient.get(`news7:${lang}`);
+
   if (!newsListJson) {
-    return { error: 'News list not cached. Go back to Home to load news first.' };
+    return { error: 'News list not cached. Reload the news feed first.' };
   }
 
   const newsList = JSON.parse(newsListJson);
@@ -369,61 +322,38 @@ router.get('/api/news/article', authMiddleware, validate({ query: articleQuery }
     }
     const { title, source, link, image } = context;
 
-    const { rawBody, extractionFailed } = await extractAndCacheRawArticle({
+    const rawBody = await extractAndCacheRawArticle({
       req,
       lang,
       index,
       link,
     });
 
-    if (extractionFailed || !rawBody) {
-      return res.json({ title, source, link, image, body: null, level: null, extractionFailed: true });
-    }
-
-    // Step 2: If a CEFR level is requested, rewrite via Gemini (cached 6h)
     if (level) {
       const levelCacheKey = `article3:${lang}:${level}:${index}`;
-      let rewrittenBody = null;
-
-      try {
-        if (redisClient.isReady) {
-          rewrittenBody = await redisClient.get(levelCacheKey);
-        }
-      } catch (cacheErr) {
-        req.log.warn('Redis read failed for rewritten article: %s', cacheErr.message);
+      if (!redisClient.isReady) {
+        throw new Error('Redis is not ready for rewritten article cache access');
       }
+      let rewrittenBody = await redisClient.get(levelCacheKey);
 
       if (rewrittenBody) {
         return res.json({ title, source, link, image, body: rewrittenBody, level });
       }
 
-      // Gemini rewrite
       const prompt = buildRewritePrompt(lang, level, rawBody);
-
-      try {
-        const rewritten = await callGemini(prompt);
-        rewrittenBody = rewritten.trim();
-
-        try {
-          if (redisClient.isReady) {
-            await redisClient.set(levelCacheKey, rewrittenBody, { EX: 21600 });
-          }
-        } catch (cacheErr) {
-          req.log.warn('Redis write failed for rewritten article: %s', cacheErr.message);
-        }
-
-        return res.json({ title, source, link, image, body: rewrittenBody, level });
-      } catch (geminiErr) {
-        req.log.error('Gemini rewrite failed: %s', geminiErr.message);
-        return res.json({ title, source, link, image, body: rawBody, level: null, rewriteFailed: true });
+      const rewritten = await callGemini(prompt);
+      rewrittenBody = rewritten.trim();
+      if (!rewrittenBody) {
+        throw new Error('Gemini returned no rewritten article text');
       }
+      await redisClient.set(levelCacheKey, rewrittenBody, { EX: 21600 });
+      return res.json({ title, source, link, image, body: rewrittenBody, level });
     }
 
-    // No level requested — return original
     return res.json({ title, source, link, image, body: rawBody, level: null });
   } catch (err) {
     req.log.error({ err }, 'GET /api/news/article failed');
-    res.status(500).json({ error: 'Failed to fetch article' });
+    res.status(500).json({ error: err.message || 'Failed to fetch article' });
   }
 });
 
@@ -454,7 +384,7 @@ router.get('/api/news/article/stream', authMiddleware, validate({ query: article
 
     sendSseEvent(res, 'meta', { title, source, link, image, level });
 
-    const { rawBody, extractionFailed } = await extractAndCacheRawArticle({
+    const rawBody = await extractAndCacheRawArticle({
       req,
       lang,
       index,
@@ -463,29 +393,13 @@ router.get('/api/news/article/stream', authMiddleware, validate({ query: article
 
     if (clientClosed) return res.end();
 
-    if (extractionFailed || !rawBody) {
-      sendSseEvent(res, 'done', {
-        title,
-        source,
-        link,
-        image,
-        body: null,
-        level: null,
-        extractionFailed: true,
-      });
-      return res.end();
-    }
-
     const levelCacheKey = `article3:${lang}:${level}:${index}`;
     let rewrittenBody = null;
 
-    try {
-      if (redisClient.isReady) {
-        rewrittenBody = await redisClient.get(levelCacheKey);
-      }
-    } catch (cacheErr) {
-      req.log.warn('Redis read failed for rewritten article: %s', cacheErr.message);
+    if (!redisClient.isReady) {
+      throw new Error('Redis is not ready for rewritten article cache access');
     }
+    rewrittenBody = await redisClient.get(levelCacheKey);
 
     if (rewrittenBody) {
       await streamExistingText(res, rewrittenBody);
@@ -518,13 +432,7 @@ router.get('/api/news/article/stream', authMiddleware, validate({ query: article
         throw new Error('Gemini returned no streamed text content');
       }
 
-      try {
-        if (redisClient.isReady) {
-          await redisClient.set(levelCacheKey, streamedBody, { EX: 21600 });
-        }
-      } catch (cacheErr) {
-        req.log.warn('Redis write failed for rewritten article: %s', cacheErr.message);
-      }
+      await redisClient.set(levelCacheKey, streamedBody, { EX: 21600 });
 
       sendSseEvent(res, 'done', {
         title,
@@ -538,16 +446,7 @@ router.get('/api/news/article/stream', authMiddleware, validate({ query: article
     } catch (geminiErr) {
       if (clientClosed) return res.end();
       req.log.error('Gemini streaming rewrite failed: %s', geminiErr.message);
-      await streamExistingText(res, rawBody);
-      sendSseEvent(res, 'done', {
-        title,
-        source,
-        link,
-        image,
-        body: rawBody,
-        level: null,
-        rewriteFailed: true,
-      });
+      sendSseEvent(res, 'error', { error: geminiErr.message || 'Failed to rewrite article' });
       return res.end();
     }
   } catch (err) {

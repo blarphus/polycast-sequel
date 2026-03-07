@@ -14,9 +14,10 @@ interface WordPopupProps {
   isWordSaved?: (word: string) => boolean;
   isDefinitionSaved?: (word: string, definition: string) => boolean;
   onSaveWord?: (data: SaveWordData) => Promise<{ _created: boolean }>;
+  isNative?: boolean;
 }
 
-export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved, isDefinitionSaved, onSaveWord }: WordPopupProps) {
+export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved, isDefinitionSaved, onSaveWord, isNative: isNativeProp }: WordPopupProps) {
   const [loading, setLoading] = useState(true);
   const [valid, setValid] = useState(true);
   const [translation, setTranslation] = useState('');
@@ -26,6 +27,8 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [saved, setSaved] = useState(false);
   const [duplicate, setDuplicate] = useState(false);
   const [newDefinition, setNewDefinition] = useState(false);
+  const [targetWord, setTargetWord] = useState(word);
+  const [isNative, setIsNative] = useState(isNativeProp ?? false);
   const [senseIndex, setSenseIndex] = useState<number | null>(null);
   const [matchedGloss, setMatchedGloss] = useState<string | null>(null);
   const [lemma, setLemma] = useState<string | null>(null);
@@ -35,10 +38,12 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   useEffect(() => {
     let cancelled = false;
 
-    lookupWord(word, sentence, nativeLang, targetLang)
+    lookupWord(word, sentence, nativeLang, targetLang, isNativeProp)
       .then((res) => {
         if (!cancelled) {
           setValid(res.valid);
+          setTargetWord(res.target_word || word);
+          setIsNative(res.is_native);
           setTranslation(res.translation);
           setDefinition(res.definition);
           setPartOfSpeech(res.part_of_speech);
@@ -47,7 +52,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           setLemma(res.lemma);
           // Use matched_gloss (Wikt gloss) for dedup when available — it matches saved definitions reliably
           const defForDedup = res.matched_gloss ?? res.definition;
-          const dedupWord = res.lemma || word;
+          const dedupWord = res.lemma || res.target_word || word;
           if (isDefinitionSaved?.(dedupWord, defForDedup)) {
             setSaved(true);
           } else if (isWordSaved?.(dedupWord)) {
@@ -88,16 +93,16 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
     top: flipBelow ? top : undefined,
     bottom: flipBelow ? undefined : window.innerHeight - top,
     width: popupWidth,
-    zIndex: 30,
+    zIndex: 9999,
     transformOrigin,
   };
 
   const handleSave = () => {
     if (saved) return;
     setSaved(true);
-    queueSave(lemma || word, async () => {
-      const enriched = await enrichWord(word, sentence, nativeLang, targetLang, senseIndex);
-      const savedWord = enriched.lemma || lemma || word;
+    queueSave(lemma || targetWord, async () => {
+      const enriched = await enrichWord(targetWord, sentence, nativeLang, targetLang, senseIndex);
+      const savedWord = enriched.lemma || lemma || targetWord;
       await onSaveWord!({
         word: savedWord,
         translation: enriched.translation,
@@ -119,7 +124,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   return (
     <div className="word-popup" ref={popupRef} style={style}>
       <div className="word-popup-header">
-        <span className="word-popup-word">{word}</span>
+        {!isNative && <span className="word-popup-word">{targetWord}</span>}
         {onSaveWord && (
           <button
             className={`word-popup-save${saved ? ' saved' : ''}`}
@@ -131,7 +136,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
         )}
         <button className="word-popup-close" onClick={onClose}>&times;</button>
       </div>
-      <div className="word-popup-body">
+      <div className={`word-popup-body${isNative && !loading && !error && valid ? ' word-popup-native' : ''}`}>
         {loading ? (
           <div className="word-popup-loading">
             <div className="loading-spinner" style={{ width: 24, height: 24 }} />
@@ -140,6 +145,8 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           <p className="word-popup-error">{error}</p>
         ) : !valid ? (
           <p className="word-popup-invalid">Not a word</p>
+        ) : isNative ? (
+          <span className="word-popup-native-word">{targetWord}</span>
         ) : (
           <>
             <div className="word-popup-translation-row">
