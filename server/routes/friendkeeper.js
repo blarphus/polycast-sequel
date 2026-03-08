@@ -62,11 +62,11 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
              last_communication_date = EXCLUDED.last_communication_date,
              last_communication_type = EXCLUDED.last_communication_type,
              last_outgoing_contact_date = EXCLUDED.last_outgoing_contact_date,
-             total_message_count = EXCLUDED.total_message_count,
-             total_call_count = EXCLUDED.total_call_count,
-             total_facetime_count = EXCLUDED.total_facetime_count,
-             total_whatsapp_count = EXCLUDED.total_whatsapp_count,
-             total_whatsapp_call_count = EXCLUDED.total_whatsapp_call_count,
+             total_message_count = GREATEST(contacts.total_message_count, EXCLUDED.total_message_count),
+             total_call_count = GREATEST(contacts.total_call_count, EXCLUDED.total_call_count),
+             total_facetime_count = GREATEST(contacts.total_facetime_count, EXCLUDED.total_facetime_count),
+             total_whatsapp_count = GREATEST(contacts.total_whatsapp_count, EXCLUDED.total_whatsapp_count),
+             total_whatsapp_call_count = GREATEST(contacts.total_whatsapp_call_count, EXCLUDED.total_whatsapp_call_count),
              updated_at = NOW()`,
           [
             c.id, c.firstName, c.lastName, c.displayName,
@@ -118,6 +118,101 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
 
       await client.query('COMMIT');
       logger.info(`FriendKeeper sync: ${contactCount} contacts, ${eventCount} events`);
+
+      // Post-sync: deduplicate contacts in the DB by display_name
+      try {
+        await client.query('SET search_path TO friendkeeper');
+        await client.query('BEGIN');
+
+        // Find duplicate display_names (case-insensitive), keep the one with the highest total counts
+        const { rows: dupes } = await client.query(`
+          SELECT LOWER(display_name) AS name_key, array_agg(id ORDER BY
+            (COALESCE(total_message_count,0) + COALESCE(total_call_count,0) +
+             COALESCE(total_facetime_count,0) + COALESCE(total_whatsapp_count,0)) DESC,
+            updated_at DESC NULLS LAST
+          ) AS ids
+          FROM contacts
+          GROUP BY LOWER(display_name)
+          HAVING COUNT(*) > 1
+        `);
+
+        let mergedCount = 0;
+        for (const { name_key, ids } of dupes) {
+          const keepId = ids[0];
+          const removeIds = ids.slice(1);
+
+          // Merge counts (MAX, not SUM — duplicates represent same person, counts overlap)
+          await client.query(`
+            UPDATE contacts SET
+              total_message_count = GREATEST(COALESCE(total_message_count, 0), (
+                SELECT COALESCE(MAX(total_message_count), 0) FROM contacts WHERE id = ANY($2)
+              )),
+              total_call_count = GREATEST(COALESCE(total_call_count, 0), (
+                SELECT COALESCE(MAX(total_call_count), 0) FROM contacts WHERE id = ANY($2)
+              )),
+              total_facetime_count = GREATEST(COALESCE(total_facetime_count, 0), (
+                SELECT COALESCE(MAX(total_facetime_count), 0) FROM contacts WHERE id = ANY($2)
+              )),
+              total_whatsapp_count = GREATEST(COALESCE(total_whatsapp_count, 0), (
+                SELECT COALESCE(MAX(total_whatsapp_count), 0) FROM contacts WHERE id = ANY($2)
+              )),
+              total_whatsapp_call_count = GREATEST(COALESCE(total_whatsapp_call_count, 0), (
+                SELECT COALESCE(MAX(total_whatsapp_call_count), 0) FROM contacts WHERE id = ANY($2)
+              )),
+              last_communication_date = GREATEST(
+                last_communication_date,
+                (SELECT MAX(last_communication_date) FROM contacts WHERE id = ANY($2))
+              ),
+              last_outgoing_contact_date = GREATEST(
+                last_outgoing_contact_date,
+                (SELECT MAX(last_outgoing_contact_date) FROM contacts WHERE id = ANY($2))
+              ),
+              phone_numbers = COALESCE((
+                SELECT jsonb_agg(DISTINCT val) FROM (
+                  SELECT jsonb_array_elements(COALESCE(phone_numbers, '[]'::jsonb)) AS val
+                  FROM contacts WHERE id = $1 OR id = ANY($2)
+                ) sub
+              ), '[]'::jsonb),
+              email_addresses = COALESCE((
+                SELECT jsonb_agg(DISTINCT val) FROM (
+                  SELECT jsonb_array_elements(COALESCE(email_addresses, '[]'::jsonb)) AS val
+                  FROM contacts WHERE id = $1 OR id = ANY($2)
+                ) sub
+              ), '[]'::jsonb),
+              thumbnail_image_data = COALESCE(
+                (SELECT thumbnail_image_data FROM contacts WHERE id = $1),
+                (SELECT thumbnail_image_data FROM contacts WHERE id = ANY($2) AND thumbnail_image_data IS NOT NULL LIMIT 1)
+              )
+            WHERE id = $1
+          `, [keepId, removeIds]);
+
+          // Move events from duplicates to keeper (ignore conflicts from duplicate event IDs)
+          await client.query(`
+            UPDATE communication_events SET contact_id = $1
+            WHERE contact_id = ANY($2) AND id NOT IN (
+              SELECT id FROM communication_events WHERE contact_id = $1
+            )
+          `, [keepId, removeIds]);
+
+          // Delete orphaned events (duplicates that couldn't be moved)
+          await client.query(`
+            DELETE FROM communication_events WHERE contact_id = ANY($1)
+          `, [removeIds]);
+
+          // Delete duplicate contacts
+          await client.query(`DELETE FROM contacts WHERE id = ANY($1)`, [removeIds]);
+          mergedCount += removeIds.length;
+        }
+
+        await client.query('COMMIT');
+        if (mergedCount > 0) {
+          logger.info(`FriendKeeper dedup: merged ${mergedCount} duplicate contacts`);
+        }
+      } catch (dedupErr) {
+        await client.query('ROLLBACK').catch(() => {});
+        logger.error({ err: dedupErr }, 'FriendKeeper dedup failed (non-fatal)');
+      }
+
       res.json({ ok: true, contacts: contactCount, events: eventCount });
     } catch (err) {
       await client.query('ROLLBACK');
@@ -217,11 +312,12 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
       const mergeInto = (a, b) => {
         if (!eventsByContact[a.id]) eventsByContact[a.id] = [];
         eventsByContact[a.id].push(...(eventsByContact[b.id] || []));
-        a.total_message_count = (a.total_message_count || 0) + (b.total_message_count || 0);
-        a.total_call_count = (a.total_call_count || 0) + (b.total_call_count || 0);
-        a.total_facetime_count = (a.total_facetime_count || 0) + (b.total_facetime_count || 0);
-        a.total_whatsapp_count = (a.total_whatsapp_count || 0) + (b.total_whatsapp_count || 0);
-        a.total_whatsapp_call_count = (a.total_whatsapp_call_count || 0) + (b.total_whatsapp_call_count || 0);
+        // Use MAX (not SUM) — duplicates represent the same person, counts overlap
+        a.total_message_count = Math.max(a.total_message_count || 0, b.total_message_count || 0);
+        a.total_call_count = Math.max(a.total_call_count || 0, b.total_call_count || 0);
+        a.total_facetime_count = Math.max(a.total_facetime_count || 0, b.total_facetime_count || 0);
+        a.total_whatsapp_count = Math.max(a.total_whatsapp_count || 0, b.total_whatsapp_count || 0);
+        a.total_whatsapp_call_count = Math.max(a.total_whatsapp_call_count || 0, b.total_whatsapp_call_count || 0);
         if (b.last_communication_date && (!a.last_communication_date || new Date(b.last_communication_date) > new Date(a.last_communication_date))) {
           a.last_communication_date = b.last_communication_date;
           a.last_communication_type = b.last_communication_type;
