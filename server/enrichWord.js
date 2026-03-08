@@ -13,7 +13,8 @@ const API_HEADERS = { 'User-Agent': 'Polycast/1.0' };
 export async function searchPixabay(query, perPage = 3) {
   const pixabayKey = process.env.PIXABAY_API_KEY;
   if (!pixabayKey) {
-    throw new Error('PIXABAY_API_KEY is not configured');
+    console.error('PIXABAY_API_KEY is not configured — skipping Pixabay search');
+    return [];
   }
   const params = new URLSearchParams({
     key: pixabayKey,
@@ -24,7 +25,8 @@ export async function searchPixabay(query, perPage = 3) {
   });
   const res = await fetch(`https://pixabay.com/api/?${params}`);
   if (!res.ok) {
-    throw new Error(`Pixabay search failed with status ${res.status}`);
+    console.error(`Pixabay search failed with status ${res.status}`);
+    return [];
   }
   const data = await res.json();
   return (data.hits || []).map(h => h.webformatURL);
@@ -47,7 +49,8 @@ async function searchWikimedia(query, limit = 5) {
     headers: API_HEADERS,
   });
   if (!res.ok) {
-    throw new Error(`Wikimedia search failed with status ${res.status}`);
+    console.error(`Wikimedia search failed with status ${res.status}`);
+    return [];
   }
   const data = await res.json();
   const pages = data.query?.pages || {};
@@ -72,11 +75,16 @@ export async function searchAllImages(query, perPage = 5) {
 }
 
 export async function fetchWordImage(searchTerm, excludeUrls = null) {
-  const urls = await searchAllImages(searchTerm, 5);
-  if (excludeUrls) {
-    return urls.find(u => !excludeUrls.has(u)) || null;
+  try {
+    const urls = await searchAllImages(searchTerm, 5);
+    if (excludeUrls) {
+      return urls.find(u => !excludeUrls.has(u)) || null;
+    }
+    return urls[0] || null;
+  } catch (err) {
+    logger.error('fetchWordImage failed for "%s": %s', searchTerm, err.message);
+    return null;
   }
-  return urls[0] || null;
 }
 
 function parseFrequency(str) {
@@ -214,7 +222,8 @@ export async function fetchWiktSenses(word, targetLang, nativeLang) {
 
   if (response.status === 404) return [];
   if (!response.ok) {
-    throw new Error(`WiktApi senses request failed with status ${response.status}`);
+    logger.error('WiktApi senses request failed with status %d for word "%s"', response.status, word);
+    return [];
   }
 
   const data = await response.json();
@@ -248,7 +257,8 @@ export async function fetchWiktTranslations(word, nativeLang) {
 
   if (response.status === 404) return [];
   if (!response.ok) {
-    throw new Error(`WiktApi translations request failed with status ${response.status}`);
+    logger.error('WiktApi translations request failed with status %d for word "%s"', response.status, word);
+    return [];
   }
 
   const data = await response.json();
@@ -278,7 +288,8 @@ export async function fetchNativeTranslations(word, nativeLang, targetLang) {
 
   if (response.status === 404) return [];
   if (!response.ok) {
-    throw new Error(`WiktApi native translations request failed with status ${response.status}`);
+    logger.error('WiktApi native translations request failed with status %d for word "%s"', response.status, word);
+    return [];
   }
 
   const data = await response.json();

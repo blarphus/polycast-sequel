@@ -1,7 +1,6 @@
 import {
   callGemini,
   enrichWord,
-  fetchNativeTranslations,
   fetchWiktSenses,
   fetchWiktTranslations,
 } from '../enrichWord.js';
@@ -30,79 +29,32 @@ function ensureGeminiKeys(parsed, keys, context) {
   }
 }
 
-async function chooseNativeTargetWord({ word, sentence, nativeLang, targetLang, candidates }) {
-  if (candidates.length === 0) {
-    throw makeContextError('No target-language translations were found for the selected native word', {
-      word,
-      nativeLang,
-      targetLang,
-    });
+async function translateViaTildeTrick(word, sentence, nativeLang, targetLang) {
+  const markedSentence = sentence.replace(word, `~${word}~`);
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${nativeLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(markedSentence)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Google Translate request failed with status ${res.status}`);
+  }
+  const data = await res.json();
+
+  // Extract translated text from response segments
+  const translated = (data[0] || []).map(seg => seg[0] || '').join('');
+
+  // Look for tilde-wrapped word in the translated output
+  const tildeMatch = translated.match(/~([^~]+)~/);
+  if (tildeMatch) {
+    return tildeMatch[1].trim();
   }
 
-  if (candidates.length === 1) {
-    return {
-      word,
-      target_word: candidates[0].word,
-      valid: true,
-      translation: word,
-      definition: '',
-      part_of_speech: candidates[0].pos || null,
-      sense_index: null,
-      matched_gloss: candidates[0].sense || null,
-      lemma: null,
-      is_native: true,
-    };
+  // Tildes stripped — fall back to translating the bare word
+  const fallbackUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${nativeLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(word)}`;
+  const fallbackRes = await fetch(fallbackUrl);
+  if (!fallbackRes.ok) {
+    throw new Error(`Google Translate fallback request failed with status ${fallbackRes.status}`);
   }
-
-  const candidateLines = candidates
-    .map((candidate, index) => `${index}: [${candidate.pos || 'unknown'}] ${candidate.word} — ${candidate.sense || 'no gloss provided'}`)
-    .join('\n');
-
-  const raw = await callGemini(
-    `The user clicked the ${nativeLang} word "${word}" in this sentence: "${sentence}".
-The learner is studying ${targetLang}.
-
-Choose the target-language translation that best matches the meaning of "${word}" in this sentence.
-
-Candidates:
-${candidateLines}
-
-Return ONLY a JSON object with exactly these keys:
-{"candidate_index":0,"lemma":"..."}
-
-- candidate_index: the integer index of the best candidate
-- lemma: the dictionary/base form of the chosen target-language word, or the chosen word unchanged if already base form`,
-    {
-      thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 120,
-      responseMimeType: 'application/json',
-    },
-  );
-
-  const parsed = parseJson(raw, 'Native-word lookup');
-  ensureGeminiKeys(parsed, ['candidate_index', 'lemma'], 'Native-word lookup');
-
-  const candidateIndex = parsed.candidate_index;
-  if (!Number.isInteger(candidateIndex) || candidateIndex < 0 || candidateIndex >= candidates.length) {
-    throw makeContextError('Native-word lookup returned an invalid candidate index', {
-      candidateIndex,
-      candidateCount: candidates.length,
-    });
-  }
-
-  const chosen = candidates[candidateIndex];
-  return {
-    word,
-    target_word: chosen.word,
-    valid: true,
-    translation: word,
-    definition: '',
-    part_of_speech: chosen.pos || null,
-    sense_index: null,
-    matched_gloss: chosen.sense || null,
-    lemma: parsed.lemma || null,
-    is_native: true,
-  };
+  const fallbackData = await fallbackRes.json();
+  return (fallbackData[0]?.[0]?.[0] || '').trim();
 }
 
 export async function resolveDictionaryLookup({
@@ -116,14 +68,26 @@ export async function resolveDictionaryLookup({
     if (!targetLang) {
       throw new Error('targetLang is required for native-word lookup');
     }
-    const nativeCandidates = await fetchNativeTranslations(word.toLowerCase(), nativeLang, targetLang);
-    return chooseNativeTargetWord({
+    const targetWord = await translateViaTildeTrick(word, sentence, nativeLang, targetLang);
+    if (!targetWord) {
+      throw makeContextError('Google Translate returned no translation for the selected native word', {
+        word,
+        nativeLang,
+        targetLang,
+      });
+    }
+    return {
       word,
-      sentence,
-      nativeLang,
-      targetLang,
-      candidates: nativeCandidates,
-    });
+      target_word: targetWord,
+      valid: true,
+      translation: word,
+      definition: '',
+      part_of_speech: null,
+      sense_index: null,
+      matched_gloss: null,
+      lemma: null,
+      is_native: true,
+    };
   }
 
   const wiktSenses = targetLang

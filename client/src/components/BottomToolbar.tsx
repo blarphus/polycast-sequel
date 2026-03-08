@@ -2,11 +2,14 @@
 // components/BottomToolbar.tsx -- Sidebar / bottom navigation bar
 // ---------------------------------------------------------------------------
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentDashboard } from '../api';
-import { HomeIcon, BookIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, SettingsIcon } from './icons';
+import { HomeIcon, BookIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
+
+const COLLAPSED_KEY = 'sidebar-collapsed';
+const NARROW_QUERY = '(min-width: 481px) and (max-width: 1024px)';
 
 export default function BottomToolbar() {
   const location = useLocation();
@@ -17,6 +20,37 @@ export default function BottomToolbar() {
   const isStudent = user?.account_type === 'student';
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingError, setPendingError] = useState(false);
+
+  const manualPref = useRef(localStorage.getItem(COLLAPSED_KEY));
+  const [collapsed, setCollapsed] = useState(() => {
+    if (manualPref.current !== null) return manualPref.current === 'true';
+    return window.matchMedia(NARROW_QUERY).matches;
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+    return () => document.documentElement.classList.remove('sidebar-collapsed');
+  }, [collapsed]);
+
+  // Auto-collapse/expand based on viewport width when no manual preference is set
+  useEffect(() => {
+    const mql = window.matchMedia(NARROW_QUERY);
+    const handler = (e: MediaQueryListEvent) => {
+      if (manualPref.current !== null) return;
+      setCollapsed(e.matches);
+    };
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      manualPref.current = String(next);
+      localStorage.setItem(COLLAPSED_KEY, String(next));
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!isStudent) return;
@@ -44,9 +78,12 @@ export default function BottomToolbar() {
   const isSettings = location.pathname === '/settings';
 
   return (
-    <nav className="bottom-toolbar">
+    <nav className={`bottom-toolbar${collapsed ? ' collapsed' : ''}`}>
       <div className="sidebar-brand">
         <span className="sidebar-logo">Polycast</span>
+        <button className="sidebar-collapse-btn" onClick={toggleCollapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+          {collapsed ? <ChevronRightIcon size={16} /> : <ChevronLeftIcon size={16} />}
+        </button>
       </div>
       <button
         className={`toolbar-tab toolbar-tab--blue${isHome ? ' active' : ''}`}
