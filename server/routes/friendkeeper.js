@@ -23,6 +23,7 @@ async function withSchema(fn) {
     await client.query('SET search_path TO friendkeeper');
     return await fn(client);
   } finally {
+    await client.query('SET search_path TO public, friendkeeper').catch(() => {});
     client.release();
   }
 }
