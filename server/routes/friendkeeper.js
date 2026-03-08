@@ -68,11 +68,12 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
       }
 
       // Batch insert events (500 at a time)
+      const stripNulls = (s) => s ? s.replace(/\x00/g, '') : null;
       const allEvents = [];
       for (const c of contacts) {
         if (Array.isArray(c.communicationEvents)) {
           for (const ev of c.communicationEvents) {
-            allEvents.push([ev.id, c.id, ev.date, ev.type, ev.isFromMe || false, ev.duration || null, ev.preview || null]);
+            allEvents.push([ev.id, c.id, ev.date, ev.type, ev.isFromMe || false, ev.duration || null, stripNulls(ev.preview)]);
           }
         }
       }
