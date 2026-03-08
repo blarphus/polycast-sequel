@@ -54,15 +54,6 @@ function ProtectedRoute({ children, skipLanguageCheck }: { children: React.React
   }
 
   if (!user) {
-    if (authError) {
-      return (
-        <div className="loading-screen">
-          <div className="auth-error" style={{ maxWidth: '32rem', textAlign: 'center' }}>
-            Session check failed: {authError}
-          </div>
-        </div>
-      );
-    }
     return <Navigate to="/login" replace />;
   }
 
