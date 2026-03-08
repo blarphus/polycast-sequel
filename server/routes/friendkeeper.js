@@ -218,10 +218,54 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
         }
       }
 
+      // Deduplicate contacts by display name, merging events and stats
+      const byName = new Map();
+      for (const c of contacts) {
+        const key = c.display_name;
+        if (byName.has(key)) {
+          const existing = byName.get(key);
+          // Merge: keep the one with more events, combine events from both
+          const existingEvents = eventsByContact[existing.id] || [];
+          const newEvents = eventsByContact[c.id] || [];
+          // Merge events under the primary ID
+          if (!eventsByContact[existing.id]) eventsByContact[existing.id] = [];
+          eventsByContact[existing.id].push(...newEvents);
+          // Merge stats
+          const eS = statsByContact[existing.id] || { msgCount: 0, callCount: 0, ftCount: 0, waCount: 0, waCallCount: 0, lastDate: null, lastType: null, lastOutgoing: null };
+          const nS = statsByContact[c.id] || { msgCount: 0, callCount: 0, ftCount: 0, waCount: 0, waCallCount: 0, lastDate: null, lastType: null, lastOutgoing: null };
+          eS.msgCount += nS.msgCount;
+          eS.callCount += nS.callCount;
+          eS.ftCount += nS.ftCount;
+          eS.waCount += nS.waCount;
+          eS.waCallCount += nS.waCallCount;
+          if (nS.lastDate && (!eS.lastDate || new Date(nS.lastDate) > new Date(eS.lastDate))) {
+            eS.lastDate = nS.lastDate;
+            eS.lastType = nS.lastType;
+          }
+          if (nS.lastOutgoing && (!eS.lastOutgoing || new Date(nS.lastOutgoing) > new Date(eS.lastOutgoing))) {
+            eS.lastOutgoing = nS.lastOutgoing;
+          }
+          statsByContact[existing.id] = eS;
+          // Keep thumbnail if primary doesn't have one
+          if (!existing.thumbnail_image_data && c.thumbnail_image_data) {
+            existing.thumbnail_image_data = c.thumbnail_image_data;
+          }
+          // Merge phone numbers and emails
+          const phones = new Set([...(existing.phone_numbers || []), ...(c.phone_numbers || [])]);
+          existing.phone_numbers = [...phones];
+          const emails = new Set([...(existing.email_addresses || []), ...(c.email_addresses || [])]);
+          existing.email_addresses = [...emails];
+        } else {
+          byName.set(key, c);
+        }
+      }
+
+      const dedupedContacts = [...byName.values()];
+
       return {
         version: 1,
         lastUpdated: new Date().toISOString(),
-        contacts: contacts.map(c => {
+        contacts: dedupedContacts.map(c => {
           const s = statsByContact[c.id] || {};
           return {
             id: c.id,
@@ -249,6 +293,80 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
   } catch (err) {
     logger.error({ err }, 'FriendKeeper export error');
     res.status(500).json({ error: 'Export failed' });
+  }
+});
+
+// GET /api/friendkeeper/categories — get all category assignments
+router.get('/api/friendkeeper/categories', friendkeeperAuth, async (req, res) => {
+  try {
+    const result = await withSchema(async (client) => {
+      const { rows } = await client.query(
+        `SELECT key, value FROM sync_metadata WHERE key = 'categories'`
+      );
+      return rows[0]?.value ? JSON.parse(rows[0].value) : [];
+    });
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, 'FriendKeeper categories get error');
+    res.status(500).json({ error: 'Failed to fetch categories' });
+  }
+});
+
+// PUT /api/friendkeeper/categories — save all category assignments
+router.put('/api/friendkeeper/categories', friendkeeperAuth, async (req, res) => {
+  try {
+    const { assignments } = req.body;
+    if (!Array.isArray(assignments)) {
+      return res.status(400).json({ error: 'assignments array required' });
+    }
+    await withSchema(async (client) => {
+      await client.query(
+        `INSERT INTO sync_metadata (key, value) VALUES ('categories', $1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        [JSON.stringify(assignments)]
+      );
+    });
+    res.json({ ok: true, count: assignments.length });
+  } catch (err) {
+    logger.error({ err }, 'FriendKeeper categories save error');
+    res.status(500).json({ error: 'Failed to save categories' });
+  }
+});
+
+// GET /api/friendkeeper/important — get important contact IDs
+router.get('/api/friendkeeper/important', friendkeeperAuth, async (req, res) => {
+  try {
+    const result = await withSchema(async (client) => {
+      const { rows } = await client.query(
+        `SELECT key, value FROM sync_metadata WHERE key = 'importantContacts'`
+      );
+      return rows[0]?.value ? JSON.parse(rows[0].value) : [];
+    });
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, 'FriendKeeper important get error');
+    res.status(500).json({ error: 'Failed to fetch important contacts' });
+  }
+});
+
+// PUT /api/friendkeeper/important — save important contact IDs
+router.put('/api/friendkeeper/important', friendkeeperAuth, async (req, res) => {
+  try {
+    const { contactIds } = req.body;
+    if (!Array.isArray(contactIds)) {
+      return res.status(400).json({ error: 'contactIds array required' });
+    }
+    await withSchema(async (client) => {
+      await client.query(
+        `INSERT INTO sync_metadata (key, value) VALUES ('importantContacts', $1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        [JSON.stringify(contactIds)]
+      );
+    });
+    res.json({ ok: true, count: contactIds.length });
+  } catch (err) {
+    logger.error({ err }, 'FriendKeeper important save error');
+    res.status(500).json({ error: 'Failed to save important contacts' });
   }
 });
 
