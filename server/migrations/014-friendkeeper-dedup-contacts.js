@@ -105,4 +105,7 @@ export async function up(client) {
   `);
 
   console.log(`  Dedup migration: merged ${mergedCount} duplicate contacts from ${dupes.length} groups`);
+
+  // Reset search_path so the migration runner can write to public.schema_migrations
+  await client.query(`SET search_path TO public`);
 }
