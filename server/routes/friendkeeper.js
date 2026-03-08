@@ -207,44 +207,71 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
         });
       }
 
-      // Deduplicate contacts by display name, merging counts and events
+      // Normalize phone number: strip everything except digits, keep last 10
+      const normalizePhone = (p) => {
+        const digits = (p || '').replace(/\D/g, '');
+        return digits.length >= 10 ? digits.slice(-10) : digits;
+      };
+
+      // Merge helper: merge contact b into contact a
+      const mergeInto = (a, b) => {
+        if (!eventsByContact[a.id]) eventsByContact[a.id] = [];
+        eventsByContact[a.id].push(...(eventsByContact[b.id] || []));
+        a.total_message_count = (a.total_message_count || 0) + (b.total_message_count || 0);
+        a.total_call_count = (a.total_call_count || 0) + (b.total_call_count || 0);
+        a.total_facetime_count = (a.total_facetime_count || 0) + (b.total_facetime_count || 0);
+        a.total_whatsapp_count = (a.total_whatsapp_count || 0) + (b.total_whatsapp_count || 0);
+        a.total_whatsapp_call_count = (a.total_whatsapp_call_count || 0) + (b.total_whatsapp_call_count || 0);
+        if (b.last_communication_date && (!a.last_communication_date || new Date(b.last_communication_date) > new Date(a.last_communication_date))) {
+          a.last_communication_date = b.last_communication_date;
+          a.last_communication_type = b.last_communication_type;
+        }
+        if (b.last_outgoing_contact_date && (!a.last_outgoing_contact_date || new Date(b.last_outgoing_contact_date) > new Date(a.last_outgoing_contact_date))) {
+          a.last_outgoing_contact_date = b.last_outgoing_contact_date;
+        }
+        if (!a.thumbnail_image_data && b.thumbnail_image_data) {
+          a.thumbnail_image_data = b.thumbnail_image_data;
+        }
+        const phones = new Set([...(a.phone_numbers || []), ...(b.phone_numbers || [])]);
+        a.phone_numbers = [...phones];
+        const emails = new Set([...(a.email_addresses || []), ...(b.email_addresses || [])]);
+        a.email_addresses = [...emails];
+      };
+
+      // Deduplicate by display name first
       const byName = new Map();
       for (const c of contacts) {
-        const key = c.display_name;
-        if (byName.has(key)) {
-          const existing = byName.get(key);
-          // Merge events
-          if (!eventsByContact[existing.id]) eventsByContact[existing.id] = [];
-          eventsByContact[existing.id].push(...(eventsByContact[c.id] || []));
-          // Sum counts
-          existing.total_message_count += c.total_message_count || 0;
-          existing.total_call_count += c.total_call_count || 0;
-          existing.total_facetime_count += c.total_facetime_count || 0;
-          existing.total_whatsapp_count += c.total_whatsapp_count || 0;
-          existing.total_whatsapp_call_count += c.total_whatsapp_call_count || 0;
-          // Keep most recent dates
-          if (c.last_communication_date && (!existing.last_communication_date || new Date(c.last_communication_date) > new Date(existing.last_communication_date))) {
-            existing.last_communication_date = c.last_communication_date;
-            existing.last_communication_type = c.last_communication_type;
-          }
-          if (c.last_outgoing_contact_date && (!existing.last_outgoing_contact_date || new Date(c.last_outgoing_contact_date) > new Date(existing.last_outgoing_contact_date))) {
-            existing.last_outgoing_contact_date = c.last_outgoing_contact_date;
-          }
-          // Keep thumbnail if primary doesn't have one
-          if (!existing.thumbnail_image_data && c.thumbnail_image_data) {
-            existing.thumbnail_image_data = c.thumbnail_image_data;
-          }
-          // Merge phone numbers and emails
-          const phones = new Set([...(existing.phone_numbers || []), ...(c.phone_numbers || [])]);
-          existing.phone_numbers = [...phones];
-          const emails = new Set([...(existing.email_addresses || []), ...(c.email_addresses || [])]);
-          existing.email_addresses = [...emails];
+        if (byName.has(c.display_name)) {
+          mergeInto(byName.get(c.display_name), c);
         } else {
-          byName.set(key, c);
+          byName.set(c.display_name, c);
         }
       }
 
-      const dedupedContacts = [...byName.values()];
+      // Then deduplicate by shared phone number
+      let remaining = [...byName.values()];
+      const byPhone = new Map(); // normalized phone -> contact
+      const merged = new Set(); // IDs that got merged away
+      for (const c of remaining) {
+        const phones = (c.phone_numbers || []).map(normalizePhone).filter(p => p.length >= 7);
+        let target = null;
+        for (const p of phones) {
+          if (byPhone.has(p)) {
+            target = byPhone.get(p);
+            break;
+          }
+        }
+        if (target && target.id !== c.id) {
+          mergeInto(target, c);
+          merged.add(c.id);
+          // Register all of c's phones under target
+          for (const p of phones) byPhone.set(p, target);
+        } else {
+          for (const p of phones) byPhone.set(p, c);
+        }
+      }
+
+      const dedupedContacts = remaining.filter(c => !merged.has(c.id));
 
       return {
         version: 1,
