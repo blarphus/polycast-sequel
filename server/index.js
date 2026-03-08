@@ -122,10 +122,10 @@ async function main() {
     try {
       const { rows } = await pool.query("SELECT schemaname, tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY schemaname, tablename");
       const { rows: sp } = await pool.query("SHOW search_path");
-      const { rows: mig } = await pool.query("SELECT version, name FROM schema_migrations ORDER BY version");
-      res.json({ tables: rows, search_path: sp[0], migrations: mig });
+      const { rows: db } = await pool.query("SELECT current_database(), current_user, inet_server_addr()::text");
+      res.json({ tables: rows, search_path: sp[0], db: db[0], db_url_start: (process.env.DATABASE_URL || '').substring(0, 60) });
     } catch (err) {
-      res.json({ error: err.message });
+      res.json({ error: err.message, db_url_start: (process.env.DATABASE_URL || '').substring(0, 60) });
     }
   });
 
