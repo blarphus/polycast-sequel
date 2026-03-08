@@ -511,4 +511,36 @@ router.put('/api/friendkeeper/important', friendkeeperAuth, async (req, res) => 
   }
 });
 
+// POST /api/friendkeeper/sync-request — iOS app requests a sync from the collector
+router.post('/api/friendkeeper/sync-request', friendkeeperAuth, async (req, res) => {
+  try {
+    await withSchema(async (client) => {
+      await client.query(
+        `INSERT INTO sync_metadata (key, value) VALUES ('syncRequested', 'true')
+         ON CONFLICT (key) DO UPDATE SET value = 'true'`
+      );
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, 'FriendKeeper sync-request set error');
+    res.status(500).json({ error: 'Failed to set sync request' });
+  }
+});
+
+// GET /api/friendkeeper/sync-request — collector polls this; returns and clears the flag
+router.get('/api/friendkeeper/sync-request', friendkeeperAuth, async (req, res) => {
+  try {
+    const result = await withSchema(async (client) => {
+      const { rows } = await client.query(
+        `DELETE FROM sync_metadata WHERE key = 'syncRequested' RETURNING value`
+      );
+      return rows.length > 0;
+    });
+    res.json({ requested: result });
+  } catch (err) {
+    logger.error({ err }, 'FriendKeeper sync-request check error');
+    res.status(500).json({ error: 'Failed to check sync request' });
+  }
+});
+
 export default router;
