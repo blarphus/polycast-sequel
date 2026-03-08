@@ -274,33 +274,40 @@ export default function Home() {
           )}
         </div>
 
-        {/* Card 3: To Do (6 cols) — hidden when empty */}
-        {(srsCounts.new + srsCounts.learning + srsCounts.review > 0 || pendingPosts.length > 0) && (
-          <div className="home-dashboard-card home-card--todo">
-            <div className="home-dashboard-label">To do</div>
-            <div className="home-todo-list">
-              {srsCounts.new + srsCounts.learning + srsCounts.review > 0 && (
-                <div className="home-todo-row" onClick={() => navigate('/learn')}>
-                  <div className="home-todo-circle" />
-                  <div className="home-todo-row-text">
-                    <span className="home-todo-title">Review flashcards</span>
+        {/* Card 3: To Do (6 cols) */}
+        <div className="home-dashboard-card home-card--todo">
+          <div className="home-dashboard-label">To do</div>
+          {(() => {
+            const totalDue = srsCounts.new + srsCounts.learning + srsCounts.review;
+            const hasItems = totalDue > 0 || pendingPosts.length > 0;
+            if (!hasItems) {
+              return <p className="home-todo-empty">All caught up!</p>;
+            }
+            return (
+              <div className="home-todo-list">
+                {totalDue > 0 && (
+                  <div className="home-todo-row" onClick={() => navigate('/learn')}>
+                    <div className="home-todo-circle" />
+                    <div className="home-todo-row-text">
+                      <span className="home-todo-title">Review flashcards</span>
+                    </div>
+                    <span className="home-todo-count">{totalDue}</span>
                   </div>
-                  <span className="home-todo-count">{srsCounts.new + srsCounts.learning + srsCounts.review}</span>
-                </div>
-              )}
-              {pendingPosts.map((p) => (
-                <div key={p.id} className="home-todo-row" onClick={() => navigate('/classwork')}>
-                  <div className="home-todo-circle" />
-                  <div className="home-todo-row-text">
-                    <span className="home-todo-title">{p.title}</span>
-                    <span className="home-todo-meta">{p.word_count} {p.word_count === 1 ? 'word' : 'words'}</span>
+                )}
+                {pendingPosts.map((p) => (
+                  <div key={p.id} className="home-todo-row" onClick={() => navigate('/classwork')}>
+                    <div className="home-todo-circle" />
+                    <div className="home-todo-row-text">
+                      <span className="home-todo-title">{p.title}</span>
+                      <span className="home-todo-meta">{p.word_count} {p.word_count === 1 ? 'word' : 'words'}</span>
+                    </div>
+                    <ChevronRightIcon size={16} />
                   </div>
-                  <ChevronRightIcon size={16} />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                ))}
+              </div>
+            );
+          })()}
+        </div>
 
         {/* Card 4: Next Class (3 cols) — hidden when no classes */}
         {nextClass && (
