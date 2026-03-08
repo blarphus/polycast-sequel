@@ -282,9 +282,14 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
          FROM contacts ORDER BY display_name`
       );
 
+      // Only fetch recent events (last 30 days) to avoid OOM on large datasets
+      const eventDays = parseInt(req.query.days) || 30;
       const { rows: events } = await client.query(
         `SELECT id, contact_id, date, type, is_from_me, duration, preview
-         FROM communication_events ORDER BY date DESC`
+         FROM communication_events
+         WHERE date > NOW() - INTERVAL '1 day' * $1
+         ORDER BY date DESC`,
+        [eventDays]
       );
 
       // Group events by contact_id (for timeline only)
