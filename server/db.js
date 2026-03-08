@@ -14,11 +14,11 @@ if (process.env.NODE_ENV === 'production') {
 
 const pool = new Pool(poolConfig);
 
-// Ensure every connection from the pool uses the public schema by default.
-// (Migration 014 set search_path to 'friendkeeper' on a pooled connection,
-// which persisted and caused queries to fail to find public tables.)
+// Ensure every connection uses a consistent search_path.
+// Includes friendkeeper schema so FriendKeeper routes work with unqualified table names,
+// and public for Polycast tables. (Migration 014 previously poisoned the search_path.)
 pool.on('connect', (client) => {
-  client.query('SET search_path TO public');
+  client.query('SET search_path TO public, friendkeeper');
 });
 
 pool.on('error', (err) => {
