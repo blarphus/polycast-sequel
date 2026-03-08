@@ -117,18 +117,6 @@ async function main() {
   const clientDist = path.resolve(__dirname, '..', 'client', 'dist');
   app.use(express.static(clientDist));
 
-  // TEMP: DB diagnostic (remove after debugging)
-  app.get('/api/_dbcheck', async (_req, res) => {
-    try {
-      const { rows } = await pool.query("SELECT schemaname, tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY schemaname, tablename");
-      const { rows: sp } = await pool.query("SHOW search_path");
-      const { rows: db } = await pool.query("SELECT current_database(), current_user, inet_server_addr()::text");
-      res.json({ tables: rows, search_path: sp[0], db: db[0], db_url_start: (process.env.DATABASE_URL || '').substring(0, 60) });
-    } catch (err) {
-      res.json({ error: err.message, db_url_start: (process.env.DATABASE_URL || '').substring(0, 60) });
-    }
-  });
-
   // ------ API routes ------
   app.use(authRoutes);
   app.use(usersRoutes);
