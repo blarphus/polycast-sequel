@@ -43,22 +43,21 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
       let contactCount = 0;
       let eventCount = 0;
 
-      // Upsert contacts (including counts/dates from the collector)
+      // Upsert contacts (including counts/dates from the collector, no thumbnails)
       for (const c of contacts) {
         await client.query(
           `INSERT INTO contacts (id, first_name, last_name, display_name, phone_numbers,
-            email_addresses, thumbnail_image_data,
+            email_addresses,
             last_communication_date, last_communication_type, last_outgoing_contact_date,
             total_message_count, total_call_count, total_facetime_count,
             total_whatsapp_count, total_whatsapp_call_count, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15, NOW())
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, NOW())
            ON CONFLICT (id) DO UPDATE SET
              first_name = EXCLUDED.first_name,
              last_name = EXCLUDED.last_name,
              display_name = EXCLUDED.display_name,
              phone_numbers = EXCLUDED.phone_numbers,
              email_addresses = EXCLUDED.email_addresses,
-             thumbnail_image_data = EXCLUDED.thumbnail_image_data,
              last_communication_date = EXCLUDED.last_communication_date,
              last_communication_type = EXCLUDED.last_communication_type,
              last_outgoing_contact_date = EXCLUDED.last_outgoing_contact_date,
@@ -72,7 +71,6 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
             c.id, c.firstName, c.lastName, c.displayName,
             JSON.stringify(c.phoneNumbers || []),
             JSON.stringify(c.emailAddresses || []),
-            c.thumbnailImageData || null,
             c.lastCommunicationDate || null,
             c.lastCommunicationType || null,
             c.lastOutgoingContactDate || null,
@@ -86,13 +84,12 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
         contactCount++;
       }
 
-      // Batch insert events (500 at a time)
-      const stripNulls = (s) => s ? s.replace(/\x00/g, '') : null;
+      // Batch insert events (500 at a time, no preview column)
       const allEvents = [];
       for (const c of contacts) {
         if (Array.isArray(c.communicationEvents)) {
           for (const ev of c.communicationEvents) {
-            allEvents.push([ev.id, c.id, ev.date, ev.type, ev.isFromMe || false, ev.duration || null, stripNulls(ev.preview)]);
+            allEvents.push([ev.id, c.id, ev.date, ev.type, ev.isFromMe || false, ev.duration || null]);
           }
         }
       }
@@ -103,12 +100,12 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
         const values = [];
         const params = [];
         batch.forEach((row, idx) => {
-          const off = idx * 7;
-          values.push(`($${off+1},$${off+2},$${off+3},$${off+4},$${off+5},$${off+6},$${off+7})`);
+          const off = idx * 6;
+          values.push(`($${off+1},$${off+2},$${off+3},$${off+4},$${off+5},$${off+6})`);
           params.push(...row);
         });
         await client.query(
-          `INSERT INTO communication_events (id, contact_id, date, type, is_from_me, duration, preview)
+          `INSERT INTO communication_events (id, contact_id, date, type, is_from_me, duration)
            VALUES ${values.join(',')}
            ON CONFLICT (id) DO NOTHING`,
           params
@@ -178,11 +175,7 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
                   SELECT jsonb_array_elements(COALESCE(email_addresses, '[]'::jsonb)) AS val
                   FROM contacts WHERE id = $1 OR id = ANY($2)
                 ) sub
-              ), '[]'::jsonb),
-              thumbnail_image_data = COALESCE(
-                (SELECT thumbnail_image_data FROM contacts WHERE id = $1),
-                (SELECT thumbnail_image_data FROM contacts WHERE id = ANY($2) AND thumbnail_image_data IS NOT NULL LIMIT 1)
-              )
+              ), '[]'::jsonb)
             WHERE id = $1
           `, [keepId, removeIds]);
 
@@ -232,7 +225,7 @@ router.get('/api/friendkeeper/contacts', friendkeeperAuth, async (req, res) => {
     const result = await withSchema(async (client) => {
       const { rows } = await client.query(
         `SELECT id, first_name, last_name, display_name, phone_numbers, email_addresses,
-                thumbnail_image_data, last_communication_date, last_communication_type,
+                last_communication_date, last_communication_type,
                 last_outgoing_contact_date, total_message_count, total_call_count,
                 total_facetime_count, total_whatsapp_count, total_whatsapp_call_count,
                 updated_at
@@ -253,7 +246,7 @@ router.get('/api/friendkeeper/contacts/:id/events', friendkeeperAuth, async (req
     const limit = Math.min(parseInt(req.query.limit) || 50, 200);
     const result = await withSchema(async (client) => {
       const { rows } = await client.query(
-        `SELECT id, contact_id, date, type, is_from_me, duration, preview, created_at
+        `SELECT id, contact_id, date, type, is_from_me, duration, created_at
          FROM communication_events
          WHERE contact_id = $1
          ORDER BY date DESC
@@ -276,7 +269,7 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
     const data = await withSchema(async (client) => {
       const { rows: contacts } = await client.query(
         `SELECT id, first_name, last_name, display_name, phone_numbers, email_addresses,
-                thumbnail_image_data, last_communication_date, last_communication_type,
+                last_communication_date, last_communication_type,
                 last_outgoing_contact_date, total_message_count, total_call_count,
                 total_facetime_count, total_whatsapp_count, total_whatsapp_call_count
          FROM contacts ORDER BY display_name`
@@ -285,7 +278,7 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
       // Only fetch recent events (last 30 days) to avoid OOM on large datasets
       const eventDays = parseInt(req.query.days) || 30;
       const { rows: events } = await client.query(
-        `SELECT id, contact_id, date, type, is_from_me, duration, preview
+        `SELECT id, contact_id, date, type, is_from_me, duration
          FROM communication_events
          WHERE date > NOW() - INTERVAL '1 day' * $1
          ORDER BY date DESC`,
@@ -302,7 +295,6 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
           type: ev.type,
           isFromMe: ev.is_from_me,
           duration: ev.duration,
-          preview: ev.preview,
           contactIdentifier: ev.contact_id,
         });
       }
@@ -329,9 +321,6 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
         }
         if (b.last_outgoing_contact_date && (!a.last_outgoing_contact_date || new Date(b.last_outgoing_contact_date) > new Date(a.last_outgoing_contact_date))) {
           a.last_outgoing_contact_date = b.last_outgoing_contact_date;
-        }
-        if (!a.thumbnail_image_data && b.thumbnail_image_data) {
-          a.thumbnail_image_data = b.thumbnail_image_data;
         }
         const phones = new Set([...(a.phone_numbers || []), ...(b.phone_numbers || [])]);
         a.phone_numbers = [...phones];
@@ -423,7 +412,6 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
           displayName: c.display_name,
           phoneNumbers: c.phone_numbers || [],
           emailAddresses: c.email_addresses || [],
-          thumbnailImageData: c.thumbnail_image_data,
           lastCommunicationDate: c.last_communication_date,
           lastCommunicationType: c.last_communication_type,
           lastOutgoingContactDate: c.last_outgoing_contact_date,
