@@ -273,6 +273,45 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
 
       const dedupedContacts = remaining.filter(c => !merged.has(c.id));
 
+      // Recompute counts/dates from merged events for accuracy
+      for (const c of dedupedContacts) {
+        const cEvents = eventsByContact[c.id] || [];
+        if (cEvents.length === 0) continue;
+
+        // Recompute counts from events
+        let msgCount = 0, callCount = 0, ftCount = 0, waCount = 0, waCallCount = 0;
+        for (const ev of cEvents) {
+          switch (ev.type) {
+            case 'iMessage/SMS': msgCount++; break;
+            case 'Phone Call': callCount++; break;
+            case 'FaceTime': ftCount++; break;
+            case 'WhatsApp': waCount++; break;
+            case 'WhatsApp Call': waCallCount++; break;
+          }
+        }
+        // Use the larger of DB count vs event count (events are trimmed, DB has full counts)
+        c.total_message_count = Math.max(c.total_message_count || 0, msgCount);
+        c.total_call_count = Math.max(c.total_call_count || 0, callCount);
+        c.total_facetime_count = Math.max(c.total_facetime_count || 0, ftCount);
+        c.total_whatsapp_count = Math.max(c.total_whatsapp_count || 0, waCount);
+        c.total_whatsapp_call_count = Math.max(c.total_whatsapp_call_count || 0, waCallCount);
+
+        // Recompute dates from events if missing
+        if (!c.last_communication_date && cEvents.length > 0) {
+          const sorted = [...cEvents].sort((a, b) => new Date(b.date) - new Date(a.date));
+          c.last_communication_date = sorted[0].date;
+          c.last_communication_type = sorted[0].type;
+        }
+        if (!c.last_outgoing_contact_date) {
+          const outgoing = cEvents
+            .filter(ev => ev.isFromMe)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+          if (outgoing.length > 0) {
+            c.last_outgoing_contact_date = outgoing[0].date;
+          }
+        }
+      }
+
       return {
         version: 1,
         lastUpdated: new Date().toISOString(),
