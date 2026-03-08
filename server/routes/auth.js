@@ -61,12 +61,11 @@ router.post('/api/signup', signupLimiter, validate({ body: signupSchema }), asyn
     const result = await pool.query(
       `INSERT INTO users (username, password_hash, display_name)
        VALUES ($1, $2, $3)
-       RETURNING id, username, display_name, created_at, native_language, target_language, account_type, cefr_levels`,
+       RETURNING id, username, display_name, created_at, native_language, target_language, account_type, cefr_level`,
       [username, passwordHash, display_name || null],
     );
 
     const user = result.rows[0];
-    const cefr_level = (user.cefr_levels && user.target_language) ? (user.cefr_levels[user.target_language] || null) : null;
     const token = signToken(user.id);
 
     res.cookie('token', token, COOKIE_OPTIONS);
@@ -80,7 +79,7 @@ router.post('/api/signup', signupLimiter, validate({ body: signupSchema }), asyn
       native_language: user.native_language,
       target_language: user.target_language,
       account_type: user.account_type,
-      cefr_level,
+      cefr_level: user.cefr_level ?? null,
     });
   } catch (err) {
     // Unique constraint violation on username
@@ -102,7 +101,7 @@ router.post('/api/login', loginLimiter, validate({ body: loginSchema }), async (
     const { username, password } = req.body;
 
     const result = await pool.query(
-      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, account_type, cefr_levels FROM users WHERE LOWER(username::text) = LOWER($1::text)',
+      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, account_type, cefr_level FROM users WHERE LOWER(username::text) = LOWER($1::text)',
       [username],
     );
 
@@ -118,7 +117,6 @@ router.post('/api/login', loginLimiter, validate({ body: loginSchema }), async (
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    const cefr_level = (user.cefr_levels && user.target_language) ? (user.cefr_levels[user.target_language] || null) : null;
     const token = signToken(user.id);
 
     res.cookie('token', token, COOKIE_OPTIONS);
@@ -132,7 +130,7 @@ router.post('/api/login', loginLimiter, validate({ body: loginSchema }), async (
       native_language: user.native_language,
       target_language: user.target_language,
       account_type: user.account_type,
-      cefr_level,
+      cefr_level: user.cefr_level ?? null,
     });
   } catch (err) {
     req.log.error({ err }, 'Login error');
@@ -157,7 +155,7 @@ router.post('/api/logout', (_req, res) => {
 router.get('/api/me', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_levels FROM users WHERE id = $1',
+      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_level FROM users WHERE id = $1',
       [req.userId],
     );
 
@@ -166,8 +164,6 @@ router.get('/api/me', authMiddleware, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    const cefr_level = (user.cefr_levels && user.target_language) ? (user.cefr_levels[user.target_language] || null) : null;
 
     return res.json({
       id: user.id,
@@ -178,7 +174,7 @@ router.get('/api/me', authMiddleware, async (req, res) => {
       target_language: user.target_language,
       daily_new_limit: user.daily_new_limit,
       account_type: user.account_type,
-      cefr_level,
+      cefr_level: user.cefr_level ?? null,
     });
   } catch (err) {
     req.log.error({ err }, 'Get current user error');
@@ -210,17 +206,15 @@ router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema
       idx++;
     }
 
-    // Store cefr_level into per-language cefr_levels JSONB map
-    const effectiveTarget = (target_language || null);
-    if (cefr_level !== undefined && effectiveTarget) {
-      sets.push(`cefr_levels = jsonb_set(COALESCE(cefr_levels, '{}'), ARRAY[$${idx}], $${idx + 1}::jsonb)`);
-      params.push(effectiveTarget, JSON.stringify(cefr_level));
-      idx += 2;
+    if (cefr_level !== undefined) {
+      sets.push(`cefr_level = $${idx}`);
+      params.push(cefr_level);
+      idx++;
     }
 
     const result = await pool.query(
       `UPDATE users SET ${sets.join(', ')} WHERE id = $3
-       RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_levels`,
+       RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_level`,
       params,
     );
 
@@ -229,8 +223,6 @@ router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    const derivedCefrLevel = (user.cefr_levels && user.target_language) ? (user.cefr_levels[user.target_language] || null) : null;
 
     return res.json({
       id: user.id,
@@ -241,7 +233,7 @@ router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema
       target_language: user.target_language,
       daily_new_limit: user.daily_new_limit,
       account_type: user.account_type,
-      cefr_level: derivedCefrLevel,
+      cefr_level: user.cefr_level ?? null,
     });
   } catch (err) {
     req.log.error({ err }, 'Update settings error');
