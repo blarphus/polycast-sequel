@@ -164,14 +164,13 @@ router.get('/api/friendkeeper/contacts/:id/events', friendkeeperAuth, async (req
 });
 
 // GET /api/friendkeeper/export — full ContactsCache JSON (same shape the Swift app parses)
+// Computes counts and dates from stored events for accuracy
 router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
   try {
     const data = await withSchema(async (client) => {
       const { rows: contacts } = await client.query(
         `SELECT id, first_name, last_name, display_name, phone_numbers, email_addresses,
-                thumbnail_image_data, last_communication_date, last_communication_type,
-                last_outgoing_contact_date, total_message_count, total_call_count,
-                total_facetime_count, total_whatsapp_count, total_whatsapp_call_count
+                thumbnail_image_data
          FROM contacts ORDER BY display_name`
       );
 
@@ -180,8 +179,9 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
          FROM communication_events ORDER BY date DESC`
       );
 
-      // Group events by contact_id
+      // Group events by contact_id and compute stats
       const eventsByContact = {};
+      const statsByContact = {};
       for (const ev of events) {
         if (!eventsByContact[ev.contact_id]) eventsByContact[ev.contact_id] = [];
         eventsByContact[ev.contact_id].push({
@@ -193,29 +193,63 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
           preview: ev.preview,
           contactIdentifier: ev.contact_id,
         });
+
+        if (!statsByContact[ev.contact_id]) {
+          statsByContact[ev.contact_id] = {
+            msgCount: 0, callCount: 0, ftCount: 0, waCount: 0, waCallCount: 0,
+            lastDate: null, lastType: null, lastOutgoing: null,
+          };
+        }
+        const s = statsByContact[ev.contact_id];
+        const evDate = new Date(ev.date);
+
+        // Type counts
+        if (ev.type === 'iMessage/SMS') s.msgCount++;
+        else if (ev.type === 'Phone Call') s.callCount++;
+        else if (ev.type === 'FaceTime') s.ftCount++;
+        else if (ev.type === 'WhatsApp') s.waCount++;
+        else if (ev.type === 'WhatsApp Call') s.waCallCount++;
+
+        // Last communication (events already sorted desc, so first seen is latest)
+        if (!s.lastDate) {
+          s.lastDate = ev.date;
+          s.lastType = ev.type;
+        }
+
+        // Last outgoing: messages count, calls count if duration >= 60
+        if (!s.lastOutgoing && ev.is_from_me) {
+          if (ev.type === 'iMessage/SMS' || ev.type === 'WhatsApp') {
+            s.lastOutgoing = ev.date;
+          } else if (ev.duration && ev.duration >= 60) {
+            s.lastOutgoing = ev.date;
+          }
+        }
       }
 
       return {
         version: 1,
         lastUpdated: new Date().toISOString(),
-        contacts: contacts.map(c => ({
-          id: c.id,
-          firstName: c.first_name,
-          lastName: c.last_name,
-          displayName: c.display_name,
-          phoneNumbers: c.phone_numbers || [],
-          emailAddresses: c.email_addresses || [],
-          thumbnailImageData: c.thumbnail_image_data,
-          lastCommunicationDate: c.last_communication_date,
-          lastCommunicationType: c.last_communication_type,
-          lastOutgoingContactDate: c.last_outgoing_contact_date,
-          totalMessageCount: c.total_message_count,
-          totalCallCount: c.total_call_count,
-          totalFaceTimeCount: c.total_facetime_count,
-          totalWhatsAppCount: c.total_whatsapp_count,
-          totalWhatsAppCallCount: c.total_whatsapp_call_count,
-          communicationEvents: eventsByContact[c.id] || [],
-        })),
+        contacts: contacts.map(c => {
+          const s = statsByContact[c.id] || {};
+          return {
+            id: c.id,
+            firstName: c.first_name,
+            lastName: c.last_name,
+            displayName: c.display_name,
+            phoneNumbers: c.phone_numbers || [],
+            emailAddresses: c.email_addresses || [],
+            thumbnailImageData: c.thumbnail_image_data,
+            lastCommunicationDate: s.lastDate || null,
+            lastCommunicationType: s.lastType || null,
+            lastOutgoingContactDate: s.lastOutgoing || null,
+            totalMessageCount: s.msgCount || 0,
+            totalCallCount: s.callCount || 0,
+            totalFaceTimeCount: s.ftCount || 0,
+            totalWhatsAppCount: s.waCount || 0,
+            totalWhatsAppCallCount: s.waCallCount || 0,
+            communicationEvents: eventsByContact[c.id] || [],
+          };
+        }),
       };
     });
 
