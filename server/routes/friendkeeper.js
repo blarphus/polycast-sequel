@@ -58,9 +58,14 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
              display_name = EXCLUDED.display_name,
              phone_numbers = EXCLUDED.phone_numbers,
              email_addresses = EXCLUDED.email_addresses,
-             last_communication_date = EXCLUDED.last_communication_date,
-             last_communication_type = EXCLUDED.last_communication_type,
-             last_outgoing_contact_date = EXCLUDED.last_outgoing_contact_date,
+             last_communication_date = GREATEST(contacts.last_communication_date, EXCLUDED.last_communication_date),
+             last_communication_type = CASE
+               WHEN EXCLUDED.last_communication_date IS NOT NULL
+                 AND (contacts.last_communication_date IS NULL OR EXCLUDED.last_communication_date >= contacts.last_communication_date)
+               THEN EXCLUDED.last_communication_type
+               ELSE contacts.last_communication_type
+             END,
+             last_outgoing_contact_date = GREATEST(contacts.last_outgoing_contact_date, EXCLUDED.last_outgoing_contact_date),
              total_message_count = GREATEST(contacts.total_message_count, EXCLUDED.total_message_count),
              total_call_count = GREATEST(contacts.total_call_count, EXCLUDED.total_call_count),
              total_facetime_count = GREATEST(contacts.total_facetime_count, EXCLUDED.total_facetime_count),
