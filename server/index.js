@@ -33,6 +33,7 @@ import practiceRoutes from './routes/practice.js';
 import translateRoutes from './routes/translate.js';
 import voicePracticeRoutes from './routes/voicePractice.js';
 import homeRoutes from './routes/home.js';
+import friendkeeperRoutes from './routes/friendkeeper.js';
 import { startTranscriptWorker, backfillCefrLevels } from './services/videoTranscriptQueue.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -136,6 +137,7 @@ async function main() {
   app.use(practiceRoutes);
   app.use(voicePracticeRoutes);
   app.use(translateRoutes);
+  app.use(friendkeeperRoutes);
 
   // ------ SPA fallback ------
   app.get('*', (req, res) => {

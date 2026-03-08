@@ -62,7 +62,7 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
       return res.status(400).json({ error: `Unsupported language: ${lang}` });
     }
 
-    const cacheKey = `news7:${lang}`;
+    const cacheKey = `news8:${lang}`;
 
     if (!redisClient.isReady) {
       throw new Error('Redis is not ready for news cache access');
@@ -93,9 +93,16 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
       }),
     );
 
-    // Merge all items, keep only those with images, sort by pubDate descending, take first 10
+    // Merge all items, keep only those with images, drop spam, sort by pubDate descending
+    const SPAM_PATTERNS = [
+      /lotof[aá]cil/i,
+      /mega.?sena/i,
+      /quina\s+de/i,
+      /resultado.*loterias/i,
+    ];
     const allItems = feedResults.flat()
       .filter((item) => item.image)
+      .filter((item) => !SPAM_PATTERNS.some((re) => re.test(item.title)))
       .sort((a, b) => {
         const da = a.pubDate ? new Date(a.pubDate).getTime() : 0;
         const db = b.pubDate ? new Date(b.pubDate).getTime() : 0;
@@ -109,12 +116,13 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
     const items = allItems.slice(0, 10);
 
     const extractedItems = await Promise.all(
-      items.map((item, index) => extractAndCacheRawArticle({
-        req,
-        lang,
-        index,
-        link: item.link,
-      })),
+      items.map((item, index) =>
+        extractAndCacheRawArticle({ req, lang, index, link: item.link })
+          .catch((err) => {
+            req.log.error('Article extraction failed for %s: %s', item.link, err.message);
+            return '';
+          }),
+      ),
     );
 
     // Build response with offline CEFR estimation (no Gemini)
@@ -126,7 +134,7 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
       source: item.source,
       link: item.link,
       image: item.image,
-      preview: buildArticlePreview(extractedItems[index]?.rawBody || '') || item.preview,
+      preview: buildArticlePreview(extractedItems[index] || '') || item.preview,
     }));
 
     if (result.length > 0) {
@@ -287,7 +295,7 @@ async function getCachedNewsContext(req, lang, index) {
     return { error: 'Redis is not ready for news lookups.' };
   }
 
-  const newsListJson = await redisClient.get(`news7:${lang}`);
+  const newsListJson = await redisClient.get(`news8:${lang}`);
 
   if (!newsListJson) {
     return { error: 'News list not cached. Reload the news feed first.' };

@@ -26,6 +26,8 @@ services:
         sync: false
       - key: CF_TRANSCRIPT_WORKER_SECRET
         sync: false
+      - key: FRIENDKEEPER_API_KEY
+        sync: false
 
 databases:
   - name: polycast-sequel-db

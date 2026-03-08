@@ -1,0 +1,229 @@
+import { Router } from 'express';
+import pool from '../db.js';
+import logger from '../logger.js';
+
+const router = Router();
+
+// Bearer token auth middleware
+function friendkeeperAuth(req, res, next) {
+  const apiKey = process.env.FRIENDKEEPER_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: 'FriendKeeper API not configured' });
+
+  const auth = req.headers.authorization;
+  if (!auth || auth !== `Bearer ${apiKey}`) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+}
+
+// Helper: run a callback within the friendkeeper schema
+async function withSchema(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('SET search_path TO friendkeeper');
+    return await fn(client);
+  } finally {
+    client.release();
+  }
+}
+
+// POST /api/friendkeeper/sync — bulk upsert contacts + events
+router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
+  try {
+    const { contacts } = req.body;
+    if (!Array.isArray(contacts)) {
+      return res.status(400).json({ error: 'contacts array required' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('SET search_path TO friendkeeper');
+      await client.query('BEGIN');
+
+      let contactCount = 0;
+      let eventCount = 0;
+
+      for (const c of contacts) {
+        await client.query(
+          `INSERT INTO contacts (id, first_name, last_name, display_name, phone_numbers,
+            email_addresses, thumbnail_image_data, last_communication_date,
+            last_communication_type, last_outgoing_contact_date,
+            total_message_count, total_call_count, total_facetime_count,
+            total_whatsapp_count, total_whatsapp_call_count, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15, NOW())
+           ON CONFLICT (id) DO UPDATE SET
+             first_name = EXCLUDED.first_name,
+             last_name = EXCLUDED.last_name,
+             display_name = EXCLUDED.display_name,
+             phone_numbers = EXCLUDED.phone_numbers,
+             email_addresses = EXCLUDED.email_addresses,
+             thumbnail_image_data = EXCLUDED.thumbnail_image_data,
+             last_communication_date = EXCLUDED.last_communication_date,
+             last_communication_type = EXCLUDED.last_communication_type,
+             last_outgoing_contact_date = EXCLUDED.last_outgoing_contact_date,
+             total_message_count = EXCLUDED.total_message_count,
+             total_call_count = EXCLUDED.total_call_count,
+             total_facetime_count = EXCLUDED.total_facetime_count,
+             total_whatsapp_count = EXCLUDED.total_whatsapp_count,
+             total_whatsapp_call_count = EXCLUDED.total_whatsapp_call_count,
+             updated_at = NOW()`,
+          [
+            c.id, c.firstName, c.lastName, c.displayName,
+            JSON.stringify(c.phoneNumbers || []),
+            JSON.stringify(c.emailAddresses || []),
+            c.thumbnailImageData || null,
+            c.lastCommunicationDate || null,
+            c.lastCommunicationType || null,
+            c.lastOutgoingContactDate || null,
+            c.totalMessageCount || 0,
+            c.totalCallCount || 0,
+            c.totalFaceTimeCount || 0,
+            c.totalWhatsAppCount || 0,
+            c.totalWhatsAppCallCount || 0,
+          ]
+        );
+        contactCount++;
+
+        if (Array.isArray(c.communicationEvents)) {
+          for (const ev of c.communicationEvents) {
+            await client.query(
+              `INSERT INTO communication_events (id, contact_id, date, type, is_from_me, duration, preview)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               ON CONFLICT (id) DO NOTHING`,
+              [
+                ev.id,
+                c.id,
+                ev.date,
+                ev.type,
+                ev.isFromMe || false,
+                ev.duration || null,
+                ev.preview || null,
+              ]
+            );
+            eventCount++;
+          }
+        }
+      }
+
+      await client.query('COMMIT');
+      logger.info(`FriendKeeper sync: ${contactCount} contacts, ${eventCount} events`);
+      res.json({ ok: true, contacts: contactCount, events: eventCount });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    logger.error({ err }, 'FriendKeeper sync error');
+    res.status(500).json({ error: 'Sync failed' });
+  }
+});
+
+// GET /api/friendkeeper/contacts — list all contacts (no events)
+router.get('/api/friendkeeper/contacts', friendkeeperAuth, async (req, res) => {
+  try {
+    const result = await withSchema(async (client) => {
+      const { rows } = await client.query(
+        `SELECT id, first_name, last_name, display_name, phone_numbers, email_addresses,
+                thumbnail_image_data, last_communication_date, last_communication_type,
+                last_outgoing_contact_date, total_message_count, total_call_count,
+                total_facetime_count, total_whatsapp_count, total_whatsapp_call_count,
+                updated_at
+         FROM contacts ORDER BY display_name`
+      );
+      return rows;
+    });
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, 'FriendKeeper contacts list error');
+    res.status(500).json({ error: 'Failed to fetch contacts' });
+  }
+});
+
+// GET /api/friendkeeper/contacts/:id/events — recent events for a contact
+router.get('/api/friendkeeper/contacts/:id/events', friendkeeperAuth, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const result = await withSchema(async (client) => {
+      const { rows } = await client.query(
+        `SELECT id, contact_id, date, type, is_from_me, duration, preview, created_at
+         FROM communication_events
+         WHERE contact_id = $1
+         ORDER BY date DESC
+         LIMIT $2`,
+        [req.params.id, limit]
+      );
+      return rows;
+    });
+    res.json(result);
+  } catch (err) {
+    logger.error({ err }, 'FriendKeeper events list error');
+    res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+// GET /api/friendkeeper/export — full ContactsCache JSON (same shape the Swift app parses)
+router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
+  try {
+    const data = await withSchema(async (client) => {
+      const { rows: contacts } = await client.query(
+        `SELECT id, first_name, last_name, display_name, phone_numbers, email_addresses,
+                thumbnail_image_data, last_communication_date, last_communication_type,
+                last_outgoing_contact_date, total_message_count, total_call_count,
+                total_facetime_count, total_whatsapp_count, total_whatsapp_call_count
+         FROM contacts ORDER BY display_name`
+      );
+
+      const { rows: events } = await client.query(
+        `SELECT id, contact_id, date, type, is_from_me, duration, preview
+         FROM communication_events ORDER BY date DESC`
+      );
+
+      // Group events by contact_id
+      const eventsByContact = {};
+      for (const ev of events) {
+        if (!eventsByContact[ev.contact_id]) eventsByContact[ev.contact_id] = [];
+        eventsByContact[ev.contact_id].push({
+          id: ev.id,
+          date: ev.date,
+          type: ev.type,
+          isFromMe: ev.is_from_me,
+          duration: ev.duration,
+          preview: ev.preview,
+          contactIdentifier: ev.contact_id,
+        });
+      }
+
+      return {
+        version: 1,
+        lastUpdated: new Date().toISOString(),
+        contacts: contacts.map(c => ({
+          id: c.id,
+          firstName: c.first_name,
+          lastName: c.last_name,
+          displayName: c.display_name,
+          phoneNumbers: c.phone_numbers || [],
+          emailAddresses: c.email_addresses || [],
+          thumbnailImageData: c.thumbnail_image_data,
+          lastCommunicationDate: c.last_communication_date,
+          lastCommunicationType: c.last_communication_type,
+          lastOutgoingContactDate: c.last_outgoing_contact_date,
+          totalMessageCount: c.total_message_count,
+          totalCallCount: c.total_call_count,
+          totalFaceTimeCount: c.total_facetime_count,
+          totalWhatsAppCount: c.total_whatsapp_count,
+          totalWhatsAppCallCount: c.total_whatsapp_call_count,
+          communicationEvents: eventsByContact[c.id] || [],
+        })),
+      };
+    });
+
+    res.json(data);
+  } catch (err) {
+    logger.error({ err }, 'FriendKeeper export error');
+    res.status(500).json({ error: 'Export failed' });
+  }
+});
+
+export default router;
