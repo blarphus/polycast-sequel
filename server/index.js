@@ -94,7 +94,7 @@ async function main() {
     credentials: true,
   }));
 
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({ limit: '10mb' }));
   app.use(cookieParser());
 
   // ------ Structured request logging ------

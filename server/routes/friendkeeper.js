@@ -43,14 +43,12 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
       let contactCount = 0;
       let eventCount = 0;
 
+      // Upsert contacts
       for (const c of contacts) {
         await client.query(
           `INSERT INTO contacts (id, first_name, last_name, display_name, phone_numbers,
-            email_addresses, thumbnail_image_data, last_communication_date,
-            last_communication_type, last_outgoing_contact_date,
-            total_message_count, total_call_count, total_facetime_count,
-            total_whatsapp_count, total_whatsapp_call_count, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15, NOW())
+            email_addresses, thumbnail_image_data, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7, NOW())
            ON CONFLICT (id) DO UPDATE SET
              first_name = EXCLUDED.first_name,
              last_name = EXCLUDED.last_name,
@@ -58,52 +56,45 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
              phone_numbers = EXCLUDED.phone_numbers,
              email_addresses = EXCLUDED.email_addresses,
              thumbnail_image_data = EXCLUDED.thumbnail_image_data,
-             last_communication_date = EXCLUDED.last_communication_date,
-             last_communication_type = EXCLUDED.last_communication_type,
-             last_outgoing_contact_date = EXCLUDED.last_outgoing_contact_date,
-             total_message_count = EXCLUDED.total_message_count,
-             total_call_count = EXCLUDED.total_call_count,
-             total_facetime_count = EXCLUDED.total_facetime_count,
-             total_whatsapp_count = EXCLUDED.total_whatsapp_count,
-             total_whatsapp_call_count = EXCLUDED.total_whatsapp_call_count,
              updated_at = NOW()`,
           [
             c.id, c.firstName, c.lastName, c.displayName,
             JSON.stringify(c.phoneNumbers || []),
             JSON.stringify(c.emailAddresses || []),
             c.thumbnailImageData || null,
-            c.lastCommunicationDate || null,
-            c.lastCommunicationType || null,
-            c.lastOutgoingContactDate || null,
-            c.totalMessageCount || 0,
-            c.totalCallCount || 0,
-            c.totalFaceTimeCount || 0,
-            c.totalWhatsAppCount || 0,
-            c.totalWhatsAppCallCount || 0,
           ]
         );
         contactCount++;
+      }
 
+      // Batch insert events (500 at a time)
+      const allEvents = [];
+      for (const c of contacts) {
         if (Array.isArray(c.communicationEvents)) {
           for (const ev of c.communicationEvents) {
-            await client.query(
-              `INSERT INTO communication_events (id, contact_id, date, type, is_from_me, duration, preview)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
-               ON CONFLICT (id) DO NOTHING`,
-              [
-                ev.id,
-                c.id,
-                ev.date,
-                ev.type,
-                ev.isFromMe || false,
-                ev.duration || null,
-                ev.preview || null,
-              ]
-            );
-            eventCount++;
+            allEvents.push([ev.id, c.id, ev.date, ev.type, ev.isFromMe || false, ev.duration || null, ev.preview || null]);
           }
         }
       }
+
+      const BATCH = 500;
+      for (let i = 0; i < allEvents.length; i += BATCH) {
+        const batch = allEvents.slice(i, i + BATCH);
+        const values = [];
+        const params = [];
+        batch.forEach((row, idx) => {
+          const off = idx * 7;
+          values.push(`($${off+1},$${off+2},$${off+3},$${off+4},$${off+5},$${off+6},$${off+7})`);
+          params.push(...row);
+        });
+        await client.query(
+          `INSERT INTO communication_events (id, contact_id, date, type, is_from_me, duration, preview)
+           VALUES ${values.join(',')}
+           ON CONFLICT (id) DO NOTHING`,
+          params
+        );
+      }
+      eventCount = allEvents.length;
 
       await client.query('COMMIT');
       logger.info(`FriendKeeper sync: ${contactCount} contacts, ${eventCount} events`);
