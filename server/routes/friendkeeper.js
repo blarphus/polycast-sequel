@@ -43,12 +43,15 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
       let contactCount = 0;
       let eventCount = 0;
 
-      // Upsert contacts
+      // Upsert contacts (including counts/dates from the collector)
       for (const c of contacts) {
         await client.query(
           `INSERT INTO contacts (id, first_name, last_name, display_name, phone_numbers,
-            email_addresses, thumbnail_image_data, updated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7, NOW())
+            email_addresses, thumbnail_image_data,
+            last_communication_date, last_communication_type, last_outgoing_contact_date,
+            total_message_count, total_call_count, total_facetime_count,
+            total_whatsapp_count, total_whatsapp_call_count, updated_at)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15, NOW())
            ON CONFLICT (id) DO UPDATE SET
              first_name = EXCLUDED.first_name,
              last_name = EXCLUDED.last_name,
@@ -56,12 +59,28 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
              phone_numbers = EXCLUDED.phone_numbers,
              email_addresses = EXCLUDED.email_addresses,
              thumbnail_image_data = EXCLUDED.thumbnail_image_data,
+             last_communication_date = EXCLUDED.last_communication_date,
+             last_communication_type = EXCLUDED.last_communication_type,
+             last_outgoing_contact_date = EXCLUDED.last_outgoing_contact_date,
+             total_message_count = EXCLUDED.total_message_count,
+             total_call_count = EXCLUDED.total_call_count,
+             total_facetime_count = EXCLUDED.total_facetime_count,
+             total_whatsapp_count = EXCLUDED.total_whatsapp_count,
+             total_whatsapp_call_count = EXCLUDED.total_whatsapp_call_count,
              updated_at = NOW()`,
           [
             c.id, c.firstName, c.lastName, c.displayName,
             JSON.stringify(c.phoneNumbers || []),
             JSON.stringify(c.emailAddresses || []),
             c.thumbnailImageData || null,
+            c.lastCommunicationDate || null,
+            c.lastCommunicationType || null,
+            c.lastOutgoingContactDate || null,
+            c.totalMessageCount || 0,
+            c.totalCallCount || 0,
+            c.totalFaceTimeCount || 0,
+            c.totalWhatsAppCount || 0,
+            c.totalWhatsAppCallCount || 0,
           ]
         );
         contactCount++;
@@ -156,13 +175,15 @@ router.get('/api/friendkeeper/contacts/:id/events', friendkeeperAuth, async (req
 });
 
 // GET /api/friendkeeper/export — full ContactsCache JSON (same shape the Swift app parses)
-// Computes counts and dates from stored events for accuracy
+// Uses collector-provided counts (accurate) + stored events for timeline
 router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
   try {
     const data = await withSchema(async (client) => {
       const { rows: contacts } = await client.query(
         `SELECT id, first_name, last_name, display_name, phone_numbers, email_addresses,
-                thumbnail_image_data
+                thumbnail_image_data, last_communication_date, last_communication_type,
+                last_outgoing_contact_date, total_message_count, total_call_count,
+                total_facetime_count, total_whatsapp_count, total_whatsapp_call_count
          FROM contacts ORDER BY display_name`
       );
 
@@ -171,9 +192,8 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
          FROM communication_events ORDER BY date DESC`
       );
 
-      // Group events by contact_id and compute stats
+      // Group events by contact_id (for timeline only)
       const eventsByContact = {};
-      const statsByContact = {};
       for (const ev of events) {
         if (!eventsByContact[ev.contact_id]) eventsByContact[ev.contact_id] = [];
         eventsByContact[ev.contact_id].push({
@@ -185,67 +205,31 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
           preview: ev.preview,
           contactIdentifier: ev.contact_id,
         });
-
-        if (!statsByContact[ev.contact_id]) {
-          statsByContact[ev.contact_id] = {
-            msgCount: 0, callCount: 0, ftCount: 0, waCount: 0, waCallCount: 0,
-            lastDate: null, lastType: null, lastOutgoing: null,
-          };
-        }
-        const s = statsByContact[ev.contact_id];
-        const evDate = new Date(ev.date);
-
-        // Type counts
-        if (ev.type === 'iMessage/SMS') s.msgCount++;
-        else if (ev.type === 'Phone Call') s.callCount++;
-        else if (ev.type === 'FaceTime') s.ftCount++;
-        else if (ev.type === 'WhatsApp') s.waCount++;
-        else if (ev.type === 'WhatsApp Call') s.waCallCount++;
-
-        // Last communication (events already sorted desc, so first seen is latest)
-        if (!s.lastDate) {
-          s.lastDate = ev.date;
-          s.lastType = ev.type;
-        }
-
-        // Last outgoing: messages count, calls count if duration >= 60
-        if (!s.lastOutgoing && ev.is_from_me) {
-          if (ev.type === 'iMessage/SMS' || ev.type === 'WhatsApp') {
-            s.lastOutgoing = ev.date;
-          } else if (ev.duration && ev.duration >= 60) {
-            s.lastOutgoing = ev.date;
-          }
-        }
       }
 
-      // Deduplicate contacts by display name, merging events and stats
+      // Deduplicate contacts by display name, merging counts and events
       const byName = new Map();
       for (const c of contacts) {
         const key = c.display_name;
         if (byName.has(key)) {
           const existing = byName.get(key);
-          // Merge: keep the one with more events, combine events from both
-          const existingEvents = eventsByContact[existing.id] || [];
-          const newEvents = eventsByContact[c.id] || [];
-          // Merge events under the primary ID
+          // Merge events
           if (!eventsByContact[existing.id]) eventsByContact[existing.id] = [];
-          eventsByContact[existing.id].push(...newEvents);
-          // Merge stats
-          const eS = statsByContact[existing.id] || { msgCount: 0, callCount: 0, ftCount: 0, waCount: 0, waCallCount: 0, lastDate: null, lastType: null, lastOutgoing: null };
-          const nS = statsByContact[c.id] || { msgCount: 0, callCount: 0, ftCount: 0, waCount: 0, waCallCount: 0, lastDate: null, lastType: null, lastOutgoing: null };
-          eS.msgCount += nS.msgCount;
-          eS.callCount += nS.callCount;
-          eS.ftCount += nS.ftCount;
-          eS.waCount += nS.waCount;
-          eS.waCallCount += nS.waCallCount;
-          if (nS.lastDate && (!eS.lastDate || new Date(nS.lastDate) > new Date(eS.lastDate))) {
-            eS.lastDate = nS.lastDate;
-            eS.lastType = nS.lastType;
+          eventsByContact[existing.id].push(...(eventsByContact[c.id] || []));
+          // Sum counts
+          existing.total_message_count += c.total_message_count || 0;
+          existing.total_call_count += c.total_call_count || 0;
+          existing.total_facetime_count += c.total_facetime_count || 0;
+          existing.total_whatsapp_count += c.total_whatsapp_count || 0;
+          existing.total_whatsapp_call_count += c.total_whatsapp_call_count || 0;
+          // Keep most recent dates
+          if (c.last_communication_date && (!existing.last_communication_date || new Date(c.last_communication_date) > new Date(existing.last_communication_date))) {
+            existing.last_communication_date = c.last_communication_date;
+            existing.last_communication_type = c.last_communication_type;
           }
-          if (nS.lastOutgoing && (!eS.lastOutgoing || new Date(nS.lastOutgoing) > new Date(eS.lastOutgoing))) {
-            eS.lastOutgoing = nS.lastOutgoing;
+          if (c.last_outgoing_contact_date && (!existing.last_outgoing_contact_date || new Date(c.last_outgoing_contact_date) > new Date(existing.last_outgoing_contact_date))) {
+            existing.last_outgoing_contact_date = c.last_outgoing_contact_date;
           }
-          statsByContact[existing.id] = eS;
           // Keep thumbnail if primary doesn't have one
           if (!existing.thumbnail_image_data && c.thumbnail_image_data) {
             existing.thumbnail_image_data = c.thumbnail_image_data;
@@ -265,27 +249,24 @@ router.get('/api/friendkeeper/export', friendkeeperAuth, async (req, res) => {
       return {
         version: 1,
         lastUpdated: new Date().toISOString(),
-        contacts: dedupedContacts.map(c => {
-          const s = statsByContact[c.id] || {};
-          return {
-            id: c.id,
-            firstName: c.first_name,
-            lastName: c.last_name,
-            displayName: c.display_name,
-            phoneNumbers: c.phone_numbers || [],
-            emailAddresses: c.email_addresses || [],
-            thumbnailImageData: c.thumbnail_image_data,
-            lastCommunicationDate: s.lastDate || null,
-            lastCommunicationType: s.lastType || null,
-            lastOutgoingContactDate: s.lastOutgoing || null,
-            totalMessageCount: s.msgCount || 0,
-            totalCallCount: s.callCount || 0,
-            totalFaceTimeCount: s.ftCount || 0,
-            totalWhatsAppCount: s.waCount || 0,
-            totalWhatsAppCallCount: s.waCallCount || 0,
-            communicationEvents: eventsByContact[c.id] || [],
-          };
-        }),
+        contacts: dedupedContacts.map(c => ({
+          id: c.id,
+          firstName: c.first_name,
+          lastName: c.last_name,
+          displayName: c.display_name,
+          phoneNumbers: c.phone_numbers || [],
+          emailAddresses: c.email_addresses || [],
+          thumbnailImageData: c.thumbnail_image_data,
+          lastCommunicationDate: c.last_communication_date,
+          lastCommunicationType: c.last_communication_type,
+          lastOutgoingContactDate: c.last_outgoing_contact_date,
+          totalMessageCount: c.total_message_count || 0,
+          totalCallCount: c.total_call_count || 0,
+          totalFaceTimeCount: c.total_facetime_count || 0,
+          totalWhatsAppCount: c.total_whatsapp_count || 0,
+          totalWhatsAppCallCount: c.total_whatsapp_call_count || 0,
+          communicationEvents: eventsByContact[c.id] || [],
+        })),
       };
     });
 
