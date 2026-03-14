@@ -65,6 +65,12 @@ export interface StudentStats {
   streak: number;
 }
 
+export interface DailyWord {
+  action: 'reviewed' | 'added';
+  word: string;
+  translation: string;
+}
+
 export interface DailyActivity {
   day: string;
   reviews: number;
@@ -74,6 +80,7 @@ export interface DailyActivity {
   quizTotal: number;
   drills: number;
   voiceSessions: number;
+  words: DailyWord[];
 }
 
 export interface StudentWord {

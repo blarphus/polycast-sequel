@@ -2,7 +2,7 @@
 // pages/StudentDetail.tsx -- Teacher view of a student's progress & stats
 // ---------------------------------------------------------------------------
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import * as api from '../api';
 import type { StudentDetail as StudentDetailData, DailyActivity, RecentSession } from '../api';
@@ -42,77 +42,131 @@ const SESSION_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 // ---------------------------------------------------------------------------
-// 30-day calendar grid (days across, weeks as rows)
+// 30-day heatmap calendar with clickable day detail
 // ---------------------------------------------------------------------------
-
-const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function totalActivity(d: DailyActivity): number {
   return d.reviews + d.wordsAdded + d.quizzes + d.drills + d.voiceSessions;
 }
 
-function MonthCalendar({ activity }: { activity: DailyActivity[] }) {
+function activityLevel(count: number): number {
+  if (count === 0) return 0;
+  if (count <= 5) return 1;
+  if (count <= 15) return 2;
+  if (count <= 30) return 3;
+  return 4;
+}
+
+function MonthCalendar({ activity, selectedDay, onSelectDay }: {
+  activity: DailyActivity[];
+  selectedDay: string | null;
+  onSelectDay: (day: string | null) => void;
+}) {
   const activityMap = new Map(activity.map((d) => [d.day, d]));
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
 
-  // Build 30 days ending today, grouped into rows by week
-  const days: { date: string; weekday: number; day: number; month: string; total: number; data: DailyActivity | null }[] = [];
+  // Build 30 cells
+  const cells: { date: string; label: string; total: number }[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
-    const data = activityMap.get(dateStr) ?? null;
-    days.push({
+    const data = activityMap.get(dateStr);
+    cells.push({
       date: dateStr,
-      weekday: d.getDay(),
-      day: d.getDate(),
-      month: d.toLocaleString('en-US', { month: 'short' }),
+      label: d.getDate().toString(),
       total: data ? totalActivity(data) : 0,
-      data,
     });
   }
 
-  // Group into rows by week (Sun-Sat)
-  const rows: (typeof days[0] | null)[][] = [];
-  let currentRow: (typeof days[0] | null)[] = new Array(7).fill(null);
+  return (
+    <div className="sd-heatmap">
+      <div className="sd-heatmap-grid">
+        {cells.map((cell) => {
+          const level = activityLevel(cell.total);
+          const isSelected = selectedDay === cell.date;
+          const isToday = cell.date === todayStr;
+          return (
+            <button
+              key={cell.date}
+              className={`sd-heatmap-cell sd-heatmap-cell--${level}${isSelected ? ' sd-heatmap-cell--selected' : ''}${isToday ? ' sd-heatmap-cell--today' : ''}`}
+              onClick={() => onSelectDay(isSelected ? null : cell.date)}
+              title={`${new Date(cell.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${cell.total} activities`}
+            >
+              <span className="sd-heatmap-date">{cell.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="sd-heatmap-legend">
+        <span className="sd-heatmap-legend-label">Less</span>
+        {[0, 1, 2, 3, 4].map((l) => (
+          <span key={l} className={`sd-heatmap-legend-cell sd-heatmap-cell--${l}`} />
+        ))}
+        <span className="sd-heatmap-legend-label">More</span>
+      </div>
+    </div>
+  );
+}
 
-  for (const day of days) {
-    currentRow[day.weekday] = day;
-    if (day.weekday === 6) {
-      rows.push(currentRow);
-      currentRow = new Array(7).fill(null);
-    }
+function DayDetail({ day, activity }: { day: string; activity: DailyActivity[] }) {
+  const data = activity.find((a) => a.day === day);
+  const dateLabel = new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  if (!data || totalActivity(data) === 0) {
+    return (
+      <div className="sd-day-detail">
+        <h3 className="sd-day-detail-title">{dateLabel}</h3>
+        <p className="sd-empty">No activity on this day.</p>
+      </div>
+    );
   }
-  // Push final partial row
-  if (currentRow.some((d) => d !== null)) rows.push(currentRow);
+
+  const reviewed = data.words.filter((w) => w.action === 'reviewed');
+  const added = data.words.filter((w) => w.action === 'added');
+  // Deduplicate reviewed words (same word can appear multiple times)
+  const uniqueReviewed = [...new Map(reviewed.map((w) => [w.word, w])).values()];
 
   return (
-    <div className="sd-cal">
-      <div className="sd-cal-header">
-        {DAY_HEADERS.map((d) => <span key={d} className="sd-cal-day-label">{d}</span>)}
+    <div className="sd-day-detail">
+      <h3 className="sd-day-detail-title">{dateLabel}</h3>
+
+      <div className="sd-day-stats">
+        {data.reviews > 0 && <span className="sd-day-stat">{data.reviews} reviews</span>}
+        {data.wordsAdded > 0 && <span className="sd-day-stat">{data.wordsAdded} words added</span>}
+        {data.quizzes > 0 && <span className="sd-day-stat">{data.quizzes} quiz{data.quizzes > 1 ? 'zes' : ''} ({data.quizCorrect}/{data.quizTotal})</span>}
+        {data.drills > 0 && <span className="sd-day-stat">{data.drills} drill{data.drills > 1 ? 's' : ''}</span>}
+        {data.voiceSessions > 0 && <span className="sd-day-stat">{data.voiceSessions} voice session{data.voiceSessions > 1 ? 's' : ''}</span>}
       </div>
-      {rows.map((row, ri) => (
-        <div key={ri} className="sd-cal-row">
-          {row.map((cell, ci) => {
-            if (!cell) return <div key={ci} className="sd-cal-cell sd-cal-cell--empty" />;
-            const isToday = cell.date === todayStr;
-            const hasActivity = cell.total > 0;
-            return (
-              <div
-                key={ci}
-                className={`sd-cal-cell${hasActivity ? ' sd-cal-cell--active' : ''}${isToday ? ' sd-cal-cell--today' : ''}`}
-                title={hasActivity ? `${cell.month} ${cell.day}: ${cell.total} activities` : `${cell.month} ${cell.day}`}
-              >
-                <span className="sd-cal-date">{cell.day}</span>
-                {hasActivity && (
-                  <span className="sd-cal-count">{cell.total}</span>
-                )}
+
+      {uniqueReviewed.length > 0 && (
+        <div className="sd-day-words">
+          <h4 className="sd-day-words-title">Words reviewed ({uniqueReviewed.length})</h4>
+          <div className="sd-day-word-list">
+            {uniqueReviewed.map((w, i) => (
+              <div key={i} className="sd-day-word-row">
+                <span className="sd-day-word-term">{w.word}</span>
+                <span className="sd-day-word-translation">{w.translation}</span>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
-      ))}
+      )}
+
+      {added.length > 0 && (
+        <div className="sd-day-words">
+          <h4 className="sd-day-words-title">Words added ({added.length})</h4>
+          <div className="sd-day-word-list">
+            {added.map((w, i) => (
+              <div key={i} className="sd-day-word-row">
+                <span className="sd-day-word-term">{w.word}</span>
+                <span className="sd-day-word-translation">{w.translation}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -192,6 +246,8 @@ export default function StudentDetail() {
   const [searchParams] = useSearchParams();
   const classroomId = searchParams.get('classroomId');
 
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
   const { data, loading, error } = useAsyncData<StudentDetailData>(
     () => {
       if (!studentId) return Promise.reject(new Error('Missing student ID'));
@@ -266,11 +322,8 @@ export default function StudentDetail() {
           {/* 30-day calendar */}
           <div className="sd-card">
             <h2 className="sd-card-title">Last 30 Days</h2>
-            {activity.length === 0 ? (
-              <p className="sd-empty">No activity yet.</p>
-            ) : (
-              <MonthCalendar activity={activity} />
-            )}
+            <MonthCalendar activity={activity} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+            {selectedDay && <DayDetail day={selectedDay} activity={activity} />}
           </div>
 
           {/* Vocabulary */}

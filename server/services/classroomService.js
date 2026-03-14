@@ -377,7 +377,7 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
   }
   const daysActiveThisWeek = activeDates.size;
 
-  // Daily activity for the last 90 days (reviews, words added, quizzes, drills, voice practice)
+  // Daily activity for the last 30 days (reviews, words added, quizzes, drills, voice practice)
   const activityResult = await pool.query(
     `WITH review_days AS (
        SELECT last_reviewed_at::date AS day,
@@ -386,31 +386,31 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
               SUM(incorrect_count) AS incorrect
        FROM saved_words
        WHERE user_id = $1 AND last_reviewed_at IS NOT NULL
-         AND last_reviewed_at >= NOW() - INTERVAL '90 days'
+         AND last_reviewed_at >= NOW() - INTERVAL '30 days'
        GROUP BY last_reviewed_at::date
      ),
      added_days AS (
        SELECT created_at::date AS day, COUNT(*) AS words_added
        FROM saved_words
-       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '90 days'
+       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '30 days'
        GROUP BY created_at::date
      ),
      quiz_days AS (
        SELECT created_at::date AS day, COUNT(*) AS quizzes, SUM(correct_count) AS quiz_correct, SUM(question_count) AS quiz_total
        FROM quiz_sessions
-       WHERE user_id = $1 AND completed_at IS NOT NULL AND created_at >= NOW() - INTERVAL '90 days'
+       WHERE user_id = $1 AND completed_at IS NOT NULL AND created_at >= NOW() - INTERVAL '30 days'
        GROUP BY created_at::date
      ),
      drill_days AS (
        SELECT created_at::date AS day, COUNT(*) AS drills
        FROM drill_sessions
-       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '90 days'
+       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '30 days'
        GROUP BY created_at::date
      ),
      voice_days AS (
        SELECT created_at::date AS day, COUNT(*) AS voice_sessions
        FROM voice_practice_sessions
-       WHERE user_id = $1 AND completed_at IS NOT NULL AND created_at >= NOW() - INTERVAL '90 days'
+       WHERE user_id = $1 AND completed_at IS NOT NULL AND created_at >= NOW() - INTERVAL '30 days'
        GROUP BY created_at::date
      ),
      all_days AS (
@@ -437,6 +437,28 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
      ORDER BY d.day ASC`,
     [studentId],
   );
+
+  // Words reviewed/added per day (last 30 days) for day-detail drill-down
+  const dailyWordsResult = await pool.query(
+    `(SELECT last_reviewed_at::date AS day, 'reviewed' AS action, word, translation
+      FROM saved_words
+      WHERE user_id = $1 AND last_reviewed_at IS NOT NULL
+        AND last_reviewed_at >= NOW() - INTERVAL '30 days')
+     UNION ALL
+     (SELECT created_at::date AS day, 'added' AS action, word, translation
+      FROM saved_words
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '30 days')
+     ORDER BY day DESC, action ASC, word ASC`,
+    [studentId],
+  );
+
+  // Group daily words by date
+  const dailyWordsMap = {};
+  for (const row of dailyWordsResult.rows) {
+    const dayStr = row.day.toISOString().slice(0, 10);
+    if (!dailyWordsMap[dayStr]) dailyWordsMap[dayStr] = [];
+    dailyWordsMap[dayStr].push({ action: row.action, word: row.word, translation: row.translation });
+  }
 
   // Compute current streak (consecutive days ending today or yesterday)
   const activityDays = new Set(activityResult.rows.map((r) => r.day.toISOString().slice(0, 10)));
@@ -517,16 +539,20 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
       lastReviewedAt,
       streak,
     },
-    activity: activityResult.rows.map((r) => ({
-      day: r.day.toISOString().slice(0, 10),
-      reviews: r.reviews,
-      wordsAdded: r.words_added,
-      quizzes: r.quizzes,
-      quizCorrect: r.quiz_correct,
-      quizTotal: r.quiz_total,
-      drills: r.drills,
-      voiceSessions: r.voice_sessions,
-    })),
+    activity: activityResult.rows.map((r) => {
+      const dayStr = r.day.toISOString().slice(0, 10);
+      return {
+        day: dayStr,
+        reviews: r.reviews,
+        wordsAdded: r.words_added,
+        quizzes: r.quizzes,
+        quizCorrect: r.quiz_correct,
+        quizTotal: r.quiz_total,
+        drills: r.drills,
+        voiceSessions: r.voice_sessions,
+        words: dailyWordsMap[dayStr] || [],
+      };
+    }),
     recentSessions: recentSessionsResult.rows.map((s) => ({
       type: s.type,
       id: s.id,
