@@ -286,10 +286,13 @@ export async function buildVoicePracticeSentenceSet({
   ]);
 
   const deduped = dedupeCandidates([...pending, ...saved, ...video, ...news]);
+  // Priority order: 1) assigned classwork, 2) saved dictionary words, 3) video/news
   const assigned = deduped.filter(c => c.assignmentPriority);
-  const rest = deduped.filter(c => !c.assignmentPriority);
-  shuffleArray(rest);
-  const orderedCandidates = [...assigned, ...rest].slice(0, count * 3);
+  const dictionary = deduped.filter(c => !c.assignmentPriority && c.sourceType === 'saved_word');
+  const supplemental = deduped.filter(c => !c.assignmentPriority && c.sourceType !== 'saved_word');
+  shuffleArray(dictionary);
+  shuffleArray(supplemental);
+  const orderedCandidates = [...assigned, ...dictionary, ...supplemental].slice(0, count * 3);
 
   if (orderedCandidates.length === 0) {
     throw new Error('No suitable sentences available for voice practice');
