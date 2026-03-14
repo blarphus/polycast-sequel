@@ -110,7 +110,7 @@ function MonthCalendar({ activity, selectedDay, onSelectDay }: {
                 onClick={() => onSelectDay(isSelected ? null : cell.date)}
               >
                 <span className="sd-heatmap-date">{cell.day}</span>
-                {cell.status === 'skipped' && <span className="sd-heatmap-x">x</span>}
+                {cell.status === 'skipped' && <span className="sd-heatmap-x" aria-hidden="true" />}
               </button>
             );
           })}

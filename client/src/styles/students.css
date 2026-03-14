@@ -732,13 +732,30 @@
 .sd-heatmap-cell--completed .sd-heatmap-date { color: #15803d; }
 .sd-heatmap-cell--partial .sd-heatmap-date { color: #92400e; }
 
-.sd-heatmap-x {
-  font-size: 0.55rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  line-height: 1;
-  opacity: 0.5;
+.sd-heatmap-cell--skipped {
+  position: relative;
 }
+
+.sd-heatmap-x {
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+}
+
+.sd-heatmap-x::before,
+.sd-heatmap-x::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80%;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 1px;
+}
+
+.sd-heatmap-x::before { transform: translate(-50%, -50%) rotate(45deg); }
+.sd-heatmap-x::after { transform: translate(-50%, -50%) rotate(-45deg); }
 
 .sd-heatmap-legend {
   display: flex;
