@@ -20,7 +20,7 @@ import {
   Friend,
   PendingWordList,
 } from '../api';
-import { proxyImageUrl } from '../api/dictionary';
+import { proxyImageUrl, getNewToday, getDueWords } from '../api/dictionary';
 import { LANGUAGES } from '../components/classwork/languages';
 import { LANGUAGE_BANNERS } from '../utils/languageBanners';
 import FriendRequests from '../components/FriendRequests';
@@ -96,7 +96,28 @@ export default function Home() {
           if (!cancelled) setLoading(false);
         });
     } else {
-      setLoading(false);
+      // Teacher accounts: fetch new words and due words directly
+      Promise.all([getNewToday(), getDueWords()])
+        .then(([newToday, dueWords]) => {
+          if (cancelled) return;
+          setNewWords(newToday);
+          let n = 0;
+          let l = 0;
+          let r = 0;
+          for (const w of dueWords) {
+            if (w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at) n += 1;
+            else if (w.learning_step !== null) l += 1;
+            else r += 1;
+          }
+          setSrsCounts({ new: n, learning: l, review: r });
+        })
+        .catch((err) => {
+          console.error('Failed to fetch teacher dashboard:', err);
+          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
     }
 
     if (targetLang) {
