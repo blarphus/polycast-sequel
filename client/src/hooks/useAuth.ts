@@ -23,6 +23,7 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<void>;
   signup: (username: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
+  addSavedAccount: (username: string, password: string) => Promise<void>;
   switchAccount: (userId: string) => Promise<void>;
   forgetSavedAccount: (userId: string) => void;
   updateSettings: (native_language: string | null, target_language: string | null, daily_new_limit?: number, account_type?: 'student' | 'teacher', cefr_level?: string | null) => Promise<void>;
@@ -99,6 +100,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentSessionToken(null);
   }, []);
 
+  const addSavedAccount = useCallback(async (username: string, password: string) => {
+    let activeToken = currentSessionToken;
+    if (!activeToken && user) {
+      const exported = await api.exportSessionToken();
+      activeToken = exported.token;
+      setCurrentSessionToken(exported.token);
+      setSavedAccounts(upsertSavedAccount(user, exported.token));
+    }
+
+    const addedUser = await api.login(username, password);
+    setSavedAccounts(upsertSavedAccount(addedUser, addedUser.token));
+
+    if (activeToken && (!user || user.id !== addedUser.id)) {
+      const restoredUser = await api.restoreSession(activeToken);
+      setUser(restoredUser);
+      setAuthError('');
+      setCurrentSessionToken(restoredUser.token);
+      setSavedAccounts(upsertSavedAccount(restoredUser, restoredUser.token));
+      return;
+    }
+
+    setUser(addedUser);
+    setAuthError('');
+    setCurrentSessionToken(addedUser.token);
+  }, [currentSessionToken, user]);
+
   const switchAccount = useCallback(async (userId: string) => {
     const account = savedAccounts.find((entry) => entry.id === userId);
     if (!account) {
@@ -139,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return createElement(
     AuthContext.Provider,
-    { value: { user, loading, authError, savedAccounts, login, signup, logout, switchAccount, forgetSavedAccount, updateSettings } },
+    { value: { user, loading, authError, savedAccounts, login, signup, logout, addSavedAccount, switchAccount, forgetSavedAccount, updateSettings } },
     children,
   );
 }

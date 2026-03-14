@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentDashboard } from '../api';
-import { HomeIcon, BookIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { HomeIcon, BookIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon, UserIcon, PlusIcon, CloseIcon } from './icons';
 
 const COLLAPSED_KEY = 'sidebar-collapsed';
 const NARROW_QUERY = '(min-width: 481px) and (max-width: 1024px)';
@@ -14,12 +14,19 @@ const NARROW_QUERY = '(min-width: 481px) and (max-width: 1024px)';
 export default function BottomToolbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, savedAccounts, switchAccount, addSavedAccount, forgetSavedAccount } = useAuth();
 
   const isTeacher = user?.account_type === 'teacher';
   const isStudent = user?.account_type === 'student';
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingError, setPendingError] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [addAccountMode, setAddAccountMode] = useState(false);
+  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
+  const [addUsername, setAddUsername] = useState('');
+  const [addPassword, setAddPassword] = useState('');
+  const [accountActionError, setAccountActionError] = useState('');
+  const [addingAccount, setAddingAccount] = useState(false);
 
   const manualPref = useRef(localStorage.getItem(COLLAPSED_KEY));
   const [collapsed, setCollapsed] = useState(() => {
@@ -76,6 +83,42 @@ export default function BottomToolbar() {
   const isClasswork = location.pathname === '/classwork' || location.pathname.startsWith('/classwork/') || location.pathname === '/classes' || location.pathname === '/students' || location.pathname.startsWith('/students/');
   const isBrowse = location.pathname === '/browse' || location.pathname.startsWith('/channel/') || location.pathname.startsWith('/lesson/');
   const isSettings = location.pathname === '/settings';
+
+  const handleSwitchAccount = useCallback(async (accountId: string) => {
+    if (accountId === user?.id) {
+      setAccountMenuOpen(false);
+      return;
+    }
+    setSwitchingAccountId(accountId);
+    setAccountActionError('');
+    try {
+      await switchAccount(accountId);
+      setAccountMenuOpen(false);
+      setAddAccountMode(false);
+      setAddUsername('');
+      setAddPassword('');
+    } catch (err) {
+      setAccountActionError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSwitchingAccountId(null);
+    }
+  }, [switchAccount, user?.id]);
+
+  const handleAddAccount = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddingAccount(true);
+    setAccountActionError('');
+    try {
+      await addSavedAccount(addUsername, addPassword);
+      setAddUsername('');
+      setAddPassword('');
+      setAddAccountMode(false);
+    } catch (err) {
+      setAccountActionError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setAddingAccount(false);
+    }
+  }, [addPassword, addSavedAccount, addUsername]);
 
   return (
     <nav className={`bottom-toolbar${collapsed ? ' collapsed' : ''}`}>
@@ -141,6 +184,103 @@ export default function BottomToolbar() {
         <PlayCircleIcon size={22} />
         <span className="toolbar-label">Watch</span>
       </button>
+      <button
+        className={`toolbar-tab toolbar-tab--profile${accountMenuOpen ? ' active' : ''}`}
+        onClick={() => {
+          setAccountMenuOpen((prev) => !prev);
+          setAccountActionError('');
+        }}
+      >
+        <UserIcon size={22} />
+        <span className="toolbar-label">Profiles</span>
+      </button>
+      {accountMenuOpen && (
+        <div className="sidebar-account-popover">
+          <div className="sidebar-account-popover-header">
+            <div>
+              <div className="sidebar-account-title">Profiles</div>
+              <div className="sidebar-account-subtitle">Switch accounts or add another login</div>
+            </div>
+            <button className="sidebar-account-close" onClick={() => setAccountMenuOpen(false)}>
+              <CloseIcon size={16} />
+            </button>
+          </div>
+          <div className="sidebar-account-list">
+            {savedAccounts.map((account) => (
+              <div key={account.id} className={`sidebar-account-item${account.id === user?.id ? ' active' : ''}`}>
+                <button
+                  className="sidebar-account-main"
+                  onClick={() => void handleSwitchAccount(account.id)}
+                  disabled={switchingAccountId !== null}
+                >
+                  <span className="sidebar-account-name">{account.display_name || account.username}</span>
+                  <span className="sidebar-account-meta">@{account.username} · {account.account_type}{account.id === user?.id ? ' · current' : ''}</span>
+                </button>
+                <button
+                  className="sidebar-account-remove"
+                  onClick={() => forgetSavedAccount(account.id)}
+                  disabled={account.id === user?.id || switchingAccountId !== null}
+                  title={account.id === user?.id ? 'Current profile' : 'Remove saved profile'}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          {accountActionError && <div className="sidebar-account-error">{accountActionError}</div>}
+          {addAccountMode ? (
+            <form className="sidebar-account-form" onSubmit={handleAddAccount}>
+              <input
+                className="form-input"
+                type="text"
+                placeholder="Username"
+                value={addUsername}
+                onChange={(e) => setAddUsername(e.target.value)}
+                autoComplete="username"
+                required
+              />
+              <input
+                className="form-input"
+                type="password"
+                placeholder="Password"
+                value={addPassword}
+                onChange={(e) => setAddPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+              <div className="sidebar-account-actions">
+                <button
+                  className="sidebar-account-secondary"
+                  type="button"
+                  onClick={() => {
+                    setAddAccountMode(false);
+                    setAddUsername('');
+                    setAddPassword('');
+                    setAccountActionError('');
+                  }}
+                  disabled={addingAccount}
+                >
+                  Cancel
+                </button>
+                <button className="btn btn-primary" type="submit" disabled={addingAccount}>
+                  {addingAccount ? 'Adding...' : 'Add Profile'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              className="sidebar-account-add"
+              onClick={() => {
+                setAddAccountMode(true);
+                setAccountActionError('');
+              }}
+            >
+              <PlusIcon size={16} />
+              Add another profile
+            </button>
+          )}
+        </div>
+      )}
       <button
         className={`toolbar-tab toolbar-tab--settings${isSettings ? ' active' : ''}`}
         onClick={() => navigate('/settings')}
