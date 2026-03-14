@@ -93,12 +93,14 @@ export default function BottomToolbar() {
     try {
       await switchAccount(accountId);
       setAccountMenuOpen(false);
+      // Navigate home — Home.tsx redirects teachers to /classes automatically
+      navigate('/');
     } catch (err) {
       setAccountActionError(toErrorMessage(err));
     } finally {
       setSwitchingAccountId(null);
     }
-  }, [switchAccount, user?.id]);
+  }, [switchAccount, user?.id, navigate]);
 
   return (
     <nav className={`bottom-toolbar${collapsed ? ' collapsed' : ''}`}>
