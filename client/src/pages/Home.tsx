@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
   getStudentDashboard,
@@ -20,7 +20,7 @@ import {
   Friend,
   PendingWordList,
 } from '../api';
-import { proxyImageUrl, getNewToday, getDueWords } from '../api/dictionary';
+import { proxyImageUrl } from '../api/dictionary';
 import { LANGUAGES } from '../components/classwork/languages';
 import { LANGUAGE_BANNERS } from '../utils/languageBanners';
 import FriendRequests from '../components/FriendRequests';
@@ -37,6 +37,9 @@ import { filterUnplayableVideos } from '../utils/playabilityFilter';
 export default function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Teachers land on their classroom page instead of the student home
+  if (user?.account_type === 'teacher') return <Navigate to="/classes" replace />;
   const [newWords, setNewWords] = useState<SavedWord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -72,53 +75,28 @@ export default function Home() {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       });
 
-    if (user?.account_type === 'student') {
-      getStudentDashboard()
-        .then((dashboard) => {
-          if (cancelled) return;
-          setNewWords(dashboard.newToday);
-          setPendingPosts(dashboard.pendingClasswork.posts);
-          let n = 0;
-          let l = 0;
-          let r = 0;
-          for (const w of dashboard.dueWords) {
-            if (w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at) n += 1;
-            else if (w.learning_step !== null) l += 1;
-            else r += 1;
-          }
-          setSrsCounts({ new: n, learning: l, review: r });
-        })
-        .catch((err) => {
-          console.error('Failed to fetch student dashboard:', err);
-          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-    } else {
-      // Teacher accounts: fetch new words and due words directly
-      Promise.all([getNewToday(), getDueWords()])
-        .then(([newToday, dueWords]) => {
-          if (cancelled) return;
-          setNewWords(newToday);
-          let n = 0;
-          let l = 0;
-          let r = 0;
-          for (const w of dueWords) {
-            if (w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at) n += 1;
-            else if (w.learning_step !== null) l += 1;
-            else r += 1;
-          }
-          setSrsCounts({ new: n, learning: l, review: r });
-        })
-        .catch((err) => {
-          console.error('Failed to fetch teacher dashboard:', err);
-          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-    }
+    getStudentDashboard()
+      .then((dashboard) => {
+        if (cancelled) return;
+        setNewWords(dashboard.newToday);
+        setPendingPosts(dashboard.pendingClasswork.posts);
+        let n = 0;
+        let l = 0;
+        let r = 0;
+        for (const w of dashboard.dueWords) {
+          if (w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at) n += 1;
+          else if (w.learning_step !== null) l += 1;
+          else r += 1;
+        }
+        setSrsCounts({ new: n, learning: l, review: r });
+      })
+      .catch((err) => {
+        console.error('Failed to fetch student dashboard:', err);
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
     if (targetLang) {
       getTrendingVideos(targetLang)
