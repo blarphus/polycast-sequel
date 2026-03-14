@@ -42,55 +42,77 @@ const SESSION_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 // ---------------------------------------------------------------------------
-// Weekly activity bars (last 12 weeks)
+// 30-day calendar grid (days across, weeks as rows)
 // ---------------------------------------------------------------------------
 
-function WeeklyActivityChart({ activity }: { activity: DailyActivity[] }) {
-  // Aggregate by week
+const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function totalActivity(d: DailyActivity): number {
+  return d.reviews + d.wordsAdded + d.quizzes + d.drills + d.voiceSessions;
+}
+
+function MonthCalendar({ activity }: { activity: DailyActivity[] }) {
+  const activityMap = new Map(activity.map((d) => [d.day, d]));
   const today = new Date();
-  const weeks: { label: string; total: number; reviews: number; other: number }[] = [];
+  const todayStr = today.toISOString().slice(0, 10);
 
-  for (let w = 11; w >= 0; w--) {
-    const weekEnd = new Date(today);
-    weekEnd.setDate(weekEnd.getDate() - w * 7);
-    const weekStart = new Date(weekEnd);
-    weekStart.setDate(weekStart.getDate() - 6);
-
-    const startStr = weekStart.toISOString().slice(0, 10);
-    const endStr = weekEnd.toISOString().slice(0, 10);
-
-    let reviews = 0;
-    let other = 0;
-    for (const d of activity) {
-      if (d.day >= startStr && d.day <= endStr) {
-        reviews += d.reviews;
-        other += d.wordsAdded + d.quizzes + d.drills + d.voiceSessions;
-      }
-    }
-
-    const label = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    weeks.push({ label, total: reviews + other, reviews, other });
+  // Build 30 days ending today, grouped into rows by week
+  const days: { date: string; weekday: number; day: number; month: string; total: number; data: DailyActivity | null }[] = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const data = activityMap.get(dateStr) ?? null;
+    days.push({
+      date: dateStr,
+      weekday: d.getDay(),
+      day: d.getDate(),
+      month: d.toLocaleString('en-US', { month: 'short' }),
+      total: data ? totalActivity(data) : 0,
+      data,
+    });
   }
 
-  const maxVal = Math.max(...weeks.map((w) => w.total), 1);
+  // Group into rows by week (Sun-Sat)
+  const rows: (typeof days[0] | null)[][] = [];
+  let currentRow: (typeof days[0] | null)[] = new Array(7).fill(null);
+
+  for (const day of days) {
+    currentRow[day.weekday] = day;
+    if (day.weekday === 6) {
+      rows.push(currentRow);
+      currentRow = new Array(7).fill(null);
+    }
+  }
+  // Push final partial row
+  if (currentRow.some((d) => d !== null)) rows.push(currentRow);
 
   return (
-    <div className="sd-weekly-chart">
-      <div className="sd-weekly-bars">
-        {weeks.map((w, i) => (
-          <div key={i} className="sd-weekly-col" title={`${w.label}: ${w.total} activities`}>
-            <div className="sd-weekly-bar-track">
-              {w.total > 0 && (
-                <div
-                  className="sd-weekly-bar-fill"
-                  style={{ height: `${Math.max((w.total / maxVal) * 100, 4)}%` }}
-                />
-              )}
-            </div>
-            {i % 3 === 0 && <span className="sd-weekly-label">{w.label}</span>}
-          </div>
-        ))}
+    <div className="sd-cal">
+      <div className="sd-cal-header">
+        {DAY_HEADERS.map((d) => <span key={d} className="sd-cal-day-label">{d}</span>)}
       </div>
+      {rows.map((row, ri) => (
+        <div key={ri} className="sd-cal-row">
+          {row.map((cell, ci) => {
+            if (!cell) return <div key={ci} className="sd-cal-cell sd-cal-cell--empty" />;
+            const isToday = cell.date === todayStr;
+            const hasActivity = cell.total > 0;
+            return (
+              <div
+                key={ci}
+                className={`sd-cal-cell${hasActivity ? ' sd-cal-cell--active' : ''}${isToday ? ' sd-cal-cell--today' : ''}`}
+                title={hasActivity ? `${cell.month} ${cell.day}: ${cell.total} activities` : `${cell.month} ${cell.day}`}
+              >
+                <span className="sd-cal-date">{cell.day}</span>
+                {hasActivity && (
+                  <span className="sd-cal-count">{cell.total}</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
@@ -241,13 +263,13 @@ export default function StudentDetail() {
       <div className="sd-grid">
         {/* Left column */}
         <div className="sd-col">
-          {/* Weekly activity */}
+          {/* 30-day calendar */}
           <div className="sd-card">
-            <h2 className="sd-card-title">Weekly Activity</h2>
+            <h2 className="sd-card-title">Last 30 Days</h2>
             {activity.length === 0 ? (
               <p className="sd-empty">No activity yet.</p>
             ) : (
-              <WeeklyActivityChart activity={activity} />
+              <MonthCalendar activity={activity} />
             )}
           </div>
 
