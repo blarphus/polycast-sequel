@@ -10,7 +10,7 @@ import * as api from '../api';
 import type { Classroom, ClassroomStudent, UserResult } from '../api';
 import ClassroomPicker from '../components/classroom/ClassroomPicker';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
-import { ChevronLeftIcon } from '../components/icons';
+import { ChevronLeftIcon, PlusIcon } from '../components/icons';
 import Avatar from '../components/Avatar';
 
 export default function Students() {
@@ -149,42 +149,65 @@ export default function Students() {
         <ClassroomSetupBanner classroom={activeClassroom} onUpdated={handleClassroomUpdated} />
       )}
 
-      {/* Search */}
-      {isTeacher && (
-        <div className="students-search">
-          <input
-            className="form-input"
-            type="text"
-            placeholder="Search for students..."
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-          />
-        </div>
-      )}
+      {/* Add students section */}
+      {isTeacher && activeClassroom && (
+        <div className="students-add-section">
+          <div className="students-add-header">
+            <PlusIcon size={16} strokeWidth={2.5} />
+            <span>Add students</span>
+          </div>
 
-      {isTeacher && searchQuery.trim() && searchResults.length > 0 && (
-        <div className="students-search-results">
-          {searchResults.map((u) => (
-            <div key={u.id} className="students-roster-item">
-              <Avatar name={u.display_name || u.username} className="students-avatar" />
-              <div className="students-info">
-                <span className="students-name">{u.display_name || u.username}</span>
-                <span className="students-username">@{u.username}</span>
-              </div>
+          {activeClassroom.class_code && (
+            <div className="students-class-code-row">
+              <span className="students-class-code-label">Class code:</span>
+              <code className="students-class-code-value">{activeClassroom.class_code}</code>
               <button
                 className="btn btn-small"
-                disabled={addedIds.has(u.id)}
-                onClick={() => handleAdd(u.id)}
+                onClick={() => {
+                  navigator.clipboard.writeText(activeClassroom.class_code!);
+                }}
               >
-                {addedIds.has(u.id) ? 'Added' : 'Add'}
+                Copy
               </button>
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {isTeacher && searchQuery.trim() && searchResults.length === 0 && (
-        <p className="students-empty">No students found</p>
+          <div className="students-search">
+            <input
+              className="form-input"
+              type="text"
+              placeholder="Search by username..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+
+          {searchQuery.trim() && searchResults.length > 0 && (
+            <div className="students-search-results">
+              {searchResults.map((u) => (
+                <div key={u.id} className="students-roster-item">
+                  <Avatar name={u.display_name || u.username} className="students-avatar" />
+                  <div className="students-info">
+                    <span className="students-name">{u.display_name || u.username}</span>
+                    <span className="students-username">@{u.username}</span>
+                  </div>
+                  <button
+                    className="btn btn-small"
+                    disabled={addedIds.has(u.id)}
+                    onClick={() => handleAdd(u.id)}
+                  >
+                    {addedIds.has(u.id) ? 'Added' : 'Add'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {searchQuery.trim() && searchResults.length === 0 && (
+            <p className="students-empty">No students found</p>
+          )}
+        </div>
       )}
 
       {/* Roster */}

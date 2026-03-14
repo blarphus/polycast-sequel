@@ -324,8 +324,49 @@
   color: var(--text-primary);
 }
 
+.students-add-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.students-add-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.students-class-code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+}
+
+.students-class-code-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.students-class-code-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: monospace;
+  letter-spacing: 0.03em;
+}
+
 .students-search {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .students-search-results {
