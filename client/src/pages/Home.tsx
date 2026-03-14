@@ -38,8 +38,8 @@ export default function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Teachers land on classwork instead of the student home
-  if (user?.account_type === 'teacher') return <Navigate to="/classwork" replace />;
+  // Teachers land on classes page instead of the student home
+  if (user?.account_type === 'teacher') return <Navigate to="/classes" replace />;
   const [newWords, setNewWords] = useState<SavedWord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
