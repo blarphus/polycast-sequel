@@ -377,6 +377,81 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
   }
   const daysActiveThisWeek = activeDates.size;
 
+  // Daily activity for the last 90 days (reviews, words added, quizzes, drills, voice practice)
+  const activityResult = await pool.query(
+    `WITH review_days AS (
+       SELECT last_reviewed_at::date AS day,
+              COUNT(*) AS reviews,
+              SUM(correct_count) AS correct,
+              SUM(incorrect_count) AS incorrect
+       FROM saved_words
+       WHERE user_id = $1 AND last_reviewed_at IS NOT NULL
+         AND last_reviewed_at >= NOW() - INTERVAL '90 days'
+       GROUP BY last_reviewed_at::date
+     ),
+     added_days AS (
+       SELECT created_at::date AS day, COUNT(*) AS words_added
+       FROM saved_words
+       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '90 days'
+       GROUP BY created_at::date
+     ),
+     quiz_days AS (
+       SELECT created_at::date AS day, COUNT(*) AS quizzes, SUM(correct_count) AS quiz_correct, SUM(question_count) AS quiz_total
+       FROM quiz_sessions
+       WHERE user_id = $1 AND completed_at IS NOT NULL AND created_at >= NOW() - INTERVAL '90 days'
+       GROUP BY created_at::date
+     ),
+     drill_days AS (
+       SELECT created_at::date AS day, COUNT(*) AS drills
+       FROM drill_sessions
+       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '90 days'
+       GROUP BY created_at::date
+     ),
+     voice_days AS (
+       SELECT created_at::date AS day, COUNT(*) AS voice_sessions
+       FROM voice_practice_sessions
+       WHERE user_id = $1 AND completed_at IS NOT NULL AND created_at >= NOW() - INTERVAL '90 days'
+       GROUP BY created_at::date
+     ),
+     all_days AS (
+       SELECT day FROM review_days
+       UNION SELECT day FROM added_days
+       UNION SELECT day FROM quiz_days
+       UNION SELECT day FROM drill_days
+       UNION SELECT day FROM voice_days
+     )
+     SELECT d.day,
+            COALESCE(r.reviews, 0)::int AS reviews,
+            COALESCE(a.words_added, 0)::int AS words_added,
+            COALESCE(q.quizzes, 0)::int AS quizzes,
+            COALESCE(q.quiz_correct, 0)::int AS quiz_correct,
+            COALESCE(q.quiz_total, 0)::int AS quiz_total,
+            COALESCE(dr.drills, 0)::int AS drills,
+            COALESCE(v.voice_sessions, 0)::int AS voice_sessions
+     FROM all_days d
+     LEFT JOIN review_days r ON r.day = d.day
+     LEFT JOIN added_days a ON a.day = d.day
+     LEFT JOIN quiz_days q ON q.day = d.day
+     LEFT JOIN drill_days dr ON dr.day = d.day
+     LEFT JOIN voice_days v ON v.day = d.day
+     ORDER BY d.day ASC`,
+    [studentId],
+  );
+
+  // Compute current streak (consecutive days ending today or yesterday)
+  const activityDays = new Set(activityResult.rows.map((r) => r.day.toISOString().slice(0, 10)));
+  let streak = 0;
+  const streakStart = new Date(now);
+  // Allow streak to start from today or yesterday
+  if (!activityDays.has(streakStart.toISOString().slice(0, 10))) {
+    streakStart.setDate(streakStart.getDate() - 1);
+  }
+  const d = new Date(streakStart);
+  while (activityDays.has(d.toISOString().slice(0, 10))) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+
   // Word lists assigned to this classroom, with completion status for this student
   const wordListsResult = await pool.query(
     `SELECT sp.id, sp.title,
@@ -416,7 +491,18 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
       totalReviews,
       accuracy,
       lastReviewedAt,
+      streak,
     },
+    activity: activityResult.rows.map((r) => ({
+      day: r.day.toISOString().slice(0, 10),
+      reviews: r.reviews,
+      wordsAdded: r.words_added,
+      quizzes: r.quizzes,
+      quizCorrect: r.quiz_correct,
+      quizTotal: r.quiz_total,
+      drills: r.drills,
+      voiceSessions: r.voice_sessions,
+    })),
     wordLists: wordListsResult.rows.map((wl) => ({
       id: wl.id,
       title: wl.title,

@@ -717,6 +717,68 @@
   background: #22c55e;
 }
 
+/* ==========================================================================
+   Activity Calendar (GitHub-style heatmap)
+   ========================================================================== */
+
+.activity-calendar {
+  position: relative;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+}
+
+.activity-calendar-svg {
+  display: block;
+}
+
+.activity-calendar-month {
+  font-size: 0.65rem;
+  fill: var(--text-muted);
+}
+
+.activity-calendar-weekday {
+  font-size: 0.6rem;
+  fill: var(--text-muted);
+}
+
+.activity-cell {
+  transition: opacity 0.1s;
+}
+
+.activity-cell:hover {
+  opacity: 0.8;
+}
+
+.activity-cell--0 { fill: var(--bg-elevated); }
+.activity-cell--1 { fill: #9be9a8; }
+.activity-cell--2 { fill: #40c463; }
+.activity-cell--3 { fill: #30a14e; }
+.activity-cell--4 { fill: #216e39; }
+.activity-cell--future { fill: none; }
+
+.activity-tooltip {
+  position: fixed;
+  z-index: 500;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.activity-tooltip strong {
+  display: block;
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
 /* ---- SRS Legend ---------------------------------------------------------- */
 
 .srs-legend {

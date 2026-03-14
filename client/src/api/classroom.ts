@@ -62,6 +62,18 @@ export interface StudentStats {
   totalReviews: number;
   accuracy: number | null;
   lastReviewedAt: string | null;
+  streak: number;
+}
+
+export interface DailyActivity {
+  day: string;
+  reviews: number;
+  wordsAdded: number;
+  quizzes: number;
+  quizCorrect: number;
+  quizTotal: number;
+  drills: number;
+  voiceSessions: number;
 }
 
 export interface StudentWord {
@@ -83,6 +95,7 @@ export interface StudentWordList {
 export interface StudentDetail {
   student: { id: string; username: string; display_name: string };
   stats: StudentStats;
+  activity: DailyActivity[];
   wordLists: StudentWordList[];
   words: StudentWord[];
 }
