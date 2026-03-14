@@ -470,6 +470,30 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
     [classroomId, studentId],
   );
 
+  // Recent completed sessions (quizzes, drills, voice practice) — last 20
+  const recentSessionsResult = await pool.query(
+    `(SELECT 'quiz' AS type, id, question_count, correct_count,
+             NULL::int AS duration_seconds, mode AS detail, completed_at AS done_at
+      FROM quiz_sessions
+      WHERE user_id = $1 AND completed_at IS NOT NULL
+      ORDER BY completed_at DESC LIMIT 10)
+     UNION ALL
+     (SELECT 'drill' AS type, id, question_count, correct_count,
+             duration_seconds, tense_key AS detail, created_at AS done_at
+      FROM drill_sessions
+      WHERE user_id = $1
+      ORDER BY created_at DESC LIMIT 10)
+     UNION ALL
+     (SELECT 'voice' AS type, id, prompt_count AS question_count, correct_count,
+             duration_seconds, target_language AS detail, completed_at AS done_at
+      FROM voice_practice_sessions
+      WHERE user_id = $1 AND completed_at IS NOT NULL
+      ORDER BY completed_at DESC LIMIT 10)
+     ORDER BY done_at DESC
+     LIMIT 20`,
+    [studentId],
+  );
+
   // Compute SRS stage per word
   function srsStage(word) {
     if (word.srs_interval === 0 && word.learning_step === null && !word.last_reviewed_at) return 'new';
@@ -502,6 +526,15 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
       quizTotal: r.quiz_total,
       drills: r.drills,
       voiceSessions: r.voice_sessions,
+    })),
+    recentSessions: recentSessionsResult.rows.map((s) => ({
+      type: s.type,
+      id: s.id,
+      questionCount: s.question_count,
+      correctCount: s.correct_count,
+      durationSeconds: s.duration_seconds,
+      detail: s.detail,
+      doneAt: s.done_at,
     })),
     wordLists: wordListsResult.rows.map((wl) => ({
       id: wl.id,

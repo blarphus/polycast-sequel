@@ -2,106 +2,95 @@
 // pages/StudentDetail.tsx -- Teacher view of a student's progress & stats
 // ---------------------------------------------------------------------------
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import * as api from '../api';
-import type { StudentDetail as StudentDetailData, DailyActivity } from '../api';
+import type { StudentDetail as StudentDetailData, DailyActivity, RecentSession } from '../api';
 import { ChevronLeftIcon, CheckIcon } from '../components/icons';
 import { formatDate as formatShortDate } from '../utils/dateFormat';
 import { useAsyncData } from '../hooks/useAsyncData';
 
 // ---------------------------------------------------------------------------
-// Activity heatmap calendar (last 90 days)
+// Helpers
 // ---------------------------------------------------------------------------
 
-const WEEKDAY_LABELS = ['', 'M', '', 'W', '', 'F', ''];
+function pct(n: number | null) { return n === null ? '--' : `${Math.round(n * 100)}%`; }
 
-function totalActivity(d: DailyActivity): number {
-  return d.reviews + d.wordsAdded + d.quizzes + d.drills + d.voiceSessions;
+function formatDuration(s: number | null) {
+  if (!s) return '';
+  if (s < 60) return `${s}s`;
+  return `${Math.floor(s / 60)}m ${s % 60}s`;
 }
 
-function activityLevel(count: number): number {
-  if (count === 0) return 0;
-  if (count <= 5) return 1;
-  if (count <= 15) return 2;
-  if (count <= 30) return 3;
-  return 4;
+function relativeTime(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days}d ago`;
+  return formatShortDate(dateStr);
 }
 
-function ActivityCalendar({ activity }: { activity: DailyActivity[] }) {
-  const [tooltip, setTooltip] = useState<{ day: string; data: DailyActivity; x: number; y: number } | null>(null);
-  const activityMap = new Map(activity.map((d) => [d.day, d]));
+const SESSION_LABELS: Record<string, { label: string; color: string }> = {
+  quiz: { label: 'Quiz', color: '#6366f1' },
+  drill: { label: 'Drill', color: '#f59e0b' },
+  voice: { label: 'Voice', color: '#06b6d4' },
+};
 
+// ---------------------------------------------------------------------------
+// Weekly activity bars (last 12 weeks)
+// ---------------------------------------------------------------------------
+
+function WeeklyActivityChart({ activity }: { activity: DailyActivity[] }) {
+  // Aggregate by week
   const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const cells: { date: string; weekday: number; weekIndex: number }[] = [];
-  const startDate = new Date(today);
-  startDate.setDate(startDate.getDate() - 90);
-  startDate.setDate(startDate.getDate() - startDate.getDay());
+  const weeks: { label: string; total: number; reviews: number; other: number }[] = [];
 
-  const d = new Date(startDate);
-  let weekIndex = 0;
-  while (d <= today) {
-    cells.push({ date: d.toISOString().slice(0, 10), weekday: d.getDay(), weekIndex });
-    if (d.getDay() === 6) weekIndex++;
-    d.setDate(d.getDate() + 1);
-  }
-  const totalWeeks = weekIndex + 1;
+  for (let w = 11; w >= 0; w--) {
+    const weekEnd = new Date(today);
+    weekEnd.setDate(weekEnd.getDate() - w * 7);
+    const weekStart = new Date(weekEnd);
+    weekStart.setDate(weekStart.getDate() - 6);
 
-  const monthLabels: { label: string; weekIndex: number }[] = [];
-  let lastMonth = -1;
-  for (const cell of cells) {
-    const month = new Date(cell.date).getMonth();
-    if (month !== lastMonth && cell.weekday === 0) {
-      monthLabels.push({ label: new Date(cell.date).toLocaleString('en-US', { month: 'short' }), weekIndex: cell.weekIndex });
-      lastMonth = month;
+    const startStr = weekStart.toISOString().slice(0, 10);
+    const endStr = weekEnd.toISOString().slice(0, 10);
+
+    let reviews = 0;
+    let other = 0;
+    for (const d of activity) {
+      if (d.day >= startStr && d.day <= endStr) {
+        reviews += d.reviews;
+        other += d.wordsAdded + d.quizzes + d.drills + d.voiceSessions;
+      }
     }
+
+    const label = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    weeks.push({ label, total: reviews + other, reviews, other });
   }
 
-  const cellSize = 12;
-  const cellGap = 3;
-  const step = cellSize + cellGap;
-  const labelWidth = 20;
+  const maxVal = Math.max(...weeks.map((w) => w.total), 1);
 
   return (
-    <div className="sd-activity-calendar">
-      <svg width={labelWidth + totalWeeks * step} height={16 + 7 * step}>
-        {monthLabels.map((m, i) => (
-          <text key={i} x={labelWidth + m.weekIndex * step} y={10} className="sd-cal-month">{m.label}</text>
+    <div className="sd-weekly-chart">
+      <div className="sd-weekly-bars">
+        {weeks.map((w, i) => (
+          <div key={i} className="sd-weekly-col" title={`${w.label}: ${w.total} activities`}>
+            <div className="sd-weekly-bar-track">
+              {w.total > 0 && (
+                <div
+                  className="sd-weekly-bar-fill"
+                  style={{ height: `${Math.max((w.total / maxVal) * 100, 4)}%` }}
+                />
+              )}
+            </div>
+            {i % 3 === 0 && <span className="sd-weekly-label">{w.label}</span>}
+          </div>
         ))}
-        {WEEKDAY_LABELS.map((label, i) => (
-          label ? <text key={i} x={labelWidth - 3} y={16 + i * step + cellSize - 2} className="sd-cal-weekday" textAnchor="end">{label}</text> : null
-        ))}
-        {cells.map((cell) => {
-          const data = activityMap.get(cell.date);
-          const count = data ? totalActivity(data) : 0;
-          const level = activityLevel(count);
-          const isFuture = cell.date > todayStr;
-          return (
-            <rect
-              key={cell.date}
-              x={labelWidth + cell.weekIndex * step}
-              y={16 + cell.weekday * step}
-              width={cellSize}
-              height={cellSize}
-              rx={2}
-              className={`sd-cal-cell sd-cal-cell--${isFuture ? 'future' : level}`}
-              onMouseEnter={(e) => { if (!isFuture && count > 0) setTooltip({ day: cell.date, data: data!, x: e.clientX, y: e.clientY }); }}
-              onMouseLeave={() => setTooltip(null)}
-            />
-          );
-        })}
-      </svg>
-      {tooltip && (
-        <div className="sd-cal-tooltip" style={{ top: tooltip.y - 70, left: tooltip.x - 90 }}>
-          <strong>{new Date(tooltip.day + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>
-          <span>{tooltip.data.reviews} reviews</span>
-          {tooltip.data.wordsAdded > 0 && <span>{tooltip.data.wordsAdded} words added</span>}
-          {tooltip.data.quizzes > 0 && <span>{tooltip.data.quizzes} quiz{tooltip.data.quizzes > 1 ? 'zes' : ''}</span>}
-          {tooltip.data.drills > 0 && <span>{tooltip.data.drills} drill{tooltip.data.drills > 1 ? 's' : ''}</span>}
-          {tooltip.data.voiceSessions > 0 && <span>{tooltip.data.voiceSessions} voice</span>}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -127,22 +116,46 @@ function SrsProgressBar({ words }: { words: StudentDetailData['words'] }) {
     <div className="sd-srs-bar-section">
       <div className="sd-srs-bar">
         {segments.map((s) => s.count > 0 && (
-          <div
-            key={s.stage}
-            className="sd-srs-bar-segment"
-            style={{ width: `${(s.count / total) * 100}%`, background: s.color }}
-            title={`${s.label}: ${s.count}`}
-          />
+          <div key={s.stage} className="sd-srs-bar-segment" style={{ width: `${(s.count / total) * 100}%`, background: s.color }} title={`${s.label}: ${s.count}`} />
         ))}
       </div>
       <div className="sd-srs-legend">
         {segments.map((s) => (
           <span key={s.stage} className="sd-srs-legend-item">
             <span className="sd-srs-legend-dot" style={{ background: s.color }} />
-            {s.label} ({s.count})
+            {s.count} {s.label.toLowerCase()}
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Recent sessions timeline
+// ---------------------------------------------------------------------------
+
+function SessionTimeline({ sessions }: { sessions: RecentSession[] }) {
+  if (sessions.length === 0) return <p className="sd-empty">No completed sessions yet.</p>;
+  return (
+    <div className="sd-sessions">
+      {sessions.map((s) => {
+        const info = SESSION_LABELS[s.type];
+        const score = s.questionCount > 0 ? Math.round((s.correctCount / s.questionCount) * 100) : 0;
+        return (
+          <div key={`${s.type}-${s.id}`} className="sd-session-row">
+            <span className="sd-session-badge" style={{ background: info.color }}>{info.label}</span>
+            <div className="sd-session-info">
+              <span className="sd-session-score">{score}%</span>
+              <span className="sd-session-detail">
+                {s.correctCount}/{s.questionCount}
+                {s.durationSeconds ? ` in ${formatDuration(s.durationSeconds)}` : ''}
+              </span>
+            </div>
+            <span className="sd-session-time">{relativeTime(s.doneAt)}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -166,9 +179,7 @@ export default function StudentDetail() {
     [classroomId, studentId],
   );
 
-  if (loading) {
-    return <div className="loading-screen"><div className="loading-spinner" /></div>;
-  }
+  if (loading) return <div className="loading-screen"><div className="loading-spinner" /></div>;
 
   if (error) {
     return (
@@ -183,36 +194,26 @@ export default function StudentDetail() {
 
   if (!data) return null;
 
-  const { student, stats, activity, wordLists, words } = data;
+  const { student, stats, activity, recentSessions, wordLists, words } = data;
   const displayName = student.display_name || student.username;
-  const pct = (n: number | null) => n === null ? '--' : `${Math.round(n * 100)}%`;
-
-  // Compute totals from activity data
-  const totalReviewsLast90 = activity.reduce((s, a) => s + a.reviews, 0);
-  const totalWordsAdded = activity.reduce((s, a) => s + a.wordsAdded, 0);
-  const totalQuizzes = activity.reduce((s, a) => s + a.quizzes, 0);
-  const totalDrills = activity.reduce((s, a) => s + a.drills, 0);
-  const totalVoice = activity.reduce((s, a) => s + a.voiceSessions, 0);
   const completedLists = wordLists.filter((wl) => wl.completed).length;
 
   return (
     <div className="sd-page">
       {/* Header */}
-      <div className="sd-header">
-        <button className="sd-back" onClick={() => navigate(classroomId ? `/students?classroomId=${classroomId}` : '/students')}>
-          <ChevronLeftIcon size={16} />
-          Back
-        </button>
-        <div className="sd-profile">
-          <div className="sd-avatar">{displayName.charAt(0).toUpperCase()}</div>
-          <div>
-            <h1 className="sd-name">{displayName}</h1>
-            <span className="sd-username">@{student.username}</span>
-          </div>
+      <button className="sd-back" onClick={() => navigate(classroomId ? `/students?classroomId=${classroomId}` : '/students')}>
+        <ChevronLeftIcon size={16} /> Back
+      </button>
+
+      <div className="sd-profile">
+        <div className="sd-avatar">{displayName.charAt(0).toUpperCase()}</div>
+        <div>
+          <h1 className="sd-name">{displayName}</h1>
+          <span className="sd-username">@{student.username}</span>
         </div>
       </div>
 
-      {/* Key metrics row */}
+      {/* Key metrics */}
       <div className="sd-metrics">
         <div className="sd-metric">
           <span className="sd-metric-value sd-metric-value--accent">{stats.streak}</span>
@@ -221,6 +222,10 @@ export default function StudentDetail() {
         <div className="sd-metric">
           <span className="sd-metric-value">{stats.totalWords}</span>
           <span className="sd-metric-label">Total words</span>
+        </div>
+        <div className="sd-metric">
+          <span className="sd-metric-value">{stats.wordsMastered}</span>
+          <span className="sd-metric-label">Mastered</span>
         </div>
         <div className="sd-metric">
           <span className="sd-metric-value">{pct(stats.accuracy)}</span>
@@ -236,19 +241,19 @@ export default function StudentDetail() {
       <div className="sd-grid">
         {/* Left column */}
         <div className="sd-col">
-          {/* Activity calendar card */}
+          {/* Weekly activity */}
           <div className="sd-card">
-            <h2 className="sd-card-title">Activity</h2>
+            <h2 className="sd-card-title">Weekly Activity</h2>
             {activity.length === 0 ? (
-              <p className="sd-empty">No activity recorded yet.</p>
+              <p className="sd-empty">No activity yet.</p>
             ) : (
-              <ActivityCalendar activity={activity} />
+              <WeeklyActivityChart activity={activity} />
             )}
           </div>
 
-          {/* SRS progress card */}
+          {/* Vocabulary */}
           <div className="sd-card">
-            <h2 className="sd-card-title">Vocabulary Progress</h2>
+            <h2 className="sd-card-title">Vocabulary ({words.length})</h2>
             {words.length === 0 ? (
               <p className="sd-empty">No words saved yet.</p>
             ) : (
@@ -268,9 +273,7 @@ export default function StudentDetail() {
                     </div>
                   ))}
                   {words.length > 20 && (
-                    <div className="sd-word-row sd-word-more">
-                      +{words.length - 20} more words
-                    </div>
+                    <div className="sd-word-row sd-word-more">+{words.length - 20} more words</div>
                   )}
                 </div>
               </>
@@ -280,55 +283,28 @@ export default function StudentDetail() {
 
         {/* Right column */}
         <div className="sd-col">
-          {/* 90-day summary card */}
+          {/* Recent sessions */}
           <div className="sd-card">
-            <h2 className="sd-card-title">Last 90 Days</h2>
-            <div className="sd-summary-list">
-              <div className="sd-summary-row">
-                <span className="sd-summary-label">Reviews completed</span>
-                <span className="sd-summary-value">{totalReviewsLast90}</span>
-              </div>
-              <div className="sd-summary-row">
-                <span className="sd-summary-label">Words added</span>
-                <span className="sd-summary-value">{totalWordsAdded}</span>
-              </div>
-              <div className="sd-summary-row">
-                <span className="sd-summary-label">Quizzes taken</span>
-                <span className="sd-summary-value">{totalQuizzes}</span>
-              </div>
-              <div className="sd-summary-row">
-                <span className="sd-summary-label">Drills completed</span>
-                <span className="sd-summary-value">{totalDrills}</span>
-              </div>
-              <div className="sd-summary-row">
-                <span className="sd-summary-label">Voice sessions</span>
-                <span className="sd-summary-value">{totalVoice}</span>
-              </div>
-              <div className="sd-summary-row">
-                <span className="sd-summary-label">Days active this week</span>
-                <span className="sd-summary-value">{stats.daysActiveThisWeek}/7</span>
-              </div>
-            </div>
+            <h2 className="sd-card-title">Recent Tests & Practice</h2>
+            <SessionTimeline sessions={recentSessions} />
           </div>
 
-          {/* Word lists card */}
+          {/* Word lists */}
           <div className="sd-card">
             <div className="sd-card-title-row">
-              <h2 className="sd-card-title">Assigned Word Lists</h2>
+              <h2 className="sd-card-title">Assignments</h2>
               {wordLists.length > 0 && (
                 <span className="sd-card-badge">{completedLists}/{wordLists.length}</span>
               )}
             </div>
             {wordLists.length === 0 ? (
-              <p className="sd-empty">No word lists assigned.</p>
+              <p className="sd-empty">No assignments yet.</p>
             ) : (
               <div className="sd-wl-list">
                 {wordLists.map((wl) => (
                   <div key={wl.id} className={`sd-wl-row${wl.completed ? ' sd-wl-row--done' : ''}`}>
                     <div className="sd-wl-icon">
-                      {wl.completed
-                        ? <CheckIcon size={14} strokeWidth={2.5} />
-                        : <span className="sd-wl-circle" />}
+                      {wl.completed ? <CheckIcon size={14} strokeWidth={2.5} /> : <span className="sd-wl-circle" />}
                     </div>
                     <div className="sd-wl-info">
                       <span className="sd-wl-title">{wl.title || 'Word List'}</span>
@@ -341,6 +317,33 @@ export default function StudentDetail() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* 90-day summary */}
+          <div className="sd-card">
+            <h2 className="sd-card-title">90-Day Summary</h2>
+            <div className="sd-summary-list">
+              <div className="sd-summary-row">
+                <span className="sd-summary-label">Reviews</span>
+                <span className="sd-summary-value">{activity.reduce((s, a) => s + a.reviews, 0)}</span>
+              </div>
+              <div className="sd-summary-row">
+                <span className="sd-summary-label">Words added</span>
+                <span className="sd-summary-value">{activity.reduce((s, a) => s + a.wordsAdded, 0)}</span>
+              </div>
+              <div className="sd-summary-row">
+                <span className="sd-summary-label">Quizzes</span>
+                <span className="sd-summary-value">{activity.reduce((s, a) => s + a.quizzes, 0)}</span>
+              </div>
+              <div className="sd-summary-row">
+                <span className="sd-summary-label">Drills</span>
+                <span className="sd-summary-value">{activity.reduce((s, a) => s + a.drills, 0)}</span>
+              </div>
+              <div className="sd-summary-row">
+                <span className="sd-summary-label">Voice practice</span>
+                <span className="sd-summary-value">{activity.reduce((s, a) => s + a.voiceSessions, 0)}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

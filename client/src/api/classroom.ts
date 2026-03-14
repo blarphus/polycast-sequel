@@ -92,10 +92,21 @@ export interface StudentWordList {
   completed_at: string | null;
 }
 
+export interface RecentSession {
+  type: 'quiz' | 'drill' | 'voice';
+  id: string;
+  questionCount: number;
+  correctCount: number;
+  durationSeconds: number | null;
+  detail: string | null;
+  doneAt: string;
+}
+
 export interface StudentDetail {
   student: { id: string; username: string; display_name: string };
   stats: StudentStats;
   activity: DailyActivity[];
+  recentSessions: RecentSession[];
   wordLists: StudentWordList[];
   words: StudentWord[];
 }
