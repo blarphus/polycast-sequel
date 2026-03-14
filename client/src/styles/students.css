@@ -732,6 +732,14 @@
 .sd-heatmap-cell--completed .sd-heatmap-date { color: #15803d; }
 .sd-heatmap-cell--partial .sd-heatmap-date { color: #92400e; }
 
+.sd-heatmap-x {
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1;
+  opacity: 0.5;
+}
+
 .sd-heatmap-legend {
   display: flex;
   align-items: center;
