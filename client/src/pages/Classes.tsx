@@ -30,9 +30,9 @@ function CardMenu({
   useClickOutside(menuRef, onClose);
 
   return (
-    <div ref={menuRef} className="stream-post-menu">
-      <button className="stream-post-menu-item" onClick={() => { onEdit(); onClose(); }}>Edit class</button>
-      <button className="stream-post-menu-item stream-post-menu-item--danger" onClick={() => { onDelete(); onClose(); }}>Delete class</button>
+    <div ref={menuRef} className="gc-card-menu">
+      <button className="gc-card-menu-item" onClick={() => { onEdit(); onClose(); }}>Edit class</button>
+      <button className="gc-card-menu-item gc-card-menu-item--danger" onClick={() => { onDelete(); onClose(); }}>Delete class</button>
     </div>
   );
 }
@@ -286,7 +286,7 @@ export default function Classes() {
                       <span>{classroom.student_count}</span>
                     </button>
                     {isTeacher && (
-                      <div style={{ position: 'relative' }}>
+                      <div className="gc-card-menu-anchor">
                         <button
                           className="gc-card-action"
                           onClick={() => setMenuOpenId((prev) => prev === classroom.id ? null : classroom.id)}

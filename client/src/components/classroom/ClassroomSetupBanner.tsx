@@ -57,32 +57,41 @@ export default function ClassroomSetupBanner({ classroom, onUpdated }: Props) {
       </div>
 
       <form className="classroom-setup-form" onSubmit={handleSave}>
-        <input
-          className="form-input"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Class name"
-        />
-        <select
-          className="form-input"
-          value={targetLanguage}
-          onChange={(e) => setTargetLanguage(e.target.value)}
-        >
-          <option value="">Teaching language...</option>
-          {LANGUAGES.map((l) => (
-            <option key={l.code} value={l.code}>{l.name}</option>
-          ))}
-        </select>
-        <select
-          className="form-input"
-          value={nativeLanguage}
-          onChange={(e) => setNativeLanguage(e.target.value)}
-        >
-          <option value="">Students speak...</option>
-          {LANGUAGES.map((l) => (
-            <option key={l.code} value={l.code}>{l.name}</option>
-          ))}
-        </select>
+        <label className="classroom-setup-field">
+          <span className="classroom-setup-label">Class name</span>
+          <input
+            className="form-input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Class name"
+          />
+        </label>
+        <label className="classroom-setup-field">
+          <span className="classroom-setup-label">Target language</span>
+          <select
+            className="form-input"
+            value={targetLanguage}
+            onChange={(e) => setTargetLanguage(e.target.value)}
+          >
+            <option value="">Select...</option>
+            {LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>{l.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="classroom-setup-field">
+          <span className="classroom-setup-label">Student native language</span>
+          <select
+            className="form-input"
+            value={nativeLanguage}
+            onChange={(e) => setNativeLanguage(e.target.value)}
+          >
+            <option value="">Select...</option>
+            {LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>{l.name}</option>
+            ))}
+          </select>
+        </label>
         <button className="btn btn-primary btn-sm" type="submit" disabled={saving}>
           {saving ? 'Saving...' : 'Save class'}
         </button>
