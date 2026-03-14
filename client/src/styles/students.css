@@ -665,10 +665,30 @@
   gap: 0.5rem;
 }
 
-.sd-heatmap-grid {
+.sd-heatmap-header {
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 3px;
+  margin-bottom: 2px;
+}
+
+.sd-heatmap-day-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.15rem 0;
+}
+
+.sd-heatmap-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 3px;
+}
+
+.sd-heatmap-cell--blank {
+  cursor: default;
 }
 
 .sd-heatmap-cell {

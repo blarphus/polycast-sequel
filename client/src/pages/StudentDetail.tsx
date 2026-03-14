@@ -57,6 +57,8 @@ function activityLevel(count: number): number {
   return 4;
 }
 
+const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 function MonthCalendar({ activity, selectedDay, onSelectDay }: {
   activity: DailyActivity[];
   selectedDay: string | null;
@@ -66,39 +68,50 @@ function MonthCalendar({ activity, selectedDay, onSelectDay }: {
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
 
-  // Build 30 cells
-  const cells: { date: string; label: string; total: number }[] = [];
+  // Build 30 days ending today
+  type Cell = { date: string; day: number; total: number } | null;
+  const days: { date: string; weekday: number; day: number; total: number }[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
     const data = activityMap.get(dateStr);
-    cells.push({
-      date: dateStr,
-      label: d.getDate().toString(),
-      total: data ? totalActivity(data) : 0,
-    });
+    days.push({ date: dateStr, weekday: d.getDay(), day: d.getDate(), total: data ? totalActivity(data) : 0 });
   }
+
+  // Group into rows of 7 (Sun=0 .. Sat=6)
+  const rows: Cell[][] = [];
+  let row: Cell[] = new Array(7).fill(null);
+  for (const d of days) {
+    row[d.weekday] = { date: d.date, day: d.day, total: d.total };
+    if (d.weekday === 6) { rows.push(row); row = new Array(7).fill(null); }
+  }
+  if (row.some((c) => c !== null)) rows.push(row);
 
   return (
     <div className="sd-heatmap">
-      <div className="sd-heatmap-grid">
-        {cells.map((cell) => {
-          const level = activityLevel(cell.total);
-          const isSelected = selectedDay === cell.date;
-          const isToday = cell.date === todayStr;
-          return (
-            <button
-              key={cell.date}
-              className={`sd-heatmap-cell sd-heatmap-cell--${level}${isSelected ? ' sd-heatmap-cell--selected' : ''}${isToday ? ' sd-heatmap-cell--today' : ''}`}
-              onClick={() => onSelectDay(isSelected ? null : cell.date)}
-              title={`${new Date(cell.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${cell.total} activities`}
-            >
-              <span className="sd-heatmap-date">{cell.label}</span>
-            </button>
-          );
-        })}
+      <div className="sd-heatmap-header">
+        {DAY_HEADERS.map((d) => <span key={d} className="sd-heatmap-day-label">{d}</span>)}
       </div>
+      {rows.map((r, ri) => (
+        <div key={ri} className="sd-heatmap-row">
+          {r.map((cell, ci) => {
+            if (!cell) return <div key={ci} className="sd-heatmap-cell sd-heatmap-cell--blank" />;
+            const level = activityLevel(cell.total);
+            const isSelected = selectedDay === cell.date;
+            const isToday = cell.date === todayStr;
+            return (
+              <button
+                key={ci}
+                className={`sd-heatmap-cell sd-heatmap-cell--${level}${isSelected ? ' sd-heatmap-cell--selected' : ''}${isToday ? ' sd-heatmap-cell--today' : ''}`}
+                onClick={() => onSelectDay(isSelected ? null : cell.date)}
+              >
+                <span className="sd-heatmap-date">{cell.day}</span>
+              </button>
+            );
+          })}
+        </div>
+      ))}
       <div className="sd-heatmap-legend">
         <span className="sd-heatmap-legend-label">Less</span>
         {[0, 1, 2, 3, 4].map((l) => (
