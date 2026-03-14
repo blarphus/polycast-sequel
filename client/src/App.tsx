@@ -64,6 +64,12 @@ function ProtectedRoute({ children, skipLanguageCheck }: { children: React.React
   return <>{children}</>;
 }
 
+function StudentRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (user?.account_type === 'teacher') return <Navigate to="/classes" replace />;
+  return <ProtectedRoute>{children}</ProtectedRoute>;
+}
+
 // ---------------------------------------------------------------------------
 // AuthenticatedShell -- renders the IncomingCall modal globally, but only
 // when the user is logged in (so we don't listen for socket events on the
@@ -200,17 +206,17 @@ export default function App() {
         <Route
           path="/dictionary"
           element={
-            <ProtectedRoute>
+            <StudentRoute>
               <Dictionary />
-            </ProtectedRoute>
+            </StudentRoute>
           }
         />
         <Route
           path="/learn"
           element={
-            <ProtectedRoute>
+            <StudentRoute>
               <Learn />
-            </ProtectedRoute>
+            </StudentRoute>
           }
         />
         <Route
@@ -280,33 +286,33 @@ export default function App() {
         <Route
           path="/practice"
           element={
-            <ProtectedRoute>
+            <StudentRoute>
               <Practice />
-            </ProtectedRoute>
+            </StudentRoute>
           }
         />
         <Route
           path="/practice/drill"
           element={
-            <ProtectedRoute>
+            <StudentRoute>
               <DrillPicker />
-            </ProtectedRoute>
+            </StudentRoute>
           }
         />
         <Route
           path="/practice/voice"
           element={
-            <ProtectedRoute>
+            <StudentRoute>
               <VoicePractice />
-            </ProtectedRoute>
+            </StudentRoute>
           }
         />
         <Route
           path="/practice/:videoId"
           element={
-            <ProtectedRoute>
+            <StudentRoute>
               <Practice />
-            </ProtectedRoute>
+            </StudentRoute>
           }
         />
         {/* Fallback */}

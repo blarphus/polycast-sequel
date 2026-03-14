@@ -115,13 +115,15 @@ export default function BottomToolbar() {
         <HomeIcon size={22} />
         <span className="toolbar-label">Home</span>
       </button>
-      <button
-        className={`toolbar-tab toolbar-tab--yellow${isPractice ? ' active' : ''}`}
-        onClick={() => navigate('/practice')}
-      >
-        <BoltIcon size={22} />
-        <span className="toolbar-label">Practice</span>
-      </button>
+      {!isTeacher && (
+        <button
+          className={`toolbar-tab toolbar-tab--yellow${isPractice ? ' active' : ''}`}
+          onClick={() => navigate('/practice')}
+        >
+          <BoltIcon size={22} />
+          <span className="toolbar-label">Practice</span>
+        </button>
+      )}
       {!isTeacher && (
         <button
           className={`toolbar-tab toolbar-tab--red${isDictionary ? ' active' : ''}`}

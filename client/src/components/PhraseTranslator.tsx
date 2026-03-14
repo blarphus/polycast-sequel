@@ -16,6 +16,7 @@ export default function PhraseTranslator() {
   const popupRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef(0);
 
+  const isTeacher = user?.account_type === 'teacher';
   const targetLang = user?.target_language;
   const nativeLang = user?.native_language || 'en';
 
@@ -27,6 +28,7 @@ export default function PhraseTranslator() {
   }, []);
 
   useEffect(() => {
+    if (isTeacher) return;
     const handleMouseUp = () => {
       // Small delay to let the selection finalize
       requestAnimationFrame(() => {
@@ -48,7 +50,7 @@ export default function PhraseTranslator() {
 
     document.addEventListener('mouseup', handleMouseUp);
     return () => document.removeEventListener('mouseup', handleMouseUp);
-  }, []);
+  }, [isTeacher]);
 
   // Dismiss on click outside or escape
   useEffect(() => {
@@ -100,7 +102,7 @@ export default function PhraseTranslator() {
       });
   }, [popup, targetLang, nativeLang]);
 
-  if (!popup) return null;
+  if (!popup || isTeacher) return null;
 
   // Position popup above selection, flip below if near top
   const popupWidth = 320;
