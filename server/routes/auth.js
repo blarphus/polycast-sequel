@@ -6,6 +6,7 @@ import {
   hashPassword,
   comparePassword,
   signToken,
+  verifyToken,
   authMiddleware,
   COOKIE_OPTIONS,
 } from '../auth.js';
@@ -20,6 +21,10 @@ const signupSchema = z.object({
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required').trim(),
   password: z.string().min(1, 'Password is required'),
+});
+
+const restoreSessionSchema = z.object({
+  token: z.string().min(1, 'token is required'),
 });
 
 const settingsSchema = z.object({
@@ -134,6 +139,64 @@ router.post('/api/login', loginLimiter, validate({ body: loginSchema }), async (
     });
   } catch (err) {
     req.log.error({ err }, 'Login error');
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/session/restore
+ * Restore the auth cookie from a previously saved JWT.
+ */
+router.post('/api/session/restore', validate({ body: restoreSessionSchema }), async (req, res) => {
+  try {
+    const decoded = verifyToken(req.body.token);
+    if (!decoded?.userId) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    const result = await pool.query(
+      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_level FROM users WHERE id = $1',
+      [decoded.userId],
+    );
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const token = signToken(user.id);
+    res.cookie('token', token, COOKIE_OPTIONS);
+
+    return res.json({
+      id: user.id,
+      username: user.username,
+      display_name: user.display_name,
+      created_at: user.created_at,
+      native_language: user.native_language,
+      target_language: user.target_language,
+      daily_new_limit: user.daily_new_limit,
+      account_type: user.account_type,
+      cefr_level: user.cefr_level ?? null,
+      token,
+    });
+  } catch (err) {
+    req.log.error({ err }, 'Restore session error');
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/session/export
+ * Issue a fresh JWT for the current authenticated user so the client can save it locally
+ * for fast account switching on this device.
+ */
+router.post('/api/session/export', authMiddleware, async (req, res) => {
+  try {
+    const token = signToken(req.userId);
+    res.cookie('token', token, COOKIE_OPTIONS);
+    return res.json({ token });
+  } catch (err) {
+    req.log.error({ err }, 'Export session error');
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

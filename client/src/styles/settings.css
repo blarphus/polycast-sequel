@@ -406,6 +406,94 @@
   color: #fff;
 }
 
+.saved-account-panel {
+  margin-bottom: 1.35rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-primary);
+}
+
+.saved-account-header {
+  margin-bottom: 0.75rem;
+}
+
+.saved-account-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.saved-account-subtitle {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.saved-account-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.saved-account-select {
+  margin-bottom: 0;
+}
+
+.saved-account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+}
+
+.saved-account-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+}
+
+.saved-account-chip.active {
+  border-color: var(--accent);
+  background: var(--bg-primary);
+}
+
+.saved-account-chip-main {
+  min-width: 0;
+}
+
+.saved-account-chip-name {
+  display: block;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.saved-account-chip-meta {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.saved-account-remove {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saved-account-remove:hover {
+  color: var(--danger);
+}
+
 /* ---- Texture toggle (Settings page) ------------------------------------- */
 
 .texture-toggle-row {

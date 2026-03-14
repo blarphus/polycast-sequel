@@ -2,7 +2,7 @@
 // pages/Settings.tsx -- Language settings page
 // ---------------------------------------------------------------------------
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
@@ -11,7 +11,7 @@ import PlacementTest from '../components/PlacementTest';
 import { ChevronLeftIcon } from '../components/icons';
 
 export default function Settings() {
-  const { user, updateSettings } = useAuth();
+  const { user, savedAccounts, switchAccount, forgetSavedAccount, updateSettings } = useAuth();
   const { theme, toggleTheme, bgTexture, setBgTexture } = useTheme();
   const navigate = useNavigate();
 
@@ -20,9 +20,19 @@ export default function Settings() {
   const [dailyNewLimit, setDailyNewLimit] = useState(user?.daily_new_limit ?? 5);
   const [accountType, setAccountType] = useState<'student' | 'teacher'>(user?.account_type || 'student');
   const [saving, setSaving] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [showPlacement, setShowPlacement] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState(user?.id || '');
+
+  useEffect(() => {
+    setNativeLang(user?.native_language || '');
+    setTargetLang(user?.target_language || '');
+    setDailyNewLimit(user?.daily_new_limit ?? 5);
+    setAccountType(user?.account_type || 'student');
+    setSelectedAccountId(user?.id || '');
+  }, [user]);
 
   const PLACEMENT_LANGUAGES = ['en', 'es', 'pt'];
   const canTakePlacement = PLACEMENT_LANGUAGES.includes(user?.target_language || '');
@@ -53,6 +63,22 @@ export default function Settings() {
     }
   };
 
+  const handleSwitchAccount = async () => {
+    if (!selectedAccountId || selectedAccountId === user?.id) return;
+    setSwitching(true);
+    setError('');
+    setSaved(false);
+    try {
+      await switchAccount(selectedAccountId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  const switchableAccounts = savedAccounts;
+
   if (showPlacement && user?.target_language) {
     return (
       <div className="auth-page">
@@ -68,6 +94,61 @@ export default function Settings() {
   return (
     <div className="auth-page">
       <div className="auth-card">
+        <div className="saved-account-panel">
+          <div className="saved-account-header">
+            <div>
+              <div className="saved-account-title">Saved Accounts</div>
+              <div className="saved-account-subtitle">Switch between your teacher and student sessions on this device</div>
+            </div>
+          </div>
+          <div className="saved-account-row">
+            <select
+              className="form-input saved-account-select"
+              value={selectedAccountId}
+              onChange={(e) => setSelectedAccountId(e.target.value)}
+            >
+              {switchableAccounts.length === 0 ? (
+                <option value="">No saved accounts yet</option>
+              ) : (
+                switchableAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.display_name || account.username} ({account.account_type})
+                    {account.id === user?.id ? ' - Current' : ''}
+                  </option>
+                ))
+              )}
+            </select>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={handleSwitchAccount}
+              disabled={switching || !selectedAccountId || selectedAccountId === user?.id}
+            >
+              {switching ? 'Switching...' : 'Switch'}
+            </button>
+          </div>
+          {switchableAccounts.length > 0 && (
+            <div className="saved-account-list">
+              {switchableAccounts.map((account) => (
+                <div key={account.id} className={`saved-account-chip${account.id === user?.id ? ' active' : ''}`}>
+                  <div className="saved-account-chip-main">
+                    <span className="saved-account-chip-name">{account.display_name || account.username}</span>
+                    <span className="saved-account-chip-meta">@{account.username} · {account.account_type}</span>
+                  </div>
+                  <button
+                    className="saved-account-remove"
+                    type="button"
+                    onClick={() => forgetSavedAccount(account.id)}
+                    title="Remove saved account"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <button className="channel-back-btn" onClick={() => navigate(-1)}>
           <ChevronLeftIcon size={18} />
           Back

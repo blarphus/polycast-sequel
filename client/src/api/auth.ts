@@ -11,17 +11,34 @@ export interface AuthUser {
   cefr_level: string | null;
 }
 
+export interface AuthSession extends AuthUser {
+  token: string;
+}
+
 export function signup(username: string, password: string, displayName: string) {
-  return request<AuthUser>('/signup', {
+  return request<AuthSession>('/signup', {
     method: 'POST',
     body: { username, password, display_name: displayName },
   });
 }
 
 export function login(username: string, password: string) {
-  return request<AuthUser>('/login', {
+  return request<AuthSession>('/login', {
     method: 'POST',
     body: { username, password },
+  });
+}
+
+export function restoreSession(token: string) {
+  return request<AuthSession>('/session/restore', {
+    method: 'POST',
+    body: { token },
+  });
+}
+
+export function exportSessionToken() {
+  return request<{ token: string }>('/session/export', {
+    method: 'POST',
   });
 }
 

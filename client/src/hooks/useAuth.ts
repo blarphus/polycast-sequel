@@ -13,14 +13,18 @@ import {
 } from 'react';
 import * as api from '../api';
 import type { AuthUser } from '../api';
+import { loadSavedAccounts, removeSavedAccount, upsertSavedAccount, type SavedAccount } from '../utils/savedAccounts';
 
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   authError: string;
+  savedAccounts: SavedAccount[];
   login: (username: string, password: string) => Promise<void>;
   signup: (username: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
+  switchAccount: (userId: string) => Promise<void>;
+  forgetSavedAccount: (userId: string) => void;
   updateSettings: (native_language: string | null, target_language: string | null, daily_new_limit?: number, account_type?: 'student' | 'teacher', cefr_level?: string | null) => Promise<void>;
 }
 
@@ -30,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
+  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>(() => loadSavedAccounts());
+  const [currentSessionToken, setCurrentSessionToken] = useState<string | null>(null);
 
   // Check session on mount
   useEffect(() => {
@@ -40,6 +46,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setUser(u);
           setAuthError('');
+          const accounts = loadSavedAccounts();
+          const matchingAccount = accounts.find((account) => account.id === u.id) || null;
+          setSavedAccounts(accounts);
+          setCurrentSessionToken(matchingAccount?.token || null);
+          api.exportSessionToken()
+            .then(({ token }) => {
+              if (cancelled) return;
+              setCurrentSessionToken(token);
+              setSavedAccounts(upsertSavedAccount(u, token));
+            })
+            .catch((err) => {
+              console.error('Auth session export failed:', err);
+            });
         }
       })
       .catch((err) => {
@@ -61,29 +80,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const u = await api.login(username, password);
     setUser(u);
     setAuthError('');
+    setCurrentSessionToken(u.token);
+    setSavedAccounts(upsertSavedAccount(u, u.token));
   }, []);
 
   const signup = useCallback(async (username: string, password: string, displayName: string) => {
     const u = await api.signup(username, password, displayName);
     setUser(u);
     setAuthError('');
+    setCurrentSessionToken(u.token);
+    setSavedAccounts(upsertSavedAccount(u, u.token));
   }, []);
 
   const logout = useCallback(async () => {
     await api.logout();
     setUser(null);
     setAuthError('');
+    setCurrentSessionToken(null);
   }, []);
+
+  const switchAccount = useCallback(async (userId: string) => {
+    const account = savedAccounts.find((entry) => entry.id === userId);
+    if (!account) {
+      throw new Error('Saved account not found');
+    }
+
+    try {
+      const nextUser = await api.restoreSession(account.token);
+      setUser(nextUser);
+      setAuthError('');
+      setCurrentSessionToken(nextUser.token);
+      setSavedAccounts(upsertSavedAccount(nextUser, nextUser.token));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('expired')) {
+        setSavedAccounts(removeSavedAccount(userId));
+      }
+      throw err;
+    }
+  }, [savedAccounts]);
+
+  const forgetSavedAccount = useCallback((userId: string) => {
+    const nextAccounts = removeSavedAccount(userId);
+    setSavedAccounts(nextAccounts);
+    if (user?.id === userId) {
+      setCurrentSessionToken(null);
+    }
+  }, [user?.id]);
 
   const updateSettings = useCallback(async (native_language: string | null, target_language: string | null, daily_new_limit?: number, account_type?: 'student' | 'teacher', cefr_level?: string | null) => {
     const u = await api.updateSettings(native_language, target_language, daily_new_limit, account_type, cefr_level);
     setUser(u);
     setAuthError('');
-  }, []);
+    if (currentSessionToken) {
+      setSavedAccounts(upsertSavedAccount(u, currentSessionToken));
+    }
+  }, [currentSessionToken]);
 
   return createElement(
     AuthContext.Provider,
-    { value: { user, loading, authError, login, signup, logout, updateSettings } },
+    { value: { user, loading, authError, savedAccounts, login, signup, logout, switchAccount, forgetSavedAccount, updateSettings } },
     children,
   );
 }
