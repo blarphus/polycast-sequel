@@ -1,5 +1,30 @@
 export async function up(client) {
   await client.query(`
+    ALTER TABLE saved_words
+      ADD COLUMN IF NOT EXISTS due_at TIMESTAMPTZ DEFAULT NULL
+  `);
+
+  await client.query(`
+    ALTER TABLE saved_words
+      ADD COLUMN IF NOT EXISTS last_reviewed_at TIMESTAMPTZ DEFAULT NULL
+  `);
+
+  await client.query(`
+    ALTER TABLE saved_words
+      ADD COLUMN IF NOT EXISTS frequency INTEGER DEFAULT NULL
+  `);
+
+  await client.query(`
+    ALTER TABLE saved_words
+      ADD COLUMN IF NOT EXISTS priority BOOLEAN DEFAULT false
+  `);
+
+  await client.query(`
+    ALTER TABLE saved_words
+      ADD COLUMN IF NOT EXISTS queue_position INTEGER DEFAULT NULL
+  `);
+
+  await client.query(`
     CREATE INDEX IF NOT EXISTS idx_saved_words_user_target_created_desc
       ON saved_words (user_id, target_language, created_at DESC);
   `);
