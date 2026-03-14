@@ -3,18 +3,23 @@
 // ---------------------------------------------------------------------------
 
 import React, { useState, FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Signup() {
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const params = new URLSearchParams(location.search);
+  const addProfileMode = params.get('addProfile') === '1';
+  const loginHref = addProfileMode ? '/login?addProfile=1' : '/login';
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -34,7 +39,13 @@ export default function Signup() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <h1 className="auth-title">Polycast</h1>
-        <p className="auth-subtitle">Create a new account</p>
+        <p className="auth-subtitle">{addProfileMode ? 'Create and save another profile' : 'Create a new account'}</p>
+
+        {addProfileMode && (
+          <p className="auth-link" style={{ marginTop: 0, marginBottom: '1rem' }}>
+            After sign up, this profile will be saved on this device too.
+          </p>
+        )}
 
         {error && <div className="auth-error">{error}</div>}
 
@@ -79,11 +90,11 @@ export default function Signup() {
         />
 
         <button className="btn btn-primary btn-block" type="submit" disabled={submitting}>
-          {submitting ? 'Creating account...' : 'Create Account'}
+          {submitting ? 'Creating account...' : (addProfileMode ? 'Create Profile' : 'Create Account')}
         </button>
 
         <p className="auth-link">
-          Already have an account? <Link to="/login">Sign in</Link>
+          Already have an account? <Link to={loginHref} state={location.state}>Sign in</Link>
         </p>
       </form>
     </div>

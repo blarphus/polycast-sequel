@@ -213,29 +213,6 @@
     padding: 0;
   }
 
-  .sidebar-account-form {
-    margin-top: 0.8rem;
-  }
-
-  .sidebar-account-form .form-input {
-    margin-bottom: 0.55rem;
-  }
-
-  .sidebar-account-actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.55rem;
-  }
-
-  .sidebar-account-secondary {
-    border: none;
-    background: none;
-    color: var(--text-muted);
-    font-weight: 600;
-    cursor: pointer;
-  }
-
   /* Shift page content right when sidebar is showing */
   html.sidebar-visible #root {
     margin-left: var(--sidebar-width);
@@ -286,7 +263,6 @@
   .bottom-toolbar.collapsed .sidebar-account-subtitle,
   .bottom-toolbar.collapsed .sidebar-account-meta,
   .bottom-toolbar.collapsed .sidebar-account-remove,
-  .bottom-toolbar.collapsed .sidebar-account-form,
   .bottom-toolbar.collapsed .sidebar-account-add {
     display: none;
   }

@@ -14,19 +14,15 @@ const NARROW_QUERY = '(min-width: 481px) and (max-width: 1024px)';
 export default function BottomToolbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, savedAccounts, switchAccount, addSavedAccount, forgetSavedAccount } = useAuth();
+  const { user, savedAccounts, switchAccount, forgetSavedAccount } = useAuth();
 
   const isTeacher = user?.account_type === 'teacher';
   const isStudent = user?.account_type === 'student';
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingError, setPendingError] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [addAccountMode, setAddAccountMode] = useState(false);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
-  const [addUsername, setAddUsername] = useState('');
-  const [addPassword, setAddPassword] = useState('');
   const [accountActionError, setAccountActionError] = useState('');
-  const [addingAccount, setAddingAccount] = useState(false);
 
   const manualPref = useRef(localStorage.getItem(COLLAPSED_KEY));
   const [collapsed, setCollapsed] = useState(() => {
@@ -94,31 +90,12 @@ export default function BottomToolbar() {
     try {
       await switchAccount(accountId);
       setAccountMenuOpen(false);
-      setAddAccountMode(false);
-      setAddUsername('');
-      setAddPassword('');
     } catch (err) {
       setAccountActionError(err instanceof Error ? err.message : String(err));
     } finally {
       setSwitchingAccountId(null);
     }
   }, [switchAccount, user?.id]);
-
-  const handleAddAccount = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAddingAccount(true);
-    setAccountActionError('');
-    try {
-      await addSavedAccount(addUsername, addPassword);
-      setAddUsername('');
-      setAddPassword('');
-      setAddAccountMode(false);
-    } catch (err) {
-      setAccountActionError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setAddingAccount(false);
-    }
-  }, [addPassword, addSavedAccount, addUsername]);
 
   return (
     <nav className={`bottom-toolbar${collapsed ? ' collapsed' : ''}`}>
@@ -228,57 +205,16 @@ export default function BottomToolbar() {
             ))}
           </div>
           {accountActionError && <div className="sidebar-account-error">{accountActionError}</div>}
-          {addAccountMode ? (
-            <form className="sidebar-account-form" onSubmit={handleAddAccount}>
-              <input
-                className="form-input"
-                type="text"
-                placeholder="Username"
-                value={addUsername}
-                onChange={(e) => setAddUsername(e.target.value)}
-                autoComplete="username"
-                required
-              />
-              <input
-                className="form-input"
-                type="password"
-                placeholder="Password"
-                value={addPassword}
-                onChange={(e) => setAddPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-              />
-              <div className="sidebar-account-actions">
-                <button
-                  className="sidebar-account-secondary"
-                  type="button"
-                  onClick={() => {
-                    setAddAccountMode(false);
-                    setAddUsername('');
-                    setAddPassword('');
-                    setAccountActionError('');
-                  }}
-                  disabled={addingAccount}
-                >
-                  Cancel
-                </button>
-                <button className="btn btn-primary" type="submit" disabled={addingAccount}>
-                  {addingAccount ? 'Adding...' : 'Add Profile'}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <button
-              className="sidebar-account-add"
-              onClick={() => {
-                setAddAccountMode(true);
-                setAccountActionError('');
-              }}
-            >
-              <PlusIcon size={16} />
-              Add another profile
-            </button>
-          )}
+          <button
+            className="sidebar-account-add"
+            onClick={() => {
+              setAccountMenuOpen(false);
+              navigate('/login?addProfile=1', { state: { returnTo: location.pathname } });
+            }}
+          >
+            <PlusIcon size={16} />
+            Add another profile
+          </button>
         </div>
       )}
       <button
