@@ -38,7 +38,7 @@ interface StreamNewsArticleOptions {
 export function getNews(lang: string, level?: string | null): Promise<NewsArticle[]> {
   const params = new URLSearchParams({ lang });
   if (level) params.set('level', level);
-  return request(`/news?${params}`);
+  return request(`/news?${params}`, { cacheTtlMs: 300_000 });
 }
 
 export function getNewsArticle(lang: string, index: number, level?: string | null): Promise<ArticleDetail> {

@@ -17,7 +17,7 @@ export interface GroupCallParticipant {
 }
 
 export function getClassesToday() {
-  return request<{ classes: UpcomingClass[] }>('/classes/today');
+  return request<{ classes: UpcomingClass[] }>('/classes/today', { cacheTtlMs: 30_000 });
 }
 
 export function joinGroupCall(postId: string) {

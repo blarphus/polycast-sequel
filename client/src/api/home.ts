@@ -9,5 +9,5 @@ export interface StudentDashboard {
 }
 
 export function getStudentDashboard() {
-  return request<StudentDashboard>('/home/student-dashboard');
+  return request<StudentDashboard>('/home/student-dashboard', { cacheTtlMs: 15_000 });
 }

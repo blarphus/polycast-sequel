@@ -24,11 +24,11 @@ export function sendFriendRequest(userId: string | number) {
 }
 
 export function getFriends() {
-  return request<Friend[]>('/friends');
+  return request<Friend[]>('/friends', { cacheTtlMs: 15_000 });
 }
 
 export function getPendingRequests() {
-  return request<FriendRequest[]>('/friends/requests');
+  return request<FriendRequest[]>('/friends/requests', { cacheTtlMs: 15_000 });
 }
 
 export function acceptFriendRequest(id: string) {

@@ -15,7 +15,7 @@ export interface EnrichedWord {
 }
 
 export function getNewToday() {
-  return request<SavedWord[]>('/dictionary/new-today');
+  return request<SavedWord[]>('/dictionary/new-today', { cacheTtlMs: 15_000 });
 }
 
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string, isNative?: boolean) {
@@ -127,7 +127,7 @@ export interface SavedWord {
 }
 
 export function getSavedWords() {
-  return request<SavedWord[]>('/dictionary/words');
+  return request<SavedWord[]>('/dictionary/words', { cacheTtlMs: 30_000 });
 }
 
 export function saveWord(data: SaveWordData) {
@@ -152,7 +152,7 @@ export function updateWordImage(id: string, imageUrl: string) {
 export type SrsAnswer = 'again' | 'hard' | 'good' | 'easy';
 
 export function getDueWords() {
-  return request<SavedWord[]>('/dictionary/due');
+  return request<SavedWord[]>('/dictionary/due', { cacheTtlMs: 10_000 });
 }
 
 export function reviewWord(id: string, answer: SrsAnswer) {

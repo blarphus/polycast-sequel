@@ -7,6 +7,7 @@ import { validate } from '../lib/validate.js';
 import { computeNextReview } from '../lib/srsAlgorithm.js';
 import { synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup } from '../services/wordSemanticsService.js';
+import { listDueWords, listNewTodayWords } from '../lib/dictionaryQueries.js';
 
 const router = Router();
 
@@ -322,22 +323,7 @@ router.patch('/api/dictionary/queue-reorder', authMiddleware, validate({ body: q
  */
 router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT sw.* FROM saved_words sw
-       JOIN users u ON u.id = sw.user_id
-       WHERE sw.user_id = $1
-         AND sw.target_language = u.target_language
-         AND sw.due_at IS NULL
-         AND sw.last_reviewed_at IS NULL
-       ORDER BY
-         CASE WHEN sw.queue_position IS NOT NULL THEN 0 ELSE 1 END ASC,
-         sw.queue_position ASC NULLS LAST,
-         CASE WHEN sw.priority = true THEN 0 ELSE 1 END ASC,
-         sw.frequency DESC NULLS LAST,
-         sw.created_at ASC
-       LIMIT (SELECT daily_new_limit FROM users WHERE id = $1)`,
-      [req.userId],
-    );
+    const { rows } = await listNewTodayWords(pool, req.userId);
     return res.json(rows);
   } catch (err) {
     req.log.error({ err }, 'Error fetching new-today words');
@@ -354,20 +340,7 @@ router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
  */
 router.get('/api/dictionary/due', authMiddleware, async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT * FROM saved_words WHERE user_id = $1
-         AND target_language = (SELECT target_language FROM users WHERE id = $1)
-         AND (due_at <= NOW() OR due_at IS NULL)
-       ORDER BY
-         CASE WHEN learning_step IS NOT NULL THEN 0
-              WHEN due_at IS NOT NULL THEN 1
-              ELSE 2 END,
-         due_at ASC NULLS LAST,
-         CASE WHEN due_at IS NULL AND priority = true THEN 0 ELSE 1 END ASC,
-         frequency DESC NULLS LAST,
-         created_at ASC`,
-      [req.userId],
-    );
+    const { rows } = await listDueWords(pool, req.userId);
     return res.json(rows);
   } catch (err) {
     req.log.error({ err }, 'Error fetching due words');

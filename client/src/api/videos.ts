@@ -89,11 +89,11 @@ export function getTrendingVideos(lang: string) {
   const region = detectUserRegion();
   const params = new URLSearchParams({ lang });
   if (region) params.set('userRegion', region);
-  return request<TrendingVideo[]>(`/videos/trending?${params}`);
+  return request<TrendingVideo[]>(`/videos/trending?${params}`, { cacheTtlMs: 300_000 });
 }
 
 export function getChannels(lang: string) {
-  return request<ChannelSummary[]>(`/videos/channels?lang=${encodeURIComponent(lang)}`);
+  return request<ChannelSummary[]>(`/videos/channels?lang=${encodeURIComponent(lang)}`, { cacheTtlMs: 300_000 });
 }
 
 export function getChannelVideos(handle: string, lang: string) {

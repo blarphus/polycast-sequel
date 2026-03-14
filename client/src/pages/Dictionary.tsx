@@ -8,6 +8,7 @@ import { useSavedWords } from '../hooks/useSavedWords';
 import { getDueStatus, formatDuration } from '../utils/srs';
 import { formatDate } from '../utils/dateFormat';
 import { renderTildeHighlight } from '../utils/tildeMarkup';
+import { buildDictionaryGroups, getDueNextGroupKeys, type DictionarySortMode } from '../utils/dictionaryGroups';
 import WordLookupModal from '../components/WordLookupModal';
 import ImagePicker from '../components/ImagePicker';
 import { proxyImageUrl } from '../api';
@@ -65,27 +66,6 @@ function ReviewField({ word }: { word: SavedWord }) {
   );
 }
 
-// -- Helpers ----------------------------------------------------------------
-
-function isEntryNew(e: SavedWord): boolean {
-  return e.srs_interval === 0 && e.learning_step === null && !e.last_reviewed_at;
-}
-
-function isGroupNew(group: WordGroup): boolean {
-  return group.entries.some(isEntryNew);
-}
-
-// -- Sort options -----------------------------------------------------------
-
-type SortMode = 'queue' | 'date' | 'az' | 'freq-high' | 'freq-low' | 'due';
-
-interface WordGroup {
-  key: string;
-  word: string;
-  target_language: string | null;
-  entries: SavedWord[];
-}
-
 function buildQueueTintStyles(
   hue: number,
   intensity: number,
@@ -124,7 +104,7 @@ export default function Dictionary() {
   const { words, loading, removeWord, addWord, updateImage, isDefinitionSaved, reorderQueueWords } = useSavedWords();
 
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<SortMode>('queue');
+  const [sort, setSort] = useState<DictionarySortMode>('queue');
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lookupOpen, setLookupOpen] = useState(false);
@@ -150,129 +130,37 @@ export default function Dictionary() {
   };
 
   const wordGroups = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    let list = words;
-    if (q) {
-      list = list.filter(
-        (w) =>
-          w.word.toLowerCase().includes(q) ||
-          w.translation.toLowerCase().includes(q),
-      );
-    }
-
-    // Group by (word, target_language)
-    const groupMap = new Map<string, WordGroup>();
-    for (const w of list) {
-      const key = w.word + '|' + (w.target_language || '');
-      let group = groupMap.get(key);
-      if (!group) {
-        group = { key, word: w.word, target_language: w.target_language, entries: [] };
-        groupMap.set(key, group);
-      }
-      group.entries.push(w);
-    }
-
-    const groups = Array.from(groupMap.values());
-
-    switch (sort) {
-      case 'queue': {
-        groups.sort((a, b) => {
-          const aNew = isGroupNew(a);
-          const bNew = isGroupNew(b);
-          // New cards first
-          if (aNew && !bNew) return -1;
-          if (!aNew && bNew) return 1;
-
-          if (aNew && bNew) {
-            // queue_position ASC (null last)
-            const aPos = Math.min(...a.entries.map((e) => e.queue_position ?? Infinity));
-            const bPos = Math.min(...b.entries.map((e) => e.queue_position ?? Infinity));
-            if (aPos !== bPos) return aPos - bPos;
-            // priority DESC
-            const aPri = a.entries.some((e) => e.priority) ? 1 : 0;
-            const bPri = b.entries.some((e) => e.priority) ? 1 : 0;
-            if (aPri !== bPri) return bPri - aPri;
-            // frequency DESC
-            const aFreq = Math.max(...a.entries.map((e) => e.frequency ?? 0));
-            const bFreq = Math.max(...b.entries.map((e) => e.frequency ?? 0));
-            if (aFreq !== bFreq) return bFreq - aFreq;
-            // created_at ASC
-            const aTime = Math.min(...a.entries.map((e) => new Date(e.created_at).getTime()));
-            const bTime = Math.min(...b.entries.map((e) => new Date(e.created_at).getTime()));
-            return aTime - bTime;
-          }
-
-          // Both reviewed: due_at ASC
-          const aEarliest = Math.min(...a.entries.map((e) => e.due_at ? new Date(e.due_at).getTime() : Infinity));
-          const bEarliest = Math.min(...b.entries.map((e) => e.due_at ? new Date(e.due_at).getTime() : Infinity));
-          return aEarliest - bEarliest;
-        });
-        break;
-      }
-      case 'az':
-        groups.sort((a, b) => a.word.localeCompare(b.word));
-        break;
-      case 'freq-high':
-      case 'freq-low': {
-        const maxFreq = (g: WordGroup) => Math.max(...g.entries.map((e) => e.frequency ?? 0));
-        if (sort === 'freq-high') {
-          groups.sort((a, b) => maxFreq(b) - maxFreq(a));
-        } else {
-          groups.sort((a, b) => maxFreq(a) - maxFreq(b));
-        }
-        break;
-      }
-      case 'due':
-        groups.sort((a, b) => {
-          const earliest = (g: WordGroup) => {
-            const dues = g.entries.map((e) => e.due_at);
-            const nonNull = dues.filter(Boolean) as string[];
-            if (nonNull.length === 0) return -Infinity; // new cards first
-            return Math.min(...nonNull.map((d) => new Date(d).getTime()));
-          };
-          return earliest(a) - earliest(b);
-        });
-        break;
-      default: {
-        // date: most recent entry in group
-        const mostRecent = (g: WordGroup) =>
-          Math.max(...g.entries.map((e) => new Date(e.created_at).getTime()));
-        groups.sort((a, b) => mostRecent(b) - mostRecent(a));
-        break;
-      }
-    }
-    return groups;
+    return buildDictionaryGroups(words, search, sort);
   }, [words, search, sort]);
 
-  // Bracket computation
   const dailyNewLimit = user?.daily_new_limit ?? 5;
-  const bracketCount = useMemo(() => {
-    if (sort !== 'queue' || page !== 0) return 0;
-    let count = 0;
-    for (const g of wordGroups) {
-      if (isGroupNew(g)) count++;
-      else break;
-    }
-    return Math.min(dailyNewLimit, count);
-  }, [wordGroups, sort, page, dailyNewLimit]);
+  const dueNextGroupKeys = useMemo(
+    () => getDueNextGroupKeys(wordGroups, dailyNewLimit),
+    [dailyNewLimit, wordGroups],
+  );
 
   const totalPages = Math.ceil(wordGroups.length / WORDS_PER_PAGE);
   const pageGroups = wordGroups.slice(page * WORDS_PER_PAGE, (page + 1) * WORDS_PER_PAGE);
+  const dueNextPageKeys = useMemo(
+    () => (sort === 'queue' && page === 0
+      ? pageGroups.filter((group) => dueNextGroupKeys.has(group.key)).map((group) => group.key)
+      : []),
+    [dueNextGroupKeys, page, pageGroups, sort],
+  );
 
   // Measure bracket height after render
   useEffect(() => {
-    if (bracketCount === 0) { setBracketHeight(0); return; }
+    if (dueNextPageKeys.length === 0) { setBracketHeight(0); return; }
     let height = 0;
-    const keys = pageGroups.slice(0, bracketCount).map((g) => g.key);
-    for (let i = 0; i < keys.length; i++) {
-      const el = itemRefs.current.get(keys[i]);
+    for (let i = 0; i < dueNextPageKeys.length; i++) {
+      const el = itemRefs.current.get(dueNextPageKeys[i]);
       if (el) {
         height += el.offsetHeight;
-        if (i < keys.length - 1) height += 8; // gap (0.5rem)
+        if (i < dueNextPageKeys.length - 1) height += 8; // gap (0.5rem)
       }
     }
     setBracketHeight(height);
-  }, [bracketCount, pageGroups, expandedKeys]);
+  }, [dueNextPageKeys, expandedKeys]);
 
   const setItemRef = useCallback((key: string, el: HTMLDivElement | null) => {
     if (el) itemRefs.current.set(key, el);
@@ -299,7 +187,7 @@ export default function Dictionary() {
     }
 
     // Only reorder among new-card groups on the current page
-    const newGroups = pageGroups.filter(isGroupNew);
+    const newGroups = wordGroups.filter((group) => group.hasNew);
     const dragIndex = newGroups.findIndex((g) => g.key === dragItem);
     const targetIndex = newGroups.findIndex((g) => g.key === targetKey);
     if (dragIndex === -1 || targetIndex === -1) {
@@ -353,7 +241,7 @@ export default function Dictionary() {
             <select
               className="form-input dict-sort"
               value={sort}
-              onChange={(e) => { setSort(e.target.value as SortMode); setPage(0); }}
+              onChange={(e) => { setSort(e.target.value as DictionarySortMode); setPage(0); }}
             >
               <option value="queue">Queue</option>
               <option value="date">Recent first</option>
@@ -392,18 +280,17 @@ export default function Dictionary() {
             <div className="dict-container">
               <div className={`dict-list${isQueueMode ? ' dict-list--queue-view' : ''}`}>
                 {/* Bracket rail */}
-                {isQueueMode && page === 0 && bracketCount > 0 && bracketHeight > 0 && (
+                {isQueueMode && page === 0 && dueNextPageKeys.length > 0 && bracketHeight > 0 && (
                   <div className="dict-queue-bracket" style={{ height: bracketHeight }}>
                     <span className="dict-queue-bracket-label">DUE NEXT</span>
                   </div>
                 )}
-                {pageGroups.map((group, groupIndex) => {
+                {pageGroups.map((group) => {
                   const open = expandedKeys.has(group.key);
-                  const maxFreq = Math.max(...group.entries.map((e) => e.frequency ?? 0)) || null;
+                  const maxFreq = group.maxFrequency;
                   const freqColor = maxFreq != null ? FREQUENCY_DOT_COLORS[Math.ceil(maxFreq / 2) - 1] || FREQUENCY_DOT_COLORS[0] : undefined;
-                  const groupIsNew = isGroupNew(group);
-                  const inBracket = isQueueMode && page === 0 && groupIndex < bracketCount;
-                  const isDraggable = isQueueMode && groupIsNew;
+                  const inBracket = isQueueMode && page === 0 && dueNextGroupKeys.has(group.key);
+                  const isDraggable = isQueueMode && group.hasNew;
                   const isDragOver = dragOverId === group.key;
                   return (
                     <div
@@ -433,16 +320,16 @@ export default function Dictionary() {
                         <span className="dict-word">{group.word}</span>
                         <FrequencyDots frequency={maxFreq} />
                         {maxFreq != null && <span className="dict-freq-number">{maxFreq}/10</span>}
-                        {group.entries[0].part_of_speech && (
-                          <span className={`dict-pos-badge pos-${group.entries[0].part_of_speech.toLowerCase()}`}>{group.entries[0].part_of_speech}</span>
+                        {group.primaryEntry.part_of_speech && (
+                          <span className={`dict-pos-badge pos-${group.primaryEntry.part_of_speech.toLowerCase()}`}>{group.primaryEntry.part_of_speech}</span>
                         )}
-                        {group.entries.some((e) => e.priority) && (
+                        {group.hasPriority && (
                           <span className="assigned-badge">Assigned</span>
                         )}
                         {group.entries.length > 1 && (
                           <span className="dict-def-count">{group.entries.length}</span>
                         )}
-                        <DueStatusBadge word={group.entries[0]} />
+                        <DueStatusBadge word={group.primaryEntry} />
                         <ChevronDownIcon size={18} className="dict-chevron" />
                       </button>
                       {open && (
