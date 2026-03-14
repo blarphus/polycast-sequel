@@ -49,12 +49,16 @@ function totalActivity(d: DailyActivity): number {
   return d.reviews + d.wordsAdded + d.quizzes + d.drills + d.voiceSessions;
 }
 
-function activityLevel(count: number): number {
-  if (count === 0) return 0;
-  if (count <= 5) return 1;
-  if (count <= 15) return 2;
-  if (count <= 30) return 3;
-  return 4;
+// Returns a status for the day:
+// 'completed' — reviewed cards (did their SRS work)
+// 'partial'   — did other activity (quizzes, drills, etc.) but no reviews
+// 'skipped'   — no activity at all
+// 'none'      — day hasn't happened yet or no data
+function dayStatus(d: DailyActivity | undefined): 'completed' | 'partial' | 'skipped' | 'none' {
+  if (!d) return 'skipped';
+  if (d.reviews > 0) return 'completed';
+  if (totalActivity(d) > 0) return 'partial';
+  return 'skipped';
 }
 
 const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -69,21 +73,21 @@ function MonthCalendar({ activity, selectedDay, onSelectDay }: {
   const todayStr = today.toISOString().slice(0, 10);
 
   // Build 30 days ending today
-  type Cell = { date: string; day: number; total: number } | null;
-  const days: { date: string; weekday: number; day: number; total: number }[] = [];
+  type Cell = { date: string; day: number; status: ReturnType<typeof dayStatus> } | null;
+  const days: { date: string; weekday: number; day: number; status: ReturnType<typeof dayStatus> }[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
     const data = activityMap.get(dateStr);
-    days.push({ date: dateStr, weekday: d.getDay(), day: d.getDate(), total: data ? totalActivity(data) : 0 });
+    days.push({ date: dateStr, weekday: d.getDay(), day: d.getDate(), status: dayStatus(data) });
   }
 
   // Group into rows of 7 (Sun=0 .. Sat=6)
   const rows: Cell[][] = [];
   let row: Cell[] = new Array(7).fill(null);
   for (const d of days) {
-    row[d.weekday] = { date: d.date, day: d.day, total: d.total };
+    row[d.weekday] = { date: d.date, day: d.day, status: d.status };
     if (d.weekday === 6) { rows.push(row); row = new Array(7).fill(null); }
   }
   if (row.some((c) => c !== null)) rows.push(row);
@@ -97,13 +101,12 @@ function MonthCalendar({ activity, selectedDay, onSelectDay }: {
         <div key={ri} className="sd-heatmap-row">
           {r.map((cell, ci) => {
             if (!cell) return <div key={ci} className="sd-heatmap-cell sd-heatmap-cell--blank" />;
-            const level = activityLevel(cell.total);
             const isSelected = selectedDay === cell.date;
             const isToday = cell.date === todayStr;
             return (
               <button
                 key={ci}
-                className={`sd-heatmap-cell sd-heatmap-cell--${level}${isSelected ? ' sd-heatmap-cell--selected' : ''}${isToday ? ' sd-heatmap-cell--today' : ''}`}
+                className={`sd-heatmap-cell sd-heatmap-cell--${cell.status}${isSelected ? ' sd-heatmap-cell--selected' : ''}${isToday ? ' sd-heatmap-cell--today' : ''}`}
                 onClick={() => onSelectDay(isSelected ? null : cell.date)}
               >
                 <span className="sd-heatmap-date">{cell.day}</span>
@@ -113,11 +116,12 @@ function MonthCalendar({ activity, selectedDay, onSelectDay }: {
         </div>
       ))}
       <div className="sd-heatmap-legend">
-        <span className="sd-heatmap-legend-label">Less</span>
-        {[0, 1, 2, 3, 4].map((l) => (
-          <span key={l} className={`sd-heatmap-legend-cell sd-heatmap-cell--${l}`} />
-        ))}
-        <span className="sd-heatmap-legend-label">More</span>
+        <span className="sd-heatmap-legend-cell sd-heatmap-cell--completed" />
+        <span className="sd-heatmap-legend-label">Reviewed</span>
+        <span className="sd-heatmap-legend-cell sd-heatmap-cell--partial" />
+        <span className="sd-heatmap-legend-label">Some activity</span>
+        <span className="sd-heatmap-legend-cell sd-heatmap-cell--skipped" />
+        <span className="sd-heatmap-legend-label">Skipped</span>
       </div>
     </div>
   );

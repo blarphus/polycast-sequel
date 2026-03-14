@@ -708,11 +708,9 @@
   transform: scale(1.1);
 }
 
-.sd-heatmap-cell--0 { background: var(--bg-elevated); }
-.sd-heatmap-cell--1 { background: #9be9a8; }
-.sd-heatmap-cell--2 { background: #40c463; }
-.sd-heatmap-cell--3 { background: #30a14e; }
-.sd-heatmap-cell--4 { background: #216e39; }
+.sd-heatmap-cell--completed { background: #86efac; }
+.sd-heatmap-cell--partial { background: #fde68a; }
+.sd-heatmap-cell--skipped { background: var(--bg-elevated); }
 
 .sd-heatmap-cell--selected {
   border-color: var(--accent);
@@ -731,10 +729,8 @@
   color: var(--text-secondary);
 }
 
-.sd-heatmap-cell--1 .sd-heatmap-date,
-.sd-heatmap-cell--2 .sd-heatmap-date { color: #15803d; }
-.sd-heatmap-cell--3 .sd-heatmap-date,
-.sd-heatmap-cell--4 .sd-heatmap-date { color: rgba(255,255,255,0.85); }
+.sd-heatmap-cell--completed .sd-heatmap-date { color: #15803d; }
+.sd-heatmap-cell--partial .sd-heatmap-date { color: #92400e; }
 
 .sd-heatmap-legend {
   display: flex;
