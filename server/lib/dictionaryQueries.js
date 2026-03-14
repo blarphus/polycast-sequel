@@ -1,9 +1,8 @@
 const NEW_TODAY_ORDER_BY = `
-  CASE WHEN sw.queue_position IS NULL THEN 1 ELSE 0 END ASC,
-  sw.queue_position ASC NULLS LAST,
   sw.priority DESC,
   sw.frequency DESC NULLS LAST,
-  sw.created_at ASC
+  sw.created_at ASC,
+  sw.queue_position ASC NULLS LAST
 `;
 
 const DUE_QUEUE_ORDER_BY = `

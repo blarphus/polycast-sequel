@@ -36,10 +36,6 @@ export function isDictionaryEntryNew(word: SavedWord): boolean {
 }
 
 function compareNewEntries(a: SavedWord, b: SavedWord): number {
-  const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
-  const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
-  if (aQueue !== bQueue) return aQueue - bQueue;
-
   const aPriority = a.priority ? 0 : 1;
   const bPriority = b.priority ? 0 : 1;
   if (aPriority !== bPriority) return aPriority - bPriority;
@@ -48,7 +44,12 @@ function compareNewEntries(a: SavedWord, b: SavedWord): number {
   const bFrequency = b.frequency ?? 0;
   if (aFrequency !== bFrequency) return bFrequency - aFrequency;
 
-  return getCreatedTime(a) - getCreatedTime(b);
+  const createdDiff = getCreatedTime(a) - getCreatedTime(b);
+  if (createdDiff !== 0) return createdDiff;
+
+  const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
+  const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
+  return aQueue - bQueue;
 }
 
 function compareDisplayEntries(a: SavedWord, b: SavedWord): number {

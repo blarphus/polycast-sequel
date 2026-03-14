@@ -65,4 +65,15 @@ describe('dictionaryGroups', () => {
 
     expect(groups[0].primaryEntry.id).toBe('mixed-new');
   });
+
+  it('keeps new words in frequency order even when queue positions differ', () => {
+    const groups = buildDictionaryGroups([
+      makeWord({ id: 'low', word: 'louvado', frequency: 4, queue_position: 0 }),
+      makeWord({ id: 'high', word: 'prefeito', frequency: 5, queue_position: 99 }),
+      makeWord({ id: 'higher', word: 'cargo', frequency: 7, queue_position: 50 }),
+    ], '', 'queue');
+
+    expect(groups.map((group) => group.word)).toEqual(['cargo', 'prefeito', 'louvado']);
+    expect(Array.from(getDueNextGroupKeys(groups, 2))).toEqual(['cargo|es', 'prefeito|es']);
+  });
 });
