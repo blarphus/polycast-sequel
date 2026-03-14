@@ -382,6 +382,7 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
   const wordsDue = words.filter((w) => w.due_at && new Date(w.due_at) <= now).length;
   const wordsNew = words.filter((w) => w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at).length;
   const wordsInLearning = words.filter((w) => w.learning_step !== null).length;
+  const wordsMastered = words.filter((w) => w.srs_interval >= 21).length;
   const totalCorrect = words.reduce((sum, w) => sum + (w.correct_count || 0), 0);
   const totalIncorrect = words.reduce((sum, w) => sum + (w.incorrect_count || 0), 0);
   const totalReviews = totalCorrect + totalIncorrect;
@@ -391,6 +392,43 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
     ? reviewDates.reduce((latest, date) => (new Date(date) > new Date(latest) ? date : latest))
     : null;
 
+  // Days active this week (distinct dates with reviews in last 7 days)
+  const weekAgo = new Date(now);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const activeDates = new Set();
+  for (const w of words) {
+    if (w.last_reviewed_at && new Date(w.last_reviewed_at) >= weekAgo) {
+      activeDates.add(new Date(w.last_reviewed_at).toISOString().slice(0, 10));
+    }
+  }
+  const daysActiveThisWeek = activeDates.size;
+
+  // Word lists assigned to this classroom, with completion status for this student
+  const wordListsResult = await pool.query(
+    `SELECT sp.id, sp.title,
+            COALESCE(wc.cnt, 0)::int AS word_count,
+            swlc.completed_at IS NOT NULL AS completed,
+            swlc.completed_at
+     FROM stream_posts sp
+     JOIN classroom_teachers ct ON ct.teacher_id = sp.teacher_id AND ct.classroom_id = $1
+     LEFT JOIN (
+       SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
+     ) wc ON wc.post_id = sp.id
+     LEFT JOIN stream_word_list_completions swlc
+       ON swlc.post_id = sp.id AND swlc.student_id = $2
+     WHERE sp.type = 'word_list'
+     ORDER BY sp.created_at DESC`,
+    [classroomId, studentId],
+  );
+
+  // Compute SRS stage per word
+  function srsStage(word) {
+    if (word.srs_interval === 0 && word.learning_step === null && !word.last_reviewed_at) return 'new';
+    if (word.learning_step !== null) return 'learning';
+    if (word.srs_interval >= 21) return 'mastered';
+    return 'review';
+  }
+
   return {
     student,
     stats: {
@@ -399,15 +437,25 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
       wordsDue,
       wordsNew,
       wordsInLearning,
+      wordsMastered,
+      daysActiveThisWeek,
       totalReviews,
       accuracy,
       lastReviewedAt,
     },
+    wordLists: wordListsResult.rows.map((wl) => ({
+      id: wl.id,
+      title: wl.title,
+      word_count: wl.word_count,
+      completed: wl.completed,
+      completed_at: wl.completed_at,
+    })),
     words: words.map((word) => ({
       id: word.id,
       word: word.word,
       translation: word.translation,
       part_of_speech: word.part_of_speech,
+      srs_stage: srsStage(word),
     })),
   };
 }

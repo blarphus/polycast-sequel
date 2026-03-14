@@ -37,6 +37,7 @@ export default function Classwork() {
 
   const [topics, setTopics] = useState<StreamTopic[]>([]);
   const [posts, setPosts] = useState<StreamPost[]>([]);
+  const [studentCount, setStudentCount] = useState<number | undefined>(undefined);
   const [enrichingWordIds, setEnrichingWordIds] = useState<Map<string, Set<string>>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -64,14 +65,15 @@ export default function Classwork() {
     const loader = activeClassroom?.is_default_migrated
       ? api.getStream(activeClassroomId)
       : api.getClassroomTopics(activeClassroomId).then((fetchedTopics) => ({
-          topics: fetchedTopics as StreamTopic[],
-          posts: [],
+          topics: fetchedTopics as unknown as StreamTopic[],
+          posts: [] as StreamPost[],
         }));
 
     return loader
-      .then(({ topics: fetchedTopics, posts: fetchedPosts }) => {
-        setTopics(fetchedTopics);
-        setPosts(fetchedPosts);
+      .then((result) => {
+        setTopics(result.topics);
+        setPosts(result.posts);
+        if ('student_count' in result) setStudentCount((result as { student_count?: number }).student_count);
       })
       .catch((err: any) => {
         console.error('getStream failed:', err);
@@ -203,7 +205,7 @@ export default function Classwork() {
       const topic = activeClassroom?.is_default_migrated
         ? await api.createTopic(newTopicTitle.trim())
         : await api.createClassroomTopic(activeClassroomId!, newTopicTitle.trim());
-      setTopics((prev) => [...prev, topic]);
+      setTopics((prev) => [...prev, topic as StreamTopic]);
     } catch (err: any) {
       console.error('Create topic failed:', err);
       setError(err instanceof Error ? err.message : String(err));
@@ -395,6 +397,7 @@ export default function Classwork() {
     onDropTopic: handleDropTopic,
     onStudentUpdate: handleStudentUpdate,
     enrichingWordIds,
+    studentCount,
   };
 
   return (

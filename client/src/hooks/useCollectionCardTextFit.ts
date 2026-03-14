@@ -10,9 +10,9 @@ interface UseCollectionCardTextFitOptions {
 }
 
 interface UseCollectionCardTextFitResult {
-  bodyRef: React.RefObject<HTMLDivElement | null>;
-  textRef: React.RefObject<HTMLDivElement | null>;
-  titleRef: React.RefObject<HTMLHeadingElement | null>;
+  bodyRef: React.RefObject<HTMLDivElement>;
+  textRef: React.RefObject<HTMLDivElement>;
+  titleRef: React.RefObject<HTMLHeadingElement>;
   titleStyle: React.CSSProperties;
   secondaryStyle: React.CSSProperties;
   showSecondary: boolean;

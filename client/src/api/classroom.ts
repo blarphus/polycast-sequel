@@ -57,6 +57,8 @@ export interface StudentStats {
   wordsDue: number;
   wordsNew: number;
   wordsInLearning: number;
+  wordsMastered: number;
+  daysActiveThisWeek: number;
   totalReviews: number;
   accuracy: number | null;
   lastReviewedAt: string | null;
@@ -67,11 +69,21 @@ export interface StudentWord {
   word: string;
   translation: string;
   part_of_speech: string | null;
+  srs_stage: 'new' | 'learning' | 'review' | 'mastered';
+}
+
+export interface StudentWordList {
+  id: string;
+  title: string;
+  word_count: number;
+  completed: boolean;
+  completed_at: string | null;
 }
 
 export interface StudentDetail {
   student: { id: string; username: string; display_name: string };
   stats: StudentStats;
+  wordLists: StudentWordList[];
   words: StudentWord[];
 }
 

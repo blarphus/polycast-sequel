@@ -41,7 +41,7 @@ export function useChatConversation({ friendId, userId }: UseChatConversationOpt
     async function load() {
       try {
         const [msgData, friends] = await Promise.all([
-          getMessages(friendId),
+          getMessages(friendId!),
           getFriends(),
         ]);
 
@@ -56,7 +56,7 @@ export function useChatConversation({ friendId, userId }: UseChatConversationOpt
           setFriendOnline(friend.online);
         }
 
-        markMessagesRead(friendId).catch((err) => console.error('Failed to mark messages read:', err));
+        markMessagesRead(friendId!).catch((err) => console.error('Failed to mark messages read:', err));
       } catch (err) {
         console.error('Failed to load chat:', err);
       } finally {
@@ -86,7 +86,7 @@ export function useChatConversation({ friendId, userId }: UseChatConversationOpt
           return [...prev, msg];
         });
         if (msg.sender_id === friendId) {
-          markMessagesRead(friendId).catch((err) => console.error('Failed to mark messages read:', err));
+          markMessagesRead(friendId!).catch((err) => console.error('Failed to mark messages read:', err));
         }
         setTimeout(() => scrollToBottom(), 50);
       }

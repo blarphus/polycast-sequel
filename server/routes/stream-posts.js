@@ -67,11 +67,15 @@ router.get('/api/stream', authMiddleware, validate({ query: streamQuery }), asyn
 
       const { rows } = await pool.query(
         `SELECT sp.*,
-           COALESCE(wc.cnt, 0)::int AS word_count
+           COALESCE(wc.cnt, 0)::int AS word_count,
+           COALESCE(comp.cnt, 0)::int AS completed_count
          FROM stream_posts sp
          LEFT JOIN (
            SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
          ) wc ON wc.post_id = sp.id
+         LEFT JOIN (
+           SELECT post_id, COUNT(*) AS cnt FROM stream_word_list_completions GROUP BY post_id
+         ) comp ON comp.post_id = sp.id
          WHERE sp.teacher_id = $1
          ORDER BY sp.position ASC NULLS LAST, sp.created_at DESC`,
         [legacyTeacherId || req.userId],
@@ -203,10 +207,81 @@ router.get('/api/stream', authMiddleware, validate({ query: streamQuery }), asyn
       return post;
     });
 
-    return res.json({ topics, posts: assembled });
+    const result = { topics, posts: assembled };
+
+    if (isTeacher && classroomId) {
+      const { rows: scRows } = await pool.query(
+        `SELECT COUNT(*)::int AS student_count FROM classroom_enrollments WHERE classroom_id = $1`,
+        [classroomId],
+      );
+      result.student_count = scRows[0]?.student_count || 0;
+    }
+
+    return res.json(result);
   } catch (err) {
     req.log.error({ err }, 'GET /api/stream error');
     return res.status(500).json({ error: err.message || 'Failed to load stream' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/stream/posts/:id/completions — per-student completion detail (teacher)
+// ---------------------------------------------------------------------------
+
+router.get('/api/stream/posts/:id/completions', authMiddleware, validate({ params: idParam }), async (req, res) => {
+  try {
+    const { rows: postRows } = await pool.query(
+      'SELECT teacher_id FROM stream_posts WHERE id = $1',
+      [req.params.id],
+    );
+    if (postRows.length === 0) return res.status(404).json({ error: 'Post not found' });
+    if (postRows[0].teacher_id !== req.userId) {
+      return res.status(403).json({ error: 'Not your post' });
+    }
+
+    // Find the classroom for this teacher (default-migrated)
+    const { rows: classroomRows } = await pool.query(
+      `SELECT ct.classroom_id
+       FROM classroom_teachers ct
+       JOIN classrooms c ON c.id = ct.classroom_id
+       WHERE ct.teacher_id = $1 AND c.is_default_migrated = true AND c.archived_at IS NULL
+       LIMIT 1`,
+      [req.userId],
+    );
+    if (classroomRows.length === 0) {
+      return res.json({ total: 0, completed: 0, students: [] });
+    }
+    const classroomId = classroomRows[0].classroom_id;
+
+    const { rows: students } = await pool.query(
+      `SELECT u.id, u.username, u.display_name,
+              swlc.completed_at IS NOT NULL AS completed,
+              swlc.completed_at
+       FROM classroom_enrollments ce
+       JOIN users u ON u.id = ce.student_id
+       LEFT JOIN stream_word_list_completions swlc
+         ON swlc.post_id = $1 AND swlc.student_id = ce.student_id
+       WHERE ce.classroom_id = $2
+       ORDER BY swlc.completed_at IS NOT NULL ASC, u.username ASC`,
+      [req.params.id, classroomId],
+    );
+
+    const completedCount = students.filter((s) => s.completed).length;
+
+    return res.json({
+      total: students.length,
+      completed: completedCount,
+      students: students.map((s) => ({
+        id: s.id,
+        username: s.username,
+        display_name: s.display_name,
+        completed: s.completed,
+        completed_at: s.completed_at,
+      })),
+    });
+  } catch (err) {
+    req.log.error({ err }, 'GET /api/stream/posts/:id/completions error');
+    return res.status(500).json({ error: err.message || 'Failed to load completions' });
   }
 });
 

@@ -1383,6 +1383,131 @@
   width: 100%;
 }
 
+/* ---- Completion pill (collapsed post row) --------------------------------- */
+
+.post-completion-pill {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.post-completion-pill--done {
+  background: var(--success-dim);
+  border-color: transparent;
+  color: var(--success);
+}
+
+/* ---- Completion detail (expanded student list) ---------------------------- */
+
+.post-completion-detail {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.post-completion-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.4rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: color var(--transition);
+}
+
+.post-completion-toggle:hover {
+  color: var(--text-primary);
+}
+
+.post-completion-chevron--closed {
+  transform: rotate(180deg);
+}
+
+.post-completion-students {
+  padding: 0.5rem 0;
+}
+
+.post-completion-empty {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.post-completion-group {
+  margin-bottom: 0.5rem;
+}
+
+.post-completion-group-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+
+.post-completion-student {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+}
+
+.post-completion-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.post-completion-name {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-completion-status {
+  font-size: 0.78rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.post-completion-status--completed {
+  color: var(--success);
+}
+
+.post-completion-status--incomplete {
+  color: var(--text-muted);
+}
+
 .loading-spinner--small {
   width: 16px;
   height: 16px;

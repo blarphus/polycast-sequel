@@ -65,6 +65,7 @@ export interface StreamPost {
   created_at: string;
   updated_at: string;
   word_count?: number;
+  completed_count?: number;
   words?: StreamPostWord[];
   known_word_ids?: string[];
   completed?: boolean;
@@ -86,7 +87,25 @@ export interface StreamTopic {
 }
 
 export function getStream(classroomId?: string | null) {
-  return request<{ topics: StreamTopic[]; posts: StreamPost[] }>(withClassroomQuery('/stream', classroomId));
+  return request<{ topics: StreamTopic[]; posts: StreamPost[]; student_count?: number }>(withClassroomQuery('/stream', classroomId));
+}
+
+export interface PostCompletionStudent {
+  id: string;
+  username: string;
+  display_name: string;
+  completed: boolean;
+  completed_at: string | null;
+}
+
+export interface PostCompletions {
+  total: number;
+  completed: number;
+  students: PostCompletionStudent[];
+}
+
+export function getPostCompletions(postId: string) {
+  return request<PostCompletions>(`/stream/posts/${postId}/completions`);
 }
 
 export function createPost(data: {

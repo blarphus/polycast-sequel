@@ -63,6 +63,7 @@ export function TopicSection({
   onDropTopic,
   onStudentUpdate,
   enrichingWordIds,
+  studentCount,
 }: {
   topic: StreamTopic | null;
   posts: StreamPost[];
@@ -89,6 +90,7 @@ export function TopicSection({
   onDropTopic: (e: React.DragEvent, targetTopicId: string) => void;
   onStudentUpdate: (partial: Partial<StreamPost> & { id: string }) => void;
   enrichingWordIds: Map<string, Set<string>>;
+  studentCount?: number;
 }) {
   const [topicMenuOpen, setTopicMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -200,6 +202,7 @@ export function TopicSection({
               onMovePost={onMovePost}
               onStudentUpdate={onStudentUpdate}
               enrichingIds={enrichingWordIds.get(post.id)}
+              studentCount={studentCount}
               draggable={isTeacher && canManageTopics}
               onDragStart={(e) => onDragStartPost(e, post)}
               onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragItem?.kind === 'post') onDragOverPost(post.id); }}

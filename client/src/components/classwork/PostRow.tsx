@@ -5,19 +5,20 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../../api';
-import type { StreamPost, StreamTopic, StreamPostWord, LessonItem, Recurrence } from '../../api';
+import type { StreamPost, StreamTopic, StreamPostWord, LessonItem, Recurrence, PostCompletions } from '../../api';
 import {
   DocumentIcon,
   BookIcon,
   TypeIcon,
   CalendarIcon,
   ChevronRightIcon,
+  ChevronUpIcon,
   CheckIcon,
   MoreVerticalIcon,
 } from '../icons';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import AttachmentLink from '../AttachmentLink';
-import { formatRelativeTime } from '../../utils/dateFormat';
+import { formatRelativeTime, formatDate as formatShortDate } from '../../utils/dateFormat';
 import { DAY_LABELS } from './languages';
 import { formatUsDateTime } from '../../utils/dateFormat';
 
@@ -260,6 +261,81 @@ function StudentWordListBody({
 }
 
 // ---------------------------------------------------------------------------
+// Student progress section (teacher view, lazy-loaded)
+// ---------------------------------------------------------------------------
+
+function StudentProgressSection({ postId }: { postId: string }) {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<PostCompletions | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleToggle = async () => {
+    if (open) { setOpen(false); return; }
+    setOpen(true);
+    if (data) return;
+    setLoading(true);
+    try {
+      const result = await api.getPostCompletions(postId);
+      setData(result);
+    } catch (err: any) {
+      console.error('getPostCompletions failed:', err);
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const completedStudents = data?.students.filter((s) => s.completed) || [];
+  const incompleteStudents = data?.students.filter((s) => !s.completed) || [];
+
+  return (
+    <div className="post-completion-detail">
+      <button className="post-completion-toggle" onClick={(e) => { e.stopPropagation(); handleToggle(); }}>
+        <span>Student progress</span>
+        <ChevronUpIcon size={14} strokeWidth={2.5} className={open ? '' : 'post-completion-chevron--closed'} />
+      </button>
+      {open && (
+        <div className="post-completion-students">
+          {loading && <div className="loading-spinner loading-spinner--small" style={{ margin: '0.5rem auto' }} />}
+          {error && <div className="auth-error" style={{ fontSize: '0.8rem' }}>{error}</div>}
+          {data && data.students.length === 0 && (
+            <p className="post-completion-empty">No students enrolled.</p>
+          )}
+          {incompleteStudents.length > 0 && (
+            <div className="post-completion-group">
+              <span className="post-completion-group-label">Not completed ({incompleteStudents.length})</span>
+              {incompleteStudents.map((s) => (
+                <div key={s.id} className="post-completion-student">
+                  <div className="post-completion-avatar">{(s.display_name || s.username).charAt(0).toUpperCase()}</div>
+                  <span className="post-completion-name">{s.display_name || s.username}</span>
+                  <span className="post-completion-status post-completion-status--incomplete">Not completed</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {completedStudents.length > 0 && (
+            <div className="post-completion-group">
+              <span className="post-completion-group-label">Completed ({completedStudents.length})</span>
+              {completedStudents.map((s) => (
+                <div key={s.id} className="post-completion-student">
+                  <div className="post-completion-avatar">{(s.display_name || s.username).charAt(0).toUpperCase()}</div>
+                  <span className="post-completion-name">{s.display_name || s.username}</span>
+                  <span className="post-completion-status post-completion-status--completed">
+                    <CheckIcon size={12} strokeWidth={2.5} />
+                    {s.completed_at ? formatShortDate(s.completed_at) : 'Completed'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Expanded content for each post type
 // ---------------------------------------------------------------------------
 
@@ -318,6 +394,7 @@ function ExpandedContent({
             )}
           </div>
           <p className="stream-word-count-label">{post.word_count || 0} words</p>
+          <StudentProgressSection postId={post.id} />
         </>
       );
     }
@@ -374,6 +451,7 @@ export function PostRow({
   onDrop,
   onDragEnd,
   isDragOver,
+  studentCount,
 }: {
   post: StreamPost;
   topics: StreamTopic[];
@@ -391,6 +469,7 @@ export function PostRow({
   onDrop?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
   isDragOver?: boolean;
+  studentCount?: number;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -431,6 +510,11 @@ export function PostRow({
         </span>
         <span className="post-row-title">{title}</span>
         <span className="post-row-date">{dateStr}</span>
+        {isTeacher && post.type === 'word_list' && studentCount != null && studentCount > 0 && (
+          <span className={`post-completion-pill${(post.completed_count || 0) >= studentCount ? ' post-completion-pill--done' : ''}`}>
+            {post.completed_count || 0}/{studentCount}
+          </span>
+        )}
         {isTeacher && (
           <div style={{ position: 'relative' }}>
             <button

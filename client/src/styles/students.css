@@ -589,6 +589,114 @@
   flex-shrink: 0;
 }
 
+/* ---- Student Word List Section ------------------------------------------- */
+
+.student-wordlist-section {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.student-wordlist-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.student-wordlist-row:last-child {
+  border-bottom: none;
+}
+
+.student-wordlist-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.student-wordlist-title {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-wordlist-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.student-wordlist-status {
+  font-size: 0.8rem;
+  font-weight: 500;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.student-wordlist-status--completed {
+  color: var(--success);
+}
+
+.student-wordlist-status--incomplete {
+  color: var(--text-muted);
+}
+
+/* ---- SRS Stage Dots ----------------------------------------------------- */
+
+.srs-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.srs-dot--new {
+  background: var(--text-muted);
+}
+
+.srs-dot--learning {
+  background: #f59e0b;
+}
+
+.srs-dot--review {
+  background: #3b82f6;
+}
+
+.srs-dot--mastered {
+  background: #22c55e;
+}
+
+/* ---- SRS Legend ---------------------------------------------------------- */
+
+.srs-legend {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+  padding: 0.35rem 0;
+}
+
+.srs-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 /* ---- Students page responsive -------------------------------------------- */
 
 @media (max-width: 480px) {
