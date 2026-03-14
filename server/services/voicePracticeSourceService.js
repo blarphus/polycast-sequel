@@ -150,13 +150,13 @@ async function fetchVideoCandidates(targetLanguage) {
 
 async function fetchNewsCandidates(targetLanguage) {
   if (!redisClient.isReady) {
-    throw new Error('Redis is not connected for news-backed voice practice sourcing');
+    return [];
   }
 
-  const newsKey = `news7:${targetLanguage}`;
+  const newsKey = `news8:${targetLanguage}`;
   const raw = await redisClient.get(newsKey);
   if (!raw) {
-    throw new Error(`News cache is empty for target language ${targetLanguage}`);
+    return [];
   }
 
   const items = JSON.parse(raw);
