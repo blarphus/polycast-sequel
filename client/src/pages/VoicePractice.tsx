@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVoicePracticeSession } from '../hooks/useVoicePracticeSession';
 import { useSavedWords } from '../hooks/useSavedWords';
@@ -75,12 +75,17 @@ export default function VoicePractice() {
     counts,
     startListening,
     stopListening,
+    submitTypedAnswer,
     skipPrompt,
     nextPrompt,
     redoPrompt,
     canRedoCurrentPrompt,
     formatDuration,
   } = useVoicePracticeSession();
+
+  const [typingMode, setTypingMode] = useState(false);
+  const [typedAnswer, setTypedAnswer] = useState('');
+  const typedInputRef = useRef<HTMLInputElement>(null);
 
   if (loading) {
     return (
@@ -265,33 +270,72 @@ export default function VoicePractice() {
         <div className="voice-practice-actions">
           {!currentGrade ? (
             <>
-              <div className="voice-practice-recording-row">
-                <button
-                  className={`voice-practice-mic ${listening ? 'is-listening' : ''}`}
-                  onClick={listening ? stopListening : startListening}
-                  disabled={connectionState !== 'ready' || grading || committing}
+              {typingMode ? (
+                <form
+                  className="voice-practice-type-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const text = typedAnswer.trim();
+                    if (!text) return;
+                    setTypedAnswer('');
+                    submitTypedAnswer(text);
+                  }}
                 >
-                  {listening ? <MicOffIcon size={22} /> : <MicIcon size={22} />}
-                  {listening ? 'Done speaking' : committing ? 'Sending…' : 'Start speaking'}
-                </button>
-                <div className={`voice-practice-wave ${listening ? 'is-active' : ''}`} aria-hidden="true">
-                  {audioPeaks.map((peak, index) => (
-                    <span
-                      key={index}
-                      className="voice-practice-wave-bar"
-                      style={{ transform: `scaleY(${peak})` }}
-                    />
-                  ))}
+                  <input
+                    ref={typedInputRef}
+                    className="voice-practice-type-input"
+                    value={typedAnswer}
+                    onChange={(e) => setTypedAnswer(e.target.value)}
+                    placeholder="Type your translation..."
+                    autoFocus
+                    disabled={grading || committing}
+                  />
+                  <button
+                    className="btn btn-primary"
+                    type="submit"
+                    disabled={!typedAnswer.trim() || grading || committing}
+                  >
+                    {committing ? 'Sending...' : 'Submit'}
+                  </button>
+                </form>
+              ) : (
+                <div className="voice-practice-recording-row">
+                  <button
+                    className={`voice-practice-mic ${listening ? 'is-listening' : ''}`}
+                    onClick={listening ? stopListening : startListening}
+                    disabled={connectionState !== 'ready' || grading || committing}
+                  >
+                    {listening ? <MicOffIcon size={22} /> : <MicIcon size={22} />}
+                    {listening ? 'Done speaking' : committing ? 'Sending...' : 'Start speaking'}
+                  </button>
+                  <div className={`voice-practice-wave ${listening ? 'is-active' : ''}`} aria-hidden="true">
+                    {audioPeaks.map((peak, index) => (
+                      <span
+                        key={index}
+                        className="voice-practice-wave-bar"
+                        style={{ transform: `scaleY(${peak})` }}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-              {canRedoCurrentPrompt && !listening && !committing && (
-                <button className="btn btn-secondary" onClick={redoPrompt}>
-                  Redo this one
-                </button>
               )}
-              <button className="btn btn-secondary" onClick={skipPrompt} disabled={grading}>
-                Skip
-              </button>
+              <div className="voice-practice-mode-toggle">
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => { setTypingMode(!typingMode); setTypedAnswer(''); }}
+                  disabled={listening || grading || committing}
+                >
+                  {typingMode ? 'Switch to voice' : 'Type instead'}
+                </button>
+                {canRedoCurrentPrompt && !listening && !committing && (
+                  <button className="btn btn-secondary btn-sm" onClick={redoPrompt}>
+                    Redo
+                  </button>
+                )}
+                <button className="btn btn-secondary btn-sm" onClick={skipPrompt} disabled={grading}>
+                  Skip
+                </button>
+              </div>
             </>
           ) : (
             <>

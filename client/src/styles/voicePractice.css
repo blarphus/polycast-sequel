@@ -220,6 +220,39 @@
   gap: 0.85rem;
 }
 
+/* ---- Type-in mode ---- */
+
+.voice-practice-type-form {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.voice-practice-type-input {
+  flex: 1;
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  outline: none;
+  font-family: var(--font);
+  transition: border-color 0.15s;
+}
+
+.voice-practice-type-input:focus {
+  border-color: var(--accent);
+}
+
+.voice-practice-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .voice-practice-feedback-header {
   display: flex;
   align-items: center;

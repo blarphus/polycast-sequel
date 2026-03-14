@@ -458,6 +458,7 @@ export function useVoicePracticeSession() {
     counts,
     startListening,
     stopListening,
+    submitTypedAnswer: gradeTranscript,
     skipPrompt,
     nextPrompt,
     redoPrompt,
