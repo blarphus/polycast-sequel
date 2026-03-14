@@ -5,7 +5,7 @@ export { getUserDisplayInfo } from './getUserDisplayInfo.js';
 export async function getUserById(userId) {
   const { rows } = await pool.query(
     `SELECT id, username, display_name, account_type, native_language,
-            target_language, cefr_level, daily_new_limit, created_at, updated_at
+            target_language, cefr_level, cefr_levels, daily_new_limit, created_at
      FROM users WHERE id = $1`,
     [userId],
   );
