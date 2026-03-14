@@ -49,12 +49,10 @@ function totalActivity(d: DailyActivity): number {
   return d.reviews + d.wordsAdded + d.quizzes + d.drills + d.voiceSessions;
 }
 
-// Returns a status for the day:
-// 'completed' — reviewed cards (did their SRS work)
-// 'partial'   — did other activity (quizzes, drills, etc.) but no reviews
-// 'skipped'   — no activity at all
-// 'none'      — day hasn't happened yet or no data
-function dayStatus(d: DailyActivity | undefined): 'completed' | 'partial' | 'skipped' | 'none' {
+type DayStatus = 'completed' | 'partial' | 'skipped' | 'inactive';
+
+function dayStatus(d: DailyActivity | undefined, beforeAccount: boolean): DayStatus {
+  if (beforeAccount) return 'inactive';
   if (!d) return 'skipped';
   if (d.reviews > 0) return 'completed';
   if (totalActivity(d) > 0) return 'partial';
@@ -63,27 +61,28 @@ function dayStatus(d: DailyActivity | undefined): 'completed' | 'partial' | 'ski
 
 const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function MonthCalendar({ activity, selectedDay, onSelectDay }: {
+function MonthCalendar({ activity, accountCreated, selectedDay, onSelectDay }: {
   activity: DailyActivity[];
+  accountCreated: string;
   selectedDay: string | null;
   onSelectDay: (day: string | null) => void;
 }) {
   const activityMap = new Map(activity.map((d) => [d.day, d]));
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
+  const createdStr = accountCreated.slice(0, 10);
 
-  // Build 30 days ending today
-  type Cell = { date: string; day: number; status: ReturnType<typeof dayStatus> } | null;
-  const days: { date: string; weekday: number; day: number; status: ReturnType<typeof dayStatus> }[] = [];
+  type Cell = { date: string; day: number; status: DayStatus } | null;
+  const days: { date: string; weekday: number; day: number; status: DayStatus }[] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
+    const beforeAccount = dateStr < createdStr;
     const data = activityMap.get(dateStr);
-    days.push({ date: dateStr, weekday: d.getDay(), day: d.getDate(), status: dayStatus(data) });
+    days.push({ date: dateStr, weekday: d.getDay(), day: d.getDate(), status: dayStatus(data, beforeAccount) });
   }
 
-  // Group into rows of 7 (Sun=0 .. Sat=6)
   const rows: Cell[][] = [];
   let row: Cell[] = new Array(7).fill(null);
   for (const d of days) {
@@ -101,16 +100,16 @@ function MonthCalendar({ activity, selectedDay, onSelectDay }: {
         <div key={ri} className="sd-heatmap-row">
           {r.map((cell, ci) => {
             if (!cell) return <div key={ci} className="sd-heatmap-cell sd-heatmap-cell--blank" />;
-            const isSelected = selectedDay === cell.date;
             const isToday = cell.date === todayStr;
+            const clickable = cell.status !== 'inactive';
             return (
               <button
                 key={ci}
-                className={`sd-heatmap-cell sd-heatmap-cell--${cell.status}${isSelected ? ' sd-heatmap-cell--selected' : ''}${isToday ? ' sd-heatmap-cell--today' : ''}`}
-                onClick={() => onSelectDay(isSelected ? null : cell.date)}
+                className={`sd-heatmap-cell sd-heatmap-cell--${cell.status}${selectedDay === cell.date ? ' sd-heatmap-cell--selected' : ''}${isToday ? ' sd-heatmap-cell--today' : ''}`}
+                onClick={clickable ? () => onSelectDay(selectedDay === cell.date ? null : cell.date) : undefined}
+                disabled={!clickable}
               >
                 <span className="sd-heatmap-date">{cell.day}</span>
-                {cell.status === 'skipped' && <span className="sd-heatmap-x" aria-hidden="true" />}
               </button>
             );
           })}
@@ -123,68 +122,74 @@ function MonthCalendar({ activity, selectedDay, onSelectDay }: {
         <span className="sd-heatmap-legend-label">Some activity</span>
         <span className="sd-heatmap-legend-cell sd-heatmap-cell--skipped" />
         <span className="sd-heatmap-legend-label">Skipped</span>
+        <span className="sd-heatmap-legend-cell sd-heatmap-cell--inactive" />
+        <span className="sd-heatmap-legend-label">N/A</span>
       </div>
     </div>
   );
 }
 
-function DayDetail({ day, activity }: { day: string; activity: DailyActivity[] }) {
+function DayOverlay({ day, activity, onClose }: { day: string; activity: DailyActivity[]; onClose: () => void }) {
   const data = activity.find((a) => a.day === day);
   const dateLabel = new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const total = data ? totalActivity(data) : 0;
 
-  if (!data || totalActivity(data) === 0) {
-    return (
-      <div className="sd-day-detail">
-        <h3 className="sd-day-detail-title">{dateLabel}</h3>
-        <p className="sd-empty">No activity on this day.</p>
-      </div>
-    );
-  }
-
-  const reviewed = data.words.filter((w) => w.action === 'reviewed');
-  const added = data.words.filter((w) => w.action === 'added');
-  // Deduplicate reviewed words (same word can appear multiple times)
+  const reviewed = data?.words.filter((w) => w.action === 'reviewed') ?? [];
+  const added = data?.words.filter((w) => w.action === 'added') ?? [];
   const uniqueReviewed = [...new Map(reviewed.map((w) => [w.word, w])).values()];
 
   return (
-    <div className="sd-day-detail">
-      <h3 className="sd-day-detail-title">{dateLabel}</h3>
+    <div className="sd-overlay" onClick={onClose}>
+      <div className="sd-overlay-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="sd-overlay-header">
+          <h2 className="sd-overlay-title">{dateLabel}</h2>
+          <button className="sd-overlay-close" onClick={onClose}>
+            <ChevronLeftIcon size={20} />
+          </button>
+        </div>
 
-      <div className="sd-day-stats">
-        {data.reviews > 0 && <span className="sd-day-stat">{data.reviews} reviews</span>}
-        {data.wordsAdded > 0 && <span className="sd-day-stat">{data.wordsAdded} words added</span>}
-        {data.quizzes > 0 && <span className="sd-day-stat">{data.quizzes} quiz{data.quizzes > 1 ? 'zes' : ''} ({data.quizCorrect}/{data.quizTotal})</span>}
-        {data.drills > 0 && <span className="sd-day-stat">{data.drills} drill{data.drills > 1 ? 's' : ''}</span>}
-        {data.voiceSessions > 0 && <span className="sd-day-stat">{data.voiceSessions} voice session{data.voiceSessions > 1 ? 's' : ''}</span>}
+        {total === 0 ? (
+          <p className="sd-empty">No activity on this day.</p>
+        ) : (
+          <>
+            <div className="sd-overlay-stats">
+              {data!.reviews > 0 && <div className="sd-overlay-stat"><span className="sd-overlay-stat-value">{data!.reviews}</span><span className="sd-overlay-stat-label">Reviews</span></div>}
+              {data!.wordsAdded > 0 && <div className="sd-overlay-stat"><span className="sd-overlay-stat-value">{data!.wordsAdded}</span><span className="sd-overlay-stat-label">Words added</span></div>}
+              {data!.quizzes > 0 && <div className="sd-overlay-stat"><span className="sd-overlay-stat-value">{data!.quizCorrect}/{data!.quizTotal}</span><span className="sd-overlay-stat-label">Quiz{data!.quizzes > 1 ? 'zes' : ''}</span></div>}
+              {data!.drills > 0 && <div className="sd-overlay-stat"><span className="sd-overlay-stat-value">{data!.drills}</span><span className="sd-overlay-stat-label">Drill{data!.drills > 1 ? 's' : ''}</span></div>}
+              {data!.voiceSessions > 0 && <div className="sd-overlay-stat"><span className="sd-overlay-stat-value">{data!.voiceSessions}</span><span className="sd-overlay-stat-label">Voice</span></div>}
+            </div>
+
+            {uniqueReviewed.length > 0 && (
+              <div className="sd-overlay-section">
+                <h3 className="sd-overlay-section-title">Words reviewed ({uniqueReviewed.length})</h3>
+                <div className="sd-overlay-word-list">
+                  {uniqueReviewed.map((w, i) => (
+                    <div key={i} className="sd-overlay-word-row">
+                      <span className="sd-overlay-word-term">{w.word}</span>
+                      <span className="sd-overlay-word-translation">{w.translation}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {added.length > 0 && (
+              <div className="sd-overlay-section">
+                <h3 className="sd-overlay-section-title">Words added ({added.length})</h3>
+                <div className="sd-overlay-word-list">
+                  {added.map((w, i) => (
+                    <div key={i} className="sd-overlay-word-row">
+                      <span className="sd-overlay-word-term">{w.word}</span>
+                      <span className="sd-overlay-word-translation">{w.translation}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
-
-      {uniqueReviewed.length > 0 && (
-        <div className="sd-day-words">
-          <h4 className="sd-day-words-title">Words reviewed ({uniqueReviewed.length})</h4>
-          <div className="sd-day-word-list">
-            {uniqueReviewed.map((w, i) => (
-              <div key={i} className="sd-day-word-row">
-                <span className="sd-day-word-term">{w.word}</span>
-                <span className="sd-day-word-translation">{w.translation}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {added.length > 0 && (
-        <div className="sd-day-words">
-          <h4 className="sd-day-words-title">Words added ({added.length})</h4>
-          <div className="sd-day-word-list">
-            {added.map((w, i) => (
-              <div key={i} className="sd-day-word-row">
-                <span className="sd-day-word-term">{w.word}</span>
-                <span className="sd-day-word-translation">{w.translation}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -340,8 +345,8 @@ export default function StudentDetail() {
           {/* 30-day calendar */}
           <div className="sd-card">
             <h2 className="sd-card-title">Last 30 Days</h2>
-            <MonthCalendar activity={activity} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
-            {selectedDay && <DayDetail day={selectedDay} activity={activity} />}
+            <MonthCalendar activity={activity} accountCreated={student.created_at} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+            {selectedDay && <DayOverlay day={selectedDay} activity={activity} onClose={() => setSelectedDay(null)} />}
           </div>
 
           {/* Vocabulary */}

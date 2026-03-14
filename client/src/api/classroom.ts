@@ -110,7 +110,7 @@ export interface RecentSession {
 }
 
 export interface StudentDetail {
-  student: { id: string; username: string; display_name: string };
+  student: { id: string; username: string; display_name: string; created_at: string };
   stats: StudentStats;
   activity: DailyActivity[];
   recentSessions: RecentSession[];

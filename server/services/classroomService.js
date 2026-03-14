@@ -331,7 +331,7 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
   }
 
   const studentResult = await pool.query(
-    `SELECT id, username, display_name FROM users WHERE id = $1`,
+    `SELECT id, username, display_name, created_at FROM users WHERE id = $1`,
     [studentId],
   );
   if (studentResult.rows.length === 0) {
