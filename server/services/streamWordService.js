@@ -1,4 +1,5 @@
-import { enrichWord, fetchWordImage } from '../enrichWord.js';
+import { enrichWord } from '../enrichWord.js';
+import { fetchWordImage } from '../lib/imageSearch.js';
 import { lookupWordPreview } from './wordSemanticsService.js';
 
 const WORD_ENRICH_CONCURRENCY = 4;

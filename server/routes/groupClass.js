@@ -6,6 +6,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
+import { getUserAccountType } from '../lib/userQueries.js';
 import { markParticipantLeft } from '../lib/groupCallDb.js';
 import { validate } from '../lib/validate.js';
 
@@ -20,11 +21,8 @@ const postIdParam = z.object({ postId: z.string().uuid('Invalid post ID') });
 router.get('/api/classes/today', authMiddleware, async (req, res) => {
   try {
     const userId = req.userId;
-    const { rows: [user] } = await pool.query(
-      'SELECT account_type FROM users WHERE id = $1',
-      [userId],
-    );
-    const isTeacher = user.account_type === 'teacher';
+    const accountType = await getUserAccountType(userId);
+    const isTeacher = accountType === 'teacher';
 
     // Get today's ISO weekday (1=Mon..7=Sun)
     const now = new Date();

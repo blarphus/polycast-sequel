@@ -1,5 +1,6 @@
 import pool from '../db.js';
-import { callGemini } from '../enrichWord.js';
+import { callGemini } from '../lib/gemini.js';
+import { getUserLanguagePrefs } from '../lib/userQueries.js';
 import { buildVoicePracticeSentenceSet } from './voicePracticeSourceService.js';
 
 function safeJsonParse(text) {
@@ -32,12 +33,7 @@ export async function createVoicePracticeSession({
   count = 10,
   feedbackLanguageMode = 'native',
 }) {
-  const { rows: [user] } = await pool.query(
-    `SELECT native_language, target_language, cefr_levels
-       FROM users
-      WHERE id = $1`,
-    [userId],
-  );
+  const user = await getUserLanguagePrefs(userId);
   if (!user) {
     throw new Error('User not found');
   }

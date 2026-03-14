@@ -1,32 +1,14 @@
+import { callGemini, parseGeminiJson, ensureGeminiKeys } from '../lib/gemini.js';
 import {
-  callGemini,
   enrichWord,
   fetchWiktSenses,
   fetchWiktTranslations,
 } from '../enrichWord.js';
 
-function parseJson(raw, context) {
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    const error = new Error(`${context} returned invalid JSON`);
-    error.cause = err;
-    throw error;
-  }
-}
-
 function makeContextError(message, context = {}) {
   const error = new Error(message);
   error.context = context;
   return error;
-}
-
-function ensureGeminiKeys(parsed, keys, context) {
-  for (const key of keys) {
-    if (!(key in parsed)) {
-      throw makeContextError(`${context} omitted required field "${key}"`, { parsed });
-    }
-  }
 }
 
 async function translateViaTildeTrick(word, sentence, nativeLang, targetLang) {
@@ -128,7 +110,7 @@ ${senseInstruction}
     },
   );
 
-  const parsed = parseJson(raw, 'Dictionary lookup');
+  const parsed = parseGeminiJson(raw, 'Dictionary lookup');
   ensureGeminiKeys(
     parsed,
     hasSenses
@@ -264,7 +246,7 @@ Return ONLY a JSON array in order:
       },
     );
 
-    const picks = parseJson(raw, 'Batch translation disambiguation');
+    const picks = parseGeminiJson(raw, 'Batch translation disambiguation');
     if (!Array.isArray(picks) || picks.length !== ambiguous.length) {
       throw makeContextError('Batch translation disambiguation returned an unexpected payload length', {
         expected: ambiguous.length,

@@ -1,33 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getStudentDashboard, PendingWordList } from '../api';
+import { getStudentDashboard, PendingWordList, StudentDashboard } from '../api';
 import { ChevronRightIcon } from './icons';
+import { useAsyncData } from '../hooks/useAsyncData';
 
 interface Props {
   onCountChange?: (count: number) => void;
 }
 
 export default function PendingClasswork({ onCountChange }: Props) {
-  const [posts, setPosts] = useState<PendingWordList[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { data, loading, error } = useAsyncData<StudentDashboard>(
+    () => getStudentDashboard(),
+    [],
+  );
+  const posts = data?.pendingClasswork.posts ?? [];
 
   useEffect(() => {
-    let cancelled = false;
-    getStudentDashboard()
-      .then((data) => {
-        if (cancelled) return;
-        setPosts(data.pendingClasswork.posts);
-        onCountChange?.(data.pendingClasswork.count);
-      })
-      .catch((err) => {
-        console.error('Failed to load pending classwork:', err);
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [onCountChange]);
+    if (data) onCountChange?.(data.pendingClasswork.count);
+  }, [data, onCountChange]);
 
   if (loading) return null;
   if (posts.length === 0) return null;

@@ -14,6 +14,7 @@ import {
 import * as api from '../api';
 import type { AuthUser } from '../api';
 import { loadSavedAccounts, removeSavedAccount, upsertSavedAccount, type SavedAccount } from '../utils/savedAccounts';
+import { toErrorMessage } from '../utils/errors';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -65,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Auth session check failed:', err);
         if (!cancelled) {
           setUser(null);
-          setAuthError(err instanceof Error ? err.message : String(err));
+          setAuthError(toErrorMessage(err));
         }
       })
       .finally(() => {
@@ -112,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCurrentSessionToken(nextUser.token);
       setSavedAccounts(upsertSavedAccount(nextUser, nextUser.token));
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = toErrorMessage(err);
       if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('expired')) {
         setSavedAccounts(removeSavedAccount(userId));
       }

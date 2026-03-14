@@ -11,6 +11,7 @@ import type { Classroom, ClassroomStudent, UserResult } from '../api';
 import ClassroomPicker from '../components/classroom/ClassroomPicker';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
 import { ChevronLeftIcon } from '../components/icons';
+import Avatar from '../components/Avatar';
 
 export default function Students() {
   const navigate = useNavigate();
@@ -165,9 +166,7 @@ export default function Students() {
         <div className="students-search-results">
           {searchResults.map((u) => (
             <div key={u.id} className="students-roster-item">
-              <div className="students-avatar">
-                {(u.display_name || u.username).charAt(0).toUpperCase()}
-              </div>
+              <Avatar name={u.display_name || u.username} className="students-avatar" />
               <div className="students-info">
                 <span className="students-name">{u.display_name || u.username}</span>
                 <span className="students-username">@{u.username}</span>
@@ -214,10 +213,9 @@ export default function Students() {
               className="students-roster-item students-roster-item--clickable"
               onClick={() => navigate(`/students/${s.id}?classroomId=${activeClassroom.id}`)}
             >
-              <div className="students-avatar">
-                {(s.display_name || s.username).charAt(0).toUpperCase()}
+              <Avatar name={s.display_name || s.username} className="students-avatar">
                 {s.online && <span className="students-online-dot" />}
-              </div>
+              </Avatar>
               <div className="students-info">
                 <span className="students-name">{s.display_name || s.username}</span>
                 <span className="students-username">@{s.username}</span>

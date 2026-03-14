@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import pool from '../db.js';
 import redisClient from '../redis.js';
-import { callGemini } from '../enrichWord.js';
+import { callGemini } from '../lib/gemini.js';
 
 const MAX_TARGET_SENTENCE_WORDS = 16;
 const MIN_TARGET_SENTENCE_WORDS = 4;

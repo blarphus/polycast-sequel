@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import * as api from '../../api';
 import type { StreamPost, LessonItem } from '../../api';
 import AttachmentEditor from '../AttachmentEditor';
+import { toErrorMessage } from '../../utils/errors';
 
 // ---------------------------------------------------------------------------
 // Edit modal (for editing existing posts)
@@ -38,7 +39,7 @@ export default function EditModal({
       onSave(updated);
     } catch (err: any) {
       console.error('Edit post failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setSaving(false);
     }

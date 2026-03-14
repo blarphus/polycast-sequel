@@ -3,6 +3,7 @@ import { lookupWord, enrichWord, type SaveWordData } from '../api';
 import { useDictionaryToast } from '../hooks/useDictionaryToast';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { CheckIcon } from './icons';
+import { toErrorMessage } from '../utils/errors';
 
 interface WordPopupProps {
   word: string;
@@ -64,7 +65,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
       .catch((err) => {
         if (!cancelled) {
           console.error('WordPopup: lookup failed:', err);
-          setError(err instanceof Error ? err.message : String(err));
+          setError(toErrorMessage(err));
           setLoading(false);
         }
       });

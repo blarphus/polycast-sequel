@@ -2,25 +2,20 @@
 // components/UpcomingClasses.tsx — Home screen "Classes today" section
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getClassesToday, UpcomingClass } from '../api';
 import { CalendarIcon } from './classwork/ClassSessionCard';
 import { formatUsTime } from '../utils/dateFormat';
+import { useAsyncData } from '../hooks/useAsyncData';
 
 export default function UpcomingClasses() {
   const navigate = useNavigate();
-  const [classes, setClasses] = useState<UpcomingClass[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    getClassesToday()
-      .then(({ classes: c }) => { if (!cancelled) setClasses(c); })
-      .catch((err) => console.error('Failed to fetch today\'s classes:', err))
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  const { data, loading } = useAsyncData<{ classes: UpcomingClass[] }>(
+    () => getClassesToday(),
+    [],
+  );
+  const classes = data?.classes ?? [];
 
   if (loading || classes.length === 0) return null;
 

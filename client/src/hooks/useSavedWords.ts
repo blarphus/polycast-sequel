@@ -4,6 +4,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getSavedWords, saveWord, deleteSavedWord, updateWordImage, reorderQueue, SavedWord } from '../api';
+import { toErrorMessage } from '../utils/errors';
 
 function parseWordForms(rawForms: string | null | undefined, word: string) {
   if (!rawForms) return [];
@@ -28,7 +29,7 @@ export function useSavedWords() {
       })
       .catch((err) => {
         console.error('Failed to load saved words:', err);
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setError(toErrorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -133,7 +134,7 @@ export function useSavedWords() {
       } catch (err) {
         console.error('Queue reorder failed:', err);
         setWords(previousWords);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(toErrorMessage(err));
       }
     },
     [words],

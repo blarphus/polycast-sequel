@@ -14,6 +14,7 @@ import { TopicSection } from '../components/classwork/TopicSection';
 import ClassroomPicker from '../components/classroom/ClassroomPicker';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
 import { PlusIcon, ChevronDownIcon, ChevronLeftIcon, CloseIcon, PeopleIcon } from '../components/icons';
+import { toErrorMessage } from '../utils/errors';
 
 // ---------------------------------------------------------------------------
 // Main Classwork component
@@ -77,7 +78,7 @@ export default function Classwork() {
       })
       .catch((err: any) => {
         console.error('getStream failed:', err);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(toErrorMessage(err));
       })
       .finally(() => setLoading(false));
   }, [activeClassroom, activeClassroomId]);
@@ -174,7 +175,7 @@ export default function Classwork() {
       await api.reorderStream([{ id: postId, kind: 'post', position: post.position ?? 0, topic_id: newTopicId }]);
     } catch (err: any) {
       console.error('Move post failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
       setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, topic_id: post.topic_id } : p)));
     }
   };
@@ -194,7 +195,7 @@ export default function Classwork() {
       setPosts((prev) => prev.map((p) => (p.topic_id === topicId ? { ...p, topic_id: null } : p)));
     } catch (err: any) {
       console.error('Delete topic failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     }
   };
 
@@ -208,7 +209,7 @@ export default function Classwork() {
       setTopics((prev) => [...prev, topic as StreamTopic]);
     } catch (err: any) {
       console.error('Create topic failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setNewTopicTitle('');
       setCreatingTopic(false);
@@ -298,7 +299,7 @@ export default function Classwork() {
 
     api.reorderStream(items).catch((err: any) => {
       console.error('Reorder posts failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
       setPosts(previousPosts);
     });
 
@@ -341,7 +342,7 @@ export default function Classwork() {
 
     api.reorderStream(reordered.map((t, i) => ({ id: t.id, kind: 'topic' as const, position: i }))).catch((err: any) => {
       console.error('Reorder topics failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
       setTopics(previousTopics);
     });
 

@@ -9,6 +9,7 @@ import { useTheme } from '../hooks/useTheme';
 import { LANGUAGES } from '../components/classwork/languages';
 import PlacementTest from '../components/PlacementTest';
 import { ChevronLeftIcon } from '../components/icons';
+import { toErrorMessage } from '../utils/errors';
 
 export default function Settings() {
   const { user, updateSettings } = useAuth();
@@ -40,7 +41,7 @@ export default function Settings() {
       setSaved(true);
     } catch (err) {
       console.error('Settings: save cefr_level failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     }
     setShowPlacement(false);
   };
@@ -54,7 +55,7 @@ export default function Settings() {
       setSaved(true);
     } catch (err: any) {
       console.error('Settings: save failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setSaving(false);
     }

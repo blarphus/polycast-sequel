@@ -1,21 +1,20 @@
 import { Router } from 'express';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
+import { getUserAccountType } from '../lib/userQueries.js';
 import { listLegacyTeacherIdsForStudent } from '../services/classroomService.js';
 import { listDueWords, listNewTodayWords } from '../lib/dictionaryQueries.js';
+import { WORD_COUNT_JOIN } from '../lib/streamPostQueries.js';
 
 const router = Router();
 
 router.get('/api/home/student-dashboard', authMiddleware, async (req, res) => {
   try {
-    const { rows: userRows } = await pool.query(
-      'SELECT account_type FROM users WHERE id = $1',
-      [req.userId],
-    );
-    if (userRows.length === 0) {
+    const accountType = await getUserAccountType(req.userId);
+    if (!accountType) {
       return res.status(404).json({ error: 'User not found' });
     }
-    if (userRows[0].account_type !== 'student') {
+    if (accountType !== 'student') {
       return res.status(403).json({ error: 'Student dashboard is only available to student accounts' });
     }
 
@@ -32,9 +31,7 @@ router.get('/api/home/student-dashboard', authMiddleware, async (req, res) => {
                   COALESCE(u.display_name, u.username) AS teacher_name
            FROM stream_posts sp
            JOIN users u ON u.id = sp.teacher_id
-           LEFT JOIN (
-             SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
-           ) wc ON wc.post_id = sp.id
+           ${WORD_COUNT_JOIN}
            WHERE sp.type = 'word_list'
              AND sp.teacher_id = ANY($2::uuid[])
              AND NOT EXISTS (

@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import type { LessonItem } from '../../api';
 import AttachmentEditor from '../AttachmentEditor';
+import { toErrorMessage } from '../../utils/errors';
 
 export function LessonItemEditor({
   item,
@@ -78,7 +79,7 @@ export default function LessonTab({
       await onSubmit({ title, lesson_items: validItems });
     } catch (err: any) {
       console.error('Create lesson post failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

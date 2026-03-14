@@ -2,12 +2,14 @@
 // pages/StudentDetail.tsx -- Read-only view of a student's dictionary & stats
 // ---------------------------------------------------------------------------
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import * as api from '../api';
 import type { StudentDetail as StudentDetailData } from '../api';
 import { ChevronLeftIcon, CheckIcon } from '../components/icons';
 import { formatDate as formatShortDate } from '../utils/dateFormat';
+import { useAsyncData } from '../hooks/useAsyncData';
+import Avatar from '../components/Avatar';
 
 const SRS_STAGES = [
   { key: 'new', label: 'New', className: 'srs-dot--new' },
@@ -21,25 +23,15 @@ export default function StudentDetail() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const classroomId = searchParams.get('classroomId');
-  const [data, setData] = useState<StudentDetailData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!studentId) return;
-    if (!classroomId) {
-      setError('A classroom context is required to view student details.');
-      setLoading(false);
-      return;
-    }
-    api.getStudentStats(classroomId, studentId)
-      .then(setData)
-      .catch((err) => {
-        console.error('Failed to load student stats:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load student data');
-      })
-      .finally(() => setLoading(false));
-  }, [classroomId, studentId]);
+  const { data, loading, error } = useAsyncData<StudentDetailData>(
+    () => {
+      if (!studentId) return Promise.reject(new Error('Missing student ID'));
+      if (!classroomId) return Promise.reject(new Error('A classroom context is required to view student details.'));
+      return api.getStudentStats(classroomId, studentId);
+    },
+    [classroomId, studentId],
+  );
 
   if (loading) {
     return <div className="loading-screen"><div className="loading-spinner" /></div>;
@@ -77,9 +69,7 @@ export default function StudentDetail() {
 
       {/* Student header */}
       <div className="student-detail-header">
-        <div className="student-detail-avatar">
-          {(student.display_name || student.username).charAt(0).toUpperCase()}
-        </div>
+        <Avatar name={student.display_name || student.username} className="student-detail-avatar" />
         <div>
           <h1 className="student-detail-name">{student.display_name || student.username}</h1>
           <span className="student-detail-username">@{student.username}</span>

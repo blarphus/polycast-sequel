@@ -2,9 +2,10 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { enrichWord as enrichWordHelper, searchAllImages, fetchWiktSenses } from '../enrichWord.js';
+import { enrichWord as enrichWordHelper, fetchWiktSenses } from '../enrichWord.js';
+import { searchAllImages } from '../lib/imageSearch.js';
 import { validate } from '../lib/validate.js';
-import { computeNextReview } from '../lib/srsAlgorithm.js';
+import { applySrsReview } from '../lib/srsUpdate.js';
 import { synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup } from '../services/wordSemanticsService.js';
 import { listDueWords, listNewTodayWords } from '../lib/dictionaryQueries.js';
@@ -356,42 +357,13 @@ router.patch('/api/dictionary/words/:id/review', authMiddleware, validate({ para
   const { answer } = req.body;
 
   try {
-    const { rows: existing } = await pool.query(
-      'SELECT * FROM saved_words WHERE id = $1 AND user_id = $2',
-      [req.params.id, req.userId],
-    );
+    const updated = await applySrsReview(pool, req.params.id, req.userId, answer);
 
-    if (existing.length === 0) {
+    if (!updated) {
       return res.status(404).json({ error: 'Word not found' });
     }
 
-    const card = existing[0];
-    const next = computeNextReview(card, answer);
-
-    const { rows: updated } = await pool.query(
-      `UPDATE saved_words
-       SET srs_interval = $1,
-           ease_factor = $2,
-           learning_step = $3,
-           due_at = NOW() + ($4 || ' seconds')::INTERVAL,
-           last_reviewed_at = NOW(),
-           correct_count = correct_count + $5,
-           incorrect_count = incorrect_count + $6
-       WHERE id = $7 AND user_id = $8
-       RETURNING *`,
-      [
-        next.srs_interval,
-        next.ease_factor,
-        next.learning_step,
-        String(next.due_seconds),
-        next.correct_delta,
-        next.incorrect_delta,
-        req.params.id,
-        req.userId,
-      ],
-    );
-
-    return res.json(updated[0]);
+    return res.json(updated);
   } catch (err) {
     req.log.error({ err }, 'Error reviewing word');
     return res.status(500).json({ error: 'Failed to record review' });

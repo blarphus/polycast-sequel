@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import pool from './db.js';
+import { getUserById } from './lib/userQueries.js';
 import logger from './logger.js';
 
 if (!process.env.JWT_SECRET) {
@@ -83,14 +84,11 @@ export async function comparePassword(password, hash) {
  * Must be used after authMiddleware. Stashes the user row on req.userRecord.
  */
 export async function requireTeacher(req, res, next) {
-  const { rows } = await pool.query(
-    'SELECT account_type, native_language, target_language FROM users WHERE id = $1',
-    [req.userId],
-  );
-  if (!rows[0] || rows[0].account_type !== 'teacher') {
+  const user = await getUserById(req.userId);
+  if (!user || user.account_type !== 'teacher') {
     return res.status(403).json({ error: 'Teacher account required' });
   }
-  req.userRecord = rows[0];
+  req.userRecord = user;
   next();
 }
 

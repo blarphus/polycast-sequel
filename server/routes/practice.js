@@ -6,9 +6,10 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { callGemini } from '../enrichWord.js';
+import { callGemini } from '../lib/gemini.js';
+import { getUserLanguagePrefs } from '../lib/userQueries.js';
 import { validate } from '../lib/validate.js';
-import { computeNextReview } from '../lib/srsAlgorithm.js';
+import { applySrsReview } from '../lib/srsUpdate.js';
 import logger from '../logger.js';
 
 const router = Router();
@@ -53,10 +54,7 @@ router.post('/api/practice/generate', authMiddleware, validate({ body: generateB
   const { videoId, count = 10 } = req.body;
 
   try {
-    const { rows: [userRow] } = await pool.query(
-      'SELECT native_language, target_language, cefr_level FROM users WHERE id = $1',
-      [req.userId],
-    );
+    const userRow = await getUserLanguagePrefs(req.userId);
     if (!userRow) return res.status(404).json({ error: 'User not found' });
 
     const { native_language, target_language, cefr_level } = userRow;
@@ -254,37 +252,8 @@ router.post('/api/practice/sessions/:id/complete', authMiddleware, validate({ pa
     // SRS updates for answers linked to saved words
     for (const answer of answers) {
       if (!answer.saved_word_id || answer.is_correct === null) continue;
-
-      const { rows: [card] } = await pool.query(
-        'SELECT * FROM saved_words WHERE id = $1 AND user_id = $2',
-        [answer.saved_word_id, req.userId],
-      );
-      if (!card) continue;
-
       const srsAnswer = answer.is_correct ? 'good' : 'again';
-      const next = computeNextReview(card, srsAnswer);
-
-      await pool.query(
-        `UPDATE saved_words
-         SET srs_interval = $1,
-             ease_factor = $2,
-             learning_step = $3,
-             due_at = NOW() + ($4 || ' seconds')::INTERVAL,
-             last_reviewed_at = NOW(),
-             correct_count = correct_count + $5,
-             incorrect_count = incorrect_count + $6
-         WHERE id = $7 AND user_id = $8`,
-        [
-          next.srs_interval,
-          next.ease_factor,
-          next.learning_step,
-          String(next.due_seconds),
-          next.correct_delta,
-          next.incorrect_delta,
-          answer.saved_word_id,
-          req.userId,
-        ],
-      );
+      await applySrsReview(pool, answer.saved_word_id, req.userId, srsAnswer);
     }
 
     // Return final summary

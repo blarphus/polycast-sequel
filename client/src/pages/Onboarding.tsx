@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LANGUAGES } from '../components/classwork/languages';
 import PlacementTest from '../components/PlacementTest';
+import { toErrorMessage } from '../utils/errors';
 
 const PLACEMENT_LANGUAGES = ['en', 'es', 'pt'];
 
@@ -50,7 +51,7 @@ export default function Onboarding() {
       }
     } catch (err: unknown) {
       console.error('Onboarding: save failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setSaving(false);
     }

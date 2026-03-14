@@ -1,13 +1,14 @@
 import { Router } from 'express';
-import { extract } from '@extractus/article-extractor';
 import { z } from 'zod';
 import redisClient from '../redis.js';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
-import { callGemini, streamGemini } from '../enrichWord.js';
+import { callGemini, streamGemini } from '../lib/gemini.js';
+import { getUserLanguagePrefs } from '../lib/userQueries.js';
 import { estimateCefrLevel } from '../lib/cefrDifficulty.js';
 import { validate } from '../lib/validate.js';
-import { parseRssItems, truncateAtSentence } from '../lib/rssParser.js';
+import { parseRssItems } from '../lib/rssParser.js';
+import { extractAndCacheRawArticle, buildArticlePreview } from '../lib/articleCache.js';
 
 const router = Router();
 
@@ -117,7 +118,7 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
 
     const extractedItems = await Promise.all(
       items.map((item, index) =>
-        extractAndCacheRawArticle({ req, lang, index, link: item.link })
+        extractAndCacheRawArticle({ lang, index, link: item.link })
           .catch((err) => {
             req.log.error('Article extraction failed for %s: %s', item.link, err.message);
             return '';
@@ -152,61 +153,6 @@ const LANG_NAMES = {
   en: 'English', es: 'Spanish', pt: 'Portuguese',
   fr: 'French', ja: 'Japanese', de: 'German',
 };
-
-function cleanExtractedArticleContent(content) {
-  return content
-    .replace(/<figure[\s\S]*?<\/figure>/gi, '')
-    .replace(/<section[\s\S]*?<\/section>/gi, '')
-    .replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, '\n\n## $1\n\n')
-    .replace(/<(b|strong)>([\s\S]*?)<\/\1>/gi, '**$2**')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<\/div>/gi, '\n\n')
-    .replace(/<\/li>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-function buildArticlePreview(rawBody, maxChars = 900) {
-  const normalized = rawBody
-    .replace(/^##\s+/gm, '')
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (!normalized) return null;
-  if (normalized.length <= maxChars) return normalized;
-
-  const snippet = normalized.slice(0, maxChars);
-  const sentenceBoundary = Math.max(
-    snippet.lastIndexOf('. '),
-    snippet.lastIndexOf('! '),
-    snippet.lastIndexOf('? '),
-  );
-  if (sentenceBoundary > maxChars * 0.45) {
-    return snippet.slice(0, sentenceBoundary + 1).trim();
-  }
-
-  const clauseBoundary = Math.max(
-    snippet.lastIndexOf('; '),
-    snippet.lastIndexOf(': '),
-    snippet.lastIndexOf(', '),
-  );
-  if (clauseBoundary > maxChars * 0.55) {
-    return snippet.slice(0, clauseBoundary + 1).trim();
-  }
-
-  const wordBoundary = snippet.lastIndexOf(' ');
-  const cutAt = wordBoundary > maxChars * 0.65 ? wordBoundary : maxChars;
-  return `${snippet.slice(0, cutAt).trim()}...`;
-}
 
 function buildRewritePrompt(lang, level, rawBody) {
   const langName = LANG_NAMES[lang] || lang;
@@ -243,53 +189,9 @@ async function streamExistingText(res, text) {
   }
 }
 
-async function readCachedArticleBody(rawCacheKey, req) {
-  if (!redisClient.isReady) {
-    throw new Error('Redis is not ready for article cache access');
-  }
-  return redisClient.get(rawCacheKey);
-}
-
-async function writeCachedArticleBody(rawCacheKey, rawBody, req) {
-  if (!redisClient.isReady) {
-    throw new Error('Redis is not ready for article cache writes');
-  }
-  await redisClient.set(rawCacheKey, rawBody, { EX: 21600 });
-}
-
-async function extractAndCacheRawArticle({ req, lang, index, link }) {
-  const rawCacheKey = `article3:raw:${lang}:${index}`;
-  const cachedBody = await readCachedArticleBody(rawCacheKey, req);
-  if (cachedBody) {
-    return cachedBody;
-  }
-
-  if (!link) {
-    throw new Error('Article link is missing');
-  }
-
-  const extracted = await extract(link, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Polycast/1.0)' },
-  });
-  if (!extracted?.content) {
-    throw new Error(`Article extraction returned no content for ${link}`);
-  }
-
-  const rawBody = truncateAtSentence(cleanExtractedArticleContent(extracted.content));
-  if (!rawBody) {
-    throw new Error(`Article extraction returned empty body for ${link}`);
-  }
-
-  await writeCachedArticleBody(rawCacheKey, rawBody, req);
-  return rawBody;
-}
-
 async function getCachedNewsContext(req, lang, index) {
-  const { rows: userRows } = await pool.query(
-    'SELECT native_language, cefr_level FROM users WHERE id = $1',
-    [req.userId],
-  );
-  const nativeLang = userRows[0]?.native_language || 'en';
+  const userPrefs = await getUserLanguagePrefs(req.userId);
+  const nativeLang = userPrefs?.native_language || 'en';
 
   if (!redisClient.isReady) {
     return { error: 'Redis is not ready for news lookups.' };
@@ -331,7 +233,6 @@ router.get('/api/news/article', authMiddleware, validate({ query: articleQuery }
     const { title, source, link, image } = context;
 
     const rawBody = await extractAndCacheRawArticle({
-      req,
       lang,
       index,
       link,
@@ -393,7 +294,6 @@ router.get('/api/news/article/stream', authMiddleware, validate({ query: article
     sendSseEvent(res, 'meta', { title, source, link, image, level });
 
     const rawBody = await extractAndCacheRawArticle({
-      req,
       lang,
       index,
       link,

@@ -3,12 +3,14 @@ import { z } from 'zod';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
 import { validate } from '../lib/validate.js';
+import { getUserAccountType } from '../lib/userQueries.js';
 import { enrichAndInsertWords } from '../services/streamWordService.js';
 import {
   getClassroomTopics,
   getLegacyStreamContext,
   listLegacyTeacherIdsForStudent,
 } from '../services/classroomService.js';
+import { WORD_COUNT_JOIN, COMPLETION_COUNT_JOIN } from '../lib/streamPostQueries.js';
 
 const router = Router();
 
@@ -31,6 +33,22 @@ const streamQuery = z.object({
   classroomId: z.string().uuid('Invalid classroom ID').optional(),
 });
 
+async function findOwnedPost(req, res) {
+  const { rows } = await pool.query(
+    'SELECT * FROM stream_posts WHERE id = $1',
+    [req.params.id],
+  );
+  if (rows.length === 0) {
+    res.status(404).json({ error: 'Post not found' });
+    return null;
+  }
+  if (rows[0].teacher_id !== req.userId) {
+    res.status(403).json({ error: 'Not your post' });
+    return null;
+  }
+  return rows[0];
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/stream
 // Teachers get their own posts + topics; students get posts + topics from teachers.
@@ -38,12 +56,9 @@ const streamQuery = z.object({
 
 router.get('/api/stream', authMiddleware, validate({ query: streamQuery }), async (req, res) => {
   try {
-    const { rows: userRows } = await pool.query(
-      'SELECT account_type FROM users WHERE id = $1',
-      [req.userId],
-    );
-    if (userRows.length === 0) return res.status(401).json({ error: 'User not found' });
-    const isTeacher = userRows[0].account_type === 'teacher';
+    const accountType = await getUserAccountType(req.userId);
+    if (!accountType) return res.status(401).json({ error: 'User not found' });
+    const isTeacher = accountType === 'teacher';
     const classroomId = req.query.classroomId;
     const classroomContext = classroomId
       ? await getLegacyStreamContext(classroomId, req.userId)
@@ -70,12 +85,8 @@ router.get('/api/stream', authMiddleware, validate({ query: streamQuery }), asyn
            COALESCE(wc.cnt, 0)::int AS word_count,
            COALESCE(comp.cnt, 0)::int AS completed_count
          FROM stream_posts sp
-         LEFT JOIN (
-           SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
-         ) wc ON wc.post_id = sp.id
-         LEFT JOIN (
-           SELECT post_id, COUNT(*) AS cnt FROM stream_word_list_completions GROUP BY post_id
-         ) comp ON comp.post_id = sp.id
+         ${WORD_COUNT_JOIN}
+         ${COMPLETION_COUNT_JOIN}
          WHERE sp.teacher_id = $1
          ORDER BY sp.position ASC NULLS LAST, sp.created_at DESC`,
         [legacyTeacherId || req.userId],
@@ -100,9 +111,7 @@ router.get('/api/stream', authMiddleware, validate({ query: streamQuery }), asyn
              u.username AS teacher_username
            FROM stream_posts sp
            JOIN users u ON u.id = sp.teacher_id
-           LEFT JOIN (
-             SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
-           ) wc ON wc.post_id = sp.id
+           ${WORD_COUNT_JOIN}
            WHERE sp.teacher_id = $1
            ORDER BY sp.position ASC NULLS LAST, sp.created_at DESC`,
           [legacyTeacherId],
@@ -134,9 +143,7 @@ router.get('/api/stream', authMiddleware, validate({ query: streamQuery }), asyn
              u.username AS teacher_username
            FROM stream_posts sp
            JOIN users u ON u.id = sp.teacher_id
-           LEFT JOIN (
-             SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
-           ) wc ON wc.post_id = sp.id
+           ${WORD_COUNT_JOIN}
            WHERE sp.teacher_id = ANY($1::uuid[])
            ORDER BY sp.position ASC NULLS LAST, sp.created_at DESC`,
           [visibleTeacherIds],
@@ -230,14 +237,8 @@ router.get('/api/stream', authMiddleware, validate({ query: streamQuery }), asyn
 
 router.get('/api/stream/posts/:id/completions', authMiddleware, validate({ params: idParam }), async (req, res) => {
   try {
-    const { rows: postRows } = await pool.query(
-      'SELECT teacher_id FROM stream_posts WHERE id = $1',
-      [req.params.id],
-    );
-    if (postRows.length === 0) return res.status(404).json({ error: 'Post not found' });
-    if (postRows[0].teacher_id !== req.userId) {
-      return res.status(403).json({ error: 'Not your post' });
-    }
+    const post = await findOwnedPost(req, res);
+    if (!post) return;
 
     // Find the classroom for this teacher (default-migrated)
     const { rows: classroomRows } = await pool.query(
@@ -291,12 +292,9 @@ router.get('/api/stream/posts/:id/completions', authMiddleware, validate({ param
 
 router.get('/api/stream/pending', authMiddleware, async (req, res) => {
   try {
-    const { rows: userRows } = await pool.query(
-      'SELECT account_type FROM users WHERE id = $1',
-      [req.userId],
-    );
-    if (userRows.length === 0) return res.status(401).json({ error: 'User not found' });
-    if (userRows[0].account_type === 'teacher') {
+    const accountType = await getUserAccountType(req.userId);
+    if (!accountType) return res.status(401).json({ error: 'User not found' });
+    if (accountType === 'teacher') {
       return res.json({ count: 0, posts: [] });
     }
 
@@ -311,9 +309,7 @@ router.get('/api/stream/pending', authMiddleware, async (req, res) => {
               COALESCE(u.display_name, u.username) AS teacher_name
            FROM stream_posts sp
            JOIN users u ON u.id = sp.teacher_id
-           LEFT JOIN (
-             SELECT post_id, COUNT(*) AS cnt FROM stream_post_words GROUP BY post_id
-           ) wc ON wc.post_id = sp.id
+           ${WORD_COUNT_JOIN}
            WHERE sp.type = 'word_list'
              AND sp.teacher_id = ANY($2::uuid[])
             AND NOT EXISTS (
@@ -407,17 +403,11 @@ router.patch('/api/stream/posts/:id', authMiddleware, validate({ params: idParam
   const topicId = req.body.topic_id;
 
   try {
-    const { rows: existing } = await pool.query(
-      'SELECT * FROM stream_posts WHERE id = $1',
-      [req.params.id],
-    );
-    if (existing.length === 0) return res.status(404).json({ error: 'Post not found' });
-    if (existing[0].teacher_id !== req.userId) {
-      return res.status(403).json({ error: 'Not your post' });
-    }
+    const existing = await findOwnedPost(req, res);
+    if (!existing) return;
 
     // --- Word list edit: delete old words + re-insert in a transaction ---
-    if (Array.isArray(words) && existing[0].type === 'word_list') {
+    if (Array.isArray(words) && existing.type === 'word_list') {
       if (words.length === 0) {
         return res.status(400).json({ error: 'Word list must have at least one word' });
       }
@@ -428,8 +418,8 @@ router.patch('/api/stream/posts/:id', authMiddleware, validate({ params: idParam
 
         // Update post row (title + target_language + topic)
         const updateParams = [
-          title !== undefined ? title : existing[0].title,
-          target_language !== undefined ? target_language : existing[0].target_language,
+          title !== undefined ? title : existing.title,
+          target_language !== undefined ? target_language : existing.target_language,
         ];
         let updateQuery = `UPDATE stream_posts
            SET title = $1, target_language = $2, updated_at = NOW()`;
@@ -459,7 +449,7 @@ router.patch('/api/stream/posts/:id', authMiddleware, validate({ params: idParam
           'SELECT native_language FROM users WHERE id = $1', [req.userId],
         );
         const nativeLang = userRows[0]?.native_language;
-        const targetLang = target_language || existing[0].target_language;
+        const targetLang = target_language || existing.target_language;
 
         await enrichAndInsertWords(client, req.params.id, words, nativeLang, targetLang);
 
@@ -521,14 +511,8 @@ router.patch('/api/stream/posts/:id', authMiddleware, validate({ params: idParam
 
 router.delete('/api/stream/posts/:id', authMiddleware, validate({ params: idParam }), async (req, res) => {
   try {
-    const { rows: existing } = await pool.query(
-      'SELECT teacher_id FROM stream_posts WHERE id = $1',
-      [req.params.id],
-    );
-    if (existing.length === 0) return res.status(404).json({ error: 'Post not found' });
-    if (existing[0].teacher_id !== req.userId) {
-      return res.status(403).json({ error: 'Not your post' });
-    }
+    const post = await findOwnedPost(req, res);
+    if (!post) return;
 
     await pool.query('DELETE FROM stream_posts WHERE id = $1', [req.params.id]);
     return res.status(204).end();

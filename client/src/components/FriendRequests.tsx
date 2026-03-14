@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getPendingRequests, acceptFriendRequest, rejectFriendRequest, FriendRequest } from '../api';
 import { socket } from '../socket';
+import { toErrorMessage } from '../utils/errors';
 
 interface Props {
   onAccepted?: () => void;
@@ -19,7 +20,7 @@ export default function FriendRequests({ onAccepted }: Props) {
       setRequests(data);
     } catch (err) {
       console.error('Failed to load friend requests:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -50,7 +51,7 @@ export default function FriendRequests({ onAccepted }: Props) {
       onAccepted?.();
     } catch (err) {
       console.error('Failed to accept request:', err);
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(toErrorMessage(err));
     } finally {
       setBusy(null);
     }
@@ -63,7 +64,7 @@ export default function FriendRequests({ onAccepted }: Props) {
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
       console.error('Failed to reject request:', err);
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(toErrorMessage(err));
     } finally {
       setBusy(null);
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import * as api from '../../api';
 import type { TemplateSummary, StreamPostWord } from '../../api';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { toErrorMessage } from '../../utils/errors';
 
 const THUMBS_PER_PAGE = 4;
 
@@ -28,7 +29,7 @@ export default function TemplatePicker({ onSelect, onClose }: Props) {
       })
       .catch((err) => {
         console.error('Failed to load templates:', err);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(toErrorMessage(err));
       })
       .finally(() => setLoading(false));
   }, []);

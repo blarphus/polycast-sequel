@@ -16,7 +16,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 dotenv.config({ path: path.join(path.dirname(__filename), '..', '..', '.env') });
 
-import { fetchWiktTranslations, callGemini, fetchWiktSenses } from '../enrichWord.js';
+import { fetchWiktTranslations, fetchWiktSenses } from '../enrichWord.js';
+import { callGemini } from '../lib/gemini.js';
 
 const __dirname = path.dirname(__filename);
 const TEMPLATE_PATH = path.join(__dirname, '..', 'data', 'templates', 'cefrj-a1.json');

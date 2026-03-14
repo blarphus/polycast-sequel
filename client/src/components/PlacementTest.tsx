@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { getPlacementWords } from '../api';
+import { toErrorMessage } from '../utils/errors';
 
 const LEVELS = ['A1', 'A2', 'B1', 'B2'] as const;
 const THRESHOLD = 15;
@@ -46,7 +47,7 @@ export default function PlacementTest({ language, onComplete }: Props) {
       setWords(data.words);
     } catch (err) {
       console.error('PlacementTest: fetch failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setLoading(false);
     }

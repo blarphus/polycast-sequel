@@ -1,14 +1,8 @@
 import pool from '../db.js';
 import { userToSocket } from '../socket/presence.js';
 import { generateUniqueClassIdentity } from '../lib/classroomIdentity.js';
-
-async function getUserAccountType(userId) {
-  const { rows } = await pool.query(
-    'SELECT account_type FROM users WHERE id = $1',
-    [userId],
-  );
-  return rows[0]?.account_type || null;
-}
+import { getUserAccountType } from '../lib/userQueries.js';
+import { httpError } from '../lib/httpError.js';
 
 function mapClassroomRow(row, roleOverride) {
   return {
@@ -176,9 +170,7 @@ export async function updateClassroom({ classroomId, teacherId, patch }) {
     [classroomId, teacherId],
   );
   if (!membership.rows[0]) {
-    const err = new Error('Not in classroom');
-    err.status = 403;
-    throw err;
+    throw httpError(403, 'Not in classroom');
   }
 
   const fields = [];
@@ -208,14 +200,10 @@ export async function deleteClassroom(classroomId, teacherId) {
     [classroomId, teacherId],
   );
   if (!membership.rows[0]) {
-    const err = new Error('Not in classroom');
-    err.status = 403;
-    throw err;
+    throw httpError(403, 'Not in classroom');
   }
   if (membership.rows[0].role !== 'owner') {
-    const err = new Error('Only the class owner can delete a classroom');
-    err.status = 403;
-    throw err;
+    throw httpError(403, 'Only the class owner can delete a classroom');
   }
   await pool.query('DELETE FROM classrooms WHERE id = $1', [classroomId]);
 }
@@ -286,9 +274,7 @@ export async function addStudentToClassroom(classroomId, studentId, actorTeacher
     [classroomId, actorTeacherId],
   );
   if (membership.rows.length === 0) {
-    const err = new Error('Not in classroom');
-    err.status = 403;
-    throw err;
+    throw httpError(403, 'Not in classroom');
   }
 
   const studentCheck = await pool.query(
@@ -296,14 +282,10 @@ export async function addStudentToClassroom(classroomId, studentId, actorTeacher
     [studentId],
   );
   if (!studentCheck.rows[0]) {
-    const err = new Error('Student not found');
-    err.status = 404;
-    throw err;
+    throw httpError(404, 'Student not found');
   }
   if (studentCheck.rows[0].account_type !== 'student') {
-    const err = new Error('Target user is not a student account');
-    err.status = 400;
-    throw err;
+    throw httpError(400, 'Target user is not a student account');
   }
 
   const { rows } = await pool.query(
@@ -321,9 +303,7 @@ export async function removeStudentFromClassroom(classroomId, studentId, actorTe
     [classroomId, actorTeacherId],
   );
   if (membership.rows.length === 0) {
-    const err = new Error('Not in classroom');
-    err.status = 403;
-    throw err;
+    throw httpError(403, 'Not in classroom');
   }
   const result = await pool.query(
     `DELETE FROM classroom_enrollments
@@ -332,9 +312,7 @@ export async function removeStudentFromClassroom(classroomId, studentId, actorTe
     [classroomId, studentId],
   );
   if (result.rows.length === 0) {
-    const err = new Error('Student not found in classroom');
-    err.status = 404;
-    throw err;
+    throw httpError(404, 'Student not found in classroom');
   }
 }
 
@@ -349,9 +327,7 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
     [classroomId, actorTeacherId, studentId],
   );
   if (relationship.rows.length === 0) {
-    const err = new Error('Student is not in your classroom');
-    err.status = 403;
-    throw err;
+    throw httpError(403, 'Student is not in your classroom');
   }
 
   const studentResult = await pool.query(
@@ -359,9 +335,7 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
     [studentId],
   );
   if (studentResult.rows.length === 0) {
-    const err = new Error('Student not found');
-    err.status = 404;
-    throw err;
+    throw httpError(404, 'Student not found');
   }
   const student = studentResult.rows[0];
 
@@ -464,9 +438,7 @@ export async function getLegacyStreamContext(classroomId, userId) {
   if (!classroomId) return null;
   const classroom = await getClassroomForUser(classroomId, userId);
   if (!classroom) {
-    const err = new Error('Classroom not found');
-    err.status = 404;
-    throw err;
+    throw httpError(404, 'Classroom not found');
   }
   if (!classroom.is_default_migrated) {
     return { classroom, legacyTeacherId: null };

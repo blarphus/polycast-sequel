@@ -6,6 +6,7 @@ import {
   uploadTranscript,
   type VideoDetail,
 } from '../api';
+import { toErrorMessage } from '../utils/errors';
 
 export function useWatchVideoData(id: string | undefined) {
   const [video, setVideo] = useState<VideoDetail | null>(null);
@@ -25,7 +26,7 @@ export function useWatchVideoData(id: string | undefined) {
       })
       .catch((err) => {
         console.error('Failed to fetch video:', err);
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setError(toErrorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

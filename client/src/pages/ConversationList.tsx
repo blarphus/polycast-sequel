@@ -10,6 +10,7 @@ import { getConversations, Conversation, Message } from '../api';
 import { formatRelativeTime } from '../utils/dateFormat';
 import NewChatDrawer from '../components/NewChatDrawer';
 import { VideoIcon, LogoutIcon, SearchIcon } from '../components/icons';
+import { toErrorMessage } from '../utils/errors';
 
 export default function ConversationList() {
   const { user, logout } = useAuth();
@@ -27,7 +28,7 @@ export default function ConversationList() {
       setConversations(data);
     } catch (err) {
       console.error('Failed to load conversations:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setLoading(false);
     }

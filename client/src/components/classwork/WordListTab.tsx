@@ -7,6 +7,7 @@ import TemplatePicker from './TemplatePicker';
 import { renderTildeHighlight } from '../../utils/tildeMarkup';
 import { LANGUAGES } from './languages';
 import { CloseIcon } from '../icons';
+import { toErrorMessage } from '../../utils/errors';
 
 export default function WordListTab({
   defaultTargetLang,
@@ -128,7 +129,7 @@ export default function WordListTab({
       setLookedUp(true);
     } catch (err: any) {
       console.error('lookupPostWords failed:', err);
-      setLookupError(err instanceof Error ? err.message : String(err));
+      setLookupError(toErrorMessage(err));
     } finally {
       setLooking(false);
     }
@@ -157,7 +158,7 @@ export default function WordListTab({
       });
     } catch (err: any) {
       console.error('Create word list post failed:', err);
-      setSubmitError(err instanceof Error ? err.message : String(err));
+      setSubmitError(toErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

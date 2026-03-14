@@ -33,6 +33,7 @@ import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
 import { formatUsTime } from '../utils/dateFormat';
 import { useVideoClick } from '../hooks/useVideoClick';
 import { filterUnplayableVideos } from '../utils/playabilityFilter';
+import { toErrorMessage } from '../utils/errors';
 
 export default function Home() {
   const { user } = useAuth();
@@ -65,14 +66,14 @@ export default function Home() {
       .then((f) => { if (!cancelled) setFriends(f); })
       .catch((err) => {
         console.error('Failed to fetch friends:', err);
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setError(toErrorMessage(err));
       });
 
     getClassesToday()
       .then(({ classes: c }) => { if (!cancelled) setClassesToday(c); })
       .catch((err) => {
         console.error('Failed to fetch today\'s classes:', err);
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setError(toErrorMessage(err));
       });
 
     getStudentDashboard()
@@ -92,7 +93,7 @@ export default function Home() {
       })
       .catch((err) => {
         console.error('Failed to fetch student dashboard:', err);
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setError(toErrorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -107,7 +108,7 @@ export default function Home() {
         })
         .catch((err) => {
           console.error('Failed to fetch trending videos:', err);
-          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+          if (!cancelled) setError(toErrorMessage(err));
         })
         .finally(() => { if (!cancelled) setTrendingLoading(false); });
 
@@ -115,7 +116,7 @@ export default function Home() {
         .then((articles) => { if (!cancelled) setNews(articles); })
         .catch((err) => {
           console.error('Failed to fetch news:', err);
-          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+          if (!cancelled) setError(toErrorMessage(err));
         })
         .finally(() => { if (!cancelled) setNewsLoading(false); });
 
@@ -123,7 +124,7 @@ export default function Home() {
         .then((ch) => { if (!cancelled) setChannels(ch); })
         .catch((err) => {
           console.error('Failed to fetch channels:', err);
-          if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+          if (!cancelled) setError(toErrorMessage(err));
         })
         .finally(() => { if (!cancelled) setChannelsLoading(false); });
     } else {

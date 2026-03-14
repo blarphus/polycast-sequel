@@ -10,6 +10,7 @@ import { getNewsArticle, streamNewsArticleRewrite, type ArticleDetail } from '..
 import type { PopupState } from '../textTokens';
 import TokenizedText from '../components/TokenizedText';
 import WordPopup from '../components/WordPopup';
+import { toErrorMessage } from '../utils/errors';
 
 const CEFR_LEVELS = ['Original', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
@@ -137,7 +138,7 @@ export default function ReadArticle() {
         return;
       }
       console.error('Failed to fetch article:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
       setBodyLoading(false);
     }
   }, [clearStreamState, flushStreamQueue, lang, idx]);

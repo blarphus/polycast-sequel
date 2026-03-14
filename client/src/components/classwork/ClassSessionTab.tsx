@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import type { Recurrence } from '../../api';
 import { DAY_LABELS, DAY_VALUES } from './languages';
+import { toErrorMessage } from '../../utils/errors';
 
 export default function ClassSessionTab({
   onSubmit,
@@ -62,7 +63,7 @@ export default function ClassSessionTab({
       }
     } catch (err: any) {
       console.error('Create class session failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

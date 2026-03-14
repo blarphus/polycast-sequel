@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { addVideo } from '../api';
 import { LANGUAGES } from './classwork/CreatePostModal';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { toErrorMessage } from '../utils/errors';
 
 interface Props {
   onClose: () => void;
@@ -36,7 +37,7 @@ export default function AddVideoModal({ onClose, onAdded }: Props) {
       navigate(`/watch/${video.id}`);
     } catch (err) {
       console.error('addVideo failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setLoading(false);
     }

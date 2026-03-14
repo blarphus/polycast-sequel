@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import type { StreamAttachment } from '../../api';
 import AttachmentEditor from '../AttachmentEditor';
+import { toErrorMessage } from '../../utils/errors';
 
 export default function MaterialTab({
   onSubmit,
@@ -28,7 +29,7 @@ export default function MaterialTab({
       await onSubmit({ title, body, attachments });
     } catch (err: any) {
       console.error('Create material post failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

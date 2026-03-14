@@ -18,7 +18,9 @@ import {
 } from '../icons';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import AttachmentLink from '../AttachmentLink';
+import Avatar from '../Avatar';
 import { formatRelativeTime, formatDate as formatShortDate } from '../../utils/dateFormat';
+import { toErrorMessage } from '../../utils/errors';
 import { DAY_LABELS } from './languages';
 import { formatUsDateTime } from '../../utils/dateFormat';
 
@@ -187,7 +189,7 @@ function StudentWordListBody({
       await api.toggleWordKnown(post.id, word.id, newKnown);
     } catch (err: any) {
       console.error('toggleWordKnown failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
       setKnownIds((prev) => {
         const next = new Set(prev);
         if (wasKnown) next.add(word.id); else next.delete(word.id);
@@ -206,7 +208,7 @@ function StudentWordListBody({
       onUpdate({ id: post.id, completed: true });
     } catch (err: any) {
       console.error('addPostToDictionary failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setAdding(false);
     }
@@ -280,7 +282,7 @@ function StudentProgressSection({ postId }: { postId: string }) {
       setData(result);
     } catch (err: any) {
       console.error('getPostCompletions failed:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      setError(toErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -307,7 +309,7 @@ function StudentProgressSection({ postId }: { postId: string }) {
               <span className="post-completion-group-label">Not completed ({incompleteStudents.length})</span>
               {incompleteStudents.map((s) => (
                 <div key={s.id} className="post-completion-student">
-                  <div className="post-completion-avatar">{(s.display_name || s.username).charAt(0).toUpperCase()}</div>
+                  <Avatar name={s.display_name || s.username} className="post-completion-avatar" />
                   <span className="post-completion-name">{s.display_name || s.username}</span>
                   <span className="post-completion-status post-completion-status--incomplete">Not completed</span>
                 </div>
@@ -319,7 +321,7 @@ function StudentProgressSection({ postId }: { postId: string }) {
               <span className="post-completion-group-label">Completed ({completedStudents.length})</span>
               {completedStudents.map((s) => (
                 <div key={s.id} className="post-completion-student">
-                  <div className="post-completion-avatar">{(s.display_name || s.username).charAt(0).toUpperCase()}</div>
+                  <Avatar name={s.display_name || s.username} className="post-completion-avatar" />
                   <span className="post-completion-name">{s.display_name || s.username}</span>
                   <span className="post-completion-status post-completion-status--completed">
                     <CheckIcon size={12} strokeWidth={2.5} />

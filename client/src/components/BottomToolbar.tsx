@@ -7,6 +7,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentDashboard } from '../api';
 import { HomeIcon, BookIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon, UserIcon, PlusIcon, CloseIcon } from './icons';
+import { toErrorMessage } from '../utils/errors';
 
 const COLLAPSED_KEY = 'sidebar-collapsed';
 const NARROW_QUERY = '(min-width: 481px) and (max-width: 1024px)';
@@ -93,7 +94,7 @@ export default function BottomToolbar() {
       await switchAccount(accountId);
       setAccountMenuOpen(false);
     } catch (err) {
-      setAccountActionError(err instanceof Error ? err.message : String(err));
+      setAccountActionError(toErrorMessage(err));
     } finally {
       setSwitchingAccountId(null);
     }
