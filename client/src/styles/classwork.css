@@ -1,3 +1,7 @@
+@import './classworkPosts.css';
+@import './classworkTopics.css';
+@import './classworkTemplates.css';
+
 /* ==========================================================================
    Classwork / Stream
    ========================================================================== */
@@ -105,7 +109,3 @@
   padding: 0.25rem 0;
   margin-top: 0.5rem;
 }
-
-@import './classworkPosts.css';
-@import './classworkTopics.css';
-@import './classworkTemplates.css';

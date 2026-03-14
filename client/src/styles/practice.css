@@ -1,3 +1,6 @@
+@import './practiceQuiz.css';
+@import './practiceDrill.css';
+
 /* ==========================================================================
    Practice / Quiz Page
    ========================================================================== */
@@ -37,6 +40,3 @@
   background: var(--bg-hover);
   color: var(--text-primary);
 }
-
-@import './practiceQuiz.css';
-@import './practiceDrill.css';
