@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// pages/StudentDetail.tsx -- Read-only view of a student's dictionary & stats
+// pages/StudentDetail.tsx -- Teacher view of a student's progress & stats
 // ---------------------------------------------------------------------------
 
 import React, { useState } from 'react';
@@ -9,13 +9,12 @@ import type { StudentDetail as StudentDetailData, DailyActivity } from '../api';
 import { ChevronLeftIcon, CheckIcon } from '../components/icons';
 import { formatDate as formatShortDate } from '../utils/dateFormat';
 import { useAsyncData } from '../hooks/useAsyncData';
-import Avatar from '../components/Avatar';
 
 // ---------------------------------------------------------------------------
 // Activity heatmap calendar (last 90 days)
 // ---------------------------------------------------------------------------
 
-const WEEKDAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+const WEEKDAY_LABELS = ['', 'M', '', 'W', '', 'F', ''];
 
 function totalActivity(d: DailyActivity): number {
   return d.reviews + d.wordsAdded + d.quizzes + d.drills + d.voiceSessions;
@@ -33,127 +32,124 @@ function ActivityCalendar({ activity }: { activity: DailyActivity[] }) {
   const [tooltip, setTooltip] = useState<{ day: string; data: DailyActivity; x: number; y: number } | null>(null);
   const activityMap = new Map(activity.map((d) => [d.day, d]));
 
-  // Build 13 weeks (91 days) ending today
   const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
   const cells: { date: string; weekday: number; weekIndex: number }[] = [];
   const startDate = new Date(today);
   startDate.setDate(startDate.getDate() - 90);
-  // Align to start of week (Sunday)
   startDate.setDate(startDate.getDate() - startDate.getDay());
 
   const d = new Date(startDate);
   let weekIndex = 0;
   while (d <= today) {
-    cells.push({
-      date: d.toISOString().slice(0, 10),
-      weekday: d.getDay(),
-      weekIndex,
-    });
+    cells.push({ date: d.toISOString().slice(0, 10), weekday: d.getDay(), weekIndex });
     if (d.getDay() === 6) weekIndex++;
     d.setDate(d.getDate() + 1);
   }
-
   const totalWeeks = weekIndex + 1;
 
-  // Month labels
   const monthLabels: { label: string; weekIndex: number }[] = [];
   let lastMonth = -1;
   for (const cell of cells) {
     const month = new Date(cell.date).getMonth();
     if (month !== lastMonth && cell.weekday === 0) {
-      monthLabels.push({
-        label: new Date(cell.date).toLocaleString('en-US', { month: 'short' }),
-        weekIndex: cell.weekIndex,
-      });
+      monthLabels.push({ label: new Date(cell.date).toLocaleString('en-US', { month: 'short' }), weekIndex: cell.weekIndex });
       lastMonth = month;
     }
   }
 
-  const cellSize = 13;
-  const cellGap = 2;
+  const cellSize = 12;
+  const cellGap = 3;
   const step = cellSize + cellGap;
-  const labelWidth = 28;
+  const labelWidth = 20;
 
   return (
-    <div className="activity-calendar">
-      <svg
-        width={labelWidth + totalWeeks * step + 2}
-        height={20 + 7 * step + 2}
-        className="activity-calendar-svg"
-      >
-        {/* Month labels */}
+    <div className="sd-activity-calendar">
+      <svg width={labelWidth + totalWeeks * step} height={16 + 7 * step}>
         {monthLabels.map((m, i) => (
-          <text
-            key={i}
-            x={labelWidth + m.weekIndex * step}
-            y={12}
-            className="activity-calendar-month"
-          >
-            {m.label}
-          </text>
+          <text key={i} x={labelWidth + m.weekIndex * step} y={10} className="sd-cal-month">{m.label}</text>
         ))}
-        {/* Weekday labels */}
         {WEEKDAY_LABELS.map((label, i) => (
-          label ? (
-            <text
-              key={i}
-              x={labelWidth - 4}
-              y={20 + i * step + cellSize - 2}
-              className="activity-calendar-weekday"
-              textAnchor="end"
-            >
-              {label}
-            </text>
-          ) : null
+          label ? <text key={i} x={labelWidth - 3} y={16 + i * step + cellSize - 2} className="sd-cal-weekday" textAnchor="end">{label}</text> : null
         ))}
-        {/* Cells */}
         {cells.map((cell) => {
           const data = activityMap.get(cell.date);
           const count = data ? totalActivity(data) : 0;
           const level = activityLevel(count);
-          const isFuture = cell.date > today.toISOString().slice(0, 10);
+          const isFuture = cell.date > todayStr;
           return (
             <rect
               key={cell.date}
               x={labelWidth + cell.weekIndex * step}
-              y={20 + cell.weekday * step}
+              y={16 + cell.weekday * step}
               width={cellSize}
               height={cellSize}
               rx={2}
-              className={`activity-cell activity-cell--${isFuture ? 'future' : level}`}
-              onMouseEnter={(e) => {
-                if (!isFuture && count > 0) {
-                  setTooltip({ day: cell.date, data: data!, x: e.clientX, y: e.clientY });
-                }
-              }}
+              className={`sd-cal-cell sd-cal-cell--${isFuture ? 'future' : level}`}
+              onMouseEnter={(e) => { if (!isFuture && count > 0) setTooltip({ day: cell.date, data: data!, x: e.clientX, y: e.clientY }); }}
               onMouseLeave={() => setTooltip(null)}
             />
           );
         })}
       </svg>
       {tooltip && (
-        <div
-          className="activity-tooltip"
-          style={{ top: tooltip.y - 60, left: tooltip.x - 80 }}
-        >
-          <strong>{new Date(tooltip.day + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong>
-          <div>{tooltip.data.reviews} reviews</div>
-          {tooltip.data.wordsAdded > 0 && <div>{tooltip.data.wordsAdded} words added</div>}
-          {tooltip.data.quizzes > 0 && <div>{tooltip.data.quizzes} quizzes ({tooltip.data.quizCorrect}/{tooltip.data.quizTotal})</div>}
-          {tooltip.data.drills > 0 && <div>{tooltip.data.drills} drills</div>}
-          {tooltip.data.voiceSessions > 0 && <div>{tooltip.data.voiceSessions} voice sessions</div>}
+        <div className="sd-cal-tooltip" style={{ top: tooltip.y - 70, left: tooltip.x - 90 }}>
+          <strong>{new Date(tooltip.day + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>
+          <span>{tooltip.data.reviews} reviews</span>
+          {tooltip.data.wordsAdded > 0 && <span>{tooltip.data.wordsAdded} words added</span>}
+          {tooltip.data.quizzes > 0 && <span>{tooltip.data.quizzes} quiz{tooltip.data.quizzes > 1 ? 'zes' : ''}</span>}
+          {tooltip.data.drills > 0 && <span>{tooltip.data.drills} drill{tooltip.data.drills > 1 ? 's' : ''}</span>}
+          {tooltip.data.voiceSessions > 0 && <span>{tooltip.data.voiceSessions} voice</span>}
         </div>
       )}
     </div>
   );
 }
 
-const SRS_STAGES = [
-  { key: 'new', label: 'New', className: 'srs-dot--new' },
-  { key: 'learning', label: 'Learning', className: 'srs-dot--learning' },
-  { key: 'review', label: 'Review', className: 'srs-dot--review' },
-  { key: 'mastered', label: 'Mastered', className: 'srs-dot--mastered' },
-] as const;
+// ---------------------------------------------------------------------------
+// SRS progress bar
+// ---------------------------------------------------------------------------
+
+function SrsProgressBar({ words }: { words: StudentDetailData['words'] }) {
+  const total = words.length;
+  if (total === 0) return null;
+  const counts = { new: 0, learning: 0, review: 0, mastered: 0 };
+  for (const w of words) counts[w.srs_stage]++;
+
+  const segments: { stage: string; count: number; color: string; label: string }[] = [
+    { stage: 'mastered', count: counts.mastered, color: '#22c55e', label: 'Mastered' },
+    { stage: 'review', count: counts.review, color: '#3b82f6', label: 'Review' },
+    { stage: 'learning', count: counts.learning, color: '#f59e0b', label: 'Learning' },
+    { stage: 'new', count: counts.new, color: 'var(--text-muted)', label: 'New' },
+  ];
+
+  return (
+    <div className="sd-srs-bar-section">
+      <div className="sd-srs-bar">
+        {segments.map((s) => s.count > 0 && (
+          <div
+            key={s.stage}
+            className="sd-srs-bar-segment"
+            style={{ width: `${(s.count / total) * 100}%`, background: s.color }}
+            title={`${s.label}: ${s.count}`}
+          />
+        ))}
+      </div>
+      <div className="sd-srs-legend">
+        {segments.map((s) => (
+          <span key={s.stage} className="sd-srs-legend-item">
+            <span className="sd-srs-legend-dot" style={{ background: s.color }} />
+            {s.label} ({s.count})
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
 
 export default function StudentDetail() {
   const { studentId } = useParams<{ studentId: string }>();
@@ -176,8 +172,10 @@ export default function StudentDetail() {
 
   if (error) {
     return (
-      <div className="student-detail-page">
-        <button className="btn btn-back" onClick={() => navigate(classroomId ? `/students?classroomId=${classroomId}` : '/students')}>Back</button>
+      <div className="sd-page">
+        <button className="sd-back" onClick={() => navigate(classroomId ? `/students?classroomId=${classroomId}` : '/students')}>
+          <ChevronLeftIcon size={16} /> Back
+        </button>
         <div className="auth-error">{error}</div>
       </div>
     );
@@ -186,138 +184,166 @@ export default function StudentDetail() {
   if (!data) return null;
 
   const { student, stats, activity, wordLists, words } = data;
+  const displayName = student.display_name || student.username;
+  const pct = (n: number | null) => n === null ? '--' : `${Math.round(n * 100)}%`;
 
-  const formatAccuracy = (acc: number | null) => {
-    if (acc === null) return '--';
-    return `${Math.round(acc * 100)}%`;
-  };
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return 'Never';
-    return formatShortDate(dateStr);
-  };
+  // Compute totals from activity data
+  const totalReviewsLast90 = activity.reduce((s, a) => s + a.reviews, 0);
+  const totalWordsAdded = activity.reduce((s, a) => s + a.wordsAdded, 0);
+  const totalQuizzes = activity.reduce((s, a) => s + a.quizzes, 0);
+  const totalDrills = activity.reduce((s, a) => s + a.drills, 0);
+  const totalVoice = activity.reduce((s, a) => s + a.voiceSessions, 0);
+  const completedLists = wordLists.filter((wl) => wl.completed).length;
 
   return (
-    <div className="student-detail-page">
-      <button className="btn btn-back" onClick={() => navigate(classroomId ? `/students?classroomId=${classroomId}` : '/students')}>
-        <ChevronLeftIcon size={18} />
-        Back
-      </button>
-
-      {/* Student header */}
-      <div className="student-detail-header">
-        <Avatar name={student.display_name || student.username} className="student-detail-avatar" />
-        <div>
-          <h1 className="student-detail-name">{student.display_name || student.username}</h1>
-          <span className="student-detail-username">@{student.username}</span>
+    <div className="sd-page">
+      {/* Header */}
+      <div className="sd-header">
+        <button className="sd-back" onClick={() => navigate(classroomId ? `/students?classroomId=${classroomId}` : '/students')}>
+          <ChevronLeftIcon size={16} />
+          Back
+        </button>
+        <div className="sd-profile">
+          <div className="sd-avatar">{displayName.charAt(0).toUpperCase()}</div>
+          <div>
+            <h1 className="sd-name">{displayName}</h1>
+            <span className="sd-username">@{student.username}</span>
+          </div>
         </div>
       </div>
 
-      {/* Stats grid -- Row 1 */}
-      <div className="student-stats-grid">
-        <div className="student-stat-card">
-          <span className="student-stat-value">{stats.totalWords}</span>
-          <span className="student-stat-label">Total words</span>
+      {/* Key metrics row */}
+      <div className="sd-metrics">
+        <div className="sd-metric">
+          <span className="sd-metric-value sd-metric-value--accent">{stats.streak}</span>
+          <span className="sd-metric-label">Day streak</span>
         </div>
-        <div className="student-stat-card">
-          <span className="student-stat-value">{stats.wordsLearned}</span>
-          <span className="student-stat-label">Learned</span>
+        <div className="sd-metric">
+          <span className="sd-metric-value">{stats.totalWords}</span>
+          <span className="sd-metric-label">Total words</span>
         </div>
-        <div className="student-stat-card">
-          <span className="student-stat-value">{stats.wordsMastered}</span>
-          <span className="student-stat-label">Mastered</span>
+        <div className="sd-metric">
+          <span className="sd-metric-value">{pct(stats.accuracy)}</span>
+          <span className="sd-metric-label">Accuracy</span>
         </div>
-        <div className="student-stat-card">
-          <span className="student-stat-value">{formatAccuracy(stats.accuracy)}</span>
-          <span className="student-stat-label">Accuracy</span>
-        </div>
-      </div>
-
-      {/* Stats grid -- Row 2 */}
-      <div className="student-stats-grid">
-        <div className="student-stat-card">
-          <span className="student-stat-value">{stats.wordsDue}</span>
-          <span className="student-stat-label">Due</span>
-        </div>
-        <div className="student-stat-card">
-          <span className="student-stat-value">{stats.wordsInLearning}</span>
-          <span className="student-stat-label">In learning</span>
-        </div>
-        <div className="student-stat-card">
-          <span className="student-stat-value">{stats.wordsNew}</span>
-          <span className="student-stat-label">New</span>
-        </div>
-        <div className="student-stat-card">
-          <span className="student-stat-value">{stats.daysActiveThisWeek}/7</span>
-          <span className="student-stat-label">Days active</span>
-        </div>
-        <div className="student-stat-card">
-          <span className="student-stat-value">{stats.streak}</span>
-          <span className="student-stat-label">Day streak</span>
+        <div className="sd-metric">
+          <span className="sd-metric-value">{stats.wordsDue}</span>
+          <span className="sd-metric-label">Due now</span>
         </div>
       </div>
 
-      {/* Activity calendar */}
-      <h2 className="student-detail-section-title" style={{ marginTop: '1.5rem' }}>Activity</h2>
-      {activity.length === 0 ? (
-        <p className="students-empty">No activity yet.</p>
-      ) : (
-        <ActivityCalendar activity={activity} />
-      )}
+      {/* Two-column layout */}
+      <div className="sd-grid">
+        {/* Left column */}
+        <div className="sd-col">
+          {/* Activity calendar card */}
+          <div className="sd-card">
+            <h2 className="sd-card-title">Activity</h2>
+            {activity.length === 0 ? (
+              <p className="sd-empty">No activity recorded yet.</p>
+            ) : (
+              <ActivityCalendar activity={activity} />
+            )}
+          </div>
 
-      {/* Assigned Word Lists */}
-      {wordLists && wordLists.length > 0 && (
-        <>
-          <h2 className="student-detail-section-title">Assigned Word Lists ({wordLists.length})</h2>
-          <div className="student-wordlist-section">
-            {wordLists.map((wl) => (
-              <div key={wl.id} className="student-wordlist-row">
-                <div className="student-wordlist-info">
-                  <span className="student-wordlist-title">{wl.title || 'Word List'}</span>
-                  <span className="student-wordlist-count">{wl.word_count} words</span>
+          {/* SRS progress card */}
+          <div className="sd-card">
+            <h2 className="sd-card-title">Vocabulary Progress</h2>
+            {words.length === 0 ? (
+              <p className="sd-empty">No words saved yet.</p>
+            ) : (
+              <>
+                <SrsProgressBar words={words} />
+                <div className="sd-word-table">
+                  <div className="sd-word-table-header">
+                    <span>Word</span>
+                    <span>Translation</span>
+                    <span>Stage</span>
+                  </div>
+                  {words.slice(0, 20).map((w) => (
+                    <div key={w.id} className="sd-word-row">
+                      <span className="sd-word-term">{w.word}</span>
+                      <span className="sd-word-translation">{w.translation}</span>
+                      <span className={`sd-word-stage sd-word-stage--${w.srs_stage}`}>{w.srs_stage}</span>
+                    </div>
+                  ))}
+                  {words.length > 20 && (
+                    <div className="sd-word-row sd-word-more">
+                      +{words.length - 20} more words
+                    </div>
+                  )}
                 </div>
-                {wl.completed ? (
-                  <span className="student-wordlist-status student-wordlist-status--completed">
-                    <CheckIcon size={14} strokeWidth={2.5} />
-                    Completed {wl.completed_at ? formatShortDate(wl.completed_at) : ''}
-                  </span>
-                ) : (
-                  <span className="student-wordlist-status student-wordlist-status--incomplete">
-                    Not completed
-                  </span>
-                )}
-              </div>
-            ))}
+              </>
+            )}
           </div>
-        </>
-      )}
+        </div>
 
-      {/* Dictionary */}
-      <h2 className="student-detail-section-title" style={{ marginTop: '1.5rem' }}>Dictionary ({words.length})</h2>
-      {words.length === 0 ? (
-        <p className="students-empty">No words saved yet.</p>
-      ) : (
-        <>
-          <div className="srs-legend">
-            {SRS_STAGES.map((s) => (
-              <span key={s.key} className="srs-legend-item">
-                <span className={`srs-dot ${s.className}`} />
-                {s.label}
-              </span>
-            ))}
-          </div>
-          <div className="student-word-list">
-            {words.map((w) => (
-              <div key={w.id} className="student-word-row">
-                <span className={`srs-dot srs-dot--${w.srs_stage}`} />
-                <span className="student-word-term">{w.word}</span>
-                <span className="student-word-translation">{w.translation}</span>
-                {w.part_of_speech && <span className="student-word-pos">{w.part_of_speech}</span>}
+        {/* Right column */}
+        <div className="sd-col">
+          {/* 90-day summary card */}
+          <div className="sd-card">
+            <h2 className="sd-card-title">Last 90 Days</h2>
+            <div className="sd-summary-list">
+              <div className="sd-summary-row">
+                <span className="sd-summary-label">Reviews completed</span>
+                <span className="sd-summary-value">{totalReviewsLast90}</span>
               </div>
-            ))}
+              <div className="sd-summary-row">
+                <span className="sd-summary-label">Words added</span>
+                <span className="sd-summary-value">{totalWordsAdded}</span>
+              </div>
+              <div className="sd-summary-row">
+                <span className="sd-summary-label">Quizzes taken</span>
+                <span className="sd-summary-value">{totalQuizzes}</span>
+              </div>
+              <div className="sd-summary-row">
+                <span className="sd-summary-label">Drills completed</span>
+                <span className="sd-summary-value">{totalDrills}</span>
+              </div>
+              <div className="sd-summary-row">
+                <span className="sd-summary-label">Voice sessions</span>
+                <span className="sd-summary-value">{totalVoice}</span>
+              </div>
+              <div className="sd-summary-row">
+                <span className="sd-summary-label">Days active this week</span>
+                <span className="sd-summary-value">{stats.daysActiveThisWeek}/7</span>
+              </div>
+            </div>
           </div>
-        </>
-      )}
+
+          {/* Word lists card */}
+          <div className="sd-card">
+            <div className="sd-card-title-row">
+              <h2 className="sd-card-title">Assigned Word Lists</h2>
+              {wordLists.length > 0 && (
+                <span className="sd-card-badge">{completedLists}/{wordLists.length}</span>
+              )}
+            </div>
+            {wordLists.length === 0 ? (
+              <p className="sd-empty">No word lists assigned.</p>
+            ) : (
+              <div className="sd-wl-list">
+                {wordLists.map((wl) => (
+                  <div key={wl.id} className={`sd-wl-row${wl.completed ? ' sd-wl-row--done' : ''}`}>
+                    <div className="sd-wl-icon">
+                      {wl.completed
+                        ? <CheckIcon size={14} strokeWidth={2.5} />
+                        : <span className="sd-wl-circle" />}
+                    </div>
+                    <div className="sd-wl-info">
+                      <span className="sd-wl-title">{wl.title || 'Word List'}</span>
+                      <span className="sd-wl-meta">
+                        {wl.word_count} word{wl.word_count !== 1 ? 's' : ''}
+                        {wl.completed_at ? ` -- completed ${formatShortDate(wl.completed_at)}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

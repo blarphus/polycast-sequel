@@ -501,15 +501,421 @@
   background: var(--bg-surface-hover);
 }
 
-/* ---- Student Detail Page ------------------------------------------------- */
+/* ==========================================================================
+   Student Detail Page (redesigned)
+   ========================================================================== */
 
-.student-detail-page {
-  max-width: 960px;
+.sd-page {
+  max-width: 1060px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 7rem;
+  padding: 1.5rem 1.5rem 7rem;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ---- Header ---- */
+
+.sd-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.3rem 0;
+  margin-bottom: 0.75rem;
+  font-family: var(--font);
+  transition: color var(--transition);
+}
+
+.sd-back:hover { color: var(--text-primary); }
+
+.sd-header {
+  margin-bottom: 1.5rem;
+}
+
+.sd-profile {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sd-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.sd-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.sd-username {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* ---- Key metrics ---- */
+
+.sd-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.sd-metric {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  text-align: center;
+}
+
+.sd-metric-value {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.sd-metric-value--accent { color: var(--accent); }
+
+.sd-metric-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.25rem;
+}
+
+/* ---- Two-column grid ---- */
+
+.sd-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* ---- Card ---- */
+
+.sd-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.sd-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.sd-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.sd-card-title-row .sd-card-title { margin-bottom: 0; }
+
+.sd-card-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+
+.sd-empty {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+/* ---- Activity calendar ---- */
+
+.sd-activity-calendar {
+  position: relative;
+  overflow-x: auto;
+}
+
+.sd-cal-month {
+  font-size: 0.6rem;
+  fill: var(--text-muted);
+}
+
+.sd-cal-weekday {
+  font-size: 0.55rem;
+  fill: var(--text-muted);
+}
+
+.sd-cal-cell { transition: opacity 0.1s; cursor: default; }
+.sd-cal-cell:hover { opacity: 0.8; }
+
+.sd-cal-cell--0 { fill: var(--bg-elevated); }
+.sd-cal-cell--1 { fill: #9be9a8; }
+.sd-cal-cell--2 { fill: #40c463; }
+.sd-cal-cell--3 { fill: #30a14e; }
+.sd-cal-cell--4 { fill: #216e39; }
+.sd-cal-cell--future { fill: none; }
+
+.sd-cal-tooltip {
+  position: fixed;
+  z-index: 500;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 0.45rem 0.7rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.sd-cal-tooltip strong {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 0.1rem;
+}
+
+/* ---- SRS progress bar ---- */
+
+.sd-srs-bar-section { margin-bottom: 1rem; }
+
+.sd-srs-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  margin-bottom: 0.5rem;
+}
+
+.sd-srs-bar-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.sd-srs-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.sd-srs-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.sd-srs-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ---- Word table ---- */
+
+.sd-word-table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.sd-word-table-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 80px;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--bg-elevated);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sd-word-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 80px;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem 0.85rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.sd-word-term {
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sd-word-translation {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sd-word-stage {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  text-align: center;
+}
+
+.sd-word-stage--new { background: rgba(156,163,175,0.15); color: var(--text-muted); }
+.sd-word-stage--learning { background: rgba(245,158,11,0.12); color: #d97706; }
+.sd-word-stage--review { background: rgba(59,130,246,0.12); color: #2563eb; }
+.sd-word-stage--mastered { background: rgba(34,197,94,0.12); color: #16a34a; }
+
+.sd-word-more {
+  justify-content: center;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  padding: 0.65rem;
+}
+
+/* ---- 90-day summary ---- */
+
+.sd-summary-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.sd-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sd-summary-row:last-child { border-bottom: none; }
+
+.sd-summary-label {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.sd-summary-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Word lists ---- */
+
+.sd-wl-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.sd-wl-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sd-wl-row:last-child { border-bottom: none; }
+
+.sd-wl-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--text-muted);
+}
+
+.sd-wl-row--done .sd-wl-icon {
+  background: var(--success-dim);
+  color: var(--success);
+}
+
+.sd-wl-circle {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+}
+
+.sd-wl-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.sd-wl-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sd-wl-row--done .sd-wl-title { color: var(--text-secondary); }
+
+.sd-wl-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ---- Responsive ---- */
+
+@media (max-width: 768px) {
+  .sd-metrics { grid-template-columns: repeat(2, 1fr); }
+  .sd-grid { grid-template-columns: 1fr; }
+  .sd-word-table-header,
+  .sd-word-row { grid-template-columns: 1fr 1fr 70px; }
+}
+
+/* ---- Legacy classes kept for SRS dots (used elsewhere) ---- */
 
 .student-detail-header {
   display: flex;
