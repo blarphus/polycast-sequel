@@ -20,7 +20,6 @@ export const CHANNELS_BY_LANG = {
     { name: 'Why Not Spanish', handle: 'WhyNotSpanish', channelId: 'UCIdFcLCIJQ_YMrormG_nU8w', uploadsPlaylist: 'UUIdFcLCIJQ_YMrormG_nU8w' },
   ],
   pt: [
-    { name: 'Portugues com Marcia Macedo', handle: 'portuguescommarciamacedobr', channelId: 'UCs3vpdQWaAtmRv7hcNt1jIw', uploadsPlaylist: 'UUs3vpdQWaAtmRv7hcNt1jIw' },
     { name: 'Speaking Brazilian', handle: 'SpeakingBrazilian', channelId: 'UCGs6EbIt75S4IMKPRUU0JNQ', uploadsPlaylist: 'UUGs6EbIt75S4IMKPRUU0JNQ' },
     { name: 'Easy Portuguese', handle: 'EasyPortugueseVideos', channelId: 'UCGItHJHk5zoYHRQD6ZQ-mrA', uploadsPlaylist: 'UUGItHJHk5zoYHRQD6ZQ-mrA' },
     { name: 'Philipe Brazuca', handle: 'philipebrazuca', channelId: 'UCG_FePV_RP6fHHDmRmJ9JbQ', uploadsPlaylist: 'UUG_FePV_RP6fHHDmRmJ9JbQ' },

@@ -393,6 +393,48 @@
   line-height: 1.4;
 }
 
+.word-popup-example {
+  margin: 0.2rem 0;
+}
+.word-popup-example-sentence {
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin: 0;
+}
+.word-popup-example-highlight {
+  color: var(--purple);
+  font-weight: 600;
+  font-style: italic;
+}
+.word-popup-example-translation {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0.15rem 0 0;
+}
+
+.word-popup-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+.word-popup-toggle {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.word-popup-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .word-popup-source {
   display: inline-block;
   font-size: 0.6rem;

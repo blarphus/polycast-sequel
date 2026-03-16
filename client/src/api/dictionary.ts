@@ -34,6 +34,9 @@ export function lookupWord(word: string, sentence: string, nativeLang: string, t
     lemma: string | null;
     is_native: boolean;
     definition_source: string | null;
+    example: string | null;
+    example_translation: string | null;
+    sentence_translation: string | null;
   }>(`/dictionary/lookup?${params}`);
 }
 

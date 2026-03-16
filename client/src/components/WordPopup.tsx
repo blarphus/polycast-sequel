@@ -34,6 +34,10 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [matchedGloss, setMatchedGloss] = useState<string | null>(null);
   const [lemma, setLemma] = useState<string | null>(null);
   const [definitionSource, setDefinitionSource] = useState<string | null>(null);
+  const [example, setExample] = useState<string | null>(null);
+  const [exampleTranslation, setExampleTranslation] = useState<string | null>(null);
+  const [sentenceTranslation, setSentenceTranslation] = useState<string | null>(null);
+  const [showSentenceTranslation, setShowSentenceTranslation] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
   const { queueSave } = useDictionaryToast();
 
@@ -49,6 +53,9 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           setTranslation(res.translation);
           setDefinition(res.definition);
           setDefinitionSource(res.definition_source);
+          setExample(res.example);
+          setExampleTranslation(res.example_translation);
+          setSentenceTranslation(res.sentence_translation);
           setPartOfSpeech(res.part_of_speech);
           setSenseIndex(res.sense_index);
           setMatchedGloss(res.matched_gloss);
@@ -157,7 +164,26 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
               {newDefinition && !saved && <span className="word-popup-new-def-pill">New definition!</span>}
             </div>
             {partOfSpeech && <span className={`word-popup-pos pos-${partOfSpeech.toLowerCase()}`}>{partOfSpeech}</span>}
-            {definition && <p className="word-popup-definition">{definition}{definitionSource && <span className={`word-popup-source word-popup-source--${definitionSource}`}>{definitionSource}</span>}</p>}
+            {showSentenceTranslation && sentenceTranslation ? (
+              <div className="word-popup-example">
+                <p className="word-popup-example-sentence" dangerouslySetInnerHTML={{ __html: sentenceTranslation.replace(/~([^~]+)~/g, '<span class="word-popup-example-highlight">$1</span>') }} />
+              </div>
+            ) : example ? (
+              <div className="word-popup-example">
+                <p className="word-popup-example-sentence" dangerouslySetInnerHTML={{ __html: example.replace(/~([^~]+)~/g, '<span class="word-popup-example-highlight">$1</span>') }} />
+                {exampleTranslation && <p className="word-popup-example-translation" dangerouslySetInnerHTML={{ __html: exampleTranslation.replace(/~([^~]+)~/g, '<span class="word-popup-example-highlight">$1</span>') }} />}
+              </div>
+            ) : definition ? (
+              <p className="word-popup-definition">{definition}</p>
+            ) : null}
+            <div className="word-popup-footer">
+              {(example || sentenceTranslation) && (
+                <button className="word-popup-toggle" onClick={() => setShowSentenceTranslation(v => !v)}>
+                  {showSentenceTranslation ? 'Example' : 'Context'}
+                </button>
+              )}
+              {definitionSource && <span className={`word-popup-source word-popup-source--${definitionSource}`}>{definitionSource}</span>}
+            </div>
           </>
         )}
       </div>

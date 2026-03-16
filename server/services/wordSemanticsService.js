@@ -82,8 +82,8 @@ export async function resolveDictionaryLookup({
     ? `\nHere are the dictionary senses for "${word}":\n${wiktSenses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n')}\n`
     : '';
   const jsonKeys = hasSenses
-    ? `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","sense_index":0,"lemma":"...","target_word":"..."}`
-    : `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","lemma":"...","target_word":"..."}`;
+    ? `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","sense_index":0,"lemma":"...","target_word":"...","sentence_translation":"...","example":"...","example_translation":"..."}`
+    : `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","lemma":"...","target_word":"...","sentence_translation":"...","example":"...","example_translation":"..."}`;
   const senseInstruction = hasSenses
     ? `\n- sense_index: the integer index (0-${wiktSenses.length - 1}) of the sense that best matches this sentence. If NONE of the senses match how the word is used, return -1 and provide your own definition.`
     : '';
@@ -103,10 +103,13 @@ ${jsonKeys}
 - definition: define the word itself in ${nativeLang}, 12 words max.
 - part_of_speech: one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle.
 ${senseInstruction}
-- lemma: the dictionary/base form of the target-language word.`,
+- lemma: the dictionary/base form of the target-language word.
+- sentence_translation: translate the full sentence "${sentence}" into ${nativeLang}. Surround the word(s) that correspond to "${word}" with tildes like ~translated word~.
+- example: a short, simple beginner-level example sentence in ${targetLang || 'the target language'} using the word. Surround the word with tildes like ~word~. Keep it under 8 words.
+- example_translation: the ${nativeLang} translation of the example sentence. Surround the word(s) that correspond to "${word}" with tildes like ~translated word~.`,
     {
       thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 220,
+      maxOutputTokens: 350,
       responseMimeType: 'application/json',
     },
   );
@@ -151,6 +154,9 @@ ${senseInstruction}
     lemma: parsed.lemma || null,
     is_native: false,
     definition_source: matched_gloss ? 'wiktionary' : 'gemini',
+    example: parsed.example || null,
+    example_translation: parsed.example_translation || null,
+    sentence_translation: parsed.sentence_translation || null,
   };
 }
 
