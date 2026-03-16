@@ -20,6 +20,17 @@ export async function applySrsReview(db, wordId, userId, answer) {
   const card = existing[0];
   const next = computeNextReview(card, answer);
 
+  // Advance / retreat prompt_stage based on answer quality
+  const currentStage = card.prompt_stage ?? 0;
+  let newStage;
+  if (answer === 'again') {
+    newStage = Math.max(currentStage - 1, 0);
+  } else if (answer === 'hard') {
+    newStage = currentStage;
+  } else {
+    newStage = Math.min(currentStage + 1, 4);
+  }
+
   const { rows: updated } = await db.query(
     `UPDATE saved_words
      SET srs_interval = $1,
@@ -28,8 +39,9 @@ export async function applySrsReview(db, wordId, userId, answer) {
          due_at = NOW() + ($4 || ' seconds')::INTERVAL,
          last_reviewed_at = NOW(),
          correct_count = correct_count + $5,
-         incorrect_count = incorrect_count + $6
-     WHERE id = $7 AND user_id = $8
+         incorrect_count = incorrect_count + $6,
+         prompt_stage = $7
+     WHERE id = $8 AND user_id = $9
      RETURNING *`,
     [
       next.srs_interval,
@@ -38,6 +50,7 @@ export async function applySrsReview(db, wordId, userId, answer) {
       String(next.due_seconds),
       next.correct_delta,
       next.incorrect_delta,
+      newStage,
       wordId,
       userId,
     ],

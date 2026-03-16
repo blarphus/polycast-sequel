@@ -18,6 +18,7 @@ import Settings from './pages/Settings';
 import Onboarding from './pages/Onboarding';
 import Dictionary from './pages/Dictionary';
 import Learn from './pages/Learn';
+import LearnPreview from './pages/LearnPreview';
 import Students from './pages/Students';
 import StudentDetail from './pages/StudentDetail';
 import Classwork from './pages/Classwork';
@@ -208,6 +209,14 @@ export default function App() {
           element={
             <StudentRoute>
               <Dictionary />
+            </StudentRoute>
+          }
+        />
+        <Route
+          path="/learn/preview"
+          element={
+            <StudentRoute>
+              <LearnPreview />
             </StudentRoute>
           }
         />

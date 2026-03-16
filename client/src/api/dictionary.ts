@@ -121,6 +121,7 @@ export interface SavedWord {
   image_url: string | null;
   lemma: string | null;
   forms: string | null;
+  prompt_stage: number;
   priority: boolean;
   image_term: string | null;
   queue_position: number | null;
