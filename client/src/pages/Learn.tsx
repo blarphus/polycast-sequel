@@ -446,12 +446,17 @@ export default function Learn() {
               )}
 
               {promptType === 'recall' && (
-                <p className="flashcard-word-large">{card.translation}</p>
+                <>
+                  <p className="flashcard-native-hint">{card.translation}</p>
+                  {card.definition && (
+                    <p className="flashcard-native-subhint">{card.definition}</p>
+                  )}
+                </>
               )}
 
               {promptType === 'guided-cloze' && (
                 <div className="flashcard-stacked-sentences">
-                  <p className="flashcard-sentence">
+                  <p className="flashcard-native-hint flashcard-native-hint--sm">
                     {card.sentence_translation
                       ? renderTildeHighlight(card.sentence_translation, 'flashcard-highlighted')
                       : card.translation}
@@ -463,7 +468,7 @@ export default function Learn() {
               {promptType === 'context-comprehension' && (
                 <div className="flashcard-stacked-sentences">
                   <p className="flashcard-sentence">{renderCloze(card.example_sentence!)}</p>
-                  <p className="flashcard-sentence">
+                  <p className="flashcard-native-hint flashcard-native-hint--sm">
                     {card.sentence_translation
                       ? renderCloze(card.sentence_translation)
                       : card.translation}
