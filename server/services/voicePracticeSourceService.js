@@ -278,21 +278,17 @@ export async function buildVoicePracticeSentenceSet({
   targetLanguage,
   count = 10,
 }) {
-  const [pending, saved, video, news] = await Promise.all([
+  const [pending, saved] = await Promise.all([
     fetchPendingWordListCandidates(userId, targetLanguage),
     fetchSavedWordCandidates(userId, targetLanguage),
-    fetchVideoCandidates(targetLanguage),
-    fetchNewsCandidates(targetLanguage),
   ]);
 
-  const deduped = dedupeCandidates([...pending, ...saved, ...video, ...news]);
-  // Priority order: 1) assigned classwork, 2) saved dictionary words, 3) video/news
+  const deduped = dedupeCandidates([...pending, ...saved]);
+  // Priority order: 1) assigned classwork, 2) saved dictionary words
   const assigned = deduped.filter(c => c.assignmentPriority);
-  const dictionary = deduped.filter(c => !c.assignmentPriority && c.sourceType === 'saved_word');
-  const supplemental = deduped.filter(c => !c.assignmentPriority && c.sourceType !== 'saved_word');
+  const dictionary = deduped.filter(c => !c.assignmentPriority);
   shuffleArray(dictionary);
-  shuffleArray(supplemental);
-  const orderedCandidates = [...assigned, ...dictionary, ...supplemental].slice(0, count * 3);
+  const orderedCandidates = [...assigned, ...dictionary].slice(0, count * 3);
 
   if (orderedCandidates.length === 0) {
     throw new Error('No suitable sentences available for voice practice');
