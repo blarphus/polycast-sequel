@@ -3,6 +3,7 @@ import {
   enrichWord,
   fetchWiktSenses,
   fetchWiktTranslations,
+  persistGeminiFallbackSense,
 } from '../enrichWord.js';
 
 function makeContextError(message, context = {}) {
@@ -84,7 +85,7 @@ export async function resolveDictionaryLookup({
     ? `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","sense_index":0,"lemma":"...","target_word":"..."}`
     : `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","lemma":"...","target_word":"..."}`;
   const senseInstruction = hasSenses
-    ? `\n- sense_index: the integer index (0-${wiktSenses.length - 1}) of the sense that best matches this sentence.`
+    ? `\n- sense_index: the integer index (0-${wiktSenses.length - 1}) of the sense that best matches this sentence. If NONE of the senses match how the word is used, return -1 and provide your own definition.`
     : '';
 
   const raw = await callGemini(
@@ -123,14 +124,19 @@ ${senseInstruction}
   let matched_gloss = null;
   if (hasSenses) {
     const idx = parsed.sense_index;
-    if (!Number.isInteger(idx) || idx < 0 || idx >= wiktSenses.length) {
-      throw makeContextError('Dictionary lookup returned an invalid sense index', {
-        senseIndex: idx,
-        senseCount: wiktSenses.length,
-      });
+    if (Number.isInteger(idx) && idx >= 0 && idx < wiktSenses.length) {
+      sense_index = idx;
+      matched_gloss = wiktSenses[idx].gloss;
     }
-    sense_index = idx;
-    matched_gloss = wiktSenses[idx].gloss;
+    // idx === -1 or invalid: Gemini says no sense matches — use its own definition
+    if (sense_index === null && parsed.definition && parsed.part_of_speech && targetLang) {
+      persistGeminiFallbackSense({ word, lang: targetLang, pos: parsed.part_of_speech, definition: parsed.definition });
+    }
+  }
+
+  // No wiktionary senses at all — persist Gemini's definition
+  if (!hasSenses && parsed.definition && parsed.part_of_speech && targetLang) {
+    persistGeminiFallbackSense({ word, lang: targetLang, pos: parsed.part_of_speech, definition: parsed.definition });
   }
 
   return {
@@ -138,7 +144,7 @@ ${senseInstruction}
     target_word: parsed.target_word || word,
     valid: parsed.valid ?? true,
     translation: parsed.translation || '',
-    definition: parsed.definition || '',
+    definition: matched_gloss || parsed.definition || '',
     part_of_speech: parsed.part_of_speech || null,
     sense_index,
     matched_gloss,
