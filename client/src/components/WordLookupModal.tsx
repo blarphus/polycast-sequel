@@ -67,7 +67,7 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Lookup failed';
-      console.error('WiktApi lookup error:', err);
+      console.error('Wiktionary lookup error:', err);
       setSearchError(msg);
     } finally {
       setSearching(false);
