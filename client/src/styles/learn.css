@@ -14,6 +14,10 @@
   overflow: hidden;
 }
 
+.learn-page--recognition {
+  background: linear-gradient(160deg, #e0f2fe 0%, #f0f9ff 40%, #ecfeff 100%);
+}
+
 /* Anki-style progress counter */
 .flashcard-progress {
   position: absolute;
@@ -113,12 +117,24 @@
   border: 1.5px solid rgba(108, 99, 255, 0.35);
 }
 
+/* Recognition front face */
+.flashcard-front--recognition {
+  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+  border: 1.5px solid rgba(56, 189, 248, 0.35);
+}
+
 /* Back face */
 .flashcard-back {
   background: linear-gradient(135deg, #edfff4, #d4f5e0);
   border: 1.5px solid rgba(34, 165, 94, 0.3);
   transform: rotateY(180deg);
   gap: 0.75rem;
+}
+
+/* Recognition back face */
+.flashcard-back--recognition {
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border: 1.5px solid rgba(56, 189, 248, 0.3);
 }
 
 /* Card text elements */
@@ -164,6 +180,18 @@
   background: rgba(22, 163, 74, 0.1);
   padding: 0.1rem 0.25rem;
   border-radius: 3px;
+}
+
+/* Recognition mode label */
+.flashcard-recognition-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #0284c7;
+  margin-top: 0.75rem;
+}
+
+.flashcard-recognition-answer {
+  font-size: 1.2rem;
 }
 
 .flashcard-hint {

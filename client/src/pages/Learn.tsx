@@ -97,16 +97,30 @@ export default function Learn() {
     void playAiSpeech(text, lang || undefined, preloaded);
   }, []);
 
-  // Auto-play on flip (once per card)
-  useEffect(() => {
-    if (!isFlipped || !currentCard) return;
-    if (audioPlayedRef.current.has(currentIndex)) return;
-    audioPlayedRef.current.add(currentIndex);
+  // Recognition mode: learning steps 0-1
+  const isRecognitionMode = currentCard?.learning_step !== null && currentCard?.learning_step !== undefined && currentCard.learning_step <= 1;
 
-    const textToSpeak = currentCard.example_sentence
-      ? stripTildes(currentCard.example_sentence)
-      : currentCard.word;
-    playAudio(textToSpeak, currentCard.target_language, currentCard.id);
+  // Auto-play TTS: on flip for production, on card enter for recognition
+  useEffect(() => {
+    if (!currentCard) return;
+    if (audioPlayedRef.current.has(currentIndex)) return;
+
+    const recognitionCard = currentCard.learning_step !== null && currentCard.learning_step !== undefined && currentCard.learning_step <= 1;
+
+    // Recognition: play on card appear (front). Production: play on flip.
+    if (recognitionCard) {
+      audioPlayedRef.current.add(currentIndex);
+      const textToSpeak = currentCard.example_sentence
+        ? stripTildes(currentCard.example_sentence)
+        : currentCard.word;
+      playAudio(textToSpeak, currentCard.target_language, currentCard.id);
+    } else if (isFlipped) {
+      audioPlayedRef.current.add(currentIndex);
+      const textToSpeak = currentCard.example_sentence
+        ? stripTildes(currentCard.example_sentence)
+        : currentCard.word;
+      playAudio(textToSpeak, currentCard.target_language, currentCard.id);
+    }
   }, [isFlipped, currentIndex, currentCard, playAudio]);
 
   // Play celebratory sound when session is complete
@@ -328,7 +342,7 @@ export default function Learn() {
   const isNewCard = card.srs_interval === 0 && card.learning_step === null && !card.last_reviewed_at;
 
   return (
-    <div className="learn-page">
+    <div className={`learn-page${isRecognitionMode ? ' learn-page--recognition' : ''}`}>
       {/* Anki-style progress counts */}
       <div className="flashcard-progress">
         {(() => {
@@ -375,15 +389,31 @@ export default function Learn() {
         >
           <div className={`flashcard-flip-wrapper${isFlipped ? ' flipped' : ''}`}>
             {/* Front */}
-            <div className="flashcard-front">
+            <div className={`flashcard-front${isRecognitionMode ? ' flashcard-front--recognition' : ''}`}>
               {isNewCard && <span className="flashcard-new-badge">New</span>}
-              {hasExample ? (
+              {isRecognitionMode ? (
                 <>
-                  <p className="flashcard-sentence">{renderCloze(card.example_sentence!)}</p>
-                  <p className="flashcard-translation-hint">{card.translation}</p>
+                  {hasExample ? (
+                    <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+                  ) : (
+                    <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
+                  )}
+                  {card.image_url && (
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
+                  )}
+                  <p className="flashcard-recognition-label">What does the highlighted word mean?</p>
                 </>
               ) : (
-                <p className="flashcard-word-large">{card.word}</p>
+                <>
+                  {hasExample ? (
+                    <>
+                      <p className="flashcard-sentence">{renderCloze(card.example_sentence!)}</p>
+                      <p className="flashcard-translation-hint">{card.translation}</p>
+                    </>
+                  ) : (
+                    <p className="flashcard-word-large">{card.word}</p>
+                  )}
+                </>
               )}
               <p className="flashcard-hint">
                 <TapIcon size={14} />
@@ -392,30 +422,46 @@ export default function Learn() {
             </div>
 
             {/* Back */}
-            <div className="flashcard-back">
-              {hasExample ? (
+            <div className={`flashcard-back${isRecognitionMode ? ' flashcard-back--recognition' : ''}`}>
+              {isRecognitionMode ? (
                 <>
-                  <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+                  <p className="flashcard-back-translation flashcard-recognition-answer">
+                    <strong>{card.word}</strong> — {card.translation}
+                  </p>
+                  {card.definition && (
+                    <p className="flashcard-back-definition">{card.definition}</p>
+                  )}
                   {card.sentence_translation && (
-                    <p className="flashcard-sentence-translation">{renderTildeHighlight(card.sentence_translation, 'flashcard-highlighted')}</p>
+                    <p className="flashcard-sentence-translation">{card.sentence_translation}</p>
                   )}
                 </>
               ) : (
-                <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
-              )}
+                <>
+                  {hasExample ? (
+                    <>
+                      <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+                      {card.sentence_translation && (
+                        <p className="flashcard-sentence-translation">{renderTildeHighlight(card.sentence_translation, 'flashcard-highlighted')}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
+                  )}
 
-              {card.image_url && (
-                <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
-              )}
+                  {card.image_url && (
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
+                  )}
 
-              <div className="flashcard-back-details">
-                <p className="flashcard-back-translation">
-                  <strong>{card.word}</strong> — {card.translation}
-                </p>
-                {card.definition && (
-                  <p className="flashcard-back-definition">{card.definition}</p>
-                )}
-              </div>
+                  <div className="flashcard-back-details">
+                    <p className="flashcard-back-translation">
+                      <strong>{card.word}</strong> — {card.translation}
+                    </p>
+                    {card.definition && (
+                      <p className="flashcard-back-definition">{card.definition}</p>
+                    )}
+                  </div>
+                </>
+              )}
 
               <button
                 className="flashcard-audio-btn"
