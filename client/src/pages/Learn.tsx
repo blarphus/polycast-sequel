@@ -325,6 +325,7 @@ export default function Learn() {
 
   const card = currentCard;
   const hasExample = !!card.example_sentence;
+  const isNewCard = card.srs_interval === 0 && card.learning_step === null && !card.last_reviewed_at;
 
   return (
     <div className="learn-page">
@@ -375,6 +376,7 @@ export default function Learn() {
           <div className={`flashcard-flip-wrapper${isFlipped ? ' flipped' : ''}`}>
             {/* Front */}
             <div className="flashcard-front">
+              {isNewCard && <span className="flashcard-new-badge">New</span>}
               {hasExample ? (
                 <>
                   <p className="flashcard-sentence">{renderCloze(card.example_sentence!)}</p>
