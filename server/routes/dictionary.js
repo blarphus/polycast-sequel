@@ -52,6 +52,17 @@ const imageSearchQuery = z.object({
 
 const wordImageBody = z.object({
   image_url: z.string().min(1, 'image_url is required'),
+  image_term: z.string().nullable().optional(),
+});
+
+const updateWordBody = z.object({
+  translation: z.string().optional(),
+  definition: z.string().optional(),
+  example_sentence: z.string().nullable().optional(),
+  sentence_translation: z.string().nullable().optional(),
+  part_of_speech: z.string().nullable().optional(),
+  image_url: z.string().nullable().optional(),
+  image_term: z.string().nullable().optional(),
 });
 
 const reviewBody = z.object({
@@ -106,7 +117,7 @@ router.get('/api/dictionary/lookup', authMiddleware, validate({ query: lookupQue
 
 /**
  * GET /api/dictionary/wikt-lookup?word=X&targetLang=Y&nativeLang=Z
- * Proxies to WiktApi for structured Wiktionary definitions.
+ * Queries local Wiktionary DB for structured definitions.
  */
 router.get('/api/dictionary/wikt-lookup', authMiddleware, validate({ query: wiktLookupQuery }), async (req, res) => {
   const { word, targetLang, nativeLang } = req.query;
@@ -115,8 +126,8 @@ router.get('/api/dictionary/wikt-lookup', authMiddleware, validate({ query: wikt
     const senses = await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang);
     return res.json({ word, senses });
   } catch (err) {
-    req.log.error({ err }, 'WiktApi network error');
-    return res.status(502).json({ error: 'WiktApi request failed' });
+    req.log.error({ err }, 'Wiktionary DB query error');
+    return res.status(502).json({ error: 'Dictionary lookup failed' });
   }
 });
 
@@ -215,14 +226,14 @@ router.get('/api/dictionary/image-search', authMiddleware, validate({ query: ima
  * Update the image_url on a saved word.
  */
 router.patch('/api/dictionary/words/:id/image', authMiddleware, validate({ params: uuidParam, body: wordImageBody }), async (req, res) => {
-  const { image_url } = req.body;
+  const { image_url, image_term } = req.body;
 
   try {
     const { rows } = await pool.query(
-      `UPDATE saved_words SET image_url = $1
+      `UPDATE saved_words SET image_url = $1, image_term = COALESCE($4, image_term)
        WHERE id = $2 AND user_id = $3
        RETURNING *`,
-      [image_url, req.params.id, req.userId],
+      [image_url, req.params.id, req.userId, image_term ?? null],
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Word not found' });
     return res.json(rows[0]);
@@ -420,6 +431,40 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
   } catch (err) {
     req.log.error({ err }, 'Error saving word');
     return res.status(500).json({ error: 'Failed to save word' });
+  }
+});
+
+/**
+ * PATCH /api/dictionary/words/:id -- Update editable fields on a saved word
+ */
+router.patch('/api/dictionary/words/:id', authMiddleware, validate({ params: uuidParam, body: updateWordBody }), async (req, res) => {
+  const fields = ['translation', 'definition', 'example_sentence', 'sentence_translation', 'part_of_speech', 'image_url', 'image_term'];
+  const sets = [];
+  const values = [req.params.id, req.userId];
+  let idx = 3;
+
+  for (const field of fields) {
+    if (req.body[field] !== undefined) {
+      sets.push(`${field} = $${idx}`);
+      values.push(req.body[field]);
+      idx++;
+    }
+  }
+
+  if (sets.length === 0) {
+    return res.status(400).json({ error: 'No fields to update' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE saved_words SET ${sets.join(', ')} WHERE id = $1 AND user_id = $2 RETURNING *`,
+      values,
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Word not found' });
+    return res.json(rows[0]);
+  } catch (err) {
+    req.log.error({ err }, 'Error updating word');
+    return res.status(500).json({ error: 'Failed to update word' });
   }
 });
 

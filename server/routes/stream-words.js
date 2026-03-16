@@ -236,17 +236,18 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, valid
     let skipped = 0;
 
     for (const w of wordsToAdd) {
-      const imageUrl = w.image_url !== null ? w.image_url : await fetchWordImage(w.word);
+      const imageUrl = w.image_url !== null ? w.image_url : await fetchWordImage(w.image_term || w.translation || w.word);
       const { rowCount } = await pool.query(
         `INSERT INTO saved_words
            (user_id, word, translation, definition, target_language, part_of_speech,
-            frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, priority)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,true)
+            frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term, priority)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,true)
          ON CONFLICT DO NOTHING`,
         [
           req.userId, w.word, w.translation, w.definition, targetLanguage, w.part_of_speech,
           w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
           w.sentence_translation ?? null, imageUrl, w.lemma ?? null, w.forms ?? null,
+          w.image_term ?? null,
         ],
       );
       if (rowCount > 0) {

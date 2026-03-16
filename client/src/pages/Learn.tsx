@@ -29,7 +29,7 @@ export function getPromptType(card: SavedWord): PromptType {
 }
 
 function getInstructionText(promptType: PromptType): string {
-  if (promptType === 'recognition') return 'Do you know this word?';
+  if (promptType === 'recognition') return 'What does this word mean?';
   if (promptType === 'recall') return 'How do you say this?';
   return 'Fill in the blank';
 }
@@ -133,13 +133,10 @@ export default function Learn() {
 
     const pt = getPromptType(currentCard);
 
-    // Recognition: play on card appear (front is target language)
+    // Recognition: play on card appear (front is just the word)
     if (pt === 'recognition') {
       audioPlayedRef.current.add(currentIndex);
-      const textToSpeak = currentCard.example_sentence
-        ? stripTildes(currentCard.example_sentence)
-        : currentCard.word;
-      playAudio(textToSpeak, currentCard.target_language, currentCard.id);
+      playAudio(currentCard.word, currentCard.target_language, currentCard.id);
     } else if (isFlipped) {
       // Recall: play just the word on flip. Cloze types: play full sentence on flip.
       audioPlayedRef.current.add(currentIndex);
@@ -434,11 +431,7 @@ export default function Learn() {
 
               {promptType === 'recognition' && (
                 <>
-                  {hasExample ? (
-                    <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
-                  ) : (
-                    <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
-                  )}
+                  <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
                   {card.image_url && (
                     <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
                   )}
@@ -491,14 +484,15 @@ export default function Learn() {
 
               {promptType === 'recognition' && (
                 <>
-                  <p className="flashcard-back-translation flashcard-recognition-answer">
-                    <strong>{card.word}</strong> — {card.translation}
-                  </p>
+                  <p className="flashcard-recognition-translation">{card.translation}</p>
+                  {card.image_url && (
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
+                  )}
                   {card.definition && (
                     <p className="flashcard-back-definition">{card.definition}</p>
                   )}
                   {hasExample && (
-                    <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+                    <p className="flashcard-sentence flashcard-sentence--sm">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
                   )}
                   {card.sentence_translation && (
                     <p className="flashcard-sentence-translation">{card.sentence_translation}</p>

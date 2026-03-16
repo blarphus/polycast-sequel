@@ -88,11 +88,6 @@ export function getDueStatus(card: SavedWord): DueStatus {
     return { label: 'New', urgency: 'new' };
   }
 
-  // Learning / relearning
-  if (card.learning_step !== null) {
-    return { label: 'Learning', urgency: 'learning' };
-  }
-
   // Has a due date
   if (card.due_at) {
     const now = Date.now();
@@ -104,6 +99,11 @@ export function getDueStatus(card: SavedWord): DueStatus {
 
     const diffSeconds = Math.round((due - now) / 1000);
     return { label: `Due in ${formatDuration(diffSeconds)}`, urgency: 'upcoming' };
+  }
+
+  // Learning / relearning without due_at
+  if (card.learning_step !== null) {
+    return { label: 'Due now', urgency: 'due' };
   }
 
   // Fallback: new card with no due_at

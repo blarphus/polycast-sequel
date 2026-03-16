@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// components/WordLookupModal.tsx -- Look up words via WiktApi and save them
+// components/WordLookupModal.tsx -- Look up words via Wiktionary DB and save them
 // ---------------------------------------------------------------------------
 
 import React, { useState, useRef, useEffect } from 'react';
