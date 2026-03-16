@@ -33,6 +33,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [senseIndex, setSenseIndex] = useState<number | null>(null);
   const [matchedGloss, setMatchedGloss] = useState<string | null>(null);
   const [lemma, setLemma] = useState<string | null>(null);
+  const [definitionSource, setDefinitionSource] = useState<string | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const { queueSave } = useDictionaryToast();
 
@@ -47,6 +48,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           setIsNative(res.is_native);
           setTranslation(res.translation);
           setDefinition(res.definition);
+          setDefinitionSource(res.definition_source);
           setPartOfSpeech(res.part_of_speech);
           setSenseIndex(res.sense_index);
           setMatchedGloss(res.matched_gloss);
@@ -155,7 +157,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
               {newDefinition && !saved && <span className="word-popup-new-def-pill">New definition!</span>}
             </div>
             {partOfSpeech && <span className={`word-popup-pos pos-${partOfSpeech.toLowerCase()}`}>{partOfSpeech}</span>}
-            {definition && <p className="word-popup-definition">{definition}</p>}
+            {definition && <p className="word-popup-definition">{definition}{definitionSource && <span className={`word-popup-source word-popup-source--${definitionSource}`}>{definitionSource}</span>}</p>}
           </>
         )}
       </div>

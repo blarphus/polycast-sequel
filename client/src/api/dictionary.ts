@@ -33,6 +33,7 @@ export function lookupWord(word: string, sentence: string, nativeLang: string, t
     matched_gloss: string | null;
     lemma: string | null;
     is_native: boolean;
+    definition_source: string | null;
   }>(`/dictionary/lookup?${params}`);
 }
 

@@ -393,6 +393,25 @@
   line-height: 1.4;
 }
 
+.word-popup-source {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  margin-left: 0.4rem;
+  border-radius: 999px;
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+.word-popup-source--wiktionary {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+.word-popup-source--gemini {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+}
+
 .word-popup-save {
   width: auto;
   margin: 0 0.4rem 0 auto;

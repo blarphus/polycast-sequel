@@ -150,6 +150,7 @@ ${senseInstruction}
     matched_gloss,
     lemma: parsed.lemma || null,
     is_native: false,
+    definition_source: matched_gloss ? 'wiktionary' : 'gemini',
   };
 }
 
