@@ -2,10 +2,11 @@
 // components/IncomingCall.tsx -- Modal overlay for incoming calls
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import { PhoneIcon } from './icons';
+import { startRinging, stopRinging } from '../utils/sounds';
 
 interface IncomingCallData {
   callerId: string;
@@ -16,6 +17,16 @@ interface IncomingCallData {
 export default function IncomingCall() {
   const [incoming, setIncoming] = useState<IncomingCallData | null>(null);
   const navigate = useNavigate();
+
+  // Start / stop ringing sound when incoming call state changes
+  useEffect(() => {
+    if (incoming) {
+      startRinging();
+    } else {
+      stopRinging();
+    }
+    return () => stopRinging();
+  }, [incoming]);
 
   useEffect(() => {
     const onCallIncoming = (data: IncomingCallData) => {

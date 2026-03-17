@@ -2,7 +2,7 @@
 // pages/Call.tsx -- Active call page with WebRTC, signaling, and transcription
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import { useAuth } from '../hooks/useAuth';
@@ -21,6 +21,13 @@ import TranscriptPanel from '../components/TranscriptPanel';
 import { useSavedWords } from '../hooks/useSavedWords';
 import { useScreenShare } from '../hooks/useScreenShare';
 import { getIceServers } from '../api';
+import {
+  startRinging,
+  stopRinging,
+  playCallConnectedSound,
+  playCallEndedSound,
+  playCallDeclinedSound,
+} from '../utils/sounds';
 
 export default function Call() {
   const { peerId } = useParams<{ peerId: string }>();
@@ -65,6 +72,8 @@ export default function Call() {
   // ---- End call ----------------------------------------------------------
 
   const endCall = useCallback(() => {
+    stopRinging();
+    playCallEndedSound();
     socket.emit('call:end', { peerId });
     cleanupTranscription();
     cleanupPeer();
@@ -79,6 +88,8 @@ export default function Call() {
     if (!peerId) return;
 
     const onCallEnded = () => {
+      stopRinging();
+      playCallEndedSound();
       setCallStatus('Call ended');
       cleanupTranscription();
       cleanupPeer();
@@ -86,6 +97,8 @@ export default function Call() {
     };
 
     const onCallRejected = () => {
+      stopRinging();
+      playCallDeclinedSound();
       setCallStatus('Call rejected');
       cleanupPeer();
       setTimeout(() => navigate('/chats'), 1500);
@@ -223,6 +236,8 @@ export default function Call() {
           if (remoteVideoRef.current && event.streams[0]) {
             remoteVideoRef.current.srcObject = event.streams[0];
           }
+          stopRinging();
+          playCallConnectedSound();
           setCallStatus('');
         },
         // onIceCandidate
@@ -255,6 +270,7 @@ export default function Call() {
       if (role === 'caller') {
         socket.emit('call:initiate', { peerId });
         setCallStatus('Ringing...');
+        startRinging();
       } else {
         // Callee: call:accept was already emitted by IncomingCall on click.
         // If the offer arrived before our PC was ready, process it now.
@@ -275,6 +291,7 @@ export default function Call() {
 
     return () => {
       cleaned = true;
+      stopRinging();
 
       socket.off('call:accepted', onCallAccepted);
       socket.off('signal:offer', onSignalOffer);
