@@ -188,6 +188,45 @@
   background: rgba(0, 0, 0, 0.8);
 }
 
+/* ---- Subtitle size controls ---- */
+
+.local-watch-subtitle-controls {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 20;
+  display: flex;
+  gap: 0.3rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.local-watch-fullscreen-container:hover .local-watch-subtitle-controls {
+  opacity: 1;
+}
+
+.local-watch-subtitle-size-btn {
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: var(--font);
+  line-height: 1;
+}
+
+.local-watch-subtitle-size-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.local-watch-subtitle-size-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 .local-watch-subtitle-overlay {
   position: absolute;
   bottom: 4rem;

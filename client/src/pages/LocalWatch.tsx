@@ -25,6 +25,8 @@ export default function LocalWatch() {
 
   const [popup, setPopup] = useState<PopupState | null>(null);
   const wasPlayingRef = useRef(false);
+  const SUBTITLE_SIZES = [1.2, 1.5, 1.8, 2.2, 2.8, 3.4];
+  const [subtitleSizeIdx, setSubtitleSizeIdx] = useState(2); // default 1.8rem
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [rawSegments, setRawSegments] = useState<{ text: string; offset: number; duration: number }[]>([]);
   const [error, setError] = useState('');
@@ -170,10 +172,35 @@ export default function LocalWatch() {
           {isFullscreen ? <FullscreenExitIcon size={20} /> : <FullscreenIcon size={20} />}
         </button>
 
+        {/* Subtitle size controls (fullscreen only) */}
+        {isFullscreen && (
+          <div className="local-watch-subtitle-controls">
+            <button
+              className="local-watch-subtitle-size-btn"
+              onClick={() => setSubtitleSizeIdx((i) => Math.max(0, i - 1))}
+              disabled={subtitleSizeIdx === 0}
+              aria-label="Decrease subtitle size"
+            >
+              A-
+            </button>
+            <button
+              className="local-watch-subtitle-size-btn"
+              onClick={() => setSubtitleSizeIdx((i) => Math.min(SUBTITLE_SIZES.length - 1, i + 1))}
+              disabled={subtitleSizeIdx === SUBTITLE_SIZES.length - 1}
+              aria-label="Increase subtitle size"
+            >
+              A+
+            </button>
+          </div>
+        )}
+
         {/* Fullscreen subtitle overlay */}
         {isFullscreen && activeIndex >= 0 && mergedSegments[activeIndex] && (
           <div className="local-watch-subtitle-overlay">
-            <span className="subtitle-text">
+            <span
+              className="subtitle-text"
+              style={{ fontSize: `${SUBTITLE_SIZES[subtitleSizeIdx]}rem` }}
+            >
               <TokenizedText
                 text={mergedSegments[activeIndex].text}
                 savedWords={savedWordsSet}
