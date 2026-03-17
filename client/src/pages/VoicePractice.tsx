@@ -30,7 +30,7 @@ function renderSuccessConfetti() {
 
 export default function VoicePractice() {
   const navigate = useNavigate();
-  const { words, savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
+  const { words, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords();
 
   // Map native translations → image hints for highlighting in the native prompt
   const nativeWordHints = useMemo(() => {
@@ -260,6 +260,7 @@ export default function VoicePractice() {
               isWordSaved={isWordSaved}
               isDefinitionSaved={isDefinitionSaved}
               onSaveWord={addWord}
+              onOptimisticSave={addOptimistic}
               isNative={popup.isNative}
             />
           )}

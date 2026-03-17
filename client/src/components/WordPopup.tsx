@@ -15,10 +15,11 @@ interface WordPopupProps {
   isWordSaved?: (word: string) => boolean;
   isDefinitionSaved?: (word: string, definition: string) => boolean;
   onSaveWord?: (data: SaveWordData) => Promise<{ _created: boolean }>;
+  onOptimisticSave?: (word: string) => void;
   isNative?: boolean;
 }
 
-export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved, isDefinitionSaved, onSaveWord, isNative: isNativeProp }: WordPopupProps) {
+export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved, isDefinitionSaved, onSaveWord, onOptimisticSave, isNative: isNativeProp }: WordPopupProps) {
   const [loading, setLoading] = useState(true);
   const [valid, setValid] = useState(true);
   const [translation, setTranslation] = useState('');
@@ -110,6 +111,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const handleSave = () => {
     if (saved) return;
     setSaved(true);
+    onOptimisticSave?.(lemma || targetWord);
     queueSave(lemma || targetWord, async () => {
       const enriched = await enrichWord(targetWord, sentence, nativeLang, targetLang, senseIndex);
       const savedWord = enriched.lemma || lemma || targetWord;

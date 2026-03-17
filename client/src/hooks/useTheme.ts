@@ -42,12 +42,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
+    root.dataset.theme = theme;
     if (theme === 'dark') {
-      root.dataset.theme = 'dark';
       root.style.setProperty('-webkit-font-smoothing', 'antialiased');
       root.style.setProperty('-moz-osx-font-smoothing', 'grayscale');
     } else {
-      delete root.dataset.theme;
       root.style.setProperty('-webkit-font-smoothing', 'auto');
       root.style.setProperty('-moz-osx-font-smoothing', 'auto');
     }

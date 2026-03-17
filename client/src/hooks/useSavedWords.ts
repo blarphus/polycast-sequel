@@ -140,5 +140,17 @@ export function useSavedWords() {
     [words],
   );
 
-  return { words, loading, error, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, removeWord, updateImage, reorderQueueWords };
+  const addOptimistic = useCallback((word: string, forms?: string | null) => {
+    setOptimisticWords((prev) => {
+      const next = new Set(prev);
+      next.add(word.toLowerCase());
+      if (forms) {
+        const fl = parseWordForms(forms, word);
+        for (const f of fl) next.add(f.toLowerCase());
+      }
+      return next;
+    });
+  }, []);
+
+  return { words, loading, error, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord, updateImage, reorderQueueWords };
 }

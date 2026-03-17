@@ -27,7 +27,7 @@ export default function ReadArticle() {
   const location = useLocation();
   const navState = (location.state || {}) as NavState;
   const { user, loading: authLoading } = useAuth();
-  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords();
 
   const profileLevel = user?.cefr_level || 'Original';
   const [selectedLevel, setSelectedLevel] = useState('Original');
@@ -319,6 +319,7 @@ export default function ReadArticle() {
           isWordSaved={isWordSaved}
           isDefinitionSaved={isDefinitionSaved}
           onSaveWord={addWord}
+          onOptimisticSave={addOptimistic}
         />
       )}
     </div>

@@ -7,7 +7,7 @@
 [data-bg-texture="noise"] body::before,
 [data-bg-texture="grid"] body::before {
   content: '';
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
@@ -477,4 +477,224 @@
     background: rgba(15, 15, 25, 0.96);
     border-right: 1px solid rgba(255, 255, 255, 0.06);
   }
+}
+
+/* ==========================================================================
+   Light Theme Enhancements
+   ========================================================================== */
+
+/* ---- Button hover glows -------------------------------------------------- */
+
+[data-theme="light"] .btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 16px rgba(108, 99, 255, 0.25);
+}
+
+[data-theme="light"] .btn-accept:hover:not(:disabled) {
+  box-shadow: 0 0 16px rgba(34, 165, 94, 0.25);
+}
+
+[data-theme="light"] .btn-reject:hover:not(:disabled) {
+  box-shadow: 0 0 16px rgba(220, 53, 69, 0.25);
+}
+
+/* ---- Bottom toolbar ------------------------------------------------------ */
+
+[data-theme="light"] .bottom-toolbar {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+@media (min-width: 481px) {
+  [data-theme="light"] .bottom-toolbar {
+    background: rgba(255, 255, 255, 0.96);
+    border-right: 1px solid rgba(0, 0, 0, 0.06);
+  }
+}
+
+/* ---- Home dashboard cards ------------------------------------------------ */
+
+[data-theme="light"] .home-dashboard-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ---- Learn page background ----------------------------------------------- */
+
+[data-theme="light"] .learn-page {
+  background: linear-gradient(160deg, #f0eeff 0%, #f5f5f7 40%, #eef0ff 100%);
+}
+
+[data-theme="light"] .flashcard-progress {
+  border-color: rgba(108, 99, 255, 0.2);
+}
+
+/* ---- Flashcard gradients ------------------------------------------------- */
+
+[data-theme="light"] .flashcard-front {
+  background: linear-gradient(135deg, #ffffff, #f0eeff);
+  border-color: rgba(108, 99, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.1), 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .flashcard-back {
+  background: linear-gradient(135deg, #ffffff, #e8f5ee);
+  border-color: rgba(34, 165, 94, 0.2);
+  box-shadow: 0 4px 20px rgba(34, 165, 94, 0.1), 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* ---- Flashcard highlighted/buttons/feedback ------------------------------ */
+
+[data-theme="light"] .flashcard-highlighted {
+  color: #16a34a;
+  background: rgba(34, 165, 94, 0.1);
+}
+
+[data-theme="light"] .flashcard-btn--again {
+  background: #ef4444;
+  color: #fff;
+}
+
+[data-theme="light"] .flashcard-btn--again:hover:not(:disabled) {
+  background: #dc2626;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+}
+
+[data-theme="light"] .flashcard-btn--good {
+  background: #22a55e;
+  color: #fff;
+}
+
+[data-theme="light"] .flashcard-btn--good:hover:not(:disabled) {
+  background: #16a34a;
+  box-shadow: 0 4px 14px rgba(34, 165, 94, 0.3);
+}
+
+[data-theme="light"] .flashcard-feedback--again {
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+[data-theme="light"] .flashcard-feedback--good {
+  background: rgba(34, 165, 94, 0.08);
+  color: #16a34a;
+  border-color: rgba(34, 165, 94, 0.2);
+}
+
+/* ---- Stat value ---------------------------------------------------------- */
+
+[data-theme="light"] .flashcard-stat-value {
+  color: #16a34a;
+}
+
+/* ---- Practice / Quiz page ------------------------------------------------ */
+
+[data-theme="light"] .practice-page {
+  background: linear-gradient(160deg, #f0eeff 0%, #f5f5f7 40%, #eef0ff 100%);
+}
+
+[data-theme="light"] .practice-feedback.correct {
+  background: rgba(34, 165, 94, 0.06);
+  border-color: rgba(34, 165, 94, 0.18);
+}
+
+[data-theme="light"] .practice-feedback.incorrect {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
+[data-theme="light"] .practice-feedback-badge.correct {
+  background: rgba(34, 165, 94, 0.1);
+  color: #16a34a;
+}
+
+[data-theme="light"] .practice-feedback-badge.incorrect {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+[data-theme="light"] .practice-review-badge.correct {
+  background: rgba(34, 165, 94, 0.1);
+  color: #16a34a;
+}
+
+[data-theme="light"] .practice-review-badge.incorrect {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+/* ---- Mode selector cards (light) ---------------------------------------- */
+
+[data-theme="light"] .practice-mode-card:hover {
+  border-color: var(--accent);
+  background: rgba(108, 99, 255, 0.04);
+}
+
+[data-theme="light"] .practice-mode-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15), 0 2px 12px rgba(108, 99, 255, 0.08);
+  background: rgba(108, 99, 255, 0.05);
+}
+
+/* ---- Conjugation drill (light) ------------------------------------------ */
+
+[data-theme="light"] .drill-container {
+  background: linear-gradient(160deg, #f0eeff 0%, #f5f5f7 40%, #eef0ff 100%);
+}
+
+[data-theme="light"] .drill-container.drill-flash-correct {
+  background: linear-gradient(160deg, #e8f5ee 0%, #f0faf4 40%, #e8f5ee 100%);
+}
+
+[data-theme="light"] .drill-container.drill-flash-incorrect {
+  background: linear-gradient(160deg, #fef2f2 0%, #fff5f5 40%, #fef2f2 100%);
+}
+
+[data-theme="light"] .drill-score-correct {
+  color: #16a34a;
+}
+
+[data-theme="light"] .drill-score-incorrect {
+  color: #dc2626;
+}
+
+[data-theme="light"] .drill-expected {
+  color: #dc2626;
+}
+
+/* ---- Carousel news thumbnails (light) ----------------------------------- */
+
+[data-theme="light"] .home-carousel-thumb--news {
+  background: linear-gradient(135deg, #e8e6ff, #d4d0ff);
+}
+
+/* ---- Selection color ----------------------------------------------------- */
+
+[data-theme="light"] ::selection {
+  background: rgba(108, 99, 255, 0.2);
+}
+
+/* ---- Word popup shadow --------------------------------------------------- */
+
+[data-theme="light"] .word-popup {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 1px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* ---- Lookup modal -------------------------------------------------------- */
+
+[data-theme="light"] .lookup-overlay {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .lookup-modal {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* ---- Watch page active segment ------------------------------------------- */
+
+[data-theme="light"] .watch-segment--active {
+  background: rgba(108, 99, 255, 0.08);
 }

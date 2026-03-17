@@ -16,7 +16,7 @@ export default function ChatView() {
   const { user } = useAuth();
   const [popup, setPopup] = useState<PopupState | null>(null);
 
-  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords();
 
   function handleWordClick(e: React.MouseEvent<HTMLSpanElement>, word: string, sentence: string) {
     const rect = (e.target as HTMLElement).getBoundingClientRect();
@@ -100,6 +100,7 @@ export default function ChatView() {
           isWordSaved={isWordSaved}
           isDefinitionSaved={isDefinitionSaved}
           onSaveWord={addWord}
+          onOptimisticSave={addOptimistic}
         />
       )}
     </div>

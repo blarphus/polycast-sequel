@@ -25,12 +25,13 @@ interface Props {
     lemma?: string | null;
     forms?: string | null;
   }) => Promise<unknown>;
+  onOptimisticSave?: (word: string) => void;
   onPick?: (sense: WiktSense) => void;
   initialQuery?: string;
   onClose: () => void;
 }
 
-export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSaved, onSave, onPick, initialQuery, onClose }: Props) {
+export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSaved, onSave, onOptimisticSave, onPick, initialQuery, onClose }: Props) {
   const [query, setQuery] = useState(initialQuery ?? '');
   const [senses, setSenses] = useState<WiktSense[]>([]);
   const [searched, setSearched] = useState(false);
@@ -88,6 +89,7 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
     setSavedIdxs(prev => new Set(prev).add(idx));
 
     const word = query.trim();
+    onOptimisticSave?.(word);
     queueSave(word, async () => {
       const enriched = await enrichWord(
         word,

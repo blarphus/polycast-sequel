@@ -101,7 +101,7 @@ const QUEUE_TINT_STYLES = buildQueueTintStyles(220, 38, 29, 35, 44);
 
 export default function Dictionary() {
   const { user } = useAuth();
-  const { words, loading, removeWord, addWord, updateImage, isDefinitionSaved, reorderQueueWords } = useSavedWords();
+  const { words, loading, removeWord, addWord, addOptimistic, updateImage, isDefinitionSaved, reorderQueueWords } = useSavedWords();
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<DictionarySortMode>('queue');
@@ -463,6 +463,7 @@ export default function Dictionary() {
           nativeLang={user.native_language}
           isDefinitionSaved={isDefinitionSaved}
           onSave={addWord}
+          onOptimisticSave={addOptimistic}
           onClose={() => setLookupOpen(false)}
         />
       )}

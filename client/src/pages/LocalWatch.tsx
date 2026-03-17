@@ -2,11 +2,13 @@
 // pages/LocalWatch.tsx — Watch a local video with synced SRT transcript
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
+import { useFullscreen } from '../hooks/useFullscreen';
 import TranscriptList from '../components/watch/TranscriptList';
+import TokenizedText from '../components/TokenizedText';
 import WordPopup from '../components/WordPopup';
 import { PopupState } from '../textTokens';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
@@ -14,6 +16,7 @@ import { useLocalVideoPlayer } from '../hooks/useLocalVideoPlayer';
 import { mergeTranscriptSegmentsForDisplay } from '../watchTranscript';
 import { getLocalVideo } from '../utils/localVideoStore';
 import { parseSrt } from '../utils/srtParser';
+import { FullscreenIcon, FullscreenExitIcon } from '../components/icons';
 
 export default function LocalWatch() {
   const { filename } = useParams<{ filename: string }>();
@@ -25,7 +28,7 @@ export default function LocalWatch() {
   const [rawSegments, setRawSegments] = useState<{ text: string; offset: number; duration: number }[]>([]);
   const [error, setError] = useState('');
 
-  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords();
 
   const decodedFilename = filename ? decodeURIComponent(filename) : '';
 
@@ -53,6 +56,9 @@ export default function LocalWatch() {
     () => mergeTranscriptSegmentsForDisplay(rawSegments),
     [rawSegments],
   );
+
+  const fullscreenRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, toggleFullscreen } = useFullscreen(fullscreenRef);
 
   const { videoRef, activeIndex, seekToOffset } = useLocalVideoPlayer(videoUrl, mergedSegments);
 
@@ -109,14 +115,56 @@ export default function LocalWatch() {
         </button>
       </div>
 
-      {/* HTML5 Video Player */}
-      <div className="watch-player-wrapper">
-        {videoUrl && (
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            controls
-            className="local-video-player"
+      {/* HTML5 Video Player with fullscreen container */}
+      <div
+        ref={fullscreenRef}
+        className={`local-watch-fullscreen-container${isFullscreen ? ' fullscreen' : ''}`}
+      >
+        <div className="watch-player-wrapper">
+          {videoUrl && (
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              controls
+              className="local-video-player"
+            />
+          )}
+        </div>
+
+        <button
+          className="local-watch-fullscreen-btn"
+          onClick={toggleFullscreen}
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+        >
+          {isFullscreen ? <FullscreenExitIcon size={20} /> : <FullscreenIcon size={20} />}
+        </button>
+
+        {/* Fullscreen subtitle overlay */}
+        {isFullscreen && activeIndex >= 0 && mergedSegments[activeIndex] && (
+          <div className="local-watch-subtitle-overlay">
+            <span className="subtitle-text">
+              <TokenizedText
+                text={mergedSegments[activeIndex].text}
+                savedWords={savedWordsSet}
+                onWordClick={handleWordClick}
+              />
+            </span>
+          </div>
+        )}
+
+        {/* Word popup (inside fullscreen container so it's visible in fullscreen) */}
+        {popup && user && (
+          <WordPopup
+            word={popup.word}
+            sentence={popup.sentence}
+            nativeLang={user.native_language || 'en'}
+            targetLang={user.target_language || undefined}
+            anchorRect={popup.rect}
+            onClose={() => setPopup(null)}
+            isWordSaved={isWordSaved}
+            isDefinitionSaved={isDefinitionSaved}
+            onSaveWord={addWord}
+            onOptimisticSave={addOptimistic}
           />
         )}
       </div>
@@ -148,21 +196,6 @@ export default function LocalWatch() {
           />
         )}
       </div>
-
-      {/* Word popup */}
-      {popup && user && (
-        <WordPopup
-          word={popup.word}
-          sentence={popup.sentence}
-          nativeLang={user.native_language || 'en'}
-          targetLang={user.target_language || undefined}
-          anchorRect={popup.rect}
-          onClose={() => setPopup(null)}
-          isWordSaved={isWordSaved}
-          isDefinitionSaved={isDefinitionSaved}
-          onSaveWord={addWord}
-        />
-      )}
     </div>
   );
 }

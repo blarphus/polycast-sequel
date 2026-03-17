@@ -140,6 +140,76 @@
   background: #000;
 }
 
+/* ---- Fullscreen container & subtitle overlay ---- */
+
+.local-watch-fullscreen-container {
+  position: relative;
+}
+
+.local-watch-fullscreen-container.fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.local-watch-fullscreen-container.fullscreen .watch-player-wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+.local-watch-fullscreen-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.local-watch-fullscreen-container:hover .local-watch-fullscreen-btn {
+  opacity: 1;
+}
+
+.local-watch-fullscreen-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.local-watch-subtitle-overlay {
+  position: absolute;
+  bottom: 4rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  padding: 0 2rem;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.local-watch-subtitle-overlay .subtitle-text {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  line-height: 1.4;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.3rem 0.8rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
 /* ---- Mobile ---- */
 
 @media (max-width: 600px) {

@@ -23,7 +23,7 @@ export default function Watch() {
 
   const [popup, setPopup] = useState<PopupState | null>(null);
 
-  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord } = useSavedWords();
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords();
   const {
     video,
     loading,
@@ -163,6 +163,7 @@ export default function Watch() {
           isWordSaved={isWordSaved}
           isDefinitionSaved={isDefinitionSaved}
           onSaveWord={addWord}
+          onOptimisticSave={addOptimistic}
         />
       )}
     </div>
