@@ -194,12 +194,12 @@ export default function LocalWatch() {
           </div>
         )}
 
-        {/* Fullscreen subtitle overlay */}
-        {isFullscreen && activeIndex >= 0 && mergedSegments[activeIndex] && (
+        {/* Subtitle overlay (always visible over the video) */}
+        {activeIndex >= 0 && mergedSegments[activeIndex] && (
           <div className="local-watch-subtitle-overlay">
             <span
               className="subtitle-text"
-              style={{ fontSize: `${SUBTITLE_SIZES[subtitleSizeIdx]}rem` }}
+              style={isFullscreen ? { fontSize: `${SUBTITLE_SIZES[subtitleSizeIdx]}rem` } : undefined}
             >
               <TokenizedText
                 text={mergedSegments[activeIndex].text}

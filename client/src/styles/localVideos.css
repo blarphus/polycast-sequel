@@ -229,7 +229,7 @@
 
 .local-watch-subtitle-overlay {
   position: absolute;
-  bottom: 4rem;
+  bottom: 3rem;
   left: 0;
   right: 0;
   display: flex;
@@ -249,7 +249,7 @@
 }
 
 .local-watch-subtitle-overlay .subtitle-text {
-  font-size: 1.8rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #fff;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
@@ -258,6 +258,14 @@
   padding: 0.3rem 0.8rem;
   border-radius: 8px;
   text-align: center;
+}
+
+.local-watch-fullscreen-container.fullscreen .local-watch-subtitle-overlay .subtitle-text {
+  font-size: 1.8rem;
+}
+
+.local-watch-fullscreen-container.fullscreen .local-watch-subtitle-overlay {
+  bottom: 4rem;
 }
 
 /* ---- Mobile ---- */
