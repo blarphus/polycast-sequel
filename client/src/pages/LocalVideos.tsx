@@ -14,6 +14,14 @@ import {
 const VIDEO_EXTENSIONS = new Set(['mp4', 'avi', 'mkv', 'webm', 'mov', 'ogv']);
 const SRT_EXTENSION = 'srt';
 
+function formatTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 function getExtension(name: string): string {
   const dot = name.lastIndexOf('.');
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
@@ -197,21 +205,24 @@ export default function LocalVideos() {
                     <span className="local-video-card-name">{entry.name}</span>
                     <span className="local-video-card-meta">
                       {(entry.videoFile.size / (1024 * 1024)).toFixed(0)} MB
+                      {prog && prog.duration > 0 && (
+                        <> &middot; {formatTime(prog.currentTime)} / {formatTime(prog.duration)}</>
+                      )}
                     </span>
+                    {pct > 0 && (
+                      <div className="local-video-card-progress">
+                        <div
+                          className={`local-video-card-progress-fill${prog?.completed ? ' completed' : ''}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
                   {entry.srtFile && (
                     <span className="local-video-card-srt" title="Subtitles available">
                       <CheckIcon size={14} />
                       SRT
                     </span>
-                  )}
-                  {pct > 0 && (
-                    <div className="local-video-card-progress">
-                      <div
-                        className={`local-video-card-progress-fill${prog?.completed ? ' completed' : ''}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
                   )}
                 </button>
               );
