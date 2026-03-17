@@ -24,6 +24,7 @@ export default function LocalWatch() {
   const { user } = useAuth();
 
   const [popup, setPopup] = useState<PopupState | null>(null);
+  const wasPlayingRef = useRef(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [rawSegments, setRawSegments] = useState<{ text: string; offset: number; duration: number }[]>([]);
   const [error, setError] = useState('');
@@ -107,7 +108,20 @@ export default function LocalWatch() {
 
   const handleWordClick = (e: React.MouseEvent<HTMLSpanElement>, word: string, sentence: string) => {
     const rect = (e.target as HTMLElement).getBoundingClientRect();
+    const video = videoRef.current;
+    if (video && !video.paused) {
+      wasPlayingRef.current = true;
+      video.pause();
+    }
     setPopup({ word, sentence, rect });
+  };
+
+  const handlePopupClose = () => {
+    setPopup(null);
+    if (wasPlayingRef.current) {
+      wasPlayingRef.current = false;
+      videoRef.current?.play();
+    }
   };
 
   if (error) {
@@ -177,7 +191,7 @@ export default function LocalWatch() {
             nativeLang={user.native_language || 'en'}
             targetLang={user.target_language || undefined}
             anchorRect={popup.rect}
-            onClose={() => setPopup(null)}
+            onClose={handlePopupClose}
             isWordSaved={isWordSaved}
             isDefinitionSaved={isDefinitionSaved}
             onSaveWord={addWord}
