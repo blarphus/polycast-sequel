@@ -42,7 +42,17 @@ export class TranscriptionService {
 
     // Create AudioContext at 16 kHz for native PCM capture
     this.audioContext = new AudioContext({ sampleRate: 16000 });
-    console.log('[transcription] AudioContext created, sampleRate=', this.audioContext.sampleRate);
+    console.log('[transcription] AudioContext created, sampleRate=', this.audioContext.sampleRate, 'state=', this.audioContext.state);
+
+    // iOS Safari starts AudioContext in 'suspended' state — resume it so
+    // onaudioprocess events actually fire.
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume().then(() => {
+        console.log('[transcription] AudioContext resumed successfully, state=', this.audioContext?.state);
+      }).catch((err) => {
+        console.error('[transcription] AudioContext.resume() failed:', err);
+      });
+    }
 
     this.sourceNode = this.audioContext.createMediaStreamSource(stream);
 

@@ -93,8 +93,15 @@
     padding-bottom: 6rem;
   }
 
-  .transcript-panel {
-    height: clamp(120px, 25vh, 220px);
+  .call-page .call-video-area {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .call-page .transcript-panel {
+    flex: 1;
+    height: auto;
+    max-height: none;
   }
 
   .test-label {
