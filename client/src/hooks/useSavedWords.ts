@@ -8,11 +8,17 @@ import { toErrorMessage } from '../utils/errors';
 
 function parseWordForms(rawForms: string | null | undefined, word: string) {
   if (!rawForms) return [];
-  const parsed = JSON.parse(rawForms);
-  if (!Array.isArray(parsed)) {
-    throw new Error(`Saved forms payload for "${word}" is not an array`);
+  try {
+    const parsed = JSON.parse(rawForms);
+    if (!Array.isArray(parsed)) {
+      console.error(`Saved forms payload for "${word}" is not an array:`, rawForms);
+      return [];
+    }
+    return parsed.filter((value): value is string => typeof value === 'string');
+  } catch (err) {
+    console.error(`Invalid JSON in forms for "${word}":`, rawForms, err);
+    return [];
   }
-  return parsed.filter((value): value is string => typeof value === 'string');
 }
 
 export function useSavedWords() {
