@@ -64,8 +64,8 @@ router.get('/api/ice-servers', authMiddleware, async (req, res) => {
     iceServers.push(...metered);
     return res.json({ iceServers });
   } catch (err) {
-    req.log.error('[ice-servers] Failed to fetch Metered TURN credentials: %s', err.message);
-    return res.status(500).json({ error: err.message || 'ICE server configuration failed' });
+    req.log.warn('[ice-servers] TURN unavailable, falling back to STUN only: %s', err.message);
+    return res.json({ iceServers });
   }
 });
 
