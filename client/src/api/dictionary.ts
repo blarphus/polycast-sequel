@@ -129,10 +129,45 @@ export interface SavedWord {
   priority: boolean;
   image_term: string | null;
   queue_position: number | null;
+  introduced_date: string | null;
 }
 
 export function getSavedWords() {
   return request<SavedWord[]>('/dictionary/words', { cacheTtlMs: 30_000 });
+}
+
+export type DictionarySortMode = 'queue' | 'date' | 'az' | 'freq-high' | 'freq-low' | 'due';
+
+export interface DictionaryWordGroup {
+  key: string;
+  word: string;
+  target_language: string | null;
+  entries: SavedWord[];
+  primaryEntry: SavedWord;
+  hasNew: boolean;
+  hasPriority: boolean;
+  maxFrequency: number | null;
+  earliestDueTime: number;
+  earliestCreatedTime: number;
+  mostRecentCreatedTime: number;
+}
+
+export interface DictionaryWordGroupPage {
+  groups: DictionaryWordGroup[];
+  dueNextGroupKeys: string[];
+  page: number;
+  totalGroups: number;
+  totalPages: number;
+}
+
+export function getDictionaryWordGroups(page: number, limit: number, search: string, sort: DictionarySortMode) {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+    search,
+    sort,
+  });
+  return request<DictionaryWordGroupPage>(`/dictionary/word-groups?${params}`, { cacheTtlMs: 10_000 });
 }
 
 export function saveWord(data: SaveWordData) {
@@ -172,4 +207,22 @@ export function reorderQueue(items: Array<{ id: string; queue_position: number }
     method: 'PATCH',
     body: { items },
   });
+}
+
+export interface CalendarDayCount {
+  date: string;
+  count: number;
+}
+
+export interface CalendarCounts {
+  days: CalendarDayCount[];
+  newToday: number;
+}
+
+export function getCalendarCounts(year: number, month: number) {
+  return request<CalendarCounts>(`/dictionary/calendar?year=${year}&month=${month}`);
+}
+
+export function getCalendarDayWords(date: string) {
+  return request<SavedWord[]>(`/dictionary/calendar/${date}`);
 }

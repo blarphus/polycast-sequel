@@ -2,9 +2,8 @@
 // pages/Practice.tsx -- Practice quiz page (conjugation, grammar, translation)
 // ---------------------------------------------------------------------------
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import {
   generateQuiz,
   createQuizSession,
@@ -15,19 +14,13 @@ import {
   type QuizSessionResult,
 } from '../api';
 import { playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
-import { TargetIcon, BoltIcon, CheckCircleIcon, CloseIcon, MicIcon } from '../components/icons';
+import { TargetIcon, BoltIcon, CheckCircleIcon, CloseIcon, MicIcon, CalendarIcon } from '../components/icons';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 type Phase = 'config' | 'generating' | 'active' | 'feedback' | 'results';
-
-interface AnswerRecord {
-  questionIndex: number;
-  userAnswer: string;
-  result: QuizAnswerResult;
-}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -36,7 +29,6 @@ interface AnswerRecord {
 export default function Practice() {
   const { videoId } = useParams<{ videoId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   // Phase state machine
   const [phase, setPhase] = useState<Phase>(videoId ? 'generating' : 'config');
@@ -53,7 +45,6 @@ export default function Practice() {
   const [wordBankPool, setWordBankPool] = useState<string[]>([]);
   const [currentFeedback, setCurrentFeedback] = useState<QuizAnswerResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [answerRecords, setAnswerRecords] = useState<AnswerRecord[]>([]);
 
   // Results
   const [results, setResults] = useState<QuizSessionResult | null>(null);
@@ -126,7 +117,6 @@ export default function Practice() {
     try {
       const result = await submitQuizAnswer(sessionId, currentIndex, answer);
       setCurrentFeedback(result);
-      setAnswerRecords((prev) => [...prev, { questionIndex: currentIndex, userAnswer: answer, result }]);
 
       if (result.isCorrect) {
         playCorrectSound();
@@ -262,6 +252,18 @@ export default function Practice() {
                 See a sentence in your language, say it in your target language, get concise spoken feedback.
               </div>
             </button>
+            <button
+              className="practice-mode-card"
+              onClick={() => navigate('/calendar')}
+            >
+              <div className="practice-mode-card-icon">
+                <CalendarIcon size={28} strokeWidth={1.5} />
+              </div>
+              <div className="practice-mode-card-title">Review Calendar</div>
+              <div className="practice-mode-card-desc">
+                See upcoming reviews across the month and plan your study sessions.
+              </div>
+            </button>
           </div>
 
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>
@@ -341,7 +343,6 @@ export default function Practice() {
           <div className="practice-results-actions">
             <button className="btn btn-primary" onClick={() => {
               setPhase(videoId ? 'generating' : 'config');
-              setAnswerRecords([]);
               setResults(null);
               sessionStartRef.current = Date.now();
               if (videoId) startQuiz(videoId);

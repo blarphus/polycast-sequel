@@ -8,7 +8,7 @@ import { validate } from '../lib/validate.js';
 import { applySrsReview } from '../lib/srsUpdate.js';
 import { synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup, resolveDictionaryLookupFast } from '../services/wordSemanticsService.js';
-import { listDueWords, listNewTodayWords } from '../lib/dictionaryQueries.js';
+import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listCalendarCounts, listCalendarDayWords } from '../lib/dictionaryQueries.js';
 
 const router = Router();
 
@@ -48,6 +48,22 @@ const imageProxyQuery = z.object({
 
 const imageSearchQuery = z.object({
   q: z.string().min(1, 'q is required'),
+});
+
+const calendarQuery = z.object({
+  year: z.coerce.number().int().min(2020).max(2100),
+  month: z.coerce.number().int().min(1).max(12),
+});
+
+const calendarDayParam = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
+});
+
+const wordsPageQuery = z.object({
+  page: z.coerce.number().int().min(0).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  search: z.string().optional(),
+  sort: z.enum(['queue', 'date', 'az', 'freq-high', 'freq-low', 'due']).optional(),
 });
 
 const wordImageBody = z.object({
@@ -334,6 +350,37 @@ router.patch('/api/dictionary/queue-reorder', authMiddleware, validate({ body: q
 });
 
 // ---------------------------------------------------------------------------
+// Review calendar
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/dictionary/calendar?year=2026&month=3 -- Due counts per day for a month
+ */
+router.get('/api/dictionary/calendar', authMiddleware, validate({ query: calendarQuery }), async (req, res) => {
+  try {
+    const { year, month } = req.query;
+    const result = await listCalendarCounts(pool, req.userId, year, month);
+    return res.json(result);
+  } catch (err) {
+    req.log.error({ err }, 'Error fetching calendar counts');
+    return res.status(500).json({ error: 'Failed to fetch calendar data' });
+  }
+});
+
+/**
+ * GET /api/dictionary/calendar/:date -- Words due on a specific day
+ */
+router.get('/api/dictionary/calendar/:date', authMiddleware, validate({ params: calendarDayParam }), async (req, res) => {
+  try {
+    const words = await listCalendarDayWords(pool, req.userId, req.params.date);
+    return res.json(words);
+  } catch (err) {
+    req.log.error({ err }, 'Error fetching calendar day words');
+    return res.status(500).json({ error: 'Failed to fetch day words' });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // New cards for today (never-reviewed, capped by daily_new_limit)
 // ---------------------------------------------------------------------------
 
@@ -407,6 +454,19 @@ router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, 'Error fetching saved words');
     return res.status(500).json({ error: 'Failed to fetch saved words' });
+  }
+});
+
+/**
+ * GET /api/dictionary/word-groups -- Paginated grouped dictionary view
+ */
+router.get('/api/dictionary/word-groups', authMiddleware, validate({ query: wordsPageQuery }), async (req, res) => {
+  try {
+    const payload = await listDictionaryGroupPage(pool, req.userId, req.query);
+    return res.json(payload);
+  } catch (err) {
+    req.log.error({ err }, 'Error fetching dictionary word groups');
+    return res.status(500).json({ error: 'Failed to fetch dictionary groups' });
   }
 });
 

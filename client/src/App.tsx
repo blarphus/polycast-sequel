@@ -32,6 +32,7 @@ import GroupCall from './pages/GroupCall';
 import ReadArticle from './pages/ReadArticle';
 import NewsCollection from './pages/collections/NewsCollection';
 import Practice from './pages/Practice';
+import Calendar from './pages/Calendar';
 import DrillPicker from './pages/DrillPicker';
 import VoicePractice from './pages/VoicePractice';
 import LocalVideos from './pages/LocalVideos';
@@ -46,7 +47,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 // ---------------------------------------------------------------------------
 
 function ProtectedRoute({ children, skipLanguageCheck }: { children: React.ReactNode; skipLanguageCheck?: boolean }) {
-  const { user, loading, authError } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -292,6 +293,14 @@ export default function App() {
             <ProtectedRoute>
               <ReadArticle />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <StudentRoute>
+              <Calendar />
+            </StudentRoute>
           }
         />
         <Route

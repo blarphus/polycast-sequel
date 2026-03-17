@@ -40,7 +40,8 @@ export async function applySrsReview(db, wordId, userId, answer) {
          last_reviewed_at = NOW(),
          correct_count = correct_count + $5,
          incorrect_count = incorrect_count + $6,
-         prompt_stage = $7
+         prompt_stage = $7,
+         introduced_date = CASE WHEN last_reviewed_at IS NULL THEN CURRENT_DATE ELSE introduced_date END
      WHERE id = $8 AND user_id = $9
      RETURNING *`,
     [

@@ -1,0 +1,234 @@
+/* ---------------------------------------------------------------------------
+   calendar.css -- Review calendar page
+   --------------------------------------------------------------------------- */
+
+.calendar-page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1rem 1rem 6rem;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.calendar-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.calendar-nav-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-nav-btn:hover {
+  background: var(--surface-hover);
+}
+
+.calendar-loading {
+  display: flex;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+/* Grid ----------------------------------------------------------------------- */
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar-day-name {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 0.25rem 0;
+}
+
+.calendar-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  padding: 2px;
+  position: relative;
+  font-family: inherit;
+  color: var(--text-primary);
+  min-height: 52px;
+}
+
+.calendar-cell.empty {
+  background: none;
+  cursor: default;
+}
+
+.calendar-cell:not(.empty):hover {
+  background: var(--surface-hover);
+}
+
+.calendar-cell.today {
+  border-color: var(--accent);
+}
+
+.calendar-cell.selected {
+  background: var(--surface-hover);
+  border-color: var(--text-primary);
+}
+
+.calendar-day-number {
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Badges --------------------------------------------------------------------- */
+
+.calendar-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.calendar-badge.green {
+  background: #16a34a22;
+  color: #16a34a;
+}
+
+.calendar-badge.yellow {
+  background: #ca8a0422;
+  color: #ca8a04;
+}
+
+.calendar-badge.red {
+  background: #dc262622;
+  color: #dc2626;
+}
+
+.calendar-badge.new {
+  background: #6366f122;
+  color: #6366f1;
+}
+
+/* Day detail panel ------------------------------------------------------------ */
+
+.calendar-day-detail {
+  margin-top: 1.25rem;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.calendar-day-detail-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+.calendar-empty-day {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.calendar-word-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calendar-word-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.calendar-word-row:last-child {
+  border-bottom: none;
+}
+
+.calendar-word-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.calendar-word-text {
+  font-weight: 600;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-word-translation {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-word-meta {
+  flex-shrink: 0;
+}
+
+.calendar-word-status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.calendar-word-status.new {
+  background: #6366f122;
+  color: #6366f1;
+}
+
+.calendar-word-status.learning {
+  background: #f59e0b22;
+  color: #f59e0b;
+}
+
+.calendar-word-status.due {
+  background: #dc262622;
+  color: #dc2626;
+}
+
+.calendar-word-status.upcoming {
+  background: #16a34a22;
+  color: #16a34a;
+}
+
+/* Back button ---------------------------------------------------------------- */
+
+.calendar-back {
+  margin-top: 1.25rem;
+  width: 100%;
+}
