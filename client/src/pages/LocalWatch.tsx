@@ -229,34 +229,32 @@ export default function LocalWatch() {
           {isFullscreen ? <FullscreenExitIcon size={20} /> : <FullscreenIcon size={20} />}
         </button>
 
-        {/* Subtitle size controls (fullscreen only) */}
-        {isFullscreen && (
-          <div className="local-watch-subtitle-controls">
-            <button
-              className="local-watch-subtitle-size-btn"
-              onClick={() => setSubtitleSizeIdx((i) => Math.max(0, i - 1))}
-              disabled={subtitleSizeIdx === 0}
-              aria-label="Decrease subtitle size"
-            >
-              A-
-            </button>
-            <button
-              className="local-watch-subtitle-size-btn"
-              onClick={() => setSubtitleSizeIdx((i) => Math.min(SUBTITLE_SIZES.length - 1, i + 1))}
-              disabled={subtitleSizeIdx === SUBTITLE_SIZES.length - 1}
-              aria-label="Increase subtitle size"
-            >
-              A+
-            </button>
-          </div>
-        )}
+        {/* Subtitle size controls */}
+        <div className="local-watch-subtitle-controls">
+          <button
+            className="local-watch-subtitle-size-btn"
+            onClick={() => setSubtitleSizeIdx((i) => Math.max(0, i - 1))}
+            disabled={subtitleSizeIdx === 0}
+            aria-label="Decrease subtitle size"
+          >
+            A-
+          </button>
+          <button
+            className="local-watch-subtitle-size-btn"
+            onClick={() => setSubtitleSizeIdx((i) => Math.min(SUBTITLE_SIZES.length - 1, i + 1))}
+            disabled={subtitleSizeIdx === SUBTITLE_SIZES.length - 1}
+            aria-label="Increase subtitle size"
+          >
+            A+
+          </button>
+        </div>
 
         {/* Subtitle overlay (always visible over the video) */}
         {activeIndex >= 0 && mergedSegments[activeIndex] && (
           <div className="local-watch-subtitle-overlay">
             <span
               className="subtitle-text"
-              style={isFullscreen ? { fontSize: `${SUBTITLE_SIZES[subtitleSizeIdx]}rem` } : undefined}
+              style={{ fontSize: `${SUBTITLE_SIZES[subtitleSizeIdx]}rem` }}
             >
               <TokenizedText
                 text={mergedSegments[activeIndex].text}

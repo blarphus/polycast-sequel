@@ -162,7 +162,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
         ) : (
           <>
             <div className="word-popup-translation-row">
-              <p className="word-popup-translation">{translation}</p>
+              <p className="word-popup-translation">{definition || translation}</p>
               {newDefinition && !saved && <span className="word-popup-new-def-pill">New definition!</span>}
             </div>
             {partOfSpeech && <span className={`word-popup-pos pos-${partOfSpeech.toLowerCase()}`}>{partOfSpeech}</span>}
@@ -175,8 +175,8 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
                 <p className="word-popup-example-sentence" dangerouslySetInnerHTML={{ __html: example.replace(/~([^~]+)~/g, '<span class="word-popup-example-highlight">$1</span>') }} />
                 {exampleTranslation && <p className="word-popup-example-translation" dangerouslySetInnerHTML={{ __html: exampleTranslation.replace(/~([^~]+)~/g, '<span class="word-popup-example-highlight">$1</span>') }} />}
               </div>
-            ) : definition ? (
-              <p className="word-popup-definition">{definition}</p>
+            ) : translation && translation !== (definition || translation) ? (
+              <p className="word-popup-definition">{translation}</p>
             ) : null}
             <div className="word-popup-footer">
               {(example || sentenceTranslation) && (
