@@ -4,16 +4,19 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TranscriptSegment } from '../api';
+import { saveVideoProgress } from '../utils/localVideoStore';
 
 export function useLocalVideoPlayer(
   videoUrl: string | null,
   mergedSegments: TranscriptSegment[],
+  videoName?: string,
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [videoEnded, setVideoEnded] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mergedSegmentsRef = useRef(mergedSegments);
+  const lastSaveRef = useRef(0);
   mergedSegmentsRef.current = mergedSegments;
 
   const stopPolling = useCallback(() => {
@@ -40,8 +43,17 @@ export function useLocalVideoPlayer(
         }
       }
       setActiveIndex(idx);
+
+      // Save progress every 5 seconds
+      if (videoName && video.duration) {
+        const now = Date.now();
+        if (now - lastSaveRef.current > 5000) {
+          saveVideoProgress(videoName, video.currentTime, video.duration);
+          lastSaveRef.current = now;
+        }
+      }
     }, 250);
-  }, [stopPolling]);
+  }, [stopPolling, videoName]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -51,10 +63,18 @@ export function useLocalVideoPlayer(
       startPolling();
       setVideoEnded(false);
     };
-    const onPause = () => stopPolling();
+    const onPause = () => {
+      stopPolling();
+      if (videoName && video.duration) {
+        saveVideoProgress(videoName, video.currentTime, video.duration);
+      }
+    };
     const onEnded = () => {
       stopPolling();
       setVideoEnded(true);
+      if (videoName && video.duration) {
+        saveVideoProgress(videoName, video.duration, video.duration);
+      }
     };
 
     video.addEventListener('play', onPlay);
@@ -67,7 +87,7 @@ export function useLocalVideoPlayer(
       video.removeEventListener('pause', onPause);
       video.removeEventListener('ended', onEnded);
     };
-  }, [videoUrl, startPolling, stopPolling]);
+  }, [videoUrl, startPolling, stopPolling, videoName]);
 
   const seekToOffset = useCallback((offset: number) => {
     const video = videoRef.current;

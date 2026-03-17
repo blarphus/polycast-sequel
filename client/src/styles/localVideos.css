@@ -83,6 +83,8 @@
   text-align: left;
   width: 100%;
   font-family: var(--font);
+  position: relative;
+  overflow: hidden;
 }
 
 .local-video-card:hover {
@@ -90,11 +92,45 @@
   box-shadow: 0 2px 12px rgba(108, 99, 255, 0.15);
 }
 
-.local-video-card-icon {
+/* ---- Thumbnail ---- */
+
+.local-video-card-thumb {
   flex-shrink: 0;
-  color: var(--accent);
-  display: flex;
+  width: 80px;
+  height: 45px;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  background: #1a1a2e;
 }
+
+.local-video-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.local-video-card-thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1a1a2e, #2a2a3e);
+}
+
+.local-video-card-check {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: var(--success);
+}
+
+/* ---- Card info ---- */
 
 .local-video-card-info {
   flex: 1;
@@ -129,6 +165,28 @@
   background: var(--bg-elevated);
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
+}
+
+/* ---- Progress bar ---- */
+
+.local-video-card-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.local-video-card-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 0 1px 0 0;
+  transition: width 0.3s ease;
+}
+
+.local-video-card-progress-fill.completed {
+  background: var(--success);
 }
 
 /* ---- Local video player (inside watch-player-wrapper) ---- */

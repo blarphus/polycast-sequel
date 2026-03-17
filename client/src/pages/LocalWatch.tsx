@@ -14,7 +14,7 @@ import { PopupState } from '../textTokens';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
 import { useLocalVideoPlayer } from '../hooks/useLocalVideoPlayer';
 import { mergeTranscriptSegmentsForDisplay } from '../watchTranscript';
-import { getLocalVideo } from '../utils/localVideoStore';
+import { getLocalVideo, loadDirHandle, loadFromDirHandle, getVideoProgress } from '../utils/localVideoStore';
 import { parseSrt } from '../utils/srtParser';
 import { FullscreenIcon, FullscreenExitIcon } from '../components/icons';
 
@@ -30,29 +30,59 @@ export default function LocalWatch() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [rawSegments, setRawSegments] = useState<{ text: string; offset: number; duration: number }[]>([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords();
 
   const decodedFilename = filename ? decodeURIComponent(filename) : '';
 
-  // Load video + SRT on mount
+  // Load video + SRT on mount (try restoring from IndexedDB if needed)
   useEffect(() => {
-    const entry = getLocalVideo(decodedFilename);
-    if (!entry) {
-      setError('Video not found. Go back and re-select the folder.');
-      return;
-    }
+    let cancelled = false;
+    let objectUrl: string | null = null;
 
-    const url = URL.createObjectURL(entry.videoFile);
-    setVideoUrl(url);
+    const loadVideo = async () => {
+      let entry = getLocalVideo(decodedFilename);
 
-    if (entry.srtFile) {
-      entry.srtFile.text().then((content) => {
-        setRawSegments(parseSrt(content));
-      });
-    }
+      // Try restoring from saved directory handle
+      if (!entry) {
+        const handle = await loadDirHandle();
+        if (handle && !cancelled) {
+          try {
+            await loadFromDirHandle(handle);
+            entry = getLocalVideo(decodedFilename);
+          } catch (err) {
+            console.error('Failed to restore directory:', err);
+          }
+        }
+      }
 
-    return () => URL.revokeObjectURL(url);
+      if (cancelled) return;
+
+      if (!entry) {
+        setError('Video not found. Go back and re-select the folder.');
+        setLoading(false);
+        return;
+      }
+
+      objectUrl = URL.createObjectURL(entry.videoFile);
+      setVideoUrl(objectUrl);
+
+      if (entry.srtFile) {
+        entry.srtFile.text().then((content) => {
+          if (!cancelled) setRawSegments(parseSrt(content));
+        });
+      }
+
+      setLoading(false);
+    };
+
+    loadVideo();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [decodedFilename]);
 
   const mergedSegments = useMemo(
@@ -63,7 +93,26 @@ export default function LocalWatch() {
   const fullscreenRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, toggleFullscreen } = useFullscreen(fullscreenRef);
 
-  const { videoRef, activeIndex, seekToOffset } = useLocalVideoPlayer(videoUrl, mergedSegments);
+  const { videoRef, activeIndex, seekToOffset } = useLocalVideoPlayer(videoUrl, mergedSegments, decodedFilename);
+
+  // Resume from saved progress
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoUrl) return;
+    const prog = getVideoProgress(decodedFilename);
+    if (prog && prog.currentTime > 0 && !prog.completed) {
+      const onReady = () => {
+        video.currentTime = prog.currentTime;
+        video.removeEventListener('loadedmetadata', onReady);
+      };
+      if (video.readyState >= 1) {
+        video.currentTime = prog.currentTime;
+      } else {
+        video.addEventListener('loadedmetadata', onReady);
+        return () => video.removeEventListener('loadedmetadata', onReady);
+      }
+    }
+  }, [videoUrl, decodedFilename]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
     transcriptRef,
@@ -125,6 +174,14 @@ export default function LocalWatch() {
       videoRef.current?.play();
     }
   };
+
+  if (loading) {
+    return (
+      <div className="watch-page">
+        <p className="watch-transcript-status" style={{ margin: '2rem 0' }}>Loading video...</p>
+      </div>
+    );
+  }
 
   if (error) {
     return (

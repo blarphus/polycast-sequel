@@ -2,10 +2,14 @@
 // pages/LocalVideos.tsx — Browse and select local video files from a folder
 // ---------------------------------------------------------------------------
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FolderIcon, PlayCircleIcon, CheckIcon } from '../components/icons';
-import { setLocalVideos, getLocalVideos, LocalVideoEntry } from '../utils/localVideoStore';
+import { FolderIcon, CheckCircleIcon, CheckIcon } from '../components/icons';
+import {
+  setLocalVideos, getLocalVideos, LocalVideoEntry,
+  saveDirHandle, loadDirHandle, loadFromDirHandle,
+  generateThumbnail, getAllProgress, VideoProgress,
+} from '../utils/localVideoStore';
 
 const VIDEO_EXTENSIONS = new Set(['mp4', 'avi', 'mkv', 'webm', 'mov', 'ogv']);
 const SRT_EXTENSION = 'srt';
@@ -24,8 +28,76 @@ export default function LocalVideos() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [videos, setVideos] = useState<LocalVideoEntry[]>(() => getLocalVideos());
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const [progress, setProgress] = useState<Record<string, VideoProgress>>(() => getAllProgress());
+  const [restoring, setRestoring] = useState(false);
 
-  const handleFolderSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const generateThumbnails = useCallback((entries: LocalVideoEntry[]) => {
+    entries.forEach((entry) => {
+      generateThumbnail(entry.videoFile)
+        .then((dataUrl) => {
+          setThumbnails((prev) => ({ ...prev, [entry.name]: dataUrl }));
+        })
+        .catch(() => {});
+    });
+  }, []);
+
+  // Try to restore from saved directory handle on mount
+  useEffect(() => {
+    if (videos.length > 0) {
+      generateThumbnails(videos);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setRestoring(true);
+      const handle = await loadDirHandle();
+      if (!handle || cancelled) { setRestoring(false); return; }
+      try {
+        const restored = await loadFromDirHandle(handle);
+        if (!cancelled && restored.length > 0) {
+          setVideos(restored);
+          generateThumbnails(restored);
+        }
+      } catch (err) {
+        console.error('Failed to restore directory:', err);
+      }
+      if (!cancelled) setRestoring(false);
+    })();
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refresh progress when returning to this page
+  useEffect(() => {
+    setProgress(getAllProgress());
+  }, []);
+
+  const processEntries = useCallback((entries: LocalVideoEntry[]) => {
+    setLocalVideos(entries);
+    setVideos(entries);
+    setProgress(getAllProgress());
+    generateThumbnails(entries);
+  }, [generateThumbnails]);
+
+  const handleFolderSelect = useCallback(async () => {
+    // Try File System Access API first (persists across refreshes)
+    if ('showDirectoryPicker' in window) {
+      try {
+        const handle = await (window as any).showDirectoryPicker();
+        await saveDirHandle(handle);
+        const entries = await loadFromDirHandle(handle);
+        processEntries(entries);
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+        console.error('showDirectoryPicker failed, falling back to input:', err);
+      }
+    }
+    // Fallback to webkitdirectory input
+    inputRef.current?.click();
+  }, [processEntries]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -47,9 +119,8 @@ export default function LocalVideos() {
         name: videoFile.name,
       }));
 
-    setLocalVideos(entries);
-    setVideos(entries);
-  }, []);
+    processEntries(entries);
+  }, [processEntries]);
 
   const handleVideoClick = useCallback(
     (entry: LocalVideoEntry) => {
@@ -64,7 +135,7 @@ export default function LocalVideos() {
         <h1 className="local-videos-title">Local Videos</h1>
         <button
           className="btn btn-primary local-videos-folder-btn"
-          onClick={() => inputRef.current?.click()}
+          onClick={handleFolderSelect}
         >
           <FolderIcon size={18} />
           <span>{videos.length > 0 ? 'Change Folder' : 'Open Folder'}</span>
@@ -77,11 +148,15 @@ export default function LocalVideos() {
           directory=""
           multiple
           style={{ display: 'none' }}
-          onChange={handleFolderSelect}
+          onChange={handleInputChange}
         />
       </div>
 
-      {videos.length === 0 ? (
+      {restoring ? (
+        <div className="local-videos-empty">
+          <p>Loading videos...</p>
+        </div>
+      ) : videos.length === 0 ? (
         <div className="local-videos-empty">
           <FolderIcon size={48} />
           <p>Select a folder containing video files (.mp4, .avi, .mkv, etc.)</p>
@@ -95,29 +170,52 @@ export default function LocalVideos() {
             {videos.length} video{videos.length !== 1 ? 's' : ''} found
           </p>
           <div className="local-videos-list">
-            {videos.map((entry) => (
-              <button
-                key={entry.name}
-                className="local-video-card"
-                onClick={() => handleVideoClick(entry)}
-              >
-                <div className="local-video-card-icon">
-                  <PlayCircleIcon size={24} />
-                </div>
-                <div className="local-video-card-info">
-                  <span className="local-video-card-name">{entry.name}</span>
-                  <span className="local-video-card-meta">
-                    {(entry.videoFile.size / (1024 * 1024)).toFixed(0)} MB
-                  </span>
-                </div>
-                {entry.srtFile && (
-                  <span className="local-video-card-srt" title="Subtitles available">
-                    <CheckIcon size={14} />
-                    SRT
-                  </span>
-                )}
-              </button>
-            ))}
+            {videos.map((entry) => {
+              const prog = progress[entry.name];
+              const pct = prog && prog.duration > 0
+                ? Math.min(100, (prog.currentTime / prog.duration) * 100)
+                : 0;
+              return (
+                <button
+                  key={entry.name}
+                  className="local-video-card"
+                  onClick={() => handleVideoClick(entry)}
+                >
+                  <div className="local-video-card-thumb">
+                    {thumbnails[entry.name] ? (
+                      <img src={thumbnails[entry.name]} alt="" />
+                    ) : (
+                      <div className="local-video-card-thumb-placeholder" />
+                    )}
+                    {prog?.completed && (
+                      <div className="local-video-card-check">
+                        <CheckCircleIcon size={20} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="local-video-card-info">
+                    <span className="local-video-card-name">{entry.name}</span>
+                    <span className="local-video-card-meta">
+                      {(entry.videoFile.size / (1024 * 1024)).toFixed(0)} MB
+                    </span>
+                  </div>
+                  {entry.srtFile && (
+                    <span className="local-video-card-srt" title="Subtitles available">
+                      <CheckIcon size={14} />
+                      SRT
+                    </span>
+                  )}
+                  {pct > 0 && (
+                    <div className="local-video-card-progress">
+                      <div
+                        className={`local-video-card-progress-fill${prog?.completed ? ' completed' : ''}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </>
       )}
