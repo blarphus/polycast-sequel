@@ -2,7 +2,7 @@
 // components/WordLookupModal.tsx -- Look up words via Wiktionary DB and save them
 // ---------------------------------------------------------------------------
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { wiktLookup, enrichWord } from '../api';
 import type { WiktSense } from '../api';
 import { useDictionaryToast } from '../hooks/useDictionaryToast';

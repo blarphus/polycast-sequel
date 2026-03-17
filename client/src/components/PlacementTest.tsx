@@ -2,7 +2,7 @@
 // components/PlacementTest.tsx -- CEFR vocabulary placement test
 // ---------------------------------------------------------------------------
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getPlacementWords } from '../api';
 import { toErrorMessage } from '../utils/errors';
 

@@ -2,11 +2,10 @@
 // components/classwork/CreatePostModal.tsx — Create-post components
 // ---------------------------------------------------------------------------
 
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import * as api from '../../api';
 import type { StreamPost, StreamTopic, StreamAttachment, LessonItem, WordOverride, Recurrence } from '../../api';
 
-import AttachmentEditor from '../AttachmentEditor';
 import WordListTab from './WordListTab';
 import MaterialTab from './MaterialTab';
 import LessonTab from './LessonTab';
@@ -15,8 +14,6 @@ import { DocumentIcon, BookIcon, TypeIcon, CalendarIcon, CloseIcon } from '../ic
 import { useClickOutside } from '../../hooks/useClickOutside';
 
 export { LANGUAGES } from './languages';
-export { default as AttachmentEditor } from '../AttachmentEditor';
-export { LessonItemEditor } from './LessonTab';
 
 // ---------------------------------------------------------------------------
 // Create post modal

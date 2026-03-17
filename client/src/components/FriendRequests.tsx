@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getPendingRequests, acceptFriendRequest, rejectFriendRequest, FriendRequest } from '../api';
 import { socket } from '../socket';
 import { toErrorMessage } from '../utils/errors';

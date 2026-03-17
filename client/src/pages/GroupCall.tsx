@@ -2,7 +2,7 @@
 // pages/GroupCall.tsx — Group video call page with mesh WebRTC
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useGroupCall } from '../hooks/useGroupCall';

@@ -8,11 +8,10 @@ import { useSavedWords } from '../hooks/useSavedWords';
 import { getDueStatus, formatDuration } from '../utils/srs';
 import { formatDate } from '../utils/dateFormat';
 import { renderTildeHighlight } from '../utils/tildeMarkup';
-import { buildDictionaryGroups, getDueNextGroupKeys, type DictionarySortMode } from '../utils/dictionaryGroups';
 import WordLookupModal from '../components/WordLookupModal';
 import ImagePicker from '../components/ImagePicker';
-import { proxyImageUrl } from '../api';
-import type { SavedWord } from '../api';
+import { getDictionaryWordGroups, proxyImageUrl } from '../api';
+import type { DictionarySortMode, DictionaryWordGroup, SavedWord } from '../api';
 import { SearchIcon, SearchMinusIcon, BookPlusIcon, ChevronDownIcon, TrashIcon, GripVerticalIcon } from '../components/icons';
 import { FrequencyDots, FREQUENCY_DOT_COLORS } from '../components/FrequencyDots';
 
@@ -101,7 +100,15 @@ const QUEUE_TINT_STYLES = buildQueueTintStyles(220, 38, 29, 35, 44);
 
 export default function Dictionary() {
   const { user } = useAuth();
-  const { words, loading, removeWord, addWord, addOptimistic, updateImage, isDefinitionSaved, reorderQueueWords } = useSavedWords();
+  const {
+    removeWord,
+    addWord,
+    addOptimistic,
+    updateImage,
+    isDefinitionSaved,
+    reorderQueueWords,
+    loadWords,
+  } = useSavedWords({ skipInitialLoad: true });
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<DictionarySortMode>('queue');
@@ -110,6 +117,11 @@ export default function Dictionary() {
   const [lookupOpen, setLookupOpen] = useState(false);
   const [imagePickerWord, setImagePickerWord] = useState<SavedWord | null>(null);
   const [page, setPage] = useState(0);
+  const [wordGroups, setWordGroups] = useState<DictionaryWordGroup[]>([]);
+  const [dueNextGroupKeys, setDueNextGroupKeys] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalGroups, setTotalGroups] = useState(0);
   const WORDS_PER_PAGE = 20;
 
   // DnD state
@@ -129,18 +141,30 @@ export default function Dictionary() {
     });
   };
 
-  const wordGroups = useMemo(() => {
-    return buildDictionaryGroups(words, search, sort);
-  }, [words, search, sort]);
+  const loadPage = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getDictionaryWordGroups(page, WORDS_PER_PAGE, search, sort);
+      setWordGroups(data.groups);
+      setDueNextGroupKeys(new Set(data.dueNextGroupKeys));
+      setTotalPages(data.totalPages);
+      setTotalGroups(data.totalGroups);
+      if (data.page !== page) setPage(data.page);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, sort]);
 
-  const dailyNewLimit = user?.daily_new_limit ?? 5;
-  const dueNextGroupKeys = useMemo(
-    () => getDueNextGroupKeys(wordGroups, dailyNewLimit),
-    [dailyNewLimit, wordGroups],
-  );
+  useEffect(() => {
+    void loadPage();
+  }, [loadPage]);
 
-  const totalPages = Math.ceil(wordGroups.length / WORDS_PER_PAGE);
-  const pageGroups = wordGroups.slice(page * WORDS_PER_PAGE, (page + 1) * WORDS_PER_PAGE);
+  useEffect(() => {
+    if (!lookupOpen) return;
+    void loadWords().catch(() => {});
+  }, [loadWords, lookupOpen]);
+
+  const pageGroups = wordGroups;
   const dueNextPageKeys = useMemo(
     () => (sort === 'queue' && page === 0
       ? pageGroups.filter((group) => dueNextGroupKeys.has(group.key)).map((group) => group.key)
@@ -187,7 +211,7 @@ export default function Dictionary() {
     }
 
     // Only reorder among new-card groups on the current page
-    const newGroups = wordGroups.filter((group) => group.hasNew);
+    const newGroups = wordGroups.filter((group) => dueNextGroupKeys.has(group.key));
     const dragIndex = newGroups.findIndex((g) => g.key === dragItem);
     const targetIndex = newGroups.findIndex((g) => g.key === targetKey);
     if (dragIndex === -1 || targetIndex === -1) {
@@ -208,7 +232,7 @@ export default function Dictionary() {
       }
     });
 
-    reorderQueueWords(items);
+    void reorderQueueWords(items).then(() => loadPage());
     setDragItem(null);
     setDragOverId(null);
   };
@@ -250,7 +274,7 @@ export default function Dictionary() {
               <option value="freq-low">Frequency low &rarr; high</option>
               <option value="due">Due soonest</option>
             </select>
-            <span className="dict-count">{wordGroups.length} word{wordGroups.length !== 1 ? 's' : ''}</span>
+            <span className="dict-count">{totalGroups} word{totalGroups !== 1 ? 's' : ''}</span>
             {user?.native_language && user?.target_language && (
               <button className="dict-lookup-btn" onClick={() => setLookupOpen(true)} title="Look up a word">+</button>
             )}
@@ -258,7 +282,7 @@ export default function Dictionary() {
 
           {loading ? (
             <p className="text-muted">Loading saved words...</p>
-          ) : wordGroups.length === 0 ? (
+          ) : totalGroups === 0 ? (
             <div className="dict-empty">
               {search ? (
                 <>
@@ -290,7 +314,7 @@ export default function Dictionary() {
                   const maxFreq = group.maxFrequency;
                   const freqColor = maxFreq != null ? FREQUENCY_DOT_COLORS[Math.ceil(maxFreq / 2) - 1] || FREQUENCY_DOT_COLORS[0] : undefined;
                   const inBracket = isQueueMode && page === 0 && dueNextGroupKeys.has(group.key);
-                  const isDraggable = isQueueMode && group.hasNew;
+                  const isDraggable = isQueueMode && dueNextGroupKeys.has(group.key);
                   const isDragOver = dragOverId === group.key;
                   return (
                     <div
@@ -386,7 +410,10 @@ export default function Dictionary() {
                                       </span>
                                     </div>
                                   )}
-                                  <button className="dict-remove-btn" onClick={() => removeWord(w.id)}>
+                                  <button className="dict-remove-btn" onClick={async () => {
+                                    await removeWord(w.id);
+                                    await loadPage();
+                                  }}>
                                     <TrashIcon size={16} />
                                     Remove
                                   </button>
@@ -455,7 +482,10 @@ export default function Dictionary() {
       {imagePickerWord && (
         <ImagePicker
           initialQuery={imagePickerWord.image_term || imagePickerWord.translation || imagePickerWord.word}
-          onSelect={async (url) => { await updateImage(imagePickerWord.id, url); }}
+          onSelect={async (url) => {
+            await updateImage(imagePickerWord.id, url);
+            await loadPage();
+          }}
           onClose={() => setImagePickerWord(null)}
         />
       )}
@@ -465,7 +495,11 @@ export default function Dictionary() {
           targetLang={user.target_language}
           nativeLang={user.native_language}
           isDefinitionSaved={isDefinitionSaved}
-          onSave={addWord}
+          onSave={async (data) => {
+            const saved = await addWord(data);
+            await loadPage();
+            return saved;
+          }}
           onOptimisticSave={addOptimistic}
           onClose={() => setLookupOpen(false)}
         />

@@ -25,10 +25,6 @@ export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
-export function formatLocalDate(iso: string): string {
-  return new Date(iso).toLocaleDateString();
-}
-
 export function formatUsTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }

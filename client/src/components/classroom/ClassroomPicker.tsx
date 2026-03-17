@@ -1,4 +1,3 @@
-import React from 'react';
 import type { Classroom } from '../../api';
 
 interface Props {

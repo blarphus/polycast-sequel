@@ -2,7 +2,7 @@
 // pages/Signup.tsx
 // ---------------------------------------------------------------------------
 
-import React, { useState, FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 

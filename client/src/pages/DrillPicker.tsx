@@ -2,7 +2,7 @@
 // pages/DrillPicker.tsx -- Tense picker + leaderboard for conjugation drills
 // ---------------------------------------------------------------------------
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getDrillSessions, saveDrillSession, type DrillSession } from '../api';

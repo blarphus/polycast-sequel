@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import * as api from '../../api';
 import type { StreamPostWord, WordOverride } from '../../api';
 import ImagePicker from '../ImagePicker';

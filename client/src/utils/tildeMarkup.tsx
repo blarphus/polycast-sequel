@@ -2,8 +2,6 @@
 // utils/tildeMarkup.tsx -- Shared ~word~ markup parsing helpers
 // ---------------------------------------------------------------------------
 
-import React from 'react';
-
 /** Parse ~word~ markup into JSX with highlighted spans using the given class. */
 export function renderTildeHighlight(text: string, className: string) {
   const parts = text.split(/~([^~]+)~/g);

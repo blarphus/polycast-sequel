@@ -78,9 +78,9 @@ export function useCollectionCardTextFit({
   secondaryText,
   variant,
 }: UseCollectionCardTextFitOptions): UseCollectionCardTextFitResult {
-  const bodyRef = useRef<HTMLDivElement | null>(null);
-  const textRef = useRef<HTMLDivElement | null>(null);
-  const titleRef = useRef<HTMLHeadingElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
   const [titleStyle, setTitleStyle] = useState<React.CSSProperties>({});
   const [secondaryStyle, setSecondaryStyle] = useState<React.CSSProperties>({});

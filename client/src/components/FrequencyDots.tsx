@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const FREQUENCY_DOT_COLORS = ['#ff4d4d', '#ff944d', '#ffdd4d', '#75d147', '#4ade80'];
 
 export function FrequencyDots({ frequency }: { frequency: number | null }) {

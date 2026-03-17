@@ -2,7 +2,7 @@
 // pages/Onboarding.tsx -- Post-signup language selection (required)
 // ---------------------------------------------------------------------------
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LANGUAGES } from '../components/classwork/languages';

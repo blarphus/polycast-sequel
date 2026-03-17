@@ -70,7 +70,7 @@ function isJoinable(post: StreamPost): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Lesson items display (reused from PostCards but kept local to avoid exports)
+// Lesson items display for expanded lesson posts
 // ---------------------------------------------------------------------------
 
 function LessonItemsList({ items }: { items: LessonItem[] }) {

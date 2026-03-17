@@ -1,0 +1,73 @@
+name: Polycast
+options:
+  bundleIdPrefix: com.patron
+packages:
+  WebRTC:
+    url: https://github.com/stasel/WebRTC
+    from: "126.0.0"
+  socket.io-client-swift:
+    url: https://github.com/socketio/socket.io-client-swift
+    from: "16.1.1"
+settings:
+  base:
+    SWIFT_VERSION: 6.0
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: DQNRTU7888
+targets:
+  Polycast:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Polycast/Sources
+    dependencies:
+      - package: WebRTC
+      - package: socket.io-client-swift
+        product: SocketIO
+    settings:
+      base:
+        PRODUCT_NAME: Polycast
+        PRODUCT_BUNDLE_IDENTIFIER: com.patron.polycast
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleName: Polycast
+        INFOPLIST_KEY_CFBundleDisplayName: Polycast
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIUserInterfaceStyle: Dark
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_NSCameraUsageDescription: Polycast needs camera access for video calls.
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: Polycast needs microphone access for audio and video calls.
+        INFOPLIST_KEY_UIBackgroundModes:
+          - voip
+          - remote-notification
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone:
+          - UIInterfaceOrientationPortrait
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 0.1.0
+    scheme:
+      testTargets:
+        - PolycastTests
+        - PolycastUITests
+  PolycastTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Polycast/Tests
+    dependencies:
+      - target: Polycast
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.patron.polycast.tests
+        GENERATE_INFOPLIST_FILE: YES
+  PolycastUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Polycast/UITests
+    dependencies:
+      - target: Polycast
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.patron.polycast.uitests
+        GENERATE_INFOPLIST_FILE: YES

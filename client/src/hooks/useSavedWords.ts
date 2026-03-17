@@ -18,13 +18,37 @@ function parseWordForms(rawForms: string | null | undefined) {
   return rawForms.split(',').map(s => s.trim()).filter(Boolean);
 }
 
-export function useSavedWords() {
+interface UseSavedWordsOptions {
+  skipInitialLoad?: boolean;
+}
+
+export function useSavedWords(options: UseSavedWordsOptions = {}) {
   const [words, setWords] = useState<SavedWord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [optimisticWords, setOptimisticWords] = useState<Set<string>>(new Set());
 
+  const loadWords = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getSavedWords();
+      setWords(data);
+      setError('');
+      return data;
+    } catch (err) {
+      console.error('Failed to load saved words:', err);
+      setError(toErrorMessage(err));
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
+    if (options.skipInitialLoad) {
+      setLoading(false);
+      return undefined;
+    }
     let cancelled = false;
     getSavedWords()
       .then((data) => {
@@ -38,7 +62,7 @@ export function useSavedWords() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [options.skipInitialLoad]);
 
   // Set of lowercased words for O(1) highlighting lookups (includes all inflected forms + optimistic)
   const savedWordsSet = useMemo(() => {
@@ -155,5 +179,5 @@ export function useSavedWords() {
     });
   }, []);
 
-  return { words, loading, error, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord, updateImage, reorderQueueWords };
+  return { words, loading, error, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord, updateImage, reorderQueueWords, loadWords };
 }

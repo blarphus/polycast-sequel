@@ -2,7 +2,6 @@
 // components/NewChatDrawer.tsx -- Bottom sheet for user search + friend requests
 // ---------------------------------------------------------------------------
 
-import React from 'react';
 import UserSearch from './UserSearch';
 import FriendRequests from './FriendRequests';
 

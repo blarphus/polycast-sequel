@@ -1,0 +1,33 @@
+{
+  "originHash" : "34fe534f639a3e58acc8f22b11f6247ee2ad9087a11dc711fe017e2cf5dced0c",
+  "pins" : [
+    {
+      "identity" : "socket.io-client-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/socketio/socket.io-client-swift",
+      "state" : {
+        "revision" : "42da871d9369f290d6ec4930636c40672143905b",
+        "version" : "16.1.1"
+      }
+    },
+    {
+      "identity" : "starscream",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/daltoniam/Starscream",
+      "state" : {
+        "revision" : "c6bfd1af48efcc9a9ad203665db12375ba6b145a",
+        "version" : "4.0.8"
+      }
+    },
+    {
+      "identity" : "webrtc",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stasel/WebRTC",
+      "state" : {
+        "revision" : "52dc517f23053538ad0e2e14280df8f94a3ec1a7",
+        "version" : "126.0.0"
+      }
+    }
+  ],
+  "version" : 3
+}

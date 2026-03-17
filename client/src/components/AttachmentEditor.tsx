@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { StreamAttachment } from '../api';
 
 interface AttachmentEditorProps {

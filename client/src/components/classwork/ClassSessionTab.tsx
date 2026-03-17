@@ -2,7 +2,7 @@
 // components/classwork/ClassSessionTab.tsx — Class session creation tab
 // ---------------------------------------------------------------------------
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { Recurrence } from '../../api';
 import { DAY_LABELS, DAY_VALUES } from './languages';
 import { toErrorMessage } from '../../utils/errors';

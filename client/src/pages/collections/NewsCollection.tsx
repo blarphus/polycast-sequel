@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CollectionGridPage from '../../components/collections/CollectionGridPage';
 import type { CollectionGridTileSize } from '../../components/collections/CollectionGrid';
@@ -201,7 +201,7 @@ export default function NewsCollection() {
           </div>
         </div>
       )}
-      renderItem={(item, index, size) => (
+      renderItem={(item, _index, size) => (
         <NewsTile
           article={item.article}
           size={size}

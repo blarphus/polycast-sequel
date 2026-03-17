@@ -2,7 +2,7 @@
 // components/classwork/MaterialTab.tsx — Material post creation tab
 // ---------------------------------------------------------------------------
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { StreamAttachment } from '../../api';
 import AttachmentEditor from '../AttachmentEditor';
 import { toErrorMessage } from '../../utils/errors';

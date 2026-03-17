@@ -2,13 +2,13 @@
 // components/icons.tsx — Centralized SVG icon components
 // ---------------------------------------------------------------------------
 
-import React from 'react';
+import type { CSSProperties } from 'react';
 
 interface IconProps {
   size?: number;
   strokeWidth?: number;
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 }
 
 const defaults = (
@@ -50,14 +50,6 @@ export function BoltIcon(props: IconProps = {}) {
   return (
     <svg {...defaults(props)}>
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
-  );
-}
-
-export function ChatBubbleIcon(props: IconProps = {}) {
-  return (
-    <svg {...defaults(props)}>
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }

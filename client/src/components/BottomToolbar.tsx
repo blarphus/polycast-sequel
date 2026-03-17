@@ -2,7 +2,7 @@
 // components/BottomToolbar.tsx -- Sidebar / bottom navigation bar
 // ---------------------------------------------------------------------------
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentDashboard } from '../api';

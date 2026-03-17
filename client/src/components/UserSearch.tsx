@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { searchUsers, UserResult, getFriends, getPendingRequests, sendFriendRequest, Friend, FriendRequest } from '../api';
 import { socket } from '../socket';

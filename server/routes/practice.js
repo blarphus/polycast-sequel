@@ -6,7 +6,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
-import { callGemini } from '../lib/gemini.js';
+import { callGemini, parseGeminiJson } from '../lib/gemini.js';
 import { getUserLanguagePrefs } from '../lib/userQueries.js';
 import { validate } from '../lib/validate.js';
 import { applySrsReview } from '../lib/srsUpdate.js';
@@ -108,7 +108,7 @@ router.post('/api/practice/generate', authMiddleware, validate({ body: generateB
       responseMimeType: 'application/json',
     });
 
-    const questions = JSON.parse(raw);
+    const questions = parseGeminiJson(raw, 'Practice quiz generation');
 
     if (!Array.isArray(questions) || questions.length === 0) {
       logger.error('Gemini returned invalid questions format: %s', raw.slice(0, 500));
@@ -388,7 +388,7 @@ Respond with ONLY a JSON object: {"is_correct": true/false, "feedback": "brief e
     responseMimeType: 'application/json',
   });
 
-  return JSON.parse(raw);
+  return parseGeminiJson(raw, 'Practice answer validation');
 }
 
 export default router;

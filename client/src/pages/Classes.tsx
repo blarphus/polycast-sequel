@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../api';
 import type { Classroom } from '../api';
@@ -56,7 +56,6 @@ export default function Classes() {
   const [createError, setCreateError] = useState('');
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   const sortedClassrooms = useMemo(
@@ -99,15 +98,12 @@ export default function Classes() {
       ? `Delete "${classroom.name}"? This will remove all ${classroom.student_count} student${classroom.student_count === 1 ? '' : 's'}, posts, and topics permanently.`
       : `Delete "${classroom.name}"? All posts and topics will be permanently removed.`;
     if (!confirm(msg)) return;
-    setDeletingId(classroom.id);
     try {
       await api.deleteClassroom(classroom.id);
       await reloadClassrooms();
     } catch (err) {
       console.error('Failed to delete classroom:', err);
       setCreateError(err instanceof Error ? err.message : 'Failed to delete classroom');
-    } finally {
-      setDeletingId(null);
     }
   };
 

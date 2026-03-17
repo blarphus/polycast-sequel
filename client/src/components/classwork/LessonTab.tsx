@@ -2,7 +2,7 @@
 // components/classwork/LessonTab.tsx — Lesson post creation tab
 // ---------------------------------------------------------------------------
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { LessonItem } from '../../api';
 import AttachmentEditor from '../AttachmentEditor';
 import { toErrorMessage } from '../../utils/errors';

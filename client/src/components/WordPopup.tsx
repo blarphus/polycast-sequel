@@ -27,12 +27,10 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
   const [partOfSpeech, setPartOfSpeech] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
-  const [duplicate, setDuplicate] = useState(false);
   const [newDefinition, setNewDefinition] = useState(false);
   const [targetWord, setTargetWord] = useState(word);
   const [isNative, setIsNative] = useState(isNativeProp ?? false);
   const [senseIndex, setSenseIndex] = useState<number | null>(null);
-  const [matchedGloss, setMatchedGloss] = useState<string | null>(null);
   const [lemma, setLemma] = useState<string | null>(null);
   const [definitionSource, setDefinitionSource] = useState<string | null>(null);
   const [example, setExample] = useState<string | null>(null);
@@ -59,7 +57,6 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
           setSentenceTranslation(res.sentence_translation);
           setPartOfSpeech(res.part_of_speech);
           setSenseIndex(res.sense_index);
-          setMatchedGloss(res.matched_gloss);
           setLemma(res.lemma);
           // Use matched_gloss (Wikt gloss) for dedup when available — it matches saved definitions reliably
           const defForDedup = res.matched_gloss ?? res.definition;
@@ -143,7 +140,7 @@ export default function WordPopup({ word, sentence, nativeLang, targetLang, anch
             disabled={saved || loading}
             onClick={handleSave}
           >
-            {saved ? (<><CheckIcon size={12} strokeWidth={3} style={{ verticalAlign: 'middle', marginRight: 2 }} />{duplicate ? ' Already saved' : ' Added'}</>) : 'Add'}
+            {saved ? (<><CheckIcon size={12} strokeWidth={3} style={{ verticalAlign: 'middle', marginRight: 2 }} /> Added</>) : 'Add'}
           </button>
         )}
         <button className="word-popup-close" onClick={onClose}>&times;</button>

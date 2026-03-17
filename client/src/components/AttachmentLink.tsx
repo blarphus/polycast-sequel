@@ -1,4 +1,3 @@
-import React from 'react';
 import type { StreamAttachment } from '../api';
 import { ExternalLinkIcon, FileIcon, YouTubeIcon } from './icons';
 

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authMiddleware, requireTeacher } from '../auth.js';
 import pool from '../db.js';
 import { enrichWord } from '../enrichWord.js';
-import { callGemini } from '../lib/gemini.js';
+import { callGemini, parseGeminiJson } from '../lib/gemini.js';
 import { fetchWordImage } from '../lib/imageSearch.js';
 import { validate } from '../lib/validate.js';
 import { ensureStudentHasLegacyPostAccess } from '../services/classroomService.js';
@@ -53,7 +53,7 @@ Return a JSON object: {"example_sentence":"..."}
 Respond with ONLY the JSON object, no other text.`;
 
     const raw = await callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 100, responseMimeType: 'application/json' });
-    const parsed = JSON.parse(raw);
+    const parsed = parseGeminiJson(raw, 'Stream word example');
     return res.json({ example_sentence: parsed.example_sentence || null });
   } catch (err) {
     req.log.error({ err }, 'POST /api/stream/words/example error');

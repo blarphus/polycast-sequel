@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import WordPopup from './WordPopup';
 import TokenizedText from './TokenizedText';
 import type { SaveWordData } from '../api';
@@ -59,7 +59,7 @@ export default function TranscriptPanel({ entries, nativeLang, targetLang, saved
       {entries.length === 0 ? (
         <p className="transcript-empty">Transcript will appear here...</p>
       ) : (
-        entries.map((entry, i) => (
+        entries.map((entry) => (
           <div className="transcript-entry" key={entry.id}>
             <span className="transcript-speaker">{entry.displayName}</span>
             {' \u2014 '}

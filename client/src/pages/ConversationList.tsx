@@ -2,7 +2,7 @@
 // pages/ConversationList.tsx -- WhatsApp-style conversation list (replaces Home)
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { socket } from '../socket';

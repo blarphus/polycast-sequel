@@ -13,26 +13,21 @@ function makeContextError(message, context = {}) {
   return error;
 }
 
-async function translateViaTildeTrick(word, sentence, nativeLang, targetLang) {
+async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   const markedSentence = sentence.replace(word, `~${word}~`);
-  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${nativeLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(markedSentence)}`;
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(markedSentence)}`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Google Translate request failed with status ${res.status}`);
   }
   const data = await res.json();
-
-  // Extract translated text from response segments
-  const translated = (data[0] || []).map(seg => seg[0] || '').join('');
-
-  // Look for tilde-wrapped word in the translated output
+  const translated = (data[0] || []).map((seg) => seg[0] || '').join('');
   const tildeMatch = translated.match(/~([^~]+)~/);
   if (tildeMatch) {
     return tildeMatch[1].trim();
   }
 
-  // Tildes stripped — fall back to translating the bare word
-  const fallbackUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${nativeLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(word)}`;
+  const fallbackUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(word)}`;
   const fallbackRes = await fetch(fallbackUrl);
   if (!fallbackRes.ok) {
     throw new Error(`Google Translate fallback request failed with status ${fallbackRes.status}`);
@@ -78,29 +73,6 @@ ${senseList}`,
   return idx;
 }
 
-async function translateToNative(word, sentence, targetLang, nativeLang) {
-  const markedSentence = sentence.replace(word, `~${word}~`);
-  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${targetLang}&tl=${nativeLang}&dt=t&q=${encodeURIComponent(markedSentence)}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Google Translate request failed with status ${res.status}`);
-  }
-  const data = await res.json();
-  const translated = (data[0] || []).map(seg => seg[0] || '').join('');
-  const tildeMatch = translated.match(/~([^~]+)~/);
-  if (tildeMatch) {
-    return tildeMatch[1].trim();
-  }
-  // Tildes stripped — fall back to translating the bare word
-  const fallbackUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${targetLang}&tl=${nativeLang}&dt=t&q=${encodeURIComponent(word)}`;
-  const fallbackRes = await fetch(fallbackUrl);
-  if (!fallbackRes.ok) {
-    throw new Error(`Google Translate fallback request failed with status ${fallbackRes.status}`);
-  }
-  const fallbackData = await fallbackRes.json();
-  return (fallbackData[0]?.[0]?.[0] || '').trim();
-}
-
 export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, targetLang }) {
   const { senses: wiktSenses, resolvedLemma } = targetLang
     ? await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang)
@@ -110,7 +82,7 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
   // Run sense-picking + translation in parallel
   const [senseIndex, translation] = await Promise.all([
     wiktSenses.length === 1 ? Promise.resolve(0) : pickBestSense(word, sentence, targetLang, wiktSenses),
-    translateToNative(word, sentence, targetLang, nativeLang),
+    translateWordInSentence(word, sentence, targetLang, nativeLang),
   ]);
 
   const sense = wiktSenses[senseIndex];
@@ -143,7 +115,7 @@ export async function resolveDictionaryLookup({
     if (!targetLang) {
       throw new Error('targetLang is required for native-word lookup');
     }
-    const targetWord = await translateViaTildeTrick(word, sentence, nativeLang, targetLang);
+    const targetWord = await translateWordInSentence(word, sentence, nativeLang, targetLang);
     if (!targetWord) {
       throw makeContextError('Google Translate returned no translation for the selected native word', {
         word,

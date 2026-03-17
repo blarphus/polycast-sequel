@@ -1,4 +1,3 @@
-import React from 'react';
 import type { ChannelSummary } from '../../api';
 import ThumbnailStack from './ThumbnailStack';
 

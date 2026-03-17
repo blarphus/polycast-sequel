@@ -2,7 +2,7 @@
 // pages/Settings.tsx -- Language settings page
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';

@@ -2,7 +2,7 @@
 // pages/Lesson.tsx -- Detail page for a lesson playlist (grammar topic)
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getLessonVideos, TrendingVideo } from '../api';

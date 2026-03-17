@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import pool from '../db.js';
 import redisClient from '../redis.js';
-import { callGemini } from '../lib/gemini.js';
+import { callGemini, parseGeminiJson } from '../lib/gemini.js';
 
 const MAX_TARGET_SENTENCE_WORDS = 16;
 const MIN_TARGET_SENTENCE_WORDS = 4;
@@ -223,7 +223,7 @@ ${sourceText}`;
     responseMimeType: 'application/json',
   });
 
-  const parsed = JSON.parse(raw);
+  const parsed = parseGeminiJson(raw, 'Voice practice card generation');
   const expectedTarget = cleanSentenceCandidate(parsed.expected_target);
   if (!expectedTarget) {
     throw new Error('Voice practice card generation returned an invalid expected_target');

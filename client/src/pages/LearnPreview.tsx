@@ -2,7 +2,7 @@
 // pages/LearnPreview.tsx -- Stage preview/simulator for flashcard prompt types
 // ---------------------------------------------------------------------------
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDueWords, getSavedWords, proxyImageUrl, type SavedWord } from '../api';
 import { getButtonTimeLabel } from '../utils/srs';

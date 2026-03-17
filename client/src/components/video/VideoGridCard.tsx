@@ -1,4 +1,3 @@
-import React from 'react';
 import type { TrendingVideo } from '../../api';
 import { formatVideoDuration } from '../../utils/videoFormat';
 

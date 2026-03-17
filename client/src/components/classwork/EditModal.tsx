@@ -2,7 +2,7 @@
 // components/classwork/EditModal.tsx — Edit existing post modal
 // ---------------------------------------------------------------------------
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import * as api from '../../api';
 import type { StreamPost, LessonItem } from '../../api';
 import AttachmentEditor from '../AttachmentEditor';

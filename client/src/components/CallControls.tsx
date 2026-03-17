@@ -2,7 +2,7 @@
 // components/CallControls.tsx -- Shared Zoom-style call control bar
 // ---------------------------------------------------------------------------
 
-import React, { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
   MicIcon,
   MicOffIcon,

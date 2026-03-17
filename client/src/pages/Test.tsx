@@ -2,7 +2,7 @@
 // pages/Test.tsx -- Solo test mode for camera + Voxtral transcription
 // ---------------------------------------------------------------------------
 
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useAutoHideControls } from '../hooks/useAutoHideControls';
