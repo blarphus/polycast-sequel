@@ -352,15 +352,18 @@ export default function Dictionary() {
                                     </div>
                                   )}
                                   {w.forms && (() => {
-                                    try {
-                                      const fl: string[] = JSON.parse(w.forms);
-                                      return (
-                                        <div className="dict-field">
-                                          <span className="dict-field-label">Forms</span>
-                                          <span className="dict-field-value text-muted">{fl.join(', ')}</span>
-                                        </div>
-                                      );
-                                    } catch { return null; }
+                                    let fl: string[];
+                                    if (w.forms.startsWith('[')) {
+                                      try { fl = JSON.parse(w.forms); } catch { return null; }
+                                    } else {
+                                      fl = w.forms.split(',').map(s => s.trim()).filter(Boolean);
+                                    }
+                                    return (
+                                      <div className="dict-field">
+                                        <span className="dict-field-label">Forms</span>
+                                        <span className="dict-field-value text-muted">{fl.join(', ')}</span>
+                                      </div>
+                                    );
                                   })()}
                                   {w.example_sentence && (
                                     <div className="dict-field">

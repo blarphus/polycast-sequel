@@ -5,7 +5,7 @@
  */
 
 import { applyCorpusFrequency } from './lib/wordFrequency.js';
-import { normalizeLemma } from './lib/normalizeWordFields.js';
+import { normalizeLemma, normalizeForms } from './lib/normalizeWordFields.js';
 import { callGemini } from './lib/gemini.js';
 import { fetchWordImage } from './lib/imageSearch.js';
 import logger from './logger.js';
@@ -340,7 +340,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
   // Filter out Kaikki metadata tags (e.g. "no-table-tags", "fr-conj-auto") and template placeholders
   const forms = kaikkiForms
-    ? kaikkiForms.filter(f => !/^[a-z]{2}-/.test(f) && !f.includes('table-tags') && !f.includes(' + ')).join(', ')
+    ? normalizeForms(kaikkiForms.filter(f => !/^[a-z]{2}-/.test(f) && !f.includes('table-tags') && !f.includes(' + ')).join(', '))
     : null;
   lemma = normalizeLemma(lemma, part_of_speech, targetLang);
 

@@ -6,19 +6,16 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getSavedWords, saveWord, deleteSavedWord, updateWordImage, reorderQueue, SavedWord } from '../api';
 import { toErrorMessage } from '../utils/errors';
 
-function parseWordForms(rawForms: string | null | undefined, word: string) {
+function parseWordForms(rawForms: string | null | undefined) {
   if (!rawForms) return [];
-  try {
-    const parsed = JSON.parse(rawForms);
-    if (!Array.isArray(parsed)) {
-      console.error(`Saved forms payload for "${word}" is not an array:`, rawForms);
-      return [];
-    }
-    return parsed.filter((value): value is string => typeof value === 'string');
-  } catch (err) {
-    console.error(`Invalid JSON in forms for "${word}":`, rawForms, err);
-    return [];
+  // Try JSON array first (new format), fall back to comma-separated string (legacy format)
+  if (rawForms.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(rawForms);
+      if (Array.isArray(parsed)) return parsed.filter((v): v is string => typeof v === 'string');
+    } catch { /* fall through to comma split */ }
   }
+  return rawForms.split(',').map(s => s.trim()).filter(Boolean);
 }
 
 export function useSavedWords() {
@@ -49,7 +46,7 @@ export function useSavedWords() {
     for (const w of words) {
       set.add(w.word.toLowerCase());
       if (w.forms) {
-        const formsList = parseWordForms(w.forms, w.word);
+        const formsList = parseWordForms(w.forms);
         for (const form of formsList) set.add(form.toLowerCase());
       }
     }
@@ -67,7 +64,7 @@ export function useSavedWords() {
         if (w.definition !== definition) return false;
         if (w.word.toLowerCase() === word.toLowerCase()) return true;
         if (w.forms) {
-          const fl = parseWordForms(w.forms, w.word);
+          const fl = parseWordForms(w.forms);
           if (fl.some(f => f.toLowerCase() === word.toLowerCase())) return true;
         }
         return false;
@@ -95,7 +92,7 @@ export function useSavedWords() {
         const next = new Set(prev);
         next.add(data.word.toLowerCase());
         if (data.forms) {
-          const fl = parseWordForms(data.forms, data.word);
+          const fl = parseWordForms(data.forms);
           for (const f of fl) next.add(f.toLowerCase());
         }
         return next;
@@ -151,7 +148,7 @@ export function useSavedWords() {
       const next = new Set(prev);
       next.add(word.toLowerCase());
       if (forms) {
-        const fl = parseWordForms(forms, word);
+        const fl = parseWordForms(forms);
         for (const f of fl) next.add(f.toLowerCase());
       }
       return next;
