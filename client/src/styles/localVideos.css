@@ -198,6 +198,15 @@
   z-index: 15;
 }
 
+.local-watch-subtitle-overlay .subtitle-word {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.local-video-player::-webkit-media-controls-fullscreen-button {
+  display: none;
+}
+
 .local-watch-subtitle-overlay .subtitle-text {
   font-size: 1.8rem;
   font-weight: 600;

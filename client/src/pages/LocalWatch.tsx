@@ -71,6 +71,23 @@ export default function LocalWatch() {
     resetAutoScroll,
   } = useTranscriptAutoScroll(activeIndex);
 
+  // Intercept native video fullscreen → redirect to container fullscreen
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleFullscreenChange = () => {
+      if (document.fullscreenElement === video) {
+        document.exitFullscreen().then(() => {
+          fullscreenRef.current?.requestFullscreen();
+        });
+      }
+    };
+
+    video.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => video.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [videoUrl]);
+
   // Lock page scrolling
   useEffect(() => {
     const prevBody = document.body.style.overflow;
