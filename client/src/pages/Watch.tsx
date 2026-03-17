@@ -45,6 +45,8 @@ export default function Watch() {
     handleTranscriptScroll,
     handleResumeAutoScroll,
     resetAutoScroll,
+    handleWordHoverStart,
+    handleWordHoverEnd,
   } = useTranscriptAutoScroll(activeIndex);
 
   // Keep the watch page pinned to viewport height so transcript scrolling
@@ -136,6 +138,8 @@ export default function Watch() {
             showScrollBtn={showScrollBtn}
             onTranscriptScroll={handleTranscriptScroll}
             onResumeAutoScroll={handleResumeAutoScroll}
+            onWordHoverStart={handleWordHoverStart}
+            onWordHoverEnd={handleWordHoverEnd}
           />
         )}
       </div>

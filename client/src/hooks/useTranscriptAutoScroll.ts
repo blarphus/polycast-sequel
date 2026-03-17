@@ -5,15 +5,20 @@ export function useTranscriptAutoScroll(activeIndex: number) {
   const transcriptRef = useRef<HTMLDivElement>(null);
   const segmentRefs = useRef<(HTMLDivElement | null)[]>([]);
   const autoScrollRef = useRef(true);
+  const hoverPausedRef = useRef(false);
 
   useEffect(() => {
-    if (activeIndex < 0 || !autoScrollRef.current) return;
+    if (activeIndex < 0 || !autoScrollRef.current || hoverPausedRef.current) return;
     const container = transcriptRef.current;
     const el = segmentRefs.current[activeIndex];
     if (!container || !el) return;
 
+    // Show one line above the active segment by scrolling to the previous element
+    const prevEl = segmentRefs.current[activeIndex - 1];
+    const scrollTarget = prevEl ? prevEl.offsetTop : el.offsetTop;
+
     container.scrollTo({
-      top: Math.max(0, el.offsetTop),
+      top: Math.max(0, scrollTarget),
       behavior: 'smooth',
     });
   }, [activeIndex]);
@@ -43,9 +48,19 @@ export function useTranscriptAutoScroll(activeIndex: number) {
     const container = transcriptRef.current;
     const el = segmentRefs.current[activeIndex];
     if (container && el) {
-      container.scrollTo({ top: Math.max(0, el.offsetTop), behavior: 'smooth' });
+      const prevEl = segmentRefs.current[activeIndex - 1];
+      const scrollTarget = prevEl ? prevEl.offsetTop : el.offsetTop;
+      container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
     }
   }, [activeIndex, resetAutoScroll]);
+
+  const handleWordHoverStart = useCallback(() => {
+    hoverPausedRef.current = true;
+  }, []);
+
+  const handleWordHoverEnd = useCallback(() => {
+    hoverPausedRef.current = false;
+  }, []);
 
   return {
     transcriptRef,
@@ -54,5 +69,7 @@ export function useTranscriptAutoScroll(activeIndex: number) {
     handleTranscriptScroll,
     handleResumeAutoScroll,
     resetAutoScroll,
+    handleWordHoverStart,
+    handleWordHoverEnd,
   };
 }

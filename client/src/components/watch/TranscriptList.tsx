@@ -21,6 +21,8 @@ interface TranscriptListProps {
   showScrollBtn: boolean;
   onTranscriptScroll: () => void;
   onResumeAutoScroll: () => void;
+  onWordHoverStart?: () => void;
+  onWordHoverEnd?: () => void;
 }
 
 export default function TranscriptList({
@@ -34,6 +36,8 @@ export default function TranscriptList({
   showScrollBtn,
   onTranscriptScroll,
   onResumeAutoScroll,
+  onWordHoverStart,
+  onWordHoverEnd,
 }: TranscriptListProps) {
   return (
     <div className="watch-transcript-wrapper">
@@ -54,7 +58,11 @@ export default function TranscriptList({
             >
               {formatTimestamp(seg.offset)}
             </button>
-            <span className="watch-segment-text">
+            <span
+              className="watch-segment-text"
+              onMouseEnter={onWordHoverStart}
+              onMouseLeave={onWordHoverEnd}
+            >
               <TokenizedText
                 text={seg.text}
                 savedWords={savedWords}

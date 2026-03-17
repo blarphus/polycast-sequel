@@ -121,6 +121,8 @@ export default function LocalWatch() {
     handleTranscriptScroll,
     handleResumeAutoScroll,
     resetAutoScroll,
+    handleWordHoverStart,
+    handleWordHoverEnd,
   } = useTranscriptAutoScroll(activeIndex);
 
   // Intercept native video fullscreen → redirect to container fullscreen
@@ -306,6 +308,8 @@ export default function LocalWatch() {
             showScrollBtn={showScrollBtn}
             onTranscriptScroll={handleTranscriptScroll}
             onResumeAutoScroll={handleResumeAutoScroll}
+            onWordHoverStart={handleWordHoverStart}
+            onWordHoverEnd={handleWordHoverEnd}
           />
         )}
       </div>
