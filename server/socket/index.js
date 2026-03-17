@@ -53,7 +53,7 @@ export function setupSocket(server) {
     try {
       const cookieHeader = socket.handshake.headers.cookie;
       const cookies = cookie.parse(cookieHeader || '');
-      const token = cookies.token;
+      const token = cookies.token || socket.handshake.auth?.token || socket.handshake.query?.token;
 
       if (!token) {
         return next(new Error('Authentication required'));
