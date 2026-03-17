@@ -5,6 +5,7 @@ import {
   fetchWiktTranslations,
   persistGeminiFallbackSense,
 } from '../enrichWord.js';
+import { pickSense, isModelReady } from '../lib/sensePicker.js';
 
 function makeContextError(message, context = {}) {
   const error = new Error(message);
@@ -40,7 +41,12 @@ async function translateViaTildeTrick(word, sentence, nativeLang, targetLang) {
   return (fallbackData[0]?.[0]?.[0] || '').trim();
 }
 
+// pickBestSense — uses local ONNX model, falls back to Gemini if model not yet loaded
 async function pickBestSense(word, sentence, targetLang, senses) {
+  const localResult = await pickSense(sentence, word, senses);
+  if (localResult !== null) return localResult;
+
+  // Model not loaded yet — use Gemini so we never guess
   const senseList = senses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n');
   const raw = await callGemini(
     `The word "${word}" appears in: "${sentence}" (${targetLang}).
@@ -48,8 +54,28 @@ Pick the sense index that best matches. Return ONLY the integer.
 ${senseList}`,
     { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 10, responseMimeType: 'text/plain' },
   );
-  const idx = parseInt(raw.trim(), 10);
-  return (Number.isInteger(idx) && idx >= 0 && idx < senses.length) ? idx : 0;
+  const trimmed = raw.trim();
+  if (!/^-?\d+$/.test(trimmed)) {
+    throw makeContextError('Gemini sense pick returned a non-integer response', {
+      word,
+      targetLang,
+      raw: trimmed,
+      senseCount: senses.length,
+    });
+  }
+
+  const idx = Number.parseInt(trimmed, 10);
+  if (idx < 0 || idx >= senses.length) {
+    throw makeContextError('Gemini sense pick returned an invalid sense index', {
+      word,
+      targetLang,
+      raw: trimmed,
+      senseIndex: idx,
+      senseCount: senses.length,
+    });
+  }
+
+  return idx;
 }
 
 async function translateToNative(word, sentence, targetLang, nativeLang) {
@@ -76,9 +102,9 @@ async function translateToNative(word, sentence, targetLang, nativeLang) {
 }
 
 export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, targetLang }) {
-  const wiktSenses = targetLang
+  const { senses: wiktSenses, resolvedLemma } = targetLang
     ? await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang)
-    : [];
+    : { senses: [], resolvedLemma: null };
   if (wiktSenses.length === 0) return null; // caller falls back to full Gemini
 
   // Run sense-picking + translation in parallel
@@ -97,7 +123,7 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
     part_of_speech: sense.pos || null,
     sense_index: senseIndex,
     matched_gloss: sense.gloss,
-    lemma: null,
+    lemma: resolvedLemma,
     is_native: false,
     definition_source: 'wiktionary',
     example: null,
@@ -139,9 +165,9 @@ export async function resolveDictionaryLookup({
     };
   }
 
-  const wiktSenses = targetLang
+  const { senses: wiktSenses } = targetLang
     ? await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang)
-    : [];
+    : { senses: [] };
 
   const hasSenses = wiktSenses.length > 0;
   const senseBlock = hasSenses

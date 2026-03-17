@@ -91,9 +91,47 @@ function flattenSenses(rows) {
   return senses;
 }
 
+/**
+ * Detect "form of" glosses (e.g. "gerund of torcer", "third-person singular
+ * present indicative of fazer") and extract the lemma. Returns the lemma
+ * string or null if the gloss is a real definition.
+ */
+const FORM_OF_RE = /^(?:[\w/'-]+\s+)*?(?:form|participle|gerund|infinitive|supine|singular|plural|tense|indicative|subjunctive|imperative|conditional|inflection|diminutive|augmentative|superlative|comparative)\s+of\s+(\S+)$/i;
+
+function extractFormOfLemma(senses) {
+  if (senses.length === 0) return null;
+  // Only chase if ALL senses are "form of" references
+  const lemmas = new Set();
+  for (const s of senses) {
+    const m = FORM_OF_RE.exec(s.gloss);
+    if (!m) return null; // at least one real definition exists — no need to chase
+    lemmas.add(accentFoldKey(m[1]));
+  }
+  // All senses point to the same lemma (or close variants)
+  if (lemmas.size === 1) return [...lemmas][0];
+  // Multiple different lemmas — pick the first one mentioned
+  const m = FORM_OF_RE.exec(senses[0].gloss);
+  return m ? m[1] : null;
+}
+
 export async function fetchWiktSenses(word, targetLang, _nativeLang) {
   const rows = await queryWiktionary(word, targetLang);
-  return flattenSenses(rows);
+  const senses = flattenSenses(rows);
+
+  // If all senses are "form of lemma" references, look up the lemma instead
+  const chasedLemma = extractFormOfLemma(senses);
+  if (chasedLemma) {
+    const lemmaRows = await queryWiktionary(chasedLemma, targetLang);
+    const lemmaSenses = flattenSenses(lemmaRows);
+    if (lemmaSenses.length > 0) {
+      // Find the properly-cased word from the lemma DB row
+      const lemmaWord = lemmaRows[0]?.word || chasedLemma;
+      logger.info('[wikt-lemma] %s → %s (%s), found %d lemma senses', word, lemmaWord, senses[0].gloss, lemmaSenses.length);
+      return { senses: lemmaSenses, resolvedLemma: lemmaWord };
+    }
+  }
+
+  return { senses, resolvedLemma: null };
 }
 
 export async function fetchWiktTranslations(word, nativeLang) {
@@ -197,10 +235,24 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
   const _t0 = Date.now();
 
   // Query Wiktionary DB directly — gives access to both senses AND forms
-  const wiktRows = targetLang
+  let wiktRows = targetLang
     ? await queryWiktionary(word, targetLang)
     : [];
-  const wiktSenses = flattenSenses(wiktRows);
+  let wiktSenses = flattenSenses(wiktRows);
+
+  // If all senses are "form of lemma" references, chase the lemma
+  let wiktResolvedLemma = null;
+  const formOfLemma = extractFormOfLemma(wiktSenses);
+  if (formOfLemma) {
+    const lemmaRows = await queryWiktionary(formOfLemma, targetLang);
+    const lemmaSenses = flattenSenses(lemmaRows);
+    if (lemmaSenses.length > 0) {
+      wiktResolvedLemma = lemmaRows[0]?.word || formOfLemma;
+      logger.info('[enrich-lemma] %s → %s (%s), found %d lemma senses', word, wiktResolvedLemma, wiktSenses[0].gloss, lemmaSenses.length);
+      wiktRows = lemmaRows;
+      wiktSenses = lemmaSenses;
+    }
+  }
   const _t1 = Date.now();
   logger.info('[enrich-timing] %s — Wiktionary DB: %dms (found %d senses)', word, _t1 - _t0, wiktSenses.length);
 
@@ -342,7 +394,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
   const forms = kaikkiForms
     ? normalizeForms(kaikkiForms.filter(f => !/^[a-z]{2}-/.test(f) && !f.includes('table-tags') && !f.includes(' + ')).join(', '))
     : null;
-  lemma = normalizeLemma(lemma, part_of_speech, targetLang);
+  lemma = normalizeLemma(lemma, part_of_speech, targetLang) || wiktResolvedLemma;
 
   // Fetch image: use Gemini's IMAGE_TERM, then native translation (English gets better results), then target word
   const imageSearchTerm = geminiImageTerm || translation || word;

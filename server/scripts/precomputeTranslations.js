@@ -58,7 +58,7 @@ async function translateUnit(unit, lang) {
   for (const i of needsWork) {
     if (translationsPerIdx[i].length === 0) {
       try {
-        fallbackSensesMap[i] = await fetchWiktSenses(words[i].word, 'en', lang);
+        fallbackSensesMap[i] = (await fetchWiktSenses(words[i].word, 'en', lang)).senses;
       } catch (err) {
         fallbackSensesMap[i] = [];
       }

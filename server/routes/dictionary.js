@@ -130,7 +130,7 @@ router.get('/api/dictionary/wikt-lookup', authMiddleware, validate({ query: wikt
   const { word, targetLang, nativeLang } = req.query;
 
   try {
-    const senses = await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang);
+    const { senses } = await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang);
     return res.json({ word, senses });
   } catch (err) {
     req.log.error({ err }, 'Wiktionary DB query error');
