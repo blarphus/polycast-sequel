@@ -7,7 +7,7 @@ import { searchAllImages } from '../lib/imageSearch.js';
 import { validate } from '../lib/validate.js';
 import { applySrsReview } from '../lib/srsUpdate.js';
 import { synthesizeVoiceFeedback } from '../services/ttsService.js';
-import { resolveDictionaryLookup } from '../services/wordSemanticsService.js';
+import { resolveDictionaryLookup, resolveDictionaryLookupFast } from '../services/wordSemanticsService.js';
 import { listDueWords, listNewTodayWords } from '../lib/dictionaryQueries.js';
 
 const router = Router();
@@ -101,6 +101,13 @@ router.get('/api/dictionary/lookup', authMiddleware, validate({ query: lookupQue
   const { word, sentence, nativeLang, targetLang, isNative } = req.query;
 
   try {
+    // Fast path: DB senses + minimal Gemini sense-pick + Google Translate
+    if (isNative !== 'true') {
+      const fast = await resolveDictionaryLookupFast({ word, sentence, nativeLang, targetLang });
+      if (fast) return res.json(fast);
+    }
+    // Fallback: full Gemini path (no DB senses, or native word clicks)
+    // FLAGGED FOR DELETION — only the fallback + native case still needed
     const result = await resolveDictionaryLookup({
       word,
       sentence,

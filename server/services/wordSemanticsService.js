@@ -40,6 +40,72 @@ async function translateViaTildeTrick(word, sentence, nativeLang, targetLang) {
   return (fallbackData[0]?.[0]?.[0] || '').trim();
 }
 
+async function pickBestSense(word, sentence, targetLang, senses) {
+  const senseList = senses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n');
+  const raw = await callGemini(
+    `The word "${word}" appears in: "${sentence}" (${targetLang}).
+Pick the sense index that best matches. Return ONLY the integer.
+${senseList}`,
+    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 10, responseMimeType: 'text/plain' },
+  );
+  const idx = parseInt(raw.trim(), 10);
+  return (Number.isInteger(idx) && idx >= 0 && idx < senses.length) ? idx : 0;
+}
+
+async function translateToNative(word, sentence, targetLang, nativeLang) {
+  const markedSentence = sentence.replace(word, `~${word}~`);
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${targetLang}&tl=${nativeLang}&dt=t&q=${encodeURIComponent(markedSentence)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Google Translate request failed with status ${res.status}`);
+  }
+  const data = await res.json();
+  const translated = (data[0] || []).map(seg => seg[0] || '').join('');
+  const tildeMatch = translated.match(/~([^~]+)~/);
+  if (tildeMatch) {
+    return tildeMatch[1].trim();
+  }
+  // Tildes stripped — fall back to translating the bare word
+  const fallbackUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${targetLang}&tl=${nativeLang}&dt=t&q=${encodeURIComponent(word)}`;
+  const fallbackRes = await fetch(fallbackUrl);
+  if (!fallbackRes.ok) {
+    throw new Error(`Google Translate fallback request failed with status ${fallbackRes.status}`);
+  }
+  const fallbackData = await fallbackRes.json();
+  return (fallbackData[0]?.[0]?.[0] || '').trim();
+}
+
+export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, targetLang }) {
+  const wiktSenses = targetLang
+    ? await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang)
+    : [];
+  if (wiktSenses.length === 0) return null; // caller falls back to full Gemini
+
+  // Run sense-picking + translation in parallel
+  const [senseIndex, translation] = await Promise.all([
+    wiktSenses.length === 1 ? Promise.resolve(0) : pickBestSense(word, sentence, targetLang, wiktSenses),
+    translateToNative(word, sentence, targetLang, nativeLang),
+  ]);
+
+  const sense = wiktSenses[senseIndex];
+  return {
+    word,
+    target_word: word,
+    valid: true,
+    translation,
+    definition: sense.gloss,
+    part_of_speech: sense.pos || null,
+    sense_index: senseIndex,
+    matched_gloss: sense.gloss,
+    lemma: null,
+    is_native: false,
+    definition_source: 'wiktionary',
+    example: null,
+    example_translation: null,
+    sentence_translation: null,
+  };
+}
+
 export async function resolveDictionaryLookup({
   word,
   sentence,
