@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentDashboard } from '../api';
-import { HomeIcon, BookIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon, UserIcon, PlusIcon, CloseIcon } from './icons';
+import { HomeIcon, BookIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, FolderIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon, UserIcon, PlusIcon, CloseIcon } from './icons';
 import { toErrorMessage } from '../utils/errors';
 
 const COLLAPSED_KEY = 'sidebar-collapsed';
@@ -81,6 +81,7 @@ export default function BottomToolbar() {
   const isSocial = location.pathname === '/chats';
   const isClasswork = !isTeacher && (location.pathname === '/classwork' || location.pathname.startsWith('/classwork/') || location.pathname === '/classes' || location.pathname === '/students' || location.pathname.startsWith('/students/'));
   const isBrowse = location.pathname === '/browse' || location.pathname.startsWith('/channel/') || location.pathname.startsWith('/lesson/');
+  const isLocalVideos = location.pathname === '/local-videos' || location.pathname.startsWith('/local-watch/');
   const isSettings = location.pathname === '/settings';
 
   const handleSwitchAccount = useCallback(async (accountId: string) => {
@@ -160,6 +161,13 @@ export default function BottomToolbar() {
       >
         <PlayCircleIcon size={22} />
         <span className="toolbar-label">Watch</span>
+      </button>
+      <button
+        className={`toolbar-tab toolbar-tab--green${isLocalVideos ? ' active' : ''}`}
+        onClick={() => navigate('/local-videos')}
+      >
+        <FolderIcon size={22} />
+        <span className="toolbar-label">Local</span>
       </button>
       <button
         className={`toolbar-tab toolbar-tab--profile${accountMenuOpen ? ' active' : ''}`}

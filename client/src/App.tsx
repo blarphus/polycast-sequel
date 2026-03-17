@@ -34,6 +34,8 @@ import NewsCollection from './pages/collections/NewsCollection';
 import Practice from './pages/Practice';
 import DrillPicker from './pages/DrillPicker';
 import VoicePractice from './pages/VoicePractice';
+import LocalVideos from './pages/LocalVideos';
+import LocalWatch from './pages/LocalWatch';
 import IncomingCall from './components/IncomingCall';
 import PhraseTranslator from './components/PhraseTranslator';
 import BottomToolbar from './components/BottomToolbar';
@@ -322,6 +324,22 @@ export default function App() {
             <StudentRoute>
               <Practice />
             </StudentRoute>
+          }
+        />
+        <Route
+          path="/local-videos"
+          element={
+            <ProtectedRoute>
+              <LocalVideos />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/local-watch/:filename"
+          element={
+            <ProtectedRoute>
+              <LocalWatch />
+            </ProtectedRoute>
           }
         />
         {/* Fallback */}
