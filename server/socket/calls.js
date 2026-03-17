@@ -1,5 +1,7 @@
+import crypto from 'crypto';
 import { userToSocket } from './presence.js';
 import { getUserDisplayInfo } from '../lib/getUserDisplayInfo.js';
+import { sendIncomingCallVoipPushes } from '../lib/apnsVoip.js';
 import logger from '../logger.js';
 
 /**
@@ -12,38 +14,41 @@ export function handleCalls(io, socket, pool, redisClient) {
    * Initiate a call to another user.
    * Payload: { peerId }
    */
-  socket.on('call:initiate', async ({ peerId }) => {
+  socket.on('call:initiate', async ({ peerId, mode }) => {
     logger.info(`[call] call:initiate from ${socket.userId} to ${peerId}`);
     try {
-      // Check if callee is online
-      const isOnline = await redisClient.exists(`online:${peerId}`);
-
-      if (!isOnline) {
-        logger.info(`[call] ${peerId} is offline (Redis)`);
-        socket.emit('call:error', { message: 'User is offline' });
-        return;
-      }
-
       const calleeSocketId = userToSocket.get(peerId);
-
-      if (!calleeSocketId) {
-        logger.info(`[call] ${peerId} not in userToSocket map`);
-        socket.emit('call:error', { message: 'User is not available' });
-        return;
-      }
 
       // Look up caller info
       const caller = await getUserDisplayInfo(socket.userId);
       if (!caller) {
         logger.error(`[call] Caller user not found in DB for userId=${socket.userId}`);
       }
-
-      logger.info(`[call] Emitting call:incoming to socket ${calleeSocketId}`);
-      io.to(calleeSocketId).emit('call:incoming', {
+      const callId = crypto.randomUUID();
+      const callMode = mode || 'video';
+      const payload = {
+        callId,
         callerId: socket.userId,
         callerUsername: caller?.username || 'Unknown',
         callerDisplayName: caller?.display_name || caller?.username || 'Unknown',
-      });
+        mode: callMode,
+      };
+
+      if (calleeSocketId) {
+        logger.info(`[call] Emitting call:incoming to socket ${calleeSocketId}`);
+        io.to(calleeSocketId).emit('call:incoming', payload);
+      }
+
+      // Always attempt VoIP push for iOS users so the call can wake
+      // their device even if they appear offline or their socket is stale.
+      const pushCount = await sendIncomingCallVoipPushes(pool, peerId, payload);
+      if (pushCount > 0) {
+        logger.info(`[call] Sent ${pushCount} VoIP push(es) to ${peerId}`);
+      }
+
+      if (!calleeSocketId && pushCount === 0) {
+        logger.info(`[call] ${peerId} has no socket and no VoIP tokens — caller will ring until timeout`);
+      }
     } catch (err) {
       logger.error({ err }, 'call:initiate error');
       socket.emit('call:error', { message: 'Failed to initiate call' });
