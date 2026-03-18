@@ -1,3 +1,19 @@
+// ---------------------------------------------------------------------------
+// In-memory cache for dictionary group pages (avoids re-querying + re-sorting)
+// ---------------------------------------------------------------------------
+const _groupCache = new Map();
+const CACHE_TTL_MS = 60_000;
+
+function _cacheKey(userId, targetLanguage, search, sort) {
+  return `${userId}:${targetLanguage}:${search}:${sort}`;
+}
+
+export function invalidateDictionaryCache(userId) {
+  for (const key of _groupCache.keys()) {
+    if (key.startsWith(`${userId}:`)) _groupCache.delete(key);
+  }
+}
+
 const NEW_TODAY_ORDER_BY = `
   sw.priority DESC,
   sw.frequency DESC NULLS LAST,
@@ -258,37 +274,50 @@ export async function listDictionaryGroupPage(db, userId, { page = 0, limit = 20
   const dailyNewLimit = prefs.daily_new_limit ?? 0;
   const trimmedSearch = search.trim().toLowerCase();
 
-  const params = [userId, targetLanguage];
-  let whereClause = `
-    user_id = $1
-    AND target_language IS NOT DISTINCT FROM $2
-  `;
+  const key = _cacheKey(userId, targetLanguage, trimmedSearch, sort);
+  const cached = _groupCache.get(key);
 
-  if (trimmedSearch) {
-    params.push(`%${trimmedSearch}%`);
-    whereClause += ` AND (
-      LOWER(word) LIKE $${params.length}
-      OR LOWER(translation) LIKE $${params.length}
-    )`;
+  let groups, dueNextGroupKeys;
+
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    ({ groups, dueNextGroupKeys } = cached);
+  } else {
+    const params = [userId, targetLanguage];
+    let whereClause = `
+      user_id = $1
+      AND target_language IS NOT DISTINCT FROM $2
+    `;
+
+    if (trimmedSearch) {
+      params.push(`%${trimmedSearch}%`);
+      whereClause += ` AND (
+        LOWER(word) LIKE $${params.length}
+        OR LOWER(translation) LIKE $${params.length}
+      )`;
+    }
+
+    const [{ rows }, { rows: introRows }] = await Promise.all([
+      db.query(
+        `SELECT * FROM saved_words
+         WHERE ${whereClause}`,
+        params,
+      ),
+      db.query(
+        `SELECT COUNT(*)::int AS cnt FROM saved_words
+         WHERE user_id = $1
+           AND target_language IS NOT DISTINCT FROM $2
+           AND introduced_date = CURRENT_DATE`,
+        [userId, targetLanguage],
+      ),
+    ]);
+
+    const introducedToday = introRows[0]?.cnt ?? 0;
+    const adjustedNewLimit = Math.max(0, dailyNewLimit - introducedToday);
+
+    ({ groups, dueNextGroupKeys } = buildDictionaryGroups(rows, sort, adjustedNewLimit));
+    _groupCache.set(key, { groups, dueNextGroupKeys, ts: Date.now() });
   }
 
-  const { rows } = await db.query(
-    `SELECT * FROM saved_words
-     WHERE ${whereClause}`,
-    params,
-  );
-
-  const { rows: introRows } = await db.query(
-    `SELECT COUNT(*)::int AS cnt FROM saved_words
-     WHERE user_id = $1
-       AND target_language IS NOT DISTINCT FROM $2
-       AND introduced_date = CURRENT_DATE`,
-    [userId, targetLanguage],
-  );
-  const introducedToday = introRows[0]?.cnt ?? 0;
-  const adjustedNewLimit = Math.max(0, dailyNewLimit - introducedToday);
-
-  const { groups, dueNextGroupKeys } = buildDictionaryGroups(rows, sort, adjustedNewLimit);
   const safeLimit = Math.max(1, limit);
   const totalGroups = groups.length;
   const totalPages = Math.max(1, Math.ceil(totalGroups / safeLimit));

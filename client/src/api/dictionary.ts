@@ -167,7 +167,7 @@ export function getDictionaryWordGroups(page: number, limit: number, search: str
     search,
     sort,
   });
-  return request<DictionaryWordGroupPage>(`/dictionary/word-groups?${params}`, { cacheTtlMs: 10_000 });
+  return request<DictionaryWordGroupPage>(`/dictionary/word-groups?${params}`, { cacheTtlMs: 30_000 });
 }
 
 export function saveWord(data: SaveWordData) {

@@ -8,7 +8,7 @@ import { validate } from '../lib/validate.js';
 import { applySrsReview } from '../lib/srsUpdate.js';
 import { synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup, resolveDictionaryLookupFast } from '../services/wordSemanticsService.js';
-import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listCalendarCounts, listCalendarDayWords } from '../lib/dictionaryQueries.js';
+import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
 
 const router = Router();
 
@@ -259,6 +259,7 @@ router.patch('/api/dictionary/words/:id/image', authMiddleware, validate({ param
       [image_url, req.params.id, req.userId, image_term ?? null],
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Word not found' });
+    invalidateDictionaryCache(req.userId);
     return res.json(rows[0]);
   } catch (err) {
     req.log.error({ err }, 'Error updating word image');
@@ -339,6 +340,7 @@ router.patch('/api/dictionary/queue-reorder', authMiddleware, validate({ body: q
       }
     }
     await client.query('COMMIT');
+    invalidateDictionaryCache(req.userId);
     return res.status(204).end();
   } catch (err) {
     await client.query('ROLLBACK');
@@ -428,6 +430,7 @@ router.patch('/api/dictionary/words/:id/review', authMiddleware, validate({ para
       return res.status(404).json({ error: 'Word not found' });
     }
 
+    invalidateDictionaryCache(req.userId);
     return res.json(updated);
   } catch (err) {
     req.log.error({ err }, 'Error reviewing word');
@@ -494,6 +497,7 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
        RETURNING *`,
       [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, sentence_translation || null, part_of_speech || null, image_url || null, lemma || null, forms || null, frequency_count ?? null, image_term || null],
     );
+    invalidateDictionaryCache(req.userId);
     return res.status(201).json({ ...rows[0], _created: true });
   } catch (err) {
     req.log.error({ err }, 'Error saving word');
@@ -548,6 +552,7 @@ router.delete('/api/dictionary/words/:id', authMiddleware, validate({ params: uu
     if (rowCount === 0) {
       return res.status(404).json({ error: 'Word not found' });
     }
+    invalidateDictionaryCache(req.userId);
     return res.status(204).end();
   } catch (err) {
     req.log.error({ err }, 'Error deleting saved word');
