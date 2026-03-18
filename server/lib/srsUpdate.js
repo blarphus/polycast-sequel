@@ -31,6 +31,19 @@ export async function applySrsReview(db, wordId, userId, answer) {
     newStage = Math.min(currentStage + 1, 4);
   }
 
+  // When prompt_stage advances to a new prompt type, reset learning
+  // so the user must go through learning steps for the new prompt.
+  let finalLearningStep = next.learning_step;
+  let finalDueSeconds = next.due_seconds;
+  let finalInterval = next.srs_interval;
+  if (newStage > currentStage && next.learning_step === null) {
+    // Card was about to graduate, but there's a new prompt type to learn.
+    // Reset to learning step 0 so it comes back in 1 min for the new prompt.
+    finalLearningStep = 0;
+    finalDueSeconds = 60;
+    finalInterval = 0;
+  }
+
   const { rows: updated } = await db.query(
     `UPDATE saved_words
      SET srs_interval = $1,
@@ -45,10 +58,10 @@ export async function applySrsReview(db, wordId, userId, answer) {
      WHERE id = $8 AND user_id = $9
      RETURNING *`,
     [
-      next.srs_interval,
+      finalInterval,
       next.ease_factor,
-      next.learning_step,
-      String(next.due_seconds),
+      finalLearningStep,
+      String(finalDueSeconds),
       next.correct_delta,
       next.incorrect_delta,
       newStage,
