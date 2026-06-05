@@ -4,8 +4,11 @@ import {
   fetchWiktSenses,
   fetchWiktTranslations,
   persistGeminiFallbackSense,
+  isFormOf,
+  extractFormOfLemma,
 } from '../enrichWord.js';
-import { pickSense, isModelReady } from '../lib/sensePicker.js';
+// FLAGGED FOR DELETION — local ONNX sense-picker replaced by Gemini index-pick (Flash Lite).
+// import { pickSense, isModelReady } from '../lib/sensePicker.js';
 
 function makeContextError(message, context = {}) {
   const error = new Error(message);
@@ -36,18 +39,22 @@ async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   return (fallbackData[0]?.[0]?.[0] || '').trim();
 }
 
-// pickBestSense — uses local ONNX model, falls back to Gemini if model not yet loaded
+// pickBestSense — Gemini reads the sentence context and picks the Wiktionary sense
+// index whose gloss best matches the usage. Returns -1 when none of the senses fit,
+// signalling the caller to escalate to the full Gemini path (which writes its own
+// definition). Uses Flash Lite: picking one integer is trivial classification, so the
+// cheapest model is ample (see plan — index-pick is ~1/10th the cost of generating a
+// definition).
 async function pickBestSense(word, sentence, targetLang, senses) {
-  const localResult = await pickSense(sentence, word, senses);
-  if (localResult !== null) return localResult;
-
-  // Model not loaded yet — use Gemini so we never guess
   const senseList = senses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n');
   const raw = await callGemini(
-    `The word "${word}" appears in: "${sentence}" (${targetLang}).
-Pick the sense index that best matches. Return ONLY the integer.
+    `The word "${word}" appears in this sentence: "${sentence}" (${targetLang}).
+Pick the sense index whose definition best matches how the word is used here.
+If NONE of the senses match the usage, return -1.
+Return ONLY the integer.
 ${senseList}`,
     { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 10, responseMimeType: 'text/plain' },
+    'gemini-flash-lite-latest',
   );
   const trimmed = raw.trim();
   if (!/^-?\d+$/.test(trimmed)) {
@@ -60,7 +67,8 @@ ${senseList}`,
   }
 
   const idx = Number.parseInt(trimmed, 10);
-  if (idx < 0 || idx >= senses.length) {
+  // -1 is a valid "no sense fits" signal; anything below that or past the list is invalid.
+  if (idx < -1 || idx >= senses.length) {
     throw makeContextError('Gemini sense pick returned an invalid sense index', {
       word,
       targetLang,
@@ -71,6 +79,31 @@ ${senseList}`,
   }
 
   return idx;
+}
+
+// resolveFormOfChain — when a picked sense is a bare inflection / alternative-form note
+// ("third-person form of rasgar", "alternative form of caracterizar") rather than a real
+// definition, follow the reference to the base word and pick a real definition from ITS
+// senses. Recurses to handle multi-hop chains (conjugation → alt-spelling → standard word),
+// since the DB-level expansion only resolves one hop. Returns null when the chain can't be
+// resolved from the DB (base word absent, or Gemini finds no fitting sense), so the caller
+// escalates to the full Gemini path, which writes its own definition.
+async function resolveFormOfChain(gloss, sentence, targetLang, nativeLang, depth = 0) {
+  if (depth >= 3) return null; // guard against pathological/cyclic chains
+  const lemma = extractFormOfLemma(gloss);
+  if (!lemma) return null;
+
+  const { senses } = await fetchWiktSenses(lemma.toLowerCase(), targetLang, nativeLang);
+  if (senses.length === 0) return null;
+
+  const idx = senses.length === 1 ? 0 : await pickBestSense(lemma, sentence, targetLang, senses);
+  if (idx === -1) return null;
+
+  const picked = senses[idx];
+  if (isFormOf(picked.gloss)) {
+    return resolveFormOfChain(picked.gloss, sentence, targetLang, nativeLang, depth + 1);
+  }
+  return { definition: picked.gloss, part_of_speech: picked.pos || null, lemma };
 }
 
 export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, targetLang }) {
@@ -85,17 +118,35 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
     translateWordInSentence(word, sentence, targetLang, nativeLang),
   ]);
 
+  // -1 = none of the Wiktionary senses fit the usage. Return null so the route
+  // escalates to the full Gemini path, which generates + caches a proper definition.
+  if (senseIndex === -1) return null;
+
   const sense = wiktSenses[senseIndex];
+  let definition = sense.gloss;
+  let partOfSpeech = sense.pos || null;
+  let lemma = resolvedLemma;
+
+  // If the picked sense is a bare form-of note rather than a real definition, follow the
+  // reference chain to the base word and show ITS definition instead.
+  if (isFormOf(sense.gloss)) {
+    const resolved = await resolveFormOfChain(sense.gloss, sentence, targetLang, nativeLang);
+    if (!resolved) return null; // unresolvable from DB — escalate to full Gemini path
+    definition = resolved.definition;
+    partOfSpeech = resolved.part_of_speech;
+    lemma = resolved.lemma;
+  }
+
   return {
     word,
     target_word: word,
     valid: true,
     translation,
-    definition: sense.gloss,
-    part_of_speech: sense.pos || null,
+    definition,
+    part_of_speech: partOfSpeech,
     sense_index: senseIndex,
-    matched_gloss: sense.gloss,
-    lemma: resolvedLemma,
+    matched_gloss: definition,
+    lemma,
     is_native: false,
     definition_source: 'wiktionary',
     example: null,

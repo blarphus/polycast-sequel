@@ -98,36 +98,66 @@ function flattenSenses(rows) {
  */
 const FORM_OF_RE = /^(?:[\w/'-]+\s+)*?(?:form|participle|gerund|infinitive|supine|singular|plural|tense|indicative|subjunctive|imperative|conditional|inflection|diminutive|augmentative|superlative|comparative)\s+of\s+(\S+)$/i;
 
-function extractFormOfLemma(senses) {
-  if (senses.length === 0) return null;
-  // Only chase if ALL senses are "form of" references
-  const lemmas = new Set();
+/** Strip trailing punctuation that leaks from gloss patterns (e.g. "atrapalhar:") */
+function cleanLemmaRef(raw) {
+  return raw.replace(/[^a-zA-ZÀ-ÿ-]+$/, '');
+}
+
+/** True if a gloss is a bare inflection / alternative-form note rather than a real definition. */
+export function isFormOf(gloss) {
+  return FORM_OF_RE.test(gloss);
+}
+
+/** Extract the referenced base word from a form-of gloss, or null if it isn't one. */
+export function extractFormOfLemma(gloss) {
+  const m = FORM_OF_RE.exec(gloss);
+  if (!m) return null;
+  return cleanLemmaRef(m[1]) || null;
+}
+
+/**
+ * Classify senses into real definitions vs form-of references.
+ * Returns { real, formOf, primaryLemma } where primaryLemma is the
+ * accent-folded key of the first referenced lemma (or null).
+ */
+function classifySenses(senses) {
+  const real = [];
+  const formOf = [];
+  const lemmaRefs = new Set();
+
   for (const s of senses) {
     const m = FORM_OF_RE.exec(s.gloss);
-    if (!m) return null; // at least one real definition exists — no need to chase
-    lemmas.add(accentFoldKey(m[1]));
+    if (m) {
+      const cleaned = cleanLemmaRef(m[1]);
+      if (cleaned) lemmaRefs.add(accentFoldKey(cleaned));
+      formOf.push(s);
+    } else {
+      real.push(s);
+    }
   }
-  // All senses point to the same lemma (or close variants)
-  if (lemmas.size === 1) return [...lemmas][0];
-  // Multiple different lemmas — pick the first one mentioned
-  const m = FORM_OF_RE.exec(senses[0].gloss);
-  return m ? m[1] : null;
+
+  const primaryLemma = lemmaRefs.size > 0 ? [...lemmaRefs][0] : null;
+  return { real, formOf, primaryLemma };
 }
 
 export async function fetchWiktSenses(word, targetLang, _nativeLang) {
   const rows = await queryWiktionary(word, targetLang);
   const senses = flattenSenses(rows);
 
-  // If all senses are "form of lemma" references, look up the lemma instead
-  const chasedLemma = extractFormOfLemma(senses);
-  if (chasedLemma) {
-    const lemmaRows = await queryWiktionary(chasedLemma, targetLang);
+  // Expand form-of senses by looking up the lemma
+  const { real, formOf, primaryLemma } = classifySenses(senses);
+  if (primaryLemma && formOf.length > 0) {
+    const lemmaRows = await queryWiktionary(primaryLemma, targetLang);
     const lemmaSenses = flattenSenses(lemmaRows);
     if (lemmaSenses.length > 0) {
-      // Find the properly-cased word from the lemma DB row
-      const lemmaWord = lemmaRows[0]?.word || chasedLemma;
-      logger.info('[wikt-lemma] %s → %s (%s), found %d lemma senses', word, lemmaWord, senses[0].gloss, lemmaSenses.length);
-      return { senses: lemmaSenses, resolvedLemma: lemmaWord };
+      const lemmaWord = lemmaRows[0]?.word || primaryLemma;
+      // Filter lemma senses by POS of the form-of entries
+      const posSet = new Set(formOf.map(s => s.pos));
+      const filtered = lemmaSenses.filter(s => posSet.has(s.pos));
+      const replacement = filtered.length > 0 ? filtered : lemmaSenses;
+      const expanded = [...real, ...replacement];
+      logger.info('[wikt-lemma] %s → %s (%s), expanded: %d real + %d from lemma', word, lemmaWord, formOf[0].gloss, real.length, replacement.length);
+      return { senses: expanded, resolvedLemma: lemmaWord };
     }
   }
 
@@ -240,17 +270,28 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     : [];
   let wiktSenses = flattenSenses(wiktRows);
 
-  // If all senses are "form of lemma" references, chase the lemma
+  // Expand form-of senses by looking up the lemma
   let wiktResolvedLemma = null;
-  const formOfLemma = extractFormOfLemma(wiktSenses);
-  if (formOfLemma) {
-    const lemmaRows = await queryWiktionary(formOfLemma, targetLang);
+  const { real, formOf, primaryLemma } = classifySenses(wiktSenses);
+  if (primaryLemma && formOf.length > 0) {
+    const lemmaRows = await queryWiktionary(primaryLemma, targetLang);
     const lemmaSenses = flattenSenses(lemmaRows);
     if (lemmaSenses.length > 0) {
-      wiktResolvedLemma = lemmaRows[0]?.word || formOfLemma;
-      logger.info('[enrich-lemma] %s → %s (%s), found %d lemma senses', word, wiktResolvedLemma, wiktSenses[0].gloss, lemmaSenses.length);
-      wiktRows = lemmaRows;
-      wiktSenses = lemmaSenses;
+      wiktResolvedLemma = lemmaRows[0]?.word || primaryLemma;
+      // Filter lemma senses by POS of the form-of entries
+      const posSet = new Set(formOf.map(s => s.pos));
+      const filtered = lemmaSenses.filter(s => posSet.has(s.pos));
+      const replacement = filtered.length > 0 ? filtered : lemmaSenses;
+
+      if (real.length === 0) {
+        // All form-of: replace rows entirely (for forms lookup too)
+        wiktRows = lemmaRows;
+        wiktSenses = replacement;
+      } else {
+        // Mixed: keep real senses, add lemma senses, keep original rows for forms
+        wiktSenses = [...real, ...replacement];
+      }
+      logger.info('[enrich-lemma] %s → %s (%s), expanded: %d real + %d from lemma', word, wiktResolvedLemma, formOf[0].gloss, real.length, replacement.length);
     }
   }
   const _t1 = Date.now();

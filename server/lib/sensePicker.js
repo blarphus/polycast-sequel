@@ -39,26 +39,30 @@ export function isModelReady() {
   return pipeline !== null;
 }
 
-export async function pickSense(sentence, word, senses) {
-  if (!pipeline) return null;
-
-  const query = `${sentence}`;
-  const texts = [query, ...senses.map((s) => `${s.pos}: ${s.gloss}`)];
-
-  const output = await pipeline(texts, { pooling: 'mean', normalize: true });
-
-  const sentenceEmbedding = output[0].data;
-  let bestIndex = 0;
-  let bestScore = -Infinity;
-
-  for (let i = 0; i < senses.length; i++) {
-    const senseEmbedding = output[i + 1].data;
-    const score = cosineSimilarity(sentenceEmbedding, senseEmbedding);
-    if (score > bestScore) {
-      bestScore = score;
-      bestIndex = i;
-    }
-  }
-
-  return bestIndex;
-}
+// FLAGGED FOR DELETION — replaced by Gemini index-pick (Flash Lite) in wordSemanticsService.
+// This local picker embedded a target-language sentence and scored it against English
+// glosses with an English model, which mis-picked senses cross-lingually (e.g. "mas" → the
+// "feminine plural of mau" sense instead of the conjunction "but"). No longer called.
+// export async function pickSense(sentence, word, senses) {
+//   if (!pipeline) return null;
+//
+//   const query = `${sentence}`;
+//   const texts = [query, ...senses.map((s) => `${s.pos}: ${s.gloss}`)];
+//
+//   const output = await pipeline(texts, { pooling: 'mean', normalize: true });
+//
+//   const sentenceEmbedding = output[0].data;
+//   let bestIndex = 0;
+//   let bestScore = -Infinity;
+//
+//   for (let i = 0; i < senses.length; i++) {
+//     const senseEmbedding = output[i + 1].data;
+//     const score = cosineSimilarity(sentenceEmbedding, senseEmbedding);
+//     if (score > bestScore) {
+//       bestScore = score;
+//       bestIndex = i;
+//     }
+//   }
+//
+//   return bestIndex;
+// }

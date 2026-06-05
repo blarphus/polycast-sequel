@@ -35,7 +35,8 @@ import voicePracticeRoutes from './routes/voicePractice.js';
 import homeRoutes from './routes/home.js';
 import friendkeeperRoutes from './routes/friendkeeper.js';
 import { startTranscriptWorker, backfillCefrLevels } from './services/videoTranscriptQueue.js';
-import { loadModel as loadSensePickerModel } from './lib/sensePicker.js';
+// FLAGGED FOR DELETION — local ONNX sense-picker replaced by Gemini index-pick (Flash Lite).
+// import { loadModel as loadSensePickerModel } from './lib/sensePicker.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,7 +80,8 @@ async function main() {
   }
 
   // ------ Sense-picker model (non-blocking) ------
-  loadSensePickerModel();
+  // FLAGGED FOR DELETION — sense-picking now done by Gemini index-pick (Flash Lite).
+  // loadSensePickerModel();
 
   // ------ Express app ------
   const app = express();
