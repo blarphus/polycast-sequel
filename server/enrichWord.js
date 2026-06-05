@@ -154,7 +154,10 @@ export async function fetchWiktSenses(word, targetLang, _nativeLang) {
       // Filter lemma senses by POS of the form-of entries
       const posSet = new Set(formOf.map(s => s.pos));
       const filtered = lemmaSenses.filter(s => posSet.has(s.pos));
-      const replacement = filtered.length > 0 ? filtered : lemmaSenses;
+      // Tag senses pulled in from the lemma so a caller can tell, per picked sense,
+      // whether the word is actually an inflected form of `lemmaWord` (vs. one of its
+      // own real senses — e.g. "mas" the conjunction shares a list with "más" = form of mau).
+      const replacement = (filtered.length > 0 ? filtered : lemmaSenses).map(s => ({ ...s, lemma: lemmaWord }));
       const expanded = [...real, ...replacement];
       logger.info('[wikt-lemma] %s → %s (%s), expanded: %d real + %d from lemma', word, lemmaWord, formOf[0].gloss, real.length, replacement.length);
       return { senses: expanded, resolvedLemma: lemmaWord };

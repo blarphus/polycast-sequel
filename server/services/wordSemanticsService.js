@@ -107,9 +107,9 @@ async function resolveFormOfChain(gloss, sentence, targetLang, nativeLang, depth
 }
 
 export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, targetLang }) {
-  const { senses: wiktSenses, resolvedLemma } = targetLang
+  const { senses: wiktSenses } = targetLang
     ? await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang)
-    : { senses: [], resolvedLemma: null };
+    : { senses: [] };
   if (wiktSenses.length === 0) return null; // caller falls back to full Gemini
 
   // Run sense-picking + translation in parallel
@@ -125,7 +125,9 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
   const sense = wiktSenses[senseIndex];
   let definition = sense.gloss;
   let partOfSpeech = sense.pos || null;
-  let lemma = resolvedLemma;
+  // lemma reflects the sense Gemini actually picked: null when it's the word's own real
+  // sense, or the base word when the picked sense came from lemma expansion / a form-of chain.
+  let lemma = sense.lemma ?? null;
 
   // If the picked sense is a bare form-of note rather than a real definition, follow the
   // reference chain to the base word and show ITS definition instead.
