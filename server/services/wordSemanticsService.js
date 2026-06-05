@@ -14,17 +14,6 @@ function makeContextError(message, context = {}) {
   return error;
 }
 
-// Parse a JSON object out of a model reply, tolerating stray markdown fences or surrounding
-// prose by extracting the first {...} block.
-function parseJsonObject(raw, errorLabel, context) {
-  const match = raw.match(/\{[\s\S]*\}/);
-  try {
-    return JSON.parse(match ? match[0] : raw);
-  } catch {
-    throw makeContextError(errorLabel, { ...context, raw });
-  }
-}
-
 async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   const markedSentence = sentence.replace(word, `~${word}~`);
   const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(markedSentence)}`;
@@ -48,12 +37,11 @@ async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   return (fallbackData[0]?.[0]?.[0] || '').trim();
 }
 
-// pickBestSense — Gemini reads the sentence and the candidate senses and returns EITHER the
-// index of the sense that states the meaning, OR — when the best-matching sense doesn't define
-// the word but only points to a base form (e.g. "plural of mão", "female equivalent of
-// enfermeiro", "alternative form of caracterizar", or a bare grammatical label) — the base
-// word to look up instead. Returns {index} | {base} | {index:-1}. Flash Lite: trivial
-// classification, so the cheapest model is ample.
+// pickBestSense — Gemini reads the sentence and candidate senses and replies with ONE short
+// token: the INDEX number of the sense that states the meaning, the BASE word when the best
+// sense only points to another word (e.g. "plural of mão", "female equivalent of enfermeiro",
+// "alternative form of caracterizar", or a bare grammatical label), or -1 when none fit. Plain
+// text (a number or a word) — nothing to truncate. Returns {index} | {base}.
 async function pickBestSense(word, sentence, targetLang, senses) {
   const senseList = senses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n');
   const raw = await callGemini(
@@ -61,52 +49,57 @@ async function pickBestSense(word, sentence, targetLang, senses) {
 Candidate dictionary senses:
 ${senseList}
 
-Pick the sense that best matches how "${word}" is used here, then look at THAT sense's wording and reply with ONLY a JSON object:
-- If the wording does not state a meaning but merely points to another word — it says the word is e.g. a "plural of X", "feminine of X", "past participle of X", "alternative form of X", "female/male equivalent of X", or is only a grammatical label like "third-person singular present indicative" — reply {"base": "<that other word X>"} (even if it also gives a short meaning in parentheses).
-- If the wording itself states the meaning (e.g. "to rip", "a fortune teller"), reply {"index": <integer index>}, even if "${word}" is grammatically derived from another word.
-- If none of the senses are relevant, reply {"index": -1}.`,
-    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 40, responseMimeType: 'application/json' },
+Pick the sense that best matches how "${word}" is used here, then look at THAT sense's wording and reply with ONLY ONE thing, nothing else:
+- If the wording states the meaning (e.g. "to rip", "a fortune teller"), reply with its index NUMBER — even if "${word}" is grammatically derived from another word.
+- If the wording does not state a meaning but only points to another word — e.g. "plural of X", "feminine of X", "past participle of X", "alternative form of X", "female/male equivalent of X", or just a grammatical label like "third-person singular present indicative" — reply with that other WORD X (even if it also gives a short meaning in parentheses).
+- If none of the senses are relevant, reply -1.`,
+    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 16, responseMimeType: 'text/plain' },
     'gemini-flash-lite-latest',
   );
 
-  const parsed = parseJsonObject(raw, 'Gemini sense pick returned invalid JSON', { word, targetLang });
-
-  if (typeof parsed.base === 'string' && parsed.base.trim()) {
-    return { base: parsed.base.trim() };
-  }
-  if (Number.isInteger(parsed.index)) {
-    if (parsed.index < -1 || parsed.index >= senses.length) {
+  const reply = raw.trim();
+  if (/^-?\d+$/.test(reply)) {
+    const index = Number.parseInt(reply, 10);
+    if (index < -1 || index >= senses.length) {
       throw makeContextError('Gemini sense pick returned an out-of-range index', {
-        word, targetLang, raw, senseCount: senses.length,
+        word, targetLang, raw: reply, senseCount: senses.length,
       });
     }
-    return { index: parsed.index };
+    return { index };
   }
-  throw makeContextError('Gemini sense pick returned neither a valid index nor a base word', {
-    word, targetLang, raw,
+  if (/^[\p{L}'-]+$/u.test(reply)) {
+    return { base: reply.toLowerCase() };
+  }
+  throw makeContextError('Gemini sense pick reply was neither a number nor a single word', {
+    word, targetLang, raw: reply,
   });
 }
 
-// pickSenseIndex — plain "which sense fits" pick over a base word's real senses. No {base}
-// option, so it can't self-loop, and it's lenient about the base word not appearing literally
-// in the sentence (the inflected form does). Returns the index, or -1 if none fit.
+// pickSenseIndex — plain "which sense fits" pick over a base word's real senses. Replies with
+// just the index NUMBER (no base option, so it can't self-loop) and is lenient about the base
+// word not appearing literally in the sentence (the inflected form does). Returns the index, or
+// -1 if none fit.
 async function pickSenseIndex(word, sentence, targetLang, senses) {
   const senseList = senses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n');
   const raw = await callGemini(
     `The word "${word}" (or an inflected form of it) is used in: "${sentence}" (${targetLang}).
 Senses:
 ${senseList}
-Reply with ONLY a JSON object {"index": <integer>} for the sense that best fits this usage, or {"index": -1} if none fit.`,
-    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 20, responseMimeType: 'application/json' },
+Reply with ONLY the index NUMBER of the sense that best fits this usage, or -1 if none fit.`,
+    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 8, responseMimeType: 'text/plain' },
     'gemini-flash-lite-latest',
   );
-  const parsed = parseJsonObject(raw, 'Gemini index pick returned invalid JSON', { word, targetLang });
-  if (!Number.isInteger(parsed.index) || parsed.index < -1 || parsed.index >= senses.length) {
-    throw makeContextError('Gemini index pick returned an invalid index', {
-      word, targetLang, raw, senseCount: senses.length,
+  const reply = raw.trim();
+  if (!/^-?\d+$/.test(reply)) {
+    throw makeContextError('Gemini index pick did not return an integer', { word, targetLang, raw: reply });
+  }
+  const index = Number.parseInt(reply, 10);
+  if (index < -1 || index >= senses.length) {
+    throw makeContextError('Gemini index pick returned an out-of-range index', {
+      word, targetLang, raw: reply, senseCount: senses.length,
     });
   }
-  return parsed.index;
+  return index;
 }
 
 // resolvePick — turn a top-level pick into a concrete { definition, part_of_speech, sense_index,
