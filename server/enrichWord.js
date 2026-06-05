@@ -115,6 +115,24 @@ export function extractFormOfLemma(gloss) {
   return cleanLemmaRef(m[1]) || null;
 }
 
+// A gloss that is ONLY a grammatical-form label (e.g. "third-person singular present
+// indicative") carries no meaning and no "of <lemma>" to follow, so it is useless as a
+// definition. Detect these so they can be dropped, leaving the meaning-bearing senses.
+const GRAMMAR_LABEL_TOKENS = new Set([
+  'first', 'second', 'third', 'person', 'singular', 'plural',
+  'masculine', 'feminine', 'neuter', 'gender', 'number',
+  'present', 'past', 'preterite', 'preterit', 'future', 'imperfect', 'perfect', 'pluperfect',
+  'indicative', 'subjunctive', 'imperative', 'conditional', 'infinitive', 'gerund',
+  'participle', 'supine', 'tense', 'mood', 'form',
+]);
+
+export function isInflectionLabelOnly(gloss) {
+  if (/\bof\b/i.test(gloss)) return false; // references a lemma — handled by form-of resolution
+  const tokens = gloss.toLowerCase().split(/[\s,;/-]+/).filter(Boolean);
+  if (tokens.length < 2) return false; // single words can be real meanings ("present", "perfect")
+  return tokens.every((t) => GRAMMAR_LABEL_TOKENS.has(t));
+}
+
 /**
  * Classify senses into real definitions vs form-of references.
  * Returns { real, formOf, primaryLemma } where primaryLemma is the
@@ -123,34 +141,42 @@ export function extractFormOfLemma(gloss) {
 function classifySenses(senses) {
   const real = [];
   const formOf = [];
-  const lemmaRefs = new Set();
+  const lemmaRefs = [];
 
   for (const s of senses) {
     const m = FORM_OF_RE.exec(s.gloss);
     if (m) {
       const cleaned = cleanLemmaRef(m[1]);
-      if (cleaned) lemmaRefs.add(accentFoldKey(cleaned));
+      if (cleaned) lemmaRefs.push(cleaned);
       formOf.push(s);
     } else {
       real.push(s);
     }
   }
 
-  const primaryLemma = lemmaRefs.size > 0 ? [...lemmaRefs][0] : null;
-  return { real, formOf, primaryLemma };
+  // Keep the lemma as written in the gloss (accents intact) for display; fold only for the DB key.
+  const primaryRef = lemmaRefs.length > 0 ? lemmaRefs[0] : null;
+  return {
+    real,
+    formOf,
+    primaryLemma: primaryRef ? accentFoldKey(primaryRef) : null,
+    primaryLemmaDisplay: primaryRef,
+  };
 }
 
 export async function fetchWiktSenses(word, targetLang, _nativeLang) {
   const rows = await queryWiktionary(word, targetLang);
-  const senses = flattenSenses(rows);
+  // Drop senses that are only grammatical-form labels with no meaning (e.g. "second-person
+  // singular imperative"), leaving the picker meaning-bearing senses.
+  const senses = flattenSenses(rows).filter((s) => !isInflectionLabelOnly(s.gloss));
 
   // Expand form-of senses by looking up the lemma
-  const { real, formOf, primaryLemma } = classifySenses(senses);
+  const { real, formOf, primaryLemma, primaryLemmaDisplay } = classifySenses(senses);
   if (primaryLemma && formOf.length > 0) {
     const lemmaRows = await queryWiktionary(primaryLemma, targetLang);
-    const lemmaSenses = flattenSenses(lemmaRows);
+    const lemmaSenses = flattenSenses(lemmaRows).filter((s) => !isInflectionLabelOnly(s.gloss));
     if (lemmaSenses.length > 0) {
-      const lemmaWord = lemmaRows[0]?.word || primaryLemma;
+      const lemmaWord = primaryLemmaDisplay; // accented lemma as written in the gloss
       // Filter lemma senses by POS of the form-of entries
       const posSet = new Set(formOf.map(s => s.pos));
       const filtered = lemmaSenses.filter(s => posSet.has(s.pos));
