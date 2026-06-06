@@ -49,7 +49,7 @@ async function pickBestSense(word, sentence, targetLang, senses) {
 Candidate dictionary senses:
 ${senseList}
 
-Pick the sense that best matches how "${word}" is used here, then look at THAT sense's wording and reply with ONLY ONE thing, nothing else:
+Pick the sense that best matches how "${word}" is used here. Prefer the most basic, common, literal meaning that fits the context and the word's part of speech in the sentence; choose a figurative, specialized, or interjection sense only if the context clearly requires it. Then look at THAT sense's wording and reply with ONLY ONE thing, nothing else:
 - If the wording states the meaning (e.g. "to rip", "a fortune teller"), reply with its index NUMBER — even if "${word}" is grammatically derived from another word. A "contraction of X + Y" gloss DOES state the meaning (it defines the contraction itself), so reply with its index even if it adds a cross-reference like "feminine singular of num".
 - If the wording only points to another word and gives no meaning of its own — e.g. "plural of X", "feminine of X", "past participle of X", "alternative form of X", "female/male equivalent of X", or just a grammatical label like "third-person singular present indicative" — reply with that other WORD X (even if it also gives a short meaning in parentheses).
 - If none of the senses are relevant, reply -1.`,
@@ -85,6 +85,7 @@ async function pickSenseIndex(word, sentence, targetLang, senses) {
     `The word "${word}" (or an inflected form of it) is used in: "${sentence}" (${targetLang}).
 Senses:
 ${senseList}
+Prefer the most basic, common, literal sense that fits; choose a specialized or figurative sense only if the context clearly requires it.
 Reply with ONLY the index NUMBER of the sense that best fits this usage, or -1 if none fit.`,
     { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 8, responseMimeType: 'text/plain' },
     'gemini-flash-lite-latest',
