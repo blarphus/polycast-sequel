@@ -50,8 +50,8 @@ Candidate dictionary senses:
 ${senseList}
 
 Pick the sense that best matches how "${word}" is used here, then look at THAT sense's wording and reply with ONLY ONE thing, nothing else:
-- If the wording states the meaning (e.g. "to rip", "a fortune teller"), reply with its index NUMBER — even if "${word}" is grammatically derived from another word.
-- If the wording does not state a meaning but only points to another word — e.g. "plural of X", "feminine of X", "past participle of X", "alternative form of X", "female/male equivalent of X", or just a grammatical label like "third-person singular present indicative" — reply with that other WORD X (even if it also gives a short meaning in parentheses).
+- If the wording states the meaning (e.g. "to rip", "a fortune teller"), reply with its index NUMBER — even if "${word}" is grammatically derived from another word. A "contraction of X + Y" gloss DOES state the meaning (it defines the contraction itself), so reply with its index even if it adds a cross-reference like "feminine singular of num".
+- If the wording only points to another word and gives no meaning of its own — e.g. "plural of X", "feminine of X", "past participle of X", "alternative form of X", "female/male equivalent of X", or just a grammatical label like "third-person singular present indicative" — reply with that other WORD X (even if it also gives a short meaning in parentheses).
 - If none of the senses are relevant, reply -1.`,
     { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 16, responseMimeType: 'text/plain' },
     'gemini-flash-lite-latest',
