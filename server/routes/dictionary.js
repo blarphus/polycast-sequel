@@ -7,7 +7,7 @@ import { searchAllImages } from '../lib/imageSearch.js';
 import { validate } from '../lib/validate.js';
 import { applySrsReview } from '../lib/srsUpdate.js';
 import { synthesizeVoiceFeedback } from '../services/ttsService.js';
-import { resolveDictionaryLookup, resolveDictionaryLookupFast } from '../services/wordSemanticsService.js';
+import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext } from '../services/wordSemanticsService.js';
 import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
 
 const router = Router();
@@ -135,6 +135,21 @@ router.get('/api/dictionary/lookup', authMiddleware, validate({ query: lookupQue
   } catch (err) {
     req.log.error({ err }, 'Dictionary lookup error');
     return res.status(500).json({ error: err.message || 'Lookup failed' });
+  }
+});
+
+/**
+ * GET /api/dictionary/explain?word=X&sentence=Y&nativeLang=Z&targetLang=W
+ * Asks Gemini to explain the word's meaning specifically in its sentence context.
+ */
+router.get('/api/dictionary/explain', authMiddleware, validate({ query: lookupQuery }), async (req, res) => {
+  const { word, sentence, nativeLang, targetLang } = req.query;
+  try {
+    const result = await explainWordInContext({ word, sentence, nativeLang, targetLang });
+    return res.json(result);
+  } catch (err) {
+    req.log.error({ err }, 'Dictionary explain error');
+    return res.status(500).json({ error: err.message || 'Explain failed' });
   }
 });
 

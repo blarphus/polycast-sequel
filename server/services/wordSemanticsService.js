@@ -167,6 +167,23 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
   };
 }
 
+// explainWordInContext — on-demand: ask Gemini to explain what a word means specifically in
+// the sentence it appears in, written in the learner's native language. Used by the popup's
+// "Explain in context" button.
+export async function explainWordInContext({ word, sentence, nativeLang, targetLang }) {
+  const raw = await callGemini(
+    `In this ${targetLang || 'target-language'} sentence: "${sentence}"
+explain what the word "${word}" means in THIS specific context — its sense here, and any nuance or idiom it carries in the sentence.
+Write the explanation in ${nativeLang}. Be clear and concise (1–3 sentences). Do not repeat the sentence or add a preamble.`,
+    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 300 },
+  );
+  const explanation = raw.trim();
+  if (!explanation) {
+    throw makeContextError('Gemini returned an empty explanation', { word, sentence, targetLang });
+  }
+  return { word, explanation };
+}
+
 export async function resolveDictionaryLookup({
   word,
   sentence,
