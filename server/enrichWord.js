@@ -245,12 +245,12 @@ const FIELD_EXAMPLE = (targetLang) =>
   `- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.`;
 const FIELD_SENTENCE_TRANSLATION = (nativeLang) =>
   `- SENTENCE_TRANSLATION: A natural translation of the EXAMPLE sentence into ${nativeLang}. Wrap the translated equivalent of the target word with tildes like ~word~. Keep the same meaning and tone.`;
-export const FIELD_IMAGE_TERM = `- IMAGE_TERM: A short English stock-photo search term for a flashcard image of this word in the sense used — OR the literal word "NONE" if the word has no meaningful visual. Always English. Guidelines:
+export const FIELD_IMAGE_TERM = `- IMAGE_TERM: A short English stock-photo search term for a flashcard image of this word in the sense used. Always English. Guidelines:
   - Prefer the SIMPLEST term that works — usually just the plain English translation ("baile" → "dance", "perro" → "dog", "montañoso" → "mountain"). A broad term finds better, more varied photos, so do NOT add needless specificity (use "dance", not "couple dancing salsa").
   - Add detail ONLY when the sense needs pinning down ("banco" money → "bank building"; "bat" sport → "baseball bat").
   - For abstract words that have a clear conventional visual, use that one concrete subject ("freedom" → "bird leaving cage"; "nostalgia" → "old photographs"). Keep it to the single most typical image, not an elaborate scene, and don't borrow specifics from the example sentence.
-  - Return "NONE" for words with no depictable meaning — relational, grammatical, or meta words (e.g. "characteristic", "various", "however", "according to", "therefore").
-  - Avoid terms that return diagrams, charts, maps, logos, or images full of text (for "level" use "water in glass", not "levels diagram").`;
+  - Avoid terms that return diagrams, charts, maps, logos, or images full of text (for "level" use "water in glass", not "levels diagram").
+  - Never return an empty string.`;
 const FIELD_LEMMA = `- LEMMA: The dictionary/base form of this word in the target language.
   For verbs: the infinitive (e.g. "to work" in English, "trabajar" in Spanish).
   For nouns: the singular (e.g. "cat" not "cats").
@@ -474,39 +474,31 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     : null;
   lemma = normalizeLemma(lemma, part_of_speech, targetLang) || wiktResolvedLemma;
 
-  // Image: Gemini returns "NONE" for words with no meaningful visual (relational
-  // / grammatical / meta words) — those get no picture. Otherwise search several
-  // candidates, let Gemini vision pick the best, generate one if none fit, and
-  // cache the bytes so the flashcard never depends on a rotting upstream link.
-  const rawTerm = (geminiImageTerm || '').trim();
-  const noImage = rawTerm.toUpperCase() === 'NONE';
-  const imageSearchTerm = noImage ? null : (rawTerm || translation || word);
+  // Image: search several candidates and let Gemini vision pick the best fit —
+  // the picker is the single arbiter of whether anything fits. If nothing does,
+  // generate one. Then cache the bytes so the flashcard never depends on a
+  // rotting upstream stock-photo link.
+  const imageSearchTerm = geminiImageTerm || translation || word;
   const _tImg0 = Date.now();
+  const candidates = await searchAllImages(imageSearchTerm, 4); // up to ~8 (Pixabay + Wikimedia)
+  let chosen = candidates.length
+    ? await pickBestImage({ word, definition, sentence, candidates })
+    : null;
+  let imageSource = 'stock';
+  if (!chosen) {
+    chosen = await generateWordImage(word, definition, { sentence, imageTerm: imageSearchTerm });
+    imageSource = 'generated';
+  }
   let image_url = null;
-  let imageSource = 'none';
-  if (noImage) {
-    logger.info('enrichWord: IMAGE_TERM=NONE for "%s" — no image (undepictable word)', word);
+  if (chosen) {
+    const id = await storeImageBytes(chosen.buffer, chosen.contentType, chosen.url ?? null);
+    image_url = `/api/dictionary/image/${id}`;
   } else {
-    const candidates = await searchAllImages(imageSearchTerm, 4); // up to ~8 (Pixabay + Wikimedia)
-    let chosen = candidates.length
-      ? await pickBestImage({ word, definition, sentence, candidates })
-      : null;
-    // No stock photo fit (abstract concept, or nothing found) — generate one.
-    imageSource = 'stock';
-    if (!chosen) {
-      chosen = await generateWordImage(word, definition, { sentence, imageTerm: imageSearchTerm });
-      imageSource = 'generated';
-    }
-    if (chosen) {
-      const id = await storeImageBytes(chosen.buffer, chosen.contentType, chosen.url ?? null);
-      image_url = `/api/dictionary/image/${id}`;
-    } else {
-      logger.warn('enrichWord: no image found or generated for "%s" (term "%s")', word, imageSearchTerm);
-    }
+    logger.warn('enrichWord: no image found or generated for "%s" (term "%s")', word, imageSearchTerm);
   }
   const _tImg1 = Date.now();
-  logger.info('[enrich-timing] %s — Image %s ("%s"): %dms', word, imageSource, imageSearchTerm ?? 'none', _tImg1 - _tImg0);
+  logger.info('[enrich-timing] %s — Image %s ("%s"): %dms', word, imageSource, imageSearchTerm, _tImg1 - _tImg0);
   logger.info('[enrich-timing] %s — TOTAL: %dms', word, _tImg1 - _t0);
 
-  return { word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term: noImage ? null : (rawTerm || translation || word) };
+  return { word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term: geminiImageTerm || translation || word };
 }
