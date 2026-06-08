@@ -37,6 +37,8 @@ import DrillPicker from './pages/DrillPicker';
 import VoicePractice from './pages/VoicePractice';
 import LocalVideos from './pages/LocalVideos';
 import LocalWatch from './pages/LocalWatch';
+import Library from './pages/Library';
+import Reader from './pages/Reader';
 import IncomingCall from './components/IncomingCall';
 import PhraseTranslator from './components/PhraseTranslator';
 import BottomToolbar from './components/BottomToolbar';
@@ -85,7 +87,10 @@ function AuthenticatedShell() {
   const { pathname } = useLocation();
   useSocket(); // Keep socket connected for ALL authenticated pages
 
-  const hideToolbar = pathname.startsWith('/chat/') || pathname.startsWith('/call/') || pathname.startsWith('/group-call/');
+  const hideToolbar = pathname.startsWith('/chat/') ||
+    pathname.startsWith('/call/') ||
+    pathname.startsWith('/group-call/') ||
+    pathname.startsWith('/books/');
 
   useEffect(() => {
     if (!user) return;
@@ -212,6 +217,22 @@ export default function App() {
           element={
             <StudentRoute>
               <Dictionary />
+            </StudentRoute>
+          }
+        />
+        <Route
+          path="/books"
+          element={
+            <StudentRoute>
+              <Library />
+            </StudentRoute>
+          }
+        />
+        <Route
+          path="/books/:bookId"
+          element={
+            <StudentRoute>
+              <Reader />
             </StudentRoute>
           }
         />

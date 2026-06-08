@@ -14,7 +14,13 @@ const socket: Socket = io('', {
   reconnectionDelayMax: 5000,
 });
 
+function isOfflineMode() {
+  return typeof window !== 'undefined' &&
+    window.localStorage.getItem('polycast.offline.enabled') === 'true';
+}
+
 export function connectSocket(): void {
+  if (isOfflineMode()) return;
   if (!socket.connected) {
     socket.connect();
   }

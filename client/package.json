@@ -5,24 +5,26 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:offline": "VITE_POLYCAST_OFFLINE=1 vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run"
   },
   "dependencies": {
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.2",
+    "fflate": "^0.8.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.27.0",
-    "socket.io-client": "^4.8.0",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.9"
+    "socket.io-client": "^4.8.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.2",
     "jsdom": "^28.1.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.9",
     "vitest": "^4.0.18"
   }
 }

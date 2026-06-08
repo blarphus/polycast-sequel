@@ -11,6 +11,17 @@ const inflightGetRequests = new Map<string, Promise<unknown>>();
 const responseCache = new Map<string, { data: unknown; expiresAt: number }>();
 let cacheEpoch = 0;
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('polycast-offline-dictionary-external-sync', () => {
+    invalidateApiCache();
+  });
+}
+
+async function getOfflineFallback(path: string, method: string, body: unknown) {
+  const { handleOfflineRequest } = await import('./offlineDictionary');
+  return handleOfflineRequest(path, method, body);
+}
+
 function cloneCachedValue<T>(value: T): T {
   if (typeof structuredClone === 'function') {
     return structuredClone(value);
@@ -20,6 +31,17 @@ function cloneCachedValue<T>(value: T): T {
 
 function getCacheKey(method: string, path: string): string {
   return `${method.toUpperCase()} ${path}`;
+}
+
+function shouldTryOfflineFirst(): boolean {
+  const env = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+  if (env?.VITE_POLYCAST_OFFLINE === '1') return true;
+  return typeof window !== 'undefined' &&
+    window.localStorage.getItem('polycast.offline.enabled') === 'true';
+}
+
+function isUnavailableStatus(status: number): boolean {
+  return status === 502 || status === 503 || status === 504;
 }
 
 export function invalidateApiCache() {
@@ -58,11 +80,27 @@ export async function request<T>(path: string, opts: ApiOptions = {}): Promise<T
   }
 
   const executeRequest = async (): Promise<T> => {
-    const res = await fetch(`${BASE}${path}`, fetchOpts);
+    if (shouldTryOfflineFirst()) {
+      const fallback = await getOfflineFallback(path, upperMethod, body);
+      if (fallback.handled) return fallback.data as T;
+    }
+
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}${path}`, fetchOpts);
+    } catch (err) {
+      const fallback = await getOfflineFallback(path, upperMethod, body);
+      if (fallback.handled) return fallback.data as T;
+      throw err;
+    }
 
     if (!res.ok) {
       if (res.status === 304) {
         throw new Error(`${upperMethod} ${path} returned 304 without a fresh response body`);
+      }
+      if (isUnavailableStatus(res.status)) {
+        const fallback = await getOfflineFallback(path, upperMethod, body);
+        if (fallback.handled) return fallback.data as T;
       }
       let payload: any;
       try {

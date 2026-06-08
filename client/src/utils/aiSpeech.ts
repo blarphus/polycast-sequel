@@ -24,6 +24,10 @@ export function stopAiSpeech() {
 export async function playAiSpeech(text: string, languageCode?: string, preloadedUrl?: string) {
   cleanup();
 
+  if (typeof window !== 'undefined' && window.localStorage.getItem('polycast.offline.enabled') === 'true') {
+    return;
+  }
+
   if (preloadedUrl) {
     const audio = new Audio(preloadedUrl);
     activeAudio = audio;
@@ -74,6 +78,10 @@ export async function playAiSpeech(text: string, languageCode?: string, preloade
  * Returns an object URL that can be passed to playAiSpeech.
  */
 export async function preloadCardAudio(wordId: string): Promise<string> {
+  if (typeof window !== 'undefined' && window.localStorage.getItem('polycast.offline.enabled') === 'true') {
+    return '';
+  }
+
   const res = await fetch(`/api/dictionary/words/${wordId}/audio`, {
     credentials: 'include',
   });

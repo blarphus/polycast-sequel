@@ -2,7 +2,7 @@
 // pages/Home.tsx -- Central learning hub (default landing page)
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -59,6 +59,39 @@ export default function Home() {
   const targetLang = user?.target_language;
   const langName = LANGUAGES.find((l) => l.code === targetLang)?.name || targetLang || '';
   const { addingVideoId, handleVideoClick: handleTrendingClick } = useVideoClick(targetLang || 'en');
+
+  // Shared dashboard refresh logic
+  const refreshDashboard = useCallback(() => {
+    getStudentDashboard()
+      .then((dashboard) => {
+        setNewWords(dashboard.newToday);
+        setPendingPosts(dashboard.pendingClasswork.posts);
+        let n = 0, l = 0, r = 0;
+        for (const w of dashboard.dueWords) {
+          if (w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at) n += 1;
+          else if (w.learning_step !== null) l += 1;
+          else r += 1;
+        }
+        setSrsCounts({ new: n, learning: l, review: r });
+      })
+      .catch((err) => console.error('Dashboard refresh failed:', err));
+  }, []);
+
+  // Refresh dashboard at midnight when new cards become due
+  const [midnightTick, setMidnightTick] = useState(0);
+  useEffect(() => {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setHours(24, 0, 0, 0);
+    const msUntilMidnight = tomorrow.getTime() - now.getTime();
+
+    const timer = setTimeout(() => {
+      refreshDashboard();
+      setMidnightTick((t) => t + 1);
+    }, msUntilMidnight);
+
+    return () => clearTimeout(timer);
+  }, [midnightTick, refreshDashboard]);
 
   useEffect(() => {
     let cancelled = false;

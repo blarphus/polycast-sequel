@@ -88,17 +88,20 @@ export function getDueStatus(card: SavedWord): DueStatus {
     return { label: 'New', urgency: 'new' };
   }
 
-  // Has a due date
+  // Has a due date — cards become due at midnight of their due date
   if (card.due_at) {
-    const now = Date.now();
-    const due = new Date(card.due_at).getTime();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(card.due_at);
+    dueDate.setHours(0, 0, 0, 0);
 
-    if (due <= now) {
+    if (dueDate <= today) {
       return { label: 'Due now', urgency: 'due' };
     }
 
-    const diffSeconds = Math.round((due - now) / 1000);
-    return { label: `Due in ${formatDuration(diffSeconds)}`, urgency: 'upcoming' };
+    const diffDays = Math.round((dueDate.getTime() - today.getTime()) / 86_400_000);
+    const label = diffDays === 1 ? 'Due tomorrow' : `Due in ${diffDays} d`;
+    return { label, urgency: 'upcoming' };
   }
 
   // Learning / relearning without due_at

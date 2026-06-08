@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentDashboard } from '../api';
-import { HomeIcon, BookIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, FolderIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon, UserIcon, PlusIcon, CloseIcon } from './icons';
+import { HomeIcon, BookIcon, BookOpenIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, FolderIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon, UserIcon, PlusIcon, CloseIcon } from './icons';
 import { toErrorMessage } from '../utils/errors';
 
 const COLLAPSED_KEY = 'sidebar-collapsed';
@@ -81,6 +81,7 @@ export default function BottomToolbar() {
   const isSocial = location.pathname === '/chats';
   const isClasswork = !isTeacher && (location.pathname === '/classwork' || location.pathname.startsWith('/classwork/') || location.pathname === '/classes' || location.pathname === '/students' || location.pathname.startsWith('/students/'));
   const isBrowse = location.pathname === '/browse' || location.pathname.startsWith('/channel/') || location.pathname.startsWith('/lesson/');
+  const isBooks = location.pathname === '/books' || location.pathname.startsWith('/books/');
   const isLocalVideos = location.pathname === '/local-videos' || location.pathname.startsWith('/local-watch/');
   const isSettings = location.pathname === '/settings';
 
@@ -162,6 +163,15 @@ export default function BottomToolbar() {
         <PlayCircleIcon size={22} />
         <span className="toolbar-label">Watch</span>
       </button>
+      {!isTeacher && (
+        <button
+          className={`toolbar-tab toolbar-tab--indigo${isBooks ? ' active' : ''}`}
+          onClick={() => navigate('/books')}
+        >
+          <BookOpenIcon size={22} />
+          <span className="toolbar-label">Books</span>
+        </button>
+      )}
       <button
         className={`toolbar-tab toolbar-tab--green${isLocalVideos ? ' active' : ''}`}
         onClick={() => navigate('/local-videos')}

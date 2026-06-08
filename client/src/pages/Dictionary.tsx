@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
 import { getDueStatus, formatDuration } from '../utils/srs';
@@ -100,6 +101,8 @@ const QUEUE_TINT_STYLES = buildQueueTintStyles(220, 38, 29, 35, 44);
 
 export default function Dictionary() {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const {
     removeWord,
     addWord,
@@ -115,6 +118,7 @@ export default function Dictionary() {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lookupOpen, setLookupOpen] = useState(false);
+  const [lookupInitialQuery, setLookupInitialQuery] = useState('');
   const [imagePickerWord, setImagePickerWord] = useState<SavedWord | null>(null);
   const [page, setPage] = useState(0);
   const [wordGroups, setWordGroups] = useState<DictionaryWordGroup[]>([]);
@@ -158,6 +162,33 @@ export default function Dictionary() {
   useEffect(() => {
     void loadPage();
   }, [loadPage]);
+
+  useEffect(() => {
+    window.addEventListener('polycast-offline-dictionary-external-sync', loadPage);
+    return () => window.removeEventListener('polycast-offline-dictionary-external-sync', loadPage);
+  }, [loadPage]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const queryWord = params.get('lookup') || params.get('word') || params.get('vlcWord');
+    const trimmed = queryWord?.trim();
+    if (!trimmed) return;
+
+    setLookupInitialQuery(trimmed);
+    setLookupOpen(true);
+
+    params.delete('lookup');
+    params.delete('word');
+    params.delete('vlcWord');
+    params.delete('sentence');
+    params.delete('source');
+
+    const nextSearch = params.toString();
+    navigate(
+      { pathname: location.pathname, search: nextSearch ? `?${nextSearch}` : '' },
+      { replace: true },
+    );
+  }, [location.pathname, location.search, navigate]);
 
   useEffect(() => {
     if (!lookupOpen) return;
@@ -276,7 +307,16 @@ export default function Dictionary() {
             </select>
             <span className="dict-count">{totalGroups} word{totalGroups !== 1 ? 's' : ''}</span>
             {user?.native_language && user?.target_language && (
-              <button className="dict-lookup-btn" onClick={() => setLookupOpen(true)} title="Look up a word">+</button>
+              <button
+                className="dict-lookup-btn"
+                onClick={() => {
+                  setLookupInitialQuery('');
+                  setLookupOpen(true);
+                }}
+                title="Look up a word"
+              >
+                +
+              </button>
             )}
           </div>
 
@@ -492,8 +532,10 @@ export default function Dictionary() {
 
       {lookupOpen && user?.native_language && user?.target_language && (
         <WordLookupModal
+          key={lookupInitialQuery || 'manual'}
           targetLang={user.target_language}
           nativeLang={user.native_language}
+          initialQuery={lookupInitialQuery || undefined}
           isDefinitionSaved={isDefinitionSaved}
           onSave={async (data) => {
             const saved = await addWord(data);
@@ -501,7 +543,10 @@ export default function Dictionary() {
             return saved;
           }}
           onOptimisticSave={addOptimistic}
-          onClose={() => setLookupOpen(false)}
+          onClose={() => {
+            setLookupOpen(false);
+            setLookupInitialQuery('');
+          }}
         />
       )}
     </div>
