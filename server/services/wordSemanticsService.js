@@ -5,6 +5,8 @@ import {
   fetchWiktTranslations,
   persistGeminiFallbackSense,
 } from '../enrichWord.js';
+import pool from '../db.js';
+import { fetchUserSavedSensesForWord } from '../lib/dictionaryQueries.js';
 // FLAGGED FOR DELETION — local ONNX sense-picker replaced by Gemini index-pick (Flash Lite).
 // import { pickSense, isModelReady } from '../lib/sensePicker.js';
 
@@ -43,13 +45,15 @@ async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
 // "alternative form of caracterizar", or a bare grammatical label), or -1 when none fit. Plain
 // text (a number or a word) — nothing to truncate. Returns {index} | {base}.
 async function pickBestSense(word, sentence, targetLang, senses) {
-  const senseList = senses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n');
+  const senseList = senses
+    .map((s, i) => `${i}: [${s.pos}] ${s.gloss}${s.source === 'user' ? "  (already in the learner's dictionary)" : ''}`)
+    .join('\n');
   const raw = await callGemini(
     `The word "${word}" appears in this sentence: "${sentence}" (${targetLang}).
 Candidate dictionary senses:
 ${senseList}
 
-Pick the sense that best matches how "${word}" is used here. Prefer the most basic, common, literal meaning that fits the context and the word's part of speech in the sentence; choose a figurative, specialized, or interjection sense only if the context clearly requires it. Then look at THAT sense's wording and reply with ONLY ONE thing, nothing else:
+Pick the sense that best matches how "${word}" is used here. If a sense marked "(already in the learner's dictionary)" fits this usage, prefer it over an equivalent unmarked sense. Otherwise prefer the most basic, common, literal meaning that fits the context and the word's part of speech in the sentence; choose a figurative, specialized, or interjection sense only if the context clearly requires it. Then look at THAT sense's wording and reply with ONLY ONE thing, nothing else:
 - If the wording states the meaning (e.g. "to rip", "a fortune teller"), reply with its index NUMBER — even if "${word}" is grammatically derived from another word. A "contraction of X + Y" gloss DOES state the meaning (it defines the contraction itself), so reply with its index even if it adds a cross-reference like "feminine singular of num".
 - If the wording only points to another word and gives no meaning of its own — e.g. "plural of X", "feminine of X", "past participle of X", "alternative form of X", "female/male equivalent of X", or just a grammatical label like "third-person singular present indicative" — reply with that other WORD X (even if it also gives a short meaning in parentheses).
 - If NONE of the senses actually conveys the meaning of "${word}" as it is used in this sentence — e.g. it is used figuratively, idiomatically, or as part of a multi-word expression and no listed sense captures that meaning — reply -1. Do NOT force a sense that doesn't fit.`,
@@ -126,27 +130,56 @@ async function resolvePick(pick, senses, sentence, targetLang, nativeLang) {
   if (pick.index === -1) return null;
   const sense = senses[pick.index];
   if (!sense) return null;
+  // A sense the user has already saved (their own custom definition) — flag it so the caller
+  // knows this click is an EXISTING sense, not a new one to add.
+  if (sense.source === 'user') {
+    return {
+      definition: sense.gloss,
+      part_of_speech: sense.pos || null,
+      sense_index: pick.index,
+      lemma: sense.saved?.lemma || null,
+      is_existing: true,
+      saved_word_id: sense.saved?.id ?? null,
+    };
+  }
   return {
     definition: sense.gloss,
     part_of_speech: sense.pos || null,
     sense_index: pick.index,
     lemma: sense.lemma ?? null,
+    is_existing: false,
+    saved_word_id: null,
   };
 }
 
-export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, targetLang }) {
-  const { senses: wiktSenses } = targetLang
+export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, targetLang, userId = null }) {
+  const { senses: wiktSensesRaw, resolvedLemma } = targetLang
     ? await fetchWiktSenses(word.toLowerCase(), targetLang, nativeLang)
-    : { senses: [] };
-  if (wiktSenses.length === 0) return null; // caller falls back to full Gemini
+    : { senses: [], resolvedLemma: null };
+
+  // Candidate senses = the user's OWN saved definitions for this word / its lemma-siblings
+  // (so the picker can recognise a sense they already have), followed by Wiktionary senses.
+  const wiktSenses = wiktSensesRaw.map((s) => ({ ...s, source: 'wikt' }));
+  let userSenses = [];
+  if (userId && targetLang) {
+    const saved = await fetchUserSavedSensesForWord(pool, userId, targetLang, word.toLowerCase(), resolvedLemma || '');
+    userSenses = saved.map((r) => ({
+      gloss: r.definition,
+      pos: r.part_of_speech || '',
+      source: 'user',
+      saved: r,
+    }));
+  }
+  const candidates = [...userSenses, ...wiktSenses];
+  if (candidates.length === 0) return null; // caller falls back to full Gemini
 
   // One path for every word: Gemini always picks. Run the pick + translation in parallel.
   const [pick, translation] = await Promise.all([
-    pickBestSense(word, sentence, targetLang, wiktSenses),
+    pickBestSense(word, sentence, targetLang, candidates),
     translateWordInSentence(word, sentence, targetLang, nativeLang),
   ]);
 
-  const resolved = await resolvePick(pick, wiktSenses, sentence, targetLang, nativeLang);
+  const resolved = await resolvePick(pick, candidates, sentence, targetLang, nativeLang);
   if (!resolved) return null; // no fitting sense / unresolvable base — escalate to full Gemini
 
   return {
@@ -160,7 +193,9 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
     matched_gloss: resolved.definition,
     lemma: resolved.lemma,
     is_native: false,
-    definition_source: 'wiktionary',
+    definition_source: resolved.is_existing ? 'user' : 'wiktionary',
+    is_existing: resolved.is_existing,
+    saved_word_id: resolved.saved_word_id,
     example: null,
     example_translation: null,
     sentence_translation: null,

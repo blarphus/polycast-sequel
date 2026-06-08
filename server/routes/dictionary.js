@@ -119,7 +119,7 @@ router.get('/api/dictionary/lookup', authMiddleware, validate({ query: lookupQue
   try {
     // Fast path: DB senses + minimal Gemini sense-pick + Google Translate
     if (isNative !== 'true') {
-      const fast = await resolveDictionaryLookupFast({ word, sentence, nativeLang, targetLang });
+      const fast = await resolveDictionaryLookupFast({ word, sentence, nativeLang, targetLang, userId: req.userId });
       if (fast) return res.json(fast);
     }
     // Fallback: full Gemini path (no DB senses, or native word clicks)
