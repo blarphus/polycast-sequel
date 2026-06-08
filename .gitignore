@@ -15,3 +15,6 @@ server/scripts/__pycache__/
 server/scripts/checkpoints/
 cf-worker/.wrangler/
 AuthKey_XKU39X8966.p8
+
+# Test image output dumps
+server/scripts/img-out*/

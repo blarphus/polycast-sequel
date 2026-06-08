@@ -31,6 +31,83 @@ export async function callGemini(prompt, generationConfig = {}, model = 'gemini-
   return text;
 }
 
+/**
+ * Multimodal Gemini call. `parts` is a ready-built array of content parts, e.g.
+ * [{ text }, { inlineData: { mimeType, data: base64 } }, ...]. Returns the
+ * model's text response. Used to have the model look at candidate images and
+ * pick the best flashcard illustration.
+ */
+export async function callGeminiVision(parts, generationConfig = {}, model = 'gemini-flash-latest') {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    logger.error('Gemini vision API error: %s', errBody);
+    throw new Error('Gemini vision request failed');
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    logger.error('Gemini vision API returned no text content: %s', JSON.stringify(data).slice(0, 500));
+    throw new Error('Gemini vision returned no text content');
+  }
+  return text;
+}
+
+/**
+ * Generate an image from a text prompt with Imagen (via the :predict endpoint).
+ * Returns { buffer, contentType } for the first image, or throws. Used as the
+ * flashcard-image fallback when no stock photo fits the word (typically abstract
+ * concepts). Imagen 4 Fast is Google's cheapest+newest image model (~$0.02/img).
+ */
+export async function callImagen(prompt, model = 'imagen-4.0-fast-generate-001') {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        instances: [{ prompt }],
+        parameters: { sampleCount: 1, aspectRatio: '1:1' },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errBody = await response.text();
+    logger.error('Imagen API error: %s', errBody);
+    throw new Error('Imagen request failed');
+  }
+
+  const data = await response.json();
+  const prediction = data.predictions?.[0];
+  if (!prediction?.bytesBase64Encoded) {
+    logger.error('Imagen API returned no image: %s', JSON.stringify(data).slice(0, 500));
+    throw new Error('Imagen returned no image content');
+  }
+  return {
+    buffer: Buffer.from(prediction.bytesBase64Encoded, 'base64'),
+    contentType: prediction.mimeType || 'image/png',
+  };
+}
+
 export async function streamGemini(
   prompt,
   {

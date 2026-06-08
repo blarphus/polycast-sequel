@@ -66,6 +66,20 @@ export async function searchAllImages(query, perPage = 5) {
   return images;
 }
 
+/**
+ * Download an image URL and return its bytes + content type, or null on failure.
+ */
+export async function fetchImageBytes(url) {
+  const res = await fetch(url, { headers: API_HEADERS });
+  if (!res.ok) {
+    logger.error('fetchImageBytes failed for "%s": status %d', url, res.status);
+    return null;
+  }
+  const contentType = res.headers.get('content-type') || 'image/jpeg';
+  const buffer = Buffer.from(await res.arrayBuffer());
+  return { buffer, contentType };
+}
+
 export async function fetchWordImage(searchTerm, excludeUrls = null) {
   try {
     const urls = await searchAllImages(searchTerm, 5);

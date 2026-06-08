@@ -57,6 +57,7 @@ export default function Learn() {
   const [exitDirection, setExitDirection] = useState<'left' | 'right'>('right');
   const [isEntering, setIsEntering] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [checkingForMore, setCheckingForMore] = useState(false);
 
   // Feedback overlay
   const [feedback, setFeedback] = useState<{ answer: SrsAnswer; text: string } | null>(null);
@@ -151,10 +152,10 @@ export default function Learn() {
 
   // Play celebratory sound when session is complete
   useEffect(() => {
-    if (currentIndex >= cards.length && cards.length > 0 && !loading) {
+    if (currentIndex >= cards.length && cards.length > 0 && !loading && !checkingForMore) {
       playCompleteSound();
     }
-  }, [currentIndex, cards.length, loading]);
+  }, [currentIndex, cards.length, loading, checkingForMore]);
 
   useEffect(() => () => {
     stopAiSpeech();
@@ -216,6 +217,25 @@ export default function Learn() {
         setCurrentIndex((i) => i + 1);
         setIsEntering(true);
         setSubmitting(false);
+
+        // Check for more cards if queue is exhausted
+        const nextIndex = currentIndex + 1;
+        const nextCardsLength = cards.length + (requeue ? 1 : 0);
+        if (nextIndex >= nextCardsLength) {
+          setCheckingForMore(true);
+          getDueWords()
+            .then((more) => {
+              if (more.length > 0) {
+                setCards((prev) => [...prev, ...more]);
+              }
+              setCheckingForMore(false);
+            })
+            .catch((err) => {
+              console.error('Failed to check for more cards:', err);
+              setCheckingForMore(false);
+            });
+        }
+
         setTimeout(() => setIsEntering(false), 350);
       }, 300);
     }, 700);
@@ -323,6 +343,17 @@ export default function Learn() {
   // ---------------------------------------------------------------------------
 
   if (currentIndex >= cards.length) {
+    if (checkingForMore) {
+      return (
+        <div className="learn-page">
+          <div className="flashcard-empty">
+            <div className="loading-spinner" />
+            <p style={{ marginTop: '12px', color: 'var(--text-secondary)' }}>Checking for more cards...</p>
+          </div>
+        </div>
+      );
+    }
+
     const duration = Math.round((Date.now() - sessionStartRef.current) / 1000);
     const mins = Math.floor(duration / 60);
     const secs = duration % 60;
@@ -433,7 +464,7 @@ export default function Learn() {
                 <>
                   <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
                   {card.image_url && (
-                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   )}
                 </>
               )}
@@ -486,7 +517,7 @@ export default function Learn() {
                 <>
                   <p className="flashcard-recognition-translation">{card.translation}</p>
                   {card.image_url && (
-                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   )}
                   {card.definition && (
                     <p className="flashcard-back-definition">{card.definition}</p>
@@ -504,7 +535,7 @@ export default function Learn() {
                 <>
                   <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
                   {card.image_url && (
-                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   )}
                   {card.definition && (
                     <p className="flashcard-back-definition">{card.definition}</p>

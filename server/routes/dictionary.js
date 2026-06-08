@@ -4,6 +4,7 @@ import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
 import { enrichWord as enrichWordHelper, fetchWiktSenses } from '../enrichWord.js';
 import { searchAllImages } from '../lib/imageSearch.js';
+import { getImageBytes } from '../lib/imageCache.js';
 import { validate } from '../lib/validate.js';
 import { applySrsReview } from '../lib/srsUpdate.js';
 import { synthesizeVoiceFeedback } from '../services/ttsService.js';
@@ -240,6 +241,25 @@ router.get('/api/dictionary/image-proxy', authMiddleware, validate({ query: imag
   } catch (err) {
     req.log.error({ err }, '[image-proxy] fetch error');
     return res.status(502).end();
+  }
+});
+
+/**
+ * GET /api/dictionary/image/:id
+ * Serve a cached image's bytes. enrichWord stores the chosen flashcard image
+ * here and saves `/api/dictionary/image/<id>` as the word's image_url, so the
+ * picture is served from our own copy rather than a (rotting) upstream link.
+ */
+router.get('/api/dictionary/image/:id', authMiddleware, validate({ params: uuidParam }), async (req, res) => {
+  try {
+    const img = await getImageBytes(req.params.id);
+    if (!img) return res.status(404).end();
+    res.set('Content-Type', img.content_type);
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    return res.send(img.data);
+  } catch (err) {
+    req.log.error({ err }, '[image] fetch error');
+    return res.status(500).end();
   }
 });
 
