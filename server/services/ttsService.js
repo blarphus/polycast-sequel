@@ -1,12 +1,6 @@
-/**
- * Shared OpenAI TTS synthesis service.
- * Used by voice practice (/speak) and dictionary audio caching.
- */
-export async function synthesizeVoiceFeedback({ text, languageCode }) {
+async function synthesizeWithOpenAi({ text, languageCode }) {
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is not configured');
-  }
+  if (!apiKey) throw new Error('No TTS provider supports this language');
 
   const response = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
@@ -32,6 +26,47 @@ export async function synthesizeVoiceFeedback({ text, languageCode }) {
     throw new Error(errBody || 'OpenAI speech synthesis failed');
   }
 
-  const audioBuffer = Buffer.from(await response.arrayBuffer());
-  return audioBuffer;
+  return Buffer.from(await response.arrayBuffer());
+}
+
+export function audioContentType(audioBuffer) {
+  const isWave = audioBuffer.length >= 12
+    && audioBuffer.subarray(0, 4).toString('ascii') === 'RIFF'
+    && audioBuffer.subarray(8, 12).toString('ascii') === 'WAVE';
+  return isWave ? 'audio/wav' : 'audio/mpeg';
+}
+
+/** Shared TTS service. Cloudflare handles English and Spanish. */
+export async function synthesizeVoiceFeedback({ text, languageCode }) {
+  const workerUrl = process.env.CF_TRANSCRIPT_WORKER_URL;
+  const workerSecret = process.env.CF_TRANSCRIPT_WORKER_SECRET;
+  if (!workerUrl || !workerSecret) {
+    throw new Error('Cloudflare TTS worker is not configured');
+  }
+
+  const url = new URL(workerUrl);
+  url.searchParams.set('action', 'tts');
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${workerSecret}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text,
+      languageCode,
+    }),
+  });
+
+  if (response.status === 422) {
+    return synthesizeWithOpenAi({ text, languageCode });
+  }
+
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => '');
+    throw new Error(errBody || 'Cloudflare speech synthesis failed');
+  }
+
+  return Buffer.from(await response.arrayBuffer());
 }

@@ -9,7 +9,7 @@ import {
   getVoicePracticeSession,
   gradeVoicePracticeTurn,
 } from '../services/voicePracticeSessionService.js';
-import { synthesizeVoiceFeedback } from '../services/ttsService.js';
+import { audioContentType, synthesizeVoiceFeedback } from '../services/ttsService.js';
 
 const router = Router();
 
@@ -162,7 +162,7 @@ router.post('/api/practice/voice/speak', authMiddleware, validate({ body: speakB
       text: req.body.text,
       languageCode: req.body.languageCode,
     });
-    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Type', audioContentType(audioBuffer));
     res.setHeader('Cache-Control', 'no-store');
     return res.send(audioBuffer);
   } catch (err) {

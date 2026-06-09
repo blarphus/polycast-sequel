@@ -18,6 +18,18 @@ function jsonResponse(data, status, cors) {
   });
 }
 
+function baseLanguage(languageCode) {
+  const base = String(languageCode || 'en').trim().toLowerCase().split(/[-_]/)[0];
+  return base || 'en';
+}
+
+function decodeBase64(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 function decodeEntities(text) {
   return text
     .replace(/&amp;/g, '&')
@@ -69,6 +81,67 @@ export default {
 
     const url = new URL(request.url);
     const action = url.searchParams.get('action');
+
+    // --- Text-to-speech (POST ?action=tts) ---
+    if (request.method === 'POST' && action === 'tts') {
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return jsonResponse({ success: false, error: 'Invalid JSON body' }, 400, cors);
+      }
+
+      const text = String(body?.text || '').trim();
+      if (!text) return jsonResponse({ success: false, error: 'text is required' }, 400, cors);
+      if (text.length > 4000) {
+        return jsonResponse({ success: false, error: 'text must be 4000 characters or fewer' }, 400, cors);
+      }
+
+      try {
+        const language = baseLanguage(body?.languageCode);
+        if (language === 'es') {
+          const audio = await env.AI.run('@cf/deepgram/aura-2-es', {
+            text,
+            speaker: 'aquila',
+            encoding: 'mp3',
+          });
+          return new Response(audio, {
+            status: 200,
+            headers: {
+              ...(cors || {}),
+              'Content-Type': 'audio/mpeg',
+              'Cache-Control': 'no-store',
+            },
+          });
+        }
+
+        if (language !== 'en') {
+          return jsonResponse({
+            success: false,
+            error: `Cloudflare TTS does not support language: ${language}`,
+          }, 422, cors);
+        }
+
+        const result = await env.AI.run('@cf/myshell-ai/melotts', {
+          prompt: text,
+          lang: 'en',
+        });
+        const encodedAudio = typeof result === 'string' ? result : result?.audio;
+        if (!encodedAudio) throw new Error('MeloTTS returned no audio');
+
+        return new Response(decodeBase64(encodedAudio), {
+          status: 200,
+          headers: {
+            ...(cors || {}),
+            'Content-Type': 'audio/wav',
+            'Cache-Control': 'no-store',
+          },
+        });
+      } catch (err) {
+        console.error('[cf-worker] TTS failed:', err);
+        return jsonResponse({ success: false, error: 'Speech synthesis failed' }, 502, cors);
+      }
+    }
 
     // --- Batch playability check (POST ?action=check) ---
     if (request.method === 'POST' && action === 'check') {

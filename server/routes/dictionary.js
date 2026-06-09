@@ -8,7 +8,7 @@ import { getImageBytes } from '../lib/imageCache.js';
 import { validate } from '../lib/validate.js';
 import { translateText } from '../lib/googleTranslate.js';
 import { applySrsReview } from '../lib/srsUpdate.js';
-import { synthesizeVoiceFeedback } from '../services/ttsService.js';
+import { audioContentType, synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext, explainSelectionInContext } from '../services/wordSemanticsService.js';
 import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
 
@@ -335,7 +335,7 @@ router.get('/api/dictionary/words/:id/audio', authMiddleware, validate({ params:
 
     // Serve from cache if available
     if (row.tts_audio) {
-      res.set('Content-Type', 'audio/mpeg');
+      res.set('Content-Type', audioContentType(row.tts_audio));
       res.set('Cache-Control', 'private, max-age=31536000, immutable');
       return res.send(row.tts_audio);
     }
@@ -354,7 +354,7 @@ router.get('/api/dictionary/words/:id/audio', authMiddleware, validate({ params:
       [audioBuffer, req.params.id, req.userId],
     );
 
-    res.set('Content-Type', 'audio/mpeg');
+    res.set('Content-Type', audioContentType(audioBuffer));
     res.set('Cache-Control', 'private, max-age=31536000, immutable');
     return res.send(audioBuffer);
   } catch (err) {
