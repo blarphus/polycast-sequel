@@ -100,8 +100,14 @@ export default function WordPopup(props: WordPopupProps) {
         const targetWord = res?.target_word || word;
         const lemma = res?.lemma ?? null;
         const senseIndex = res?.sense_index ?? null;
-        onOptimisticSave?.(lemma || targetWord);
-        queueSave(lemma || targetWord, async () => {
+        // Highlight the exact token the learner clicked immediately. Enrichment
+        // may take time to return the full list of inflected forms.
+        onOptimisticSave?.(word);
+        const normalizedWord = lemma || targetWord;
+        if (normalizedWord.toLowerCase() !== word.toLowerCase()) {
+          onOptimisticSave?.(normalizedWord);
+        }
+        queueSave(normalizedWord, async () => {
           const enriched = await enrichWord(targetWord, sentence, nativeLang, targetLang, senseIndex);
           const savedWord = enriched.lemma || lemma || targetWord;
           await onSaveWord({
