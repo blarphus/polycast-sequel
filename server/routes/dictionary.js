@@ -304,7 +304,7 @@ router.patch('/api/dictionary/words/:id/image', authMiddleware, validate({ param
 router.get('/api/dictionary/words/:id/audio', authMiddleware, validate({ params: uuidParam }), async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT tts_audio, example_sentence, word, target_language FROM saved_words WHERE id = $1 AND user_id = $2',
+      'SELECT tts_audio, word, target_language FROM saved_words WHERE id = $1 AND user_id = $2',
       [req.params.id, req.userId],
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Word not found' });
@@ -318,13 +318,11 @@ router.get('/api/dictionary/words/:id/audio', authMiddleware, validate({ params:
       return res.send(row.tts_audio);
     }
 
-    // Generate TTS
-    const text = row.example_sentence
-      ? row.example_sentence.replace(/~([^~]+)~/g, '$1')
-      : row.word;
-
+    // Generate TTS. This cached per-word clip is the WORD's pronunciation (used
+    // by the flashcard front, recall prompts, and the popup speaker). Full
+    // example sentences are synthesized on the fly by the caller instead.
     const audioBuffer = await synthesizeVoiceFeedback({
-      text,
+      text: row.word,
       languageCode: row.target_language,
     });
 

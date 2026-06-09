@@ -7,6 +7,7 @@
 
 import { useEffect, useRef } from 'react';
 import { lookupWord, enrichWord, explainWord, type SaveWordData } from '../api';
+import { playAiSpeech } from '../utils/aiSpeech';
 import { useDictionaryToast } from '../hooks/useDictionaryToast';
 import { useClickOutside } from '../hooks/useClickOutside';
 import '@popup/wordPopup.css';
@@ -18,6 +19,7 @@ type SavedState = 'saved' | 'new-sense' | 'unsaved';
 interface WordPopupHandlers {
   lookup: () => Promise<LookupResult>;
   explain?: () => Promise<{ explanation: string }>;
+  speak?: () => void | Promise<void>;
   save?: (arg: { word: string; sentence: string; lookupResult: LookupResult | null }) => void | Promise<void>;
   resolveSavedState?: (res: LookupResult) => SavedState;
 }
@@ -85,6 +87,12 @@ export default function WordPopup(props: WordPopupProps) {
         return 'unsaved';
       },
     };
+
+    // Pronounce the word with the same TTS the flashcards use (not for the
+    // learner's own native-language words).
+    if (!isNative) {
+      handlers.speak = () => playAiSpeech(word, targetLang || undefined);
+    }
 
     if (onSaveWord) {
       handlers.save = ({ lookupResult }) => {

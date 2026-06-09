@@ -146,14 +146,15 @@ export default function Learn() {
       audioPlayedRef.current.add(currentIndex);
       playAudio(currentCard.word, currentCard.target_language, currentCard.id);
     } else if (isFlipped) {
-      // Recall: play just the word on flip. Cloze types: play full sentence on flip.
+      // Recall: play just the word on flip (uses the cached word clip). Cloze
+      // types: play the full sentence, synthesized on the fly since the cached
+      // clip is only the word.
       audioPlayedRef.current.add(currentIndex);
-      const textToSpeak = (pt === 'recall')
-        ? currentCard.word
-        : currentCard.example_sentence
-          ? stripTildes(currentCard.example_sentence)
-          : currentCard.word;
-      playAudio(textToSpeak, currentCard.target_language, currentCard.id);
+      const speakSentence = pt !== 'recall' && !!currentCard.example_sentence;
+      const textToSpeak = speakSentence
+        ? stripTildes(currentCard.example_sentence!)
+        : currentCard.word;
+      playAudio(textToSpeak, currentCard.target_language, speakSentence ? undefined : currentCard.id);
     }
   }, [isFlipped, currentIndex, currentCard, playAudio]);
 
@@ -593,7 +594,8 @@ export default function Learn() {
                   const text = hasExample
                     ? stripTildes(card.example_sentence!)
                     : card.word;
-                  playAudio(text, card.target_language, card.id);
+                  // Sentence is synthesized on the fly; only the bare word uses the cached clip.
+                  playAudio(text, card.target_language, hasExample ? undefined : card.id);
                 }}
               >
                 <SpeakerIcon size={20} />

@@ -55,10 +55,19 @@
     popup.className = 'pc-popup';
     popup.style.position = 'fixed';
     popup.style.zIndex = '2147483647';
+    const SPEAKER_SVG =
+      '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M11 5 6 9H2v6h4l5 4z"/>' +
+      '<path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+
     popup.innerHTML = `
       <div class="pc-popup-header">
         <span class="pc-popup-word">${escapeHtml(word)}</span>
-        <button class="pc-popup-close" title="Close">&times;</button>
+        <div class="pc-popup-header-actions">
+          <button class="pc-popup-speak" title="Play pronunciation" aria-label="Play pronunciation" hidden>${SPEAKER_SVG}</button>
+          <button class="pc-popup-close" title="Close">&times;</button>
+        </div>
       </div>
       <div class="pc-popup-body"><div class="pc-spinner"></div></div>
       <button class="pc-popup-explain" hidden>Explain in context</button>
@@ -96,6 +105,19 @@
       e.stopPropagation();
       if (onClose) onClose();
     });
+
+    // -- Pronounce (speaker) -------------------------------------------------
+    const speakBtn = popup.querySelector('.pc-popup-speak');
+    if (handlers.speak) {
+      speakBtn.hidden = false;
+      speakBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        speakBtn.classList.add('pc-popup-speak--playing');
+        Promise.resolve(handlers.speak({ word, sentence }))
+          .catch((err) => console.error('[word-popup] speak failed:', err))
+          .finally(() => { if (!destroyed) speakBtn.classList.remove('pc-popup-speak--playing'); });
+      });
+    }
 
     // -- Save button state machine ------------------------------------------
     let saveState = 'unsaved'; // 'unsaved' | 'new-sense' | 'saved' | 'done'

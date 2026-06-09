@@ -37,6 +37,46 @@
   color: #6c63ff;
 }
 
+.pc-popup-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pc-popup-speak {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #a78bfa;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.1s ease;
+}
+
+.pc-popup-speak:hover {
+  background: rgba(167, 139, 250, 0.15);
+  color: #c4b5fd;
+}
+
+.pc-popup-speak:active {
+  transform: scale(0.92);
+}
+
+.pc-popup-speak--playing {
+  color: #6c63ff;
+  animation: pc-speak-pulse 0.7s ease-in-out infinite;
+}
+
+@keyframes pc-speak-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
 .pc-popup-close {
   width: 30px;
   height: 30px;
