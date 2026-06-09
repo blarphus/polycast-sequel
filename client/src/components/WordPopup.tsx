@@ -1,9 +1,45 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { lookupWord, enrichWord, type SaveWordData } from '../api';
+// ---------------------------------------------------------------------------
+// components/WordPopup.tsx — thin React wrapper around the shared, framework-
+// agnostic popup core (extension/shared/wordPopupCore.js). The same core powers
+// the browser extension's subtitle popup, so the two can't drift. This wrapper
+// only injects the web app's I/O (api client) and save/dedup logic.
+// ---------------------------------------------------------------------------
+
+import { useEffect, useRef } from 'react';
+import { lookupWord, enrichWord, explainWord, type SaveWordData } from '../api';
 import { useDictionaryToast } from '../hooks/useDictionaryToast';
 import { useClickOutside } from '../hooks/useClickOutside';
-import { CheckIcon } from './icons';
-import { toErrorMessage } from '../utils/errors';
+import '@popup/wordPopup.css';
+import '@popup/wordPopupCore.js'; // side-effect: sets window.PolycastWordPopup
+
+type LookupResult = Awaited<ReturnType<typeof lookupWord>>;
+type SavedState = 'saved' | 'new-sense' | 'unsaved';
+
+interface WordPopupHandlers {
+  lookup: () => Promise<LookupResult>;
+  explain?: () => Promise<{ explanation: string }>;
+  save?: (arg: { word: string; sentence: string; lookupResult: LookupResult | null }) => void | Promise<void>;
+  resolveSavedState?: (res: LookupResult) => SavedState;
+}
+
+interface CreateWordPopupOptions {
+  word: string;
+  sentence: string;
+  anchorRect: DOMRect;
+  container?: HTMLElement;
+  onClose?: () => void;
+  initialSavedHint?: boolean;
+  nativeMode?: boolean;
+  handlers: WordPopupHandlers;
+}
+
+declare global {
+  interface Window {
+    PolycastWordPopup?: {
+      createWordPopup(opts: CreateWordPopupOptions): { el: HTMLElement; destroy(): void };
+    };
+  }
+}
 
 interface WordPopupProps {
   word: string;
@@ -19,173 +55,85 @@ interface WordPopupProps {
   isNative?: boolean;
 }
 
-export default function WordPopup({ word, sentence, nativeLang, targetLang, anchorRect, onClose, isWordSaved, isDefinitionSaved, onSaveWord, onOptimisticSave, isNative: isNativeProp }: WordPopupProps) {
-  const [loading, setLoading] = useState(true);
-  const [valid, setValid] = useState(true);
-  const [translation, setTranslation] = useState('');
-  const [definition, setDefinition] = useState('');
-  const [partOfSpeech, setPartOfSpeech] = useState<string | null>(null);
-  const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
-  const [newDefinition, setNewDefinition] = useState(false);
-  const [targetWord, setTargetWord] = useState(word);
-  const [isNative, setIsNative] = useState(isNativeProp ?? false);
-  const [senseIndex, setSenseIndex] = useState<number | null>(null);
-  const [lemma, setLemma] = useState<string | null>(null);
-  const [definitionSource, setDefinitionSource] = useState<string | null>(null);
-  const [example, setExample] = useState<string | null>(null);
-  const [exampleTranslation, setExampleTranslation] = useState<string | null>(null);
-  const [sentenceTranslation, setSentenceTranslation] = useState<string | null>(null);
-  const [showSentenceTranslation, setShowSentenceTranslation] = useState(false);
-  const popupRef = useRef<HTMLDivElement>(null);
+export default function WordPopup(props: WordPopupProps) {
+  const {
+    word, sentence, nativeLang, targetLang, anchorRect, onClose,
+    isWordSaved, isDefinitionSaved, onSaveWord, onOptimisticSave, isNative,
+  } = props;
   const { queueSave } = useDictionaryToast();
+  const elRef = useRef<HTMLElement | null>(null);
+
+  useClickOutside(elRef, onClose);
 
   useEffect(() => {
-    let cancelled = false;
+    const core = window.PolycastWordPopup;
+    if (!core) {
+      console.error('WordPopup: shared popup core (window.PolycastWordPopup) not loaded');
+      return;
+    }
 
-    lookupWord(word, sentence, nativeLang, targetLang, isNativeProp)
-      .then((res) => {
-        if (!cancelled) {
-          setValid(res.valid);
-          setTargetWord(res.target_word || word);
-          setIsNative(res.is_native);
-          setTranslation(res.translation);
-          setDefinition(res.definition);
-          setDefinitionSource(res.definition_source);
-          setExample(res.example);
-          setExampleTranslation(res.example_translation);
-          setSentenceTranslation(res.sentence_translation);
-          setPartOfSpeech(res.part_of_speech);
-          setSenseIndex(res.sense_index);
-          setLemma(res.lemma);
-          // Use matched_gloss (Wikt gloss) for dedup when available — it matches saved definitions reliably
-          const defForDedup = res.matched_gloss ?? res.definition;
-          const dedupWord = res.lemma || res.target_word || word;
-          if (isDefinitionSaved?.(dedupWord, defForDedup)) {
-            setSaved(true);
-          } else if (isWordSaved?.(dedupWord)) {
-            setNewDefinition(true);
-          }
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error('WordPopup: lookup failed:', err);
-          setError(toErrorMessage(err));
-          setLoading(false);
-        }
-      });
+    const handlers: WordPopupHandlers = {
+      lookup: () => lookupWord(word, sentence, nativeLang, targetLang, isNative),
+      explain: () => explainWord(word, sentence, nativeLang, targetLang),
+      resolveSavedState: (res) => {
+        // Use the matched Wiktionary gloss for dedup when available — it matches
+        // saved definitions reliably; key on the lemma/target word.
+        const defForDedup = res.matched_gloss ?? res.definition;
+        const dedupWord = res.lemma || res.target_word || word;
+        if (isDefinitionSaved?.(dedupWord, defForDedup)) return 'saved';
+        if (isWordSaved?.(dedupWord)) return 'new-sense';
+        return 'unsaved';
+      },
+    };
 
-    return () => { cancelled = true; };
+    if (onSaveWord) {
+      handlers.save = ({ lookupResult }) => {
+        const res = lookupResult;
+        const targetWord = res?.target_word || word;
+        const lemma = res?.lemma ?? null;
+        const senseIndex = res?.sense_index ?? null;
+        onOptimisticSave?.(lemma || targetWord);
+        queueSave(lemma || targetWord, async () => {
+          const enriched = await enrichWord(targetWord, sentence, nativeLang, targetLang, senseIndex);
+          const savedWord = enriched.lemma || lemma || targetWord;
+          await onSaveWord({
+            word: savedWord,
+            translation: enriched.translation,
+            definition: enriched.definition,
+            target_language: targetLang,
+            sentence_context: sentence,
+            frequency: enriched.frequency,
+            frequency_count: enriched.frequency_count,
+            example_sentence: enriched.example_sentence,
+            part_of_speech: enriched.part_of_speech,
+            image_url: enriched.image_url,
+            lemma: enriched.lemma || lemma || null,
+            forms: enriched.forms || null,
+            image_term: enriched.image_term,
+          });
+        });
+      };
+    }
+
+    const controls = core.createWordPopup({
+      word,
+      sentence,
+      anchorRect,
+      container: document.body,
+      onClose,
+      nativeMode: !!isNative,
+      initialSavedHint: isWordSaved?.(word) ?? false,
+      handlers,
+    });
+    elRef.current = controls.el;
+
+    return () => {
+      controls.destroy();
+      elRef.current = null;
+    };
+    // Re-mount the popup only when the looked-up word/context changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [word, sentence, nativeLang, targetLang]);
 
-  useClickOutside(popupRef, onClose);
-
-  // Position: centered above the clicked word, flip below if off-screen top
-  const popupWidth = 300;
-  let left = anchorRect.left + anchorRect.width / 2 - popupWidth / 2;
-  left = Math.max(8, Math.min(left, window.innerWidth - popupWidth - 8));
-
-  let top = anchorRect.top - 8;
-  let transformOrigin = 'bottom center';
-  const flipBelow = top < 120;
-  if (flipBelow) {
-    top = anchorRect.bottom + 8;
-    transformOrigin = 'top center';
-  }
-
-  const style: React.CSSProperties = {
-    position: 'fixed',
-    left,
-    top: flipBelow ? top : undefined,
-    bottom: flipBelow ? undefined : window.innerHeight - top,
-    width: popupWidth,
-    zIndex: 9999,
-    transformOrigin,
-  };
-
-  const handleSave = () => {
-    if (saved) return;
-    setSaved(true);
-    onOptimisticSave?.(lemma || targetWord);
-    queueSave(lemma || targetWord, async () => {
-      const enriched = await enrichWord(targetWord, sentence, nativeLang, targetLang, senseIndex);
-      const savedWord = enriched.lemma || lemma || targetWord;
-      await onSaveWord!({
-        word: savedWord,
-        translation: enriched.translation,
-        definition: enriched.definition,
-        target_language: targetLang,
-        sentence_context: sentence,
-        frequency: enriched.frequency,
-        frequency_count: enriched.frequency_count,
-        example_sentence: enriched.example_sentence,
-        part_of_speech: enriched.part_of_speech,
-        image_url: enriched.image_url,
-        lemma: enriched.lemma || lemma || null,
-        forms: enriched.forms || null,
-        image_term: enriched.image_term,
-      });
-    });
-  };
-
-  return (
-    <div className="word-popup" ref={popupRef} style={style}>
-      <div className="word-popup-header">
-        {!isNative && <span className="word-popup-word">{targetWord}</span>}
-        {onSaveWord && (
-          <button
-            className={`word-popup-save${saved ? ' saved' : ''}`}
-            disabled={saved || loading}
-            onClick={handleSave}
-          >
-            {saved ? (<><CheckIcon size={12} strokeWidth={3} style={{ verticalAlign: 'middle', marginRight: 2 }} /> Added</>) : 'Add'}
-          </button>
-        )}
-        <button className="word-popup-close" onClick={onClose}>&times;</button>
-      </div>
-      <div className={`word-popup-body${isNative && !loading && !error && valid ? ' word-popup-native' : ''}`}>
-        {loading ? (
-          <div className="word-popup-loading">
-            <div className="loading-spinner" style={{ width: 24, height: 24 }} />
-          </div>
-        ) : error ? (
-          <p className="word-popup-error">{error}</p>
-        ) : !valid ? (
-          <p className="word-popup-invalid">Not a word</p>
-        ) : isNative ? (
-          <span className="word-popup-native-word">{targetWord}</span>
-        ) : (
-          <>
-            <div className="word-popup-translation-row">
-              <p className="word-popup-translation">{definition || translation}</p>
-              {newDefinition && !saved && <span className="word-popup-new-def-pill">New definition!</span>}
-            </div>
-            {partOfSpeech && <span className={`word-popup-pos pos-${partOfSpeech.toLowerCase()}`}>{partOfSpeech}</span>}
-            {showSentenceTranslation && sentenceTranslation ? (
-              <div className="word-popup-example">
-                <p className="word-popup-example-sentence" dangerouslySetInnerHTML={{ __html: sentenceTranslation.replace(/~([^~]+)~/g, '<span class="word-popup-example-highlight">$1</span>') }} />
-              </div>
-            ) : example ? (
-              <div className="word-popup-example">
-                <p className="word-popup-example-sentence" dangerouslySetInnerHTML={{ __html: example.replace(/~([^~]+)~/g, '<span class="word-popup-example-highlight">$1</span>') }} />
-                {exampleTranslation && <p className="word-popup-example-translation" dangerouslySetInnerHTML={{ __html: exampleTranslation.replace(/~([^~]+)~/g, '<span class="word-popup-example-highlight">$1</span>') }} />}
-              </div>
-            ) : translation && translation !== (definition || translation) ? (
-              <p className="word-popup-definition">{translation}</p>
-            ) : null}
-            <div className="word-popup-footer">
-              {(example || sentenceTranslation) && (
-                <button className="word-popup-toggle" onClick={() => setShowSentenceTranslation(v => !v)}>
-                  {showSentenceTranslation ? 'Example' : 'Context'}
-                </button>
-              )}
-              {definitionSource && <span className={`word-popup-source word-popup-source--${definitionSource}`}>{definitionSource}</span>}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
+  return null;
 }
