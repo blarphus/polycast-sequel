@@ -243,9 +243,11 @@
   min-width: 0;
   flex: 1;
   overflow: hidden;
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -281,7 +283,7 @@
 .epub-stage {
   min-height: 0;
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) 56px;
+  grid-template-columns: clamp(44px, 7vw, 130px) minmax(0, 1fr) clamp(44px, 7vw, 130px);
   align-items: stretch;
 }
 
@@ -309,7 +311,10 @@
   max-height: 100%;
   margin: 0;
   color: var(--text-primary);
-  line-height: 1.75;
+  line-height: 1.6;
+  font-size-adjust: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
   transition: transform 180ms ease-out;
   will-change: transform;
 }
@@ -351,17 +356,38 @@
 
 .epub-p,
 .epub-h {
-  break-inside: avoid;
-  margin: 0 0 1rem;
   overflow-wrap: break-word;
 }
 
+/* Book-style body text: justified with hyphenation, first-line indents, and no
+   inter-paragraph gap (Kindle/print convention). */
+.epub-p {
+  margin: 0;
+  text-align: justify;
+  text-indent: 1.3em;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  hanging-punctuation: first last;
+}
+
+/* First paragraph of a section (and the one right after a heading) is flush. */
+.epub-p:first-child,
+.epub-h + .epub-p {
+  text-indent: 0;
+}
+
 .epub-h {
+  break-inside: avoid;
   color: var(--text-primary);
   font-size: 1.35em;
   font-weight: 800;
   line-height: 1.25;
-  margin-bottom: 0.85rem;
+  margin: 0 0 0.7rem;
+}
+
+/* Space before a heading that follows body text. */
+.epub-p + .epub-h {
+  margin-top: 1.4rem;
 }
 
 .epub-img {
@@ -524,4 +550,157 @@
 
 [data-theme="dark"] .epub-toc-backdrop {
   background: rgba(0, 0, 0, 0.45);
+}
+
+/* ==========================================================================
+   Reader display settings — per-reader dark mode + font picker
+   ========================================================================== */
+
+/* Reader-scoped dark theme. Independent of the app-wide [data-theme] so the
+   reader can be dark while the rest of the app stays light. These scoped
+   variable overrides cascade to every descendant of .epub-reader — including
+   the WordPopup and the contents drawer, which read the same design tokens. */
+/* Reader-scoped warm-paper light theme (independent of the app-wide theme), so
+   the reader always reads like a book page rather than a stark UI surface. */
+.epub-reader[data-reader-theme="light"] {
+  --bg: #f7f4ec;
+  --bg-surface: #f1ece0;
+  --bg-surface-hover: #e9e3d4;
+  --bg-elevated: #ebe5d7;
+  --text-primary: #322e28;
+  --text-secondary: #6c655a;
+  --text-muted: #978f80;
+  --border: #e4ddcc;
+  --border-light: #d9d1bd;
+  --accent-light: rgba(108, 99, 255, 0.14);
+  --success-dim: rgba(46, 204, 113, 0.18);
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+/* Reader-scoped near-black dark theme. */
+.epub-reader[data-reader-theme="dark"] {
+  --bg: #0d0d0f;
+  --bg-surface: #161618;
+  --bg-surface-hover: #232328;
+  --bg-elevated: #202024;
+  --text-primary: #cdcabf;
+  --text-secondary: #908d85;
+  --text-muted: #66645d;
+  --border: #26262b;
+  --border-light: #36363d;
+  --accent-light: rgba(108, 99, 255, 0.22);
+  --success-dim: rgba(46, 204, 113, 0.22);
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+.epub-topbar-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.epub-topbar-btn.active {
+  border-color: var(--border);
+  background: var(--bg-elevated);
+  color: var(--accent);
+}
+
+.epub-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+}
+
+.epub-settings {
+  position: absolute;
+  top: 52px;
+  right: 8px;
+  z-index: 251;
+  width: min(280px, calc(100vw - 16px));
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  animation: fadeIn 0.15s ease;
+}
+
+.epub-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.epub-settings-row--col {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.epub-settings-label {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.epub-settings-size {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.epub-settings-fonts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.epub-font-option {
+  min-height: 40px;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), color var(--transition);
+}
+
+.epub-font-option:hover {
+  border-color: var(--accent);
+}
+
+.epub-font-option.active {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.epub-theme-toggle {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+}
+
+.epub-theme-option {
+  padding: 0.3rem 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.epub-theme-option.active {
+  background: var(--accent);
+  color: #fff;
 }

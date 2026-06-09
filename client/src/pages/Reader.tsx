@@ -13,9 +13,10 @@ import { useSavedWords } from '../hooks/useSavedWords';
 import TokenizedText from '../components/TokenizedText';
 import WordPopup from '../components/WordPopup';
 import { PopupState } from '../textTokens';
-import { ChevronLeftIcon, ChevronRightIcon, BookOpenIcon, CloseIcon } from '../components/icons';
+import { ChevronLeftIcon, ChevronRightIcon, BookOpenIcon, CloseIcon, TypeIcon, SunIcon, MoonIcon } from '../components/icons';
 import { parseEpub, imageObjectUrl, type ParsedEpub } from '../utils/epub';
 import { getBookData, getProgress, setProgress } from '../utils/bookStore';
+import { READER_FONTS, fontStack, loadReaderPrefs, saveReaderPrefs, type ReaderTheme } from '../utils/readerPrefs';
 
 const GAP = 48;
 const FONT_MIN = 0.8;
@@ -34,7 +35,10 @@ export default function Reader() {
   const [pageIndex, setPageIndex] = useState(0);
   const [numPages, setNumPages] = useState(1);
   const [colW, setColW] = useState(0);
-  const [fontScale, setFontScale] = useState(1);
+  const [fontScale, setFontScale] = useState(() => loadReaderPrefs().fontScale);
+  const [fontId, setFontId] = useState(() => loadReaderPrefs().fontId);
+  const [readerTheme, setReaderTheme] = useState<ReaderTheme>(() => loadReaderPrefs().theme);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [imgUrls, setImgUrls] = useState<Record<string, string>>({});
@@ -136,7 +140,7 @@ export default function Reader() {
       }
       return Math.min(p, pages - 1);
     });
-  }, [book, chapter, colW, fontScale, imageLayoutTick]);
+  }, [book, chapter, colW, fontScale, fontId, imageLayoutTick]);
 
   // Re-measure once web fonts settle.
   useEffect(() => {
@@ -154,6 +158,18 @@ export default function Reader() {
     if (!bookId || !book) return;
     void setProgress({ bookId, chapterIndex, pageIndex });
   }, [bookId, book, chapterIndex, pageIndex]);
+
+  // Persist reader preferences (theme / font / text size) across sessions.
+  useEffect(() => {
+    saveReaderPrefs({ theme: readerTheme, fontId, fontScale });
+  }, [readerTheme, fontId, fontScale]);
+
+  // Changing font/size reflows the columns — clear any pending restore and
+  // skip the slide animation so re-pagination is instant.
+  const relayoutForTextChange = () => {
+    pendingPageTargetRef.current = null;
+    setAnimatePage(false);
+  };
 
   const goNext = useCallback(() => {
     setPopup(null);
@@ -229,6 +245,12 @@ export default function Reader() {
   const atStart = chapterIndex === 0 && pageIndex === 0;
   const atEnd = book ? (chapterIndex === book.chapters.length - 1 && pageIndex >= numPages - 1) : true;
 
+  // Two-page (book) spread on wide screens, single column otherwise. Each page
+  // is still colW wide with a colW+GAP stride, so the pagination math is shared:
+  // two columns of (colW-GAP)/2 fit exactly within one colW-wide page.
+  const twoCol = colW >= 760;
+  const effColWidth = twoCol ? Math.max(1, (colW - GAP) / 2) : colW;
+
   if (loadError) {
     return (
       <div className="epub-reader epub-reader--message">
@@ -242,30 +264,71 @@ export default function Reader() {
   }
 
   return (
-    <div className="epub-reader">
+    <div className="epub-reader" data-reader-theme={readerTheme}>
       <header className="epub-topbar">
         <button className="epub-topbar-btn" title="Library" onClick={() => navigate('/books')}>
           <ChevronLeftIcon size={20} />
         </button>
         <div className="epub-topbar-title" title={book.title}>{book.title}</div>
         <div className="epub-topbar-actions">
-          <button className="epub-topbar-btn" title="Smaller text"
-            onClick={() => {
-              pendingPageTargetRef.current = null;
-              setAnimatePage(false);
-              setFontScale((f) => Math.max(FONT_MIN, +(f - 0.1).toFixed(2)));
-            }}>A−</button>
-          <button className="epub-topbar-btn" title="Larger text"
-            onClick={() => {
-              pendingPageTargetRef.current = null;
-              setAnimatePage(false);
-              setFontScale((f) => Math.min(FONT_MAX, +(f + 0.1).toFixed(2)));
-            }}>A+</button>
+          <button
+            className="epub-topbar-btn"
+            title={readerTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+            aria-label={readerTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            onClick={() => setReaderTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+          >
+            {readerTheme === 'dark' ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+          </button>
+          <button className={`epub-topbar-btn${settingsOpen ? ' active' : ''}`} title="Display settings"
+            onClick={() => setSettingsOpen((v) => !v)}>
+            <TypeIcon size={18} />
+          </button>
           <button className="epub-topbar-btn" title="Contents" onClick={() => setTocOpen(true)}>
             <BookOpenIcon size={18} />
           </button>
         </div>
       </header>
+
+      {settingsOpen && (
+        <>
+          <div className="epub-settings-backdrop" onClick={() => setSettingsOpen(false)} />
+          <aside className="epub-settings" role="dialog" aria-label="Display settings">
+            <div className="epub-settings-row">
+              <span className="epub-settings-label">Text size</span>
+              <div className="epub-settings-size">
+                <button className="epub-topbar-btn" title="Smaller text" disabled={fontScale <= FONT_MIN}
+                  onClick={() => { relayoutForTextChange(); setFontScale((f) => Math.max(FONT_MIN, +(f - 0.1).toFixed(2))); }}>A−</button>
+                <button className="epub-topbar-btn" title="Larger text" disabled={fontScale >= FONT_MAX}
+                  onClick={() => { relayoutForTextChange(); setFontScale((f) => Math.min(FONT_MAX, +(f + 0.1).toFixed(2))); }}>A+</button>
+              </div>
+            </div>
+            <div className="epub-settings-row epub-settings-row--col">
+              <span className="epub-settings-label">Font</span>
+              <div className="epub-settings-fonts">
+                {READER_FONTS.map((f) => (
+                  <button
+                    key={f.id}
+                    className={`epub-font-option${fontId === f.id ? ' active' : ''}`}
+                    style={{ fontFamily: f.stack }}
+                    onClick={() => { relayoutForTextChange(); setFontId(f.id); }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="epub-settings-row">
+              <span className="epub-settings-label">Theme</span>
+              <div className="epub-theme-toggle">
+                <button className={`epub-theme-option${readerTheme === 'light' ? ' active' : ''}`}
+                  onClick={() => setReaderTheme('light')}>Light</button>
+                <button className={`epub-theme-option${readerTheme === 'dark' ? ' active' : ''}`}
+                  onClick={() => setReaderTheme('dark')}>Dark</button>
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
 
       <div className="epub-stage">
         <button className="epub-flip epub-flip--prev" onClick={goPrev} disabled={atStart} aria-label="Previous page">
@@ -294,8 +357,9 @@ export default function Reader() {
             ref={contentRef}
             style={{
               width: colW ? `${colW}px` : '100%',
-              columnWidth: colW ? `${colW}px` : undefined,
+              columnWidth: colW ? `${effColWidth}px` : undefined,
               columnGap: `${GAP}px`,
+              fontFamily: fontStack(fontId),
               fontSize: `${fontScale}rem`,
               transform: `translateX(-${pageIndex * (colW + GAP)}px)`,
               transition: animatePage ? undefined : 'none',
