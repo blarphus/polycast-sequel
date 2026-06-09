@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { getDueWords, reviewWord, proxyImageUrl, type SavedWord, type SrsAnswer } from '../api';
 import { getButtonTimeLabel, getNextDueSeconds } from '../utils/srs';
 import { renderTildeHighlight, renderCloze, stripTildes } from '../utils/tildeMarkup';
-import { playAiSpeech, stopAiSpeech, preloadCardAudio } from '../utils/aiSpeech';
+import { playAiSpeech, stopAiSpeech, preloadCardAudio, type PreloadedSpeech } from '../utils/aiSpeech';
 import { playFlipSound, playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
 import { BookIcon, CheckCircleIcon, SpeakerIcon, TapIcon, CloseIcon, CheckIcon } from '../components/icons';
 
@@ -72,8 +72,8 @@ export default function Learn() {
   // Audio played tracker (once per card)
   const audioPlayedRef = useRef<Set<number>>(new Set());
 
-  // Preloaded TTS audio: word ID → object URL
-  const preloadedAudioRef = useRef<Map<string, string>>(new Map());
+  // Preloaded TTS audio: word ID -> audio URL and provider metadata
+  const preloadedAudioRef = useRef<Map<string, PreloadedSpeech>>(new Map());
 
   // Holds the API response so the re-queue timeout can use the updated card
   const reviewedCardRef = useRef<SavedWord | null>(null);
@@ -105,8 +105,8 @@ export default function Learn() {
       while (!cancelled && next < queue.length) {
         const card = queue[next++];
         try {
-          const url = await preloadCardAudio(card.id);
-          if (!cancelled) preloadedAudioRef.current.set(card.id, url);
+          const speech = await preloadCardAudio(card.id);
+          if (!cancelled) preloadedAudioRef.current.set(card.id, speech);
         } catch (err) {
           console.error(`Failed to preload audio for ${card.id}:`, err);
         }
@@ -168,8 +168,8 @@ export default function Learn() {
   useEffect(() => () => {
     stopAiSpeech();
     // Revoke all preloaded object URLs
-    for (const url of preloadedAudioRef.current.values()) {
-      URL.revokeObjectURL(url);
+    for (const speech of preloadedAudioRef.current.values()) {
+      URL.revokeObjectURL(speech.url);
     }
     preloadedAudioRef.current.clear();
   }, []);

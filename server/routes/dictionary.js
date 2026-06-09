@@ -14,6 +14,11 @@ import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listCalendarC
 
 const router = Router();
 
+function usesTtsFallback(languageCode) {
+  const language = String(languageCode || 'en').trim().toLowerCase().split(/[-_]/)[0];
+  return language !== 'en' && language !== 'es';
+}
+
 const uuidParam = z.object({ id: z.string().uuid('Invalid ID') });
 
 const lookupQuery = z.object({
@@ -335,6 +340,7 @@ router.get('/api/dictionary/words/:id/audio', authMiddleware, validate({ params:
 
     // Serve from cache if available
     if (row.tts_audio) {
+      if (usesTtsFallback(row.target_language)) res.set('X-Polycast-TTS-Fallback', 'openai');
       res.set('Content-Type', audioContentType(row.tts_audio));
       res.set('Cache-Control', 'private, max-age=31536000, immutable');
       return res.send(row.tts_audio);
@@ -343,7 +349,7 @@ router.get('/api/dictionary/words/:id/audio', authMiddleware, validate({ params:
     // Generate TTS. This cached per-word clip is the WORD's pronunciation (used
     // by the flashcard front, recall prompts, and the popup speaker). Full
     // example sentences are synthesized on the fly by the caller instead.
-    const audioBuffer = await synthesizeVoiceFeedback({
+    const { audioBuffer, usedFallback } = await synthesizeVoiceFeedback({
       text: row.word,
       languageCode: row.target_language,
     });
@@ -354,6 +360,7 @@ router.get('/api/dictionary/words/:id/audio', authMiddleware, validate({ params:
       [audioBuffer, req.params.id, req.userId],
     );
 
+    if (usedFallback) res.set('X-Polycast-TTS-Fallback', 'openai');
     res.set('Content-Type', audioContentType(audioBuffer));
     res.set('Cache-Control', 'private, max-age=31536000, immutable');
     return res.send(audioBuffer);

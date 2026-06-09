@@ -43,6 +43,7 @@ import IncomingCall from './components/IncomingCall';
 import PhraseTranslator from './components/PhraseTranslator';
 import BottomToolbar from './components/BottomToolbar';
 import ErrorBoundary from './components/ErrorBoundary';
+import TtsFallbackToast from './components/TtsFallbackToast';
 
 // ---------------------------------------------------------------------------
 // ProtectedRoute -- redirects to /login when the user is not authenticated
@@ -119,6 +120,7 @@ export default function App() {
       <DictionaryToastProvider>
       {/* Global incoming-call modal (only when authenticated) */}
       <AuthenticatedShell />
+      <TtsFallbackToast />
 
       <ErrorBoundary>
       <Routes>

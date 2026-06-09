@@ -26,7 +26,10 @@ async function synthesizeWithOpenAi({ text, languageCode }) {
     throw new Error(errBody || 'OpenAI speech synthesis failed');
   }
 
-  return Buffer.from(await response.arrayBuffer());
+  return {
+    audioBuffer: Buffer.from(await response.arrayBuffer()),
+    usedFallback: true,
+  };
 }
 
 export function audioContentType(audioBuffer) {
@@ -68,5 +71,8 @@ export async function synthesizeVoiceFeedback({ text, languageCode }) {
     throw new Error(errBody || 'Cloudflare speech synthesis failed');
   }
 
-  return Buffer.from(await response.arrayBuffer());
+  return {
+    audioBuffer: Buffer.from(await response.arrayBuffer()),
+    usedFallback: false,
+  };
 }

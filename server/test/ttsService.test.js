@@ -25,8 +25,9 @@ test('synthesizeVoiceFeedback proxies Cloudflare audio through the private worke
   };
 
   try {
-    const audio = await synthesizeVoiceFeedback({ text: 'Hola mundo', languageCode: 'es-MX' });
-    assert.deepEqual([...audio], [1, 2, 3]);
+    const result = await synthesizeVoiceFeedback({ text: 'Hola mundo', languageCode: 'es-MX' });
+    assert.deepEqual([...result.audioBuffer], [1, 2, 3]);
+    assert.equal(result.usedFallback, false);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalUrl === undefined) delete process.env.CF_TRANSCRIPT_WORKER_URL;
@@ -62,8 +63,9 @@ test('synthesizeVoiceFeedback falls back to OpenAI for unsupported Cloudflare la
   };
 
   try {
-    const audio = await synthesizeVoiceFeedback({ text: 'Bonjour', languageCode: 'fr-FR' });
-    assert.deepEqual([...audio], [4, 5, 6]);
+    const result = await synthesizeVoiceFeedback({ text: 'Bonjour', languageCode: 'fr-FR' });
+    assert.deepEqual([...result.audioBuffer], [4, 5, 6]);
+    assert.equal(result.usedFallback, true);
     assert.equal(callCount, 2);
   } finally {
     globalThis.fetch = originalFetch;

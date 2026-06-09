@@ -158,10 +158,11 @@ router.post('/api/practice/voice/sessions/:id/complete', authMiddleware, validat
 
 router.post('/api/practice/voice/speak', authMiddleware, validate({ body: speakBody }), async (req, res) => {
   try {
-    const audioBuffer = await synthesizeVoiceFeedback({
+    const { audioBuffer, usedFallback } = await synthesizeVoiceFeedback({
       text: req.body.text,
       languageCode: req.body.languageCode,
     });
+    if (usedFallback) res.setHeader('X-Polycast-TTS-Fallback', 'openai');
     res.setHeader('Content-Type', audioContentType(audioBuffer));
     res.setHeader('Cache-Control', 'no-store');
     return res.send(audioBuffer);

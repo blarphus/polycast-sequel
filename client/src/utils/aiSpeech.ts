@@ -1,6 +1,17 @@
 let activeAudio: HTMLAudioElement | null = null;
 let activeUrl: string | null = null;
 
+export interface PreloadedSpeech {
+  url: string;
+  usedFallback: boolean;
+}
+
+function warnAboutFallback(languageCode?: string) {
+  window.dispatchEvent(new CustomEvent('polycast:tts-fallback', {
+    detail: { languageCode },
+  }));
+}
+
 function cleanup() {
   if (activeAudio) {
     activeAudio.pause();
@@ -21,15 +32,16 @@ export function stopAiSpeech() {
  * Play TTS audio. If a preloaded object URL is provided, play it directly.
  * Otherwise, call the /speak endpoint to generate audio on-the-fly.
  */
-export async function playAiSpeech(text: string, languageCode?: string, preloadedUrl?: string) {
+export async function playAiSpeech(text: string, languageCode?: string, preloaded?: PreloadedSpeech) {
   cleanup();
 
   if (typeof window !== 'undefined' && window.localStorage.getItem('polycast.offline.enabled') === 'true') {
     return;
   }
 
-  if (preloadedUrl) {
-    const audio = new Audio(preloadedUrl);
+  if (preloaded?.url) {
+    if (preloaded.usedFallback) warnAboutFallback(languageCode);
+    const audio = new Audio(preloaded.url);
     activeAudio = audio;
     // Don't revoke preloaded URLs — they're managed by the caller
     activeUrl = null;
@@ -64,6 +76,8 @@ export async function playAiSpeech(text: string, languageCode?: string, preloade
     throw new Error(message);
   }
 
+  if (res.headers.get('X-Polycast-TTS-Fallback')) warnAboutFallback(languageCode);
+
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);
@@ -77,9 +91,9 @@ export async function playAiSpeech(text: string, languageCode?: string, preloade
  * Preload TTS audio for a saved word via the caching endpoint.
  * Returns an object URL that can be passed to playAiSpeech.
  */
-export async function preloadCardAudio(wordId: string): Promise<string> {
+export async function preloadCardAudio(wordId: string): Promise<PreloadedSpeech> {
   if (typeof window !== 'undefined' && window.localStorage.getItem('polycast.offline.enabled') === 'true') {
-    return '';
+    return { url: '', usedFallback: false };
   }
 
   const res = await fetch(`/api/dictionary/words/${wordId}/audio`, {
@@ -91,5 +105,8 @@ export async function preloadCardAudio(wordId: string): Promise<string> {
   }
 
   const blob = await res.blob();
-  return URL.createObjectURL(blob);
+  return {
+    url: URL.createObjectURL(blob),
+    usedFallback: Boolean(res.headers.get('X-Polycast-TTS-Fallback')),
+  };
 }

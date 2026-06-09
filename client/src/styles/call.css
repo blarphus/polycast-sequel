@@ -564,6 +564,37 @@
   color: var(--danger);
 }
 
+.tts-fallback-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 910;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  max-width: min(92vw, 560px);
+  padding: 0.65rem 1rem;
+  background: var(--bg-surface);
+  border: 1.5px solid #d97706;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  color: #b45309;
+  font-size: 0.88rem;
+  font-weight: 600;
+  animation: dict-toast-in 0.25s ease;
+}
+
+.tts-fallback-toast > span:first-child {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
 .dict-toast--hiding {
   animation: dict-toast-out 0.3s ease forwards;
 }
