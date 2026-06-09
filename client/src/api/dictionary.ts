@@ -57,6 +57,13 @@ export function wiktLookup(word: string, targetLang: string, nativeLang: string)
   return request<WiktLookupResult>(`/dictionary/wikt-lookup?${params}`);
 }
 
+// Gemini explains what the word means specifically in its sentence context.
+export function explainWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
+  const params = new URLSearchParams({ word, sentence, nativeLang });
+  if (targetLang) params.set('targetLang', targetLang);
+  return request<{ word: string; explanation: string }>(`/dictionary/explain?${params}`);
+}
+
 export function enrichWord(
   word: string,
   sentence: string,
