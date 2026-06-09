@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { translatePhrase } from '../api';
+import { explainSelection, translatePhrase } from '../api';
+import { getReaderSelectionDetails } from '../utils/readerSelection';
 
 interface PhrasePopupState {
   phrase: string;
+  context: string | null;
   rect: DOMRect;
 }
 
@@ -13,23 +15,32 @@ export default function PhraseTranslator() {
   const [translation, setTranslation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [explanation, setExplanation] = useState('');
+  const [explanationLoading, setExplanationLoading] = useState(false);
+  const [explanationError, setExplanationError] = useState('');
   const popupRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef(0);
+  const explanationRequestIdRef = useRef(0);
 
   const isTeacher = user?.account_type === 'teacher';
   const targetLang = user?.target_language;
   const nativeLang = user?.native_language || 'en';
 
   const dismiss = useCallback(() => {
+    explanationRequestIdRef.current += 1;
     setPopup(null);
     setTranslation('');
     setError(false);
     setLoading(false);
+    setExplanation('');
+    setExplanationError('');
+    setExplanationLoading(false);
   }, []);
 
   useEffect(() => {
     if (isTeacher) return;
-    const handleMouseUp = () => {
+    const handleSelection = (event: Event) => {
+      if (event.target instanceof Node && popupRef.current?.contains(event.target)) return;
       // Small delay to let the selection finalize
       requestAnimationFrame(() => {
         const sel = window.getSelection();
@@ -44,12 +55,32 @@ export default function PhraseTranslator() {
 
         const range = sel.getRangeAt(0);
         const rect = range.getBoundingClientRect();
-        setPopup({ phrase: text.slice(0, 500), rect });
+        const selectionElement = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+          ? range.commonAncestorContainer as Element
+          : range.commonAncestorContainer.parentElement;
+        const readerContent = selectionElement?.closest('.epub-content') as HTMLElement | null;
+        const readerSelection = readerContent
+          ? getReaderSelectionDetails(range, readerContent)
+          : null;
+
+        setExplanation('');
+        setExplanationError('');
+        setExplanationLoading(false);
+        explanationRequestIdRef.current += 1;
+        setPopup({
+          phrase: text.slice(0, 500),
+          context: readerSelection?.context ?? null,
+          rect,
+        });
       });
     };
 
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => document.removeEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mouseup', handleSelection);
+    document.addEventListener('touchend', handleSelection);
+    return () => {
+      document.removeEventListener('mouseup', handleSelection);
+      document.removeEventListener('touchend', handleSelection);
+    };
   }, [isTeacher]);
 
   // Dismiss on click outside or escape
@@ -102,6 +133,29 @@ export default function PhraseTranslator() {
       });
   }, [popup, targetLang, nativeLang]);
 
+  const requestExplanation = async () => {
+    if (!popup?.context) return;
+    const requestPopup = popup;
+    const id = ++explanationRequestIdRef.current;
+    setExplanationLoading(true);
+    setExplanationError('');
+    try {
+      const result = await explainSelection(
+        requestPopup.phrase,
+        requestPopup.context,
+        nativeLang,
+        targetLang,
+      );
+      if (id !== explanationRequestIdRef.current) return;
+      setExplanation(result.explanation);
+      setExplanationLoading(false);
+    } catch (err) {
+      if (id !== explanationRequestIdRef.current) return;
+      setExplanationError(err instanceof Error ? err.message : 'Explanation failed');
+      setExplanationLoading(false);
+    }
+  };
+
   if (!popup || isTeacher) return null;
 
   // Position popup above selection, flip below if near top
@@ -142,6 +196,27 @@ export default function PhraseTranslator() {
       )}
       {!loading && !error && translation && (
         <div className="phrase-popup-translation">{translation}</div>
+      )}
+      {popup.context && (
+        <>
+          <button
+            type="button"
+            className="phrase-popup-explain"
+            disabled={explanationLoading}
+            onClick={() => void requestExplanation()}
+          >
+            {explanationLoading ? 'Asking Gemini…' : 'Explain in context'}
+          </button>
+          {explanation && (
+            <div className="phrase-popup-explanation">{explanation}</div>
+          )}
+          {explanationError && (
+            <div className="phrase-popup-explanation-error">
+              <span>{explanationError}</span>
+              <button type="button" onClick={() => void requestExplanation()}>Try again</button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

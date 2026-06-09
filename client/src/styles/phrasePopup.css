@@ -41,3 +41,58 @@
   font-size: 0.85rem;
   color: var(--text-secondary);
 }
+
+.phrase-popup-explain {
+  width: calc(100% - 1.5rem);
+  margin: 0 0.75rem 0.7rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.phrase-popup-explain:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.phrase-popup-explain:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.phrase-popup-explanation {
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 0.7rem 0.75rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.phrase-popup-explanation-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-top: 1px solid var(--border);
+  color: var(--danger, #dc2626);
+  font-size: 0.8rem;
+}
+
+.phrase-popup-explanation-error button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
