@@ -17,11 +17,21 @@ import { ChevronLeftIcon, ChevronRightIcon, BookOpenIcon, CloseIcon, TypeIcon, S
 import { parseEpub, imageObjectUrl, type ParsedEpub } from '../utils/epub';
 import { getBookData, getProgress, setProgress } from '../utils/bookStore';
 import { READER_FONTS, fontStack, loadReaderPrefs, saveReaderPrefs, type ReaderTheme } from '../utils/readerPrefs';
+import { getReaderSelectionDetails } from '../utils/readerSelection';
+import { explainSelection } from '../api';
 
 const GAP = 48;
 const FONT_MIN = 0.8;
 const FONT_MAX = 1.7;
 type PendingPageTarget = number | 'start' | 'end';
+interface SelectionPopupState {
+  selection: string;
+  context: string;
+  rect: DOMRect;
+  explanation: string;
+  loading: boolean;
+  error: string;
+}
 
 export default function Reader() {
   const { bookId } = useParams<{ bookId: string }>();
@@ -41,6 +51,7 @@ export default function Reader() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
   const [popup, setPopup] = useState<PopupState | null>(null);
+  const [selectionPopup, setSelectionPopup] = useState<SelectionPopupState | null>(null);
   const [imgUrls, setImgUrls] = useState<Record<string, string>>({});
   const [imageLayoutTick, setImageLayoutTick] = useState(0);
   const [animatePage, setAnimatePage] = useState(false);
@@ -173,6 +184,7 @@ export default function Reader() {
 
   const goNext = useCallback(() => {
     setPopup(null);
+    setSelectionPopup(null);
     if (pageIndex < numPages - 1) {
       pendingPageTargetRef.current = null;
       setAnimatePage(true);
@@ -190,6 +202,7 @@ export default function Reader() {
 
   const goPrev = useCallback(() => {
     setPopup(null);
+    setSelectionPopup(null);
     if (pageIndex > 0) {
       pendingPageTargetRef.current = null;
       setAnimatePage(true);
@@ -229,6 +242,7 @@ export default function Reader() {
 
   const jumpToChapter = (i: number) => {
     setPopup(null);
+    setSelectionPopup(null);
     setTocOpen(false);
     setAnimatePage(false);
     setChapterTurn(null);
@@ -238,8 +252,57 @@ export default function Reader() {
   };
 
   const handleWordClick = (e: React.MouseEvent<HTMLSpanElement>, word: string, sentence: string) => {
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) return;
     const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setSelectionPopup(null);
     setPopup({ word, sentence, rect });
+  };
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const content = contentRef.current;
+    if (!content) return;
+    const details = getReaderSelectionDetails(range, content);
+    if (!details) return;
+
+    setPopup(null);
+    setSelectionPopup({
+      selection: details.selection,
+      context: details.context,
+      rect: range.getBoundingClientRect(),
+      explanation: '',
+      loading: false,
+      error: '',
+    });
+  };
+
+  const requestSelectionExplanation = async () => {
+    if (!selectionPopup || !user) return;
+    const requestState = selectionPopup;
+    setSelectionPopup({ ...requestState, loading: true, error: '' });
+    try {
+      const result = await explainSelection(
+        requestState.selection,
+        requestState.context,
+        user.native_language || 'en',
+        user.target_language || undefined,
+      );
+      setSelectionPopup((current) => current
+        && current.selection === requestState.selection
+        && current.context === requestState.context
+        ? { ...current, explanation: result.explanation, loading: false }
+        : current);
+    } catch (err) {
+      setSelectionPopup((current) => current
+        && current.selection === requestState.selection
+        && current.context === requestState.context
+        ? { ...current, error: err instanceof Error ? err.message : 'Explanation failed', loading: false }
+        : current);
+    }
   };
 
   const atStart = chapterIndex === 0 && pageIndex === 0;
@@ -343,6 +406,10 @@ export default function Reader() {
             if (touchStartX.current == null) return;
             const dx = e.changedTouches[0].clientX - touchStartX.current;
             touchStartX.current = null;
+            if (window.getSelection() && !window.getSelection()!.isCollapsed) {
+              window.setTimeout(handleTextSelection, 0);
+              return;
+            }
             if (dx < -40) goNext();
             else if (dx > 40) goPrev();
           }}
@@ -355,6 +422,7 @@ export default function Reader() {
           <div
             className="epub-content"
             ref={contentRef}
+            onMouseUp={handleTextSelection}
             style={{
               width: colW ? `${colW}px` : '100%',
               columnWidth: colW ? `${effColWidth}px` : undefined,
@@ -445,6 +513,43 @@ export default function Reader() {
           onSaveWord={addWord}
           onOptimisticSave={addOptimistic}
         />
+      )}
+
+      {selectionPopup && user && (
+        <div
+          className="epub-selection-popup"
+          role="dialog"
+          aria-label="Explain selected text"
+          style={{
+            left: `${Math.max(12, Math.min(selectionPopup.rect.left, window.innerWidth - 332))}px`,
+            top: `${Math.max(68, Math.min(selectionPopup.rect.bottom + 10, window.innerHeight - 230))}px`,
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <div className="epub-selection-popup-header">
+            <span>{selectionPopup.selection}</span>
+            <button type="button" onClick={() => setSelectionPopup(null)} aria-label="Close">&times;</button>
+          </div>
+          {!selectionPopup.explanation && !selectionPopup.error && (
+            <button
+              type="button"
+              className="epub-selection-explain-btn"
+              disabled={selectionPopup.loading}
+              onClick={() => void requestSelectionExplanation()}
+            >
+              {selectionPopup.loading ? 'Asking Gemini…' : 'Explain selection'}
+            </button>
+          )}
+          {selectionPopup.explanation && (
+            <p className="epub-selection-explanation">{selectionPopup.explanation}</p>
+          )}
+          {selectionPopup.error && (
+            <div className="epub-selection-error">
+              <span>{selectionPopup.error}</span>
+              <button type="button" onClick={() => void requestSelectionExplanation()}>Try again</button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

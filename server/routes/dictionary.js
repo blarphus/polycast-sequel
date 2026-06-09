@@ -9,7 +9,7 @@ import { validate } from '../lib/validate.js';
 import { translateText } from '../lib/googleTranslate.js';
 import { applySrsReview } from '../lib/srsUpdate.js';
 import { synthesizeVoiceFeedback } from '../services/ttsService.js';
-import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext } from '../services/wordSemanticsService.js';
+import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext, explainSelectionInContext } from '../services/wordSemanticsService.js';
 import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
 
 const router = Router();
@@ -22,6 +22,13 @@ const lookupQuery = z.object({
   nativeLang: z.string().min(1, 'nativeLang is required'),
   targetLang: z.string().optional(),
   isNative: z.string().optional(),
+});
+
+const explainSelectionBody = z.object({
+  selection: z.string().trim().min(1, 'selection is required').max(2000),
+  context: z.string().trim().min(1, 'context is required').max(10000),
+  nativeLang: z.string().min(1, 'nativeLang is required'),
+  targetLang: z.string().optional(),
 });
 
 const wiktLookupQuery = z.object({
@@ -152,6 +159,21 @@ router.get('/api/dictionary/explain', authMiddleware, validate({ query: lookupQu
   } catch (err) {
     req.log.error({ err }, 'Dictionary explain error');
     return res.status(500).json({ error: err.message || 'Explain failed' });
+  }
+});
+
+/**
+ * POST /api/dictionary/explain-selection
+ * Explains selected text using its surrounding paragraph for context.
+ */
+router.post('/api/dictionary/explain-selection', authMiddleware, validate({ body: explainSelectionBody }), async (req, res) => {
+  const { selection, context, nativeLang, targetLang } = req.body;
+  try {
+    const result = await explainSelectionInContext({ selection, context, nativeLang, targetLang });
+    return res.json(result);
+  } catch (err) {
+    req.log.error({ err }, 'Dictionary selection explain error');
+    return res.status(500).json({ error: err.message || 'Selection explanation failed' });
   }
 });
 

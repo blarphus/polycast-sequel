@@ -64,6 +64,13 @@ export function explainWord(word: string, sentence: string, nativeLang: string, 
   return request<{ word: string; explanation: string }>(`/dictionary/explain?${params}`);
 }
 
+export function explainSelection(selection: string, context: string, nativeLang: string, targetLang?: string) {
+  return request<{ selection: string; explanation: string }>('/dictionary/explain-selection', {
+    method: 'POST',
+    body: { selection, context, nativeLang, targetLang },
+  });
+}
+
 export function enrichWord(
   word: string,
   sentence: string,
