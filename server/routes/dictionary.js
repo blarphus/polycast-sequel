@@ -6,6 +6,7 @@ import { enrichWord as enrichWordHelper, fetchWiktSenses } from '../enrichWord.j
 import { searchAllImages } from '../lib/imageSearch.js';
 import { getImageBytes } from '../lib/imageCache.js';
 import { validate } from '../lib/validate.js';
+import { translateText } from '../lib/googleTranslate.js';
 import { applySrsReview } from '../lib/srsUpdate.js';
 import { synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext } from '../services/wordSemanticsService.js';
@@ -179,17 +180,7 @@ router.post('/api/dictionary/translate', authMiddleware, validate({ body: transl
   const { sentence, fromLang, toLang } = req.body;
 
   try {
-    const sl = fromLang || 'auto';
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sl)}&tl=${encodeURIComponent(toLang)}&dt=t&q=${encodeURIComponent(sentence)}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      req.log.error('Google Translate error: status %d', response.status);
-      throw new Error('Translation request failed');
-    }
-
-    const data = await response.json();
-    const segments = data[0] || [];
-    const translation = segments.map((seg) => seg[0]).join('');
+    const translation = await translateText(sentence, fromLang || 'auto', toLang);
 
     return res.json({ translation });
   } catch (err) {

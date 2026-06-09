@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import { validate } from '../lib/validate.js';
+import { translateText } from '../lib/googleTranslate.js';
 
 const router = Router();
 
@@ -15,16 +16,7 @@ router.post('/api/translate/phrase', authMiddleware, validate({ body: phraseBody
   try {
     const { phrase, nativeLang, targetLang } = req.body;
 
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(targetLang)}&tl=${encodeURIComponent(nativeLang)}&dt=t&q=${encodeURIComponent(phrase)}`;
-    const gRes = await fetch(url);
-    if (!gRes.ok) {
-      throw new Error(`Google Translate responded ${gRes.status}`);
-    }
-
-    const data = await gRes.json();
-    // Response format: [[["translated text","original text",null,null,N]], ...]
-    const segments = data[0] || [];
-    const translation = segments.map((seg) => seg[0]).join('');
+    const translation = await translateText(phrase, targetLang, nativeLang);
 
     res.json({ translation });
   } catch (err) {

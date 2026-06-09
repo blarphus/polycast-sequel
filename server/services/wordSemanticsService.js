@@ -7,8 +7,7 @@ import {
 } from '../enrichWord.js';
 import pool from '../db.js';
 import { fetchUserSavedSensesForWord } from '../lib/dictionaryQueries.js';
-// FLAGGED FOR DELETION — local ONNX sense-picker replaced by Gemini index-pick (Flash Lite).
-// import { pickSense, isModelReady } from '../lib/sensePicker.js';
+import { translateText } from '../lib/googleTranslate.js';
 
 function makeContextError(message, context = {}) {
   const error = new Error(message);
@@ -17,26 +16,18 @@ function makeContextError(message, context = {}) {
 }
 
 async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
+  // Wrap the word in tildes so we can locate its translation inside the
+  // translated sentence; fall back to translating the word alone if the
+  // markers don't survive translation.
   const markedSentence = sentence.replace(word, `~${word}~`);
-  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(markedSentence)}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Google Translate request failed with status ${res.status}`);
-  }
-  const data = await res.json();
-  const translated = (data[0] || []).map((seg) => seg[0] || '').join('');
+  const translated = await translateText(markedSentence, sourceLang, targetLang);
   const tildeMatch = translated.match(/~([^~]+)~/);
   if (tildeMatch) {
     return tildeMatch[1].trim();
   }
 
-  const fallbackUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(word)}`;
-  const fallbackRes = await fetch(fallbackUrl);
-  if (!fallbackRes.ok) {
-    throw new Error(`Google Translate fallback request failed with status ${fallbackRes.status}`);
-  }
-  const fallbackData = await fallbackRes.json();
-  return (fallbackData[0]?.[0]?.[0] || '').trim();
+  const fallback = await translateText(word, sourceLang, targetLang);
+  return fallback.trim();
 }
 
 // pickBestSense — Gemini reads the sentence and candidate senses and replies with ONE short

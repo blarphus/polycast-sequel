@@ -54,6 +54,8 @@ export async function streamNewsArticleRewrite(
   { signal, onMeta, onChunk, onDone }: StreamNewsArticleOptions = {},
 ): Promise<void> {
   const params = new URLSearchParams({ lang, index: String(index), level });
+  // Raw fetch (not the shared request() helper): this is a Server-Sent-Events
+  // stream consumed incrementally via a ReadableStream reader, not a JSON body.
   const res = await fetch(`/api/news/article/stream?${params}`, {
     credentials: 'include',
     headers: { Accept: 'text/event-stream' },

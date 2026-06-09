@@ -126,14 +126,20 @@ export default function GroupCall() {
         }
 
         // Restore camera when user stops sharing via browser UI
-        screenTrack.onended = () => {
+        screenTrack.onended = async () => {
           setIsScreenSharing(false);
           screenStreamRef.current = null;
           const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
           if (cameraTrack) {
             for (const [, entry] of peersRef.current) {
               const sender = entry.pc.getSenders().find((s) => s.track?.kind === 'video');
-              if (sender) sender.replaceTrack(cameraTrack);
+              if (sender) {
+                try {
+                  await sender.replaceTrack(cameraTrack);
+                } catch (err) {
+                  console.error('[group-call] Failed to restore camera track after screen share:', err);
+                }
+              }
             }
           }
         };

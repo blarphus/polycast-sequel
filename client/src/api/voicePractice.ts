@@ -121,6 +121,8 @@ export async function synthesizeVoicePracticeFeedback(data: {
   text: string;
   languageCode?: string;
 }) {
+  // Raw fetch (not the shared request() helper): the response is an audio Blob,
+  // not JSON.
   const res = await fetch('/api/practice/voice/speak', {
     method: 'POST',
     credentials: 'include',

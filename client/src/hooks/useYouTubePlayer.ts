@@ -36,6 +36,7 @@ export function useYouTubePlayer(video: VideoDetail | null, mergedSegments: Tran
   const playerRef = useRef<YT.Player | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mergedSegmentsRef = useRef(mergedSegments);
+  const lastIdxRef = useRef(-1);
   mergedSegmentsRef.current = mergedSegments;
 
   useEffect(() => {
@@ -56,13 +57,13 @@ export function useYouTubePlayer(video: VideoDetail | null, mergedSegments: Tran
         const segments = mergedSegmentsRef.current;
         if (segments.length === 0) return;
 
-        let idx = -1;
-        for (let i = segments.length - 1; i >= 0; i--) {
-          if (segments[i].offset <= currentMs) {
-            idx = i;
-            break;
-          }
-        }
+        // Incremental scan from the last active index — O(1) during normal
+        // playback, only walking the distance actually moved after a seek.
+        let idx = lastIdxRef.current;
+        if (idx >= segments.length) idx = segments.length - 1;
+        while (idx + 1 < segments.length && segments[idx + 1].offset <= currentMs) idx++;
+        while (idx >= 0 && segments[idx].offset > currentMs) idx--;
+        lastIdxRef.current = idx;
         setActiveIndex(idx);
       }, 250);
     };
@@ -116,7 +117,11 @@ export function useYouTubePlayer(video: VideoDetail | null, mergedSegments: Tran
         playerRef.current.destroy();
         playerRef.current = null;
       }
-      window.onYouTubeIframeAPIReady = undefined;
+      // Only clear the global hook if it still points at this instance's
+      // initializer — avoids breaking another player mounted concurrently.
+      if (window.onYouTubeIframeAPIReady === initPlayer) {
+        window.onYouTubeIframeAPIReady = undefined;
+      }
     };
   }, [video]);
 

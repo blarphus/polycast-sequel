@@ -35,8 +35,6 @@ import voicePracticeRoutes from './routes/voicePractice.js';
 import homeRoutes from './routes/home.js';
 import friendkeeperRoutes from './routes/friendkeeper.js';
 import { startTranscriptWorker, backfillCefrLevels } from './services/videoTranscriptQueue.js';
-// FLAGGED FOR DELETION — local ONNX sense-picker replaced by Gemini index-pick (Flash Lite).
-// import { loadModel as loadSensePickerModel } from './lib/sensePicker.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -78,10 +76,6 @@ async function main() {
     logger.error({ err }, 'Failed to initialize Redis-backed services. Exiting.');
     process.exit(1);
   }
-
-  // ------ Sense-picker model (non-blocking) ------
-  // FLAGGED FOR DELETION — sense-picking now done by Gemini index-pick (Flash Lite).
-  // loadSensePickerModel();
 
   // ------ Express app ------
   const app = express();

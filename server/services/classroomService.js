@@ -26,20 +26,10 @@ function mapClassroomRow(row, roleOverride) {
   };
 }
 
-async function getTeacherNameAggregateSubquery() {
-  return `
-    SELECT ct.classroom_id,
-           ARRAY_AGG(COALESCE(u.display_name, u.username) ORDER BY COALESCE(u.display_name, u.username)) AS teacher_names
-    FROM classroom_teachers ct
-    JOIN users u ON u.id = ct.teacher_id
-    GROUP BY ct.classroom_id
-  `;
-}
-
-export async function listVisibleClassrooms(userId) {
-  const accountType = await getUserAccountType(userId);
-  const teacherNamesSql = await getTeacherNameAggregateSubquery();
-  const baseSql = `
+// Shared JOIN fragments for the classroom-listing queries. Both
+// listVisibleClassrooms and getClassroomForUser need per-classroom teacher and
+// student counts plus the aggregated teacher names, so they live here once.
+const COUNT_SUBQUERIES_SQL = `
     LEFT JOIN (
       SELECT classroom_id, COUNT(*)::int AS teacher_count
       FROM classroom_teachers
@@ -50,7 +40,23 @@ export async function listVisibleClassrooms(userId) {
       FROM classroom_enrollments
       GROUP BY classroom_id
     ) sc ON sc.classroom_id = c.id
-    LEFT JOIN (${teacherNamesSql}) tn ON tn.classroom_id = c.id
+`;
+
+const TEACHER_NAMES_JOIN_SQL = `
+    LEFT JOIN (
+      SELECT ct.classroom_id,
+             ARRAY_AGG(COALESCE(u.display_name, u.username) ORDER BY COALESCE(u.display_name, u.username)) AS teacher_names
+      FROM classroom_teachers ct
+      JOIN users u ON u.id = ct.teacher_id
+      GROUP BY ct.classroom_id
+    ) tn ON tn.classroom_id = c.id
+`;
+
+export async function listVisibleClassrooms(userId) {
+  const accountType = await getUserAccountType(userId);
+  const baseSql = `
+    ${COUNT_SUBQUERIES_SQL}
+    ${TEACHER_NAMES_JOIN_SQL}
     LEFT JOIN LATERAL (
       SELECT sp.title AS next_class_title, sp.scheduled_at AS next_class_at
       FROM stream_posts sp
@@ -104,7 +110,6 @@ export async function listVisibleClassrooms(userId) {
 
 export async function getClassroomForUser(classroomId, userId) {
   const accountType = await getUserAccountType(userId);
-  const teacherNamesSql = await getTeacherNameAggregateSubquery();
   const membershipJoin = accountType === 'teacher'
     ? `JOIN classroom_teachers m ON m.classroom_id = c.id AND m.teacher_id = $2`
     : `JOIN classroom_enrollments m ON m.classroom_id = c.id AND m.student_id = $2`;
@@ -117,17 +122,8 @@ export async function getClassroomForUser(classroomId, userId) {
             COALESCE(tn.teacher_names, ARRAY[]::text[]) AS teacher_names
      FROM classrooms c
      ${membershipJoin}
-     LEFT JOIN (
-       SELECT classroom_id, COUNT(*)::int AS teacher_count
-       FROM classroom_teachers
-       GROUP BY classroom_id
-     ) tc ON tc.classroom_id = c.id
-     LEFT JOIN (
-       SELECT classroom_id, COUNT(*)::int AS student_count
-       FROM classroom_enrollments
-       GROUP BY classroom_id
-     ) sc ON sc.classroom_id = c.id
-     LEFT JOIN (${teacherNamesSql}) tn ON tn.classroom_id = c.id
+     ${COUNT_SUBQUERIES_SQL}
+     ${TEACHER_NAMES_JOIN_SQL}
      WHERE c.id = $1
      LIMIT 1`,
     [classroomId, userId],

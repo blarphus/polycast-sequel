@@ -92,16 +92,18 @@ export default function Learn() {
       });
   }, []);
 
-  // Preload TTS audio for all cards sequentially
+  // Preload TTS audio for all cards with bounded concurrency (a few in flight
+  // at once instead of strictly one-at-a-time, so the deck warms up faster).
   useEffect(() => {
     if (cards.length === 0) return;
 
     let cancelled = false;
+    const queue = cards.filter((card) => !preloadedAudioRef.current.has(card.id));
+    let next = 0;
 
-    (async () => {
-      for (const card of cards) {
-        if (cancelled) break;
-        if (preloadedAudioRef.current.has(card.id)) continue;
+    const worker = async () => {
+      while (!cancelled && next < queue.length) {
+        const card = queue[next++];
         try {
           const url = await preloadCardAudio(card.id);
           if (!cancelled) preloadedAudioRef.current.set(card.id, url);
@@ -109,7 +111,12 @@ export default function Learn() {
           console.error(`Failed to preload audio for ${card.id}:`, err);
         }
       }
-    })();
+    };
+
+    const PRELOAD_CONCURRENCY = 4;
+    for (let i = 0; i < Math.min(PRELOAD_CONCURRENCY, queue.length); i++) {
+      worker();
+    }
 
     return () => { cancelled = true; };
   }, [cards]);

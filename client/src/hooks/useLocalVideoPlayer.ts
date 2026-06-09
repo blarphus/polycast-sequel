@@ -17,6 +17,7 @@ export function useLocalVideoPlayer(
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mergedSegmentsRef = useRef(mergedSegments);
   const lastSaveRef = useRef(0);
+  const lastIdxRef = useRef(-1);
   mergedSegmentsRef.current = mergedSegments;
 
   const stopPolling = useCallback(() => {
@@ -35,13 +36,13 @@ export function useLocalVideoPlayer(
       const segments = mergedSegmentsRef.current;
       if (segments.length === 0) return;
 
-      let idx = -1;
-      for (let i = segments.length - 1; i >= 0; i--) {
-        if (segments[i].offset <= currentMs) {
-          idx = i;
-          break;
-        }
-      }
+      // Incremental scan from the last active index — O(1) during normal
+      // playback, only walking the distance actually moved after a seek.
+      let idx = lastIdxRef.current;
+      if (idx >= segments.length) idx = segments.length - 1;
+      while (idx + 1 < segments.length && segments[idx + 1].offset <= currentMs) idx++;
+      while (idx >= 0 && segments[idx].offset > currentMs) idx--;
+      lastIdxRef.current = idx;
       setActiveIndex(idx);
 
       // Save progress every 5 seconds

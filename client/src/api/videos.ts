@@ -128,6 +128,9 @@ export function retryVideoTranscript(id: string) {
   return request<VideoDetail>(`/videos/${id}/transcript/retry`, { method: 'POST' });
 }
 
+// The two functions below hit the external Cloudflare transcript worker
+// directly (a different origin), so they use raw fetch rather than the shared
+// request() helper, which is scoped to the /api backend.
 const CF_WORKER_URL = 'https://polycast-transcript-worker.polycast-app.workers.dev';
 
 export async function checkVideoPlayability(videoIds: string[]): Promise<{ blocked: Set<string>; shorts: Set<string> }> {
