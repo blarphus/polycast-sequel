@@ -6,7 +6,6 @@
 .pc-word {
   cursor: pointer;
   border-radius: 2px;
-  transition: background-color 0.15s ease;
   color: inherit;
 }
 

@@ -157,7 +157,6 @@
 .read-subheading .subtitle-word {
   cursor: pointer;
   border-radius: 3px;
-  transition: background var(--transition);
 }
 
 .read-paragraph .subtitle-word:hover,

@@ -241,7 +241,6 @@
   pointer-events: auto;
   cursor: pointer;
   border-radius: 3px;
-  transition: background 0.15s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
