@@ -217,6 +217,7 @@ router.post('/api/friendkeeper/sync', friendkeeperAuth, async (req, res) => {
       await client.query('ROLLBACK');
       throw err;
     } finally {
+      await client.query('SET search_path TO public, friendkeeper').catch(() => {});
       client.release();
     }
   } catch (err) {
