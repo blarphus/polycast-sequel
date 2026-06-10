@@ -30,12 +30,15 @@ async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   return fallback.trim();
 }
 
-// pickBestSense — Gemini reads the sentence and candidate senses and replies with ONE short
-// token: the INDEX number of the sense that states the meaning, the BASE word when the best
-// sense only points to another word (e.g. "plural of mão", "female equivalent of enfermeiro",
-// "alternative form of caracterizar", or a bare grammatical label), or -1 when none fit. Plain
-// text (a number or a word) — nothing to truncate. Returns {index} | {base}.
-async function pickBestSense(word, sentence, targetLang, senses) {
+// pickBestSense — Gemini reads the sentence and candidate senses and, in ONE call, returns both
+// (a) a PICK token — the INDEX number of the sense that states the meaning, the BASE word when the
+// best sense only points to another word (e.g. "plural of mão", "female equivalent of enfermeiro",
+// "alternative form of caracterizar", or a bare grammatical label), or -1 when none fit — and
+// (b) a short native-language TRANSLATION of the word that is consistent with the sense it picked.
+// Word translation comes from here (not Google Translate) so the displayed translation never
+// disagrees with the chosen definition for polysemous words. Reply format: "PICK | TRANSLATION".
+// Returns { index, translation } | { base, translation }.
+async function pickBestSense(word, sentence, targetLang, nativeLang, senses) {
   const senseList = senses
     .map((s, i) => `${i}: [${s.pos}] ${s.gloss}${s.source === 'user' ? "  (already in the learner's dictionary)" : ''}`)
     .join('\n');
@@ -44,26 +47,33 @@ async function pickBestSense(word, sentence, targetLang, senses) {
 Candidate dictionary senses:
 ${senseList}
 
-Pick the sense that best matches how "${word}" is used here. IMPORTANT: if ANY sense marked "(already in the learner's dictionary)" fits how the word is used here, you MUST reply with that sense's index — never pick an unmarked sense that means the same thing. Otherwise prefer the most basic, common, literal meaning that fits the context and the word's part of speech in the sentence; choose a figurative, specialized, or interjection sense only if the context clearly requires it. Then look at THAT sense's wording and reply with ONLY ONE thing, nothing else:
-- If the wording states the meaning (e.g. "to rip", "a fortune teller"), reply with its index NUMBER — even if "${word}" is grammatically derived from another word. A "contraction of X + Y" gloss DOES state the meaning (it defines the contraction itself), so reply with its index even if it adds a cross-reference like "feminine singular of num".
-- If the wording only points to another word and gives no meaning of its own — e.g. "plural of X", "feminine of X", "past participle of X", "alternative form of X", "female/male equivalent of X", or just a grammatical label like "third-person singular present indicative" — reply with that other WORD X (even if it also gives a short meaning in parentheses).
-- If NONE of the senses actually conveys the meaning of "${word}" as it is used in this sentence — e.g. it is used figuratively, idiomatically, or as part of a multi-word expression and no listed sense captures that meaning — reply -1. Do NOT force a sense that doesn't fit.`,
-    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 16, responseMimeType: 'text/plain' },
+Pick the sense that best matches how "${word}" is used here. IMPORTANT: if ANY sense marked "(already in the learner's dictionary)" fits how the word is used here, you MUST reply with that sense's index — never pick an unmarked sense that means the same thing. Otherwise prefer the most basic, common, literal meaning that fits the context and the word's part of speech in the sentence; choose a figurative, specialized, or interjection sense only if the context clearly requires it. Then look at THAT sense's wording and decide the PICK token:
+- If the wording states the meaning (e.g. "to rip", "a fortune teller"), the PICK is its index NUMBER — even if "${word}" is grammatically derived from another word. A "contraction of X + Y" gloss DOES state the meaning (it defines the contraction itself), so use its index even if it adds a cross-reference like "feminine singular of num".
+- If the wording only points to another word and gives no meaning of its own — e.g. "plural of X", "feminine of X", "past participle of X", "alternative form of X", "female/male equivalent of X", or just a grammatical label like "third-person singular present indicative" — the PICK is that other WORD X (even if it also gives a short meaning in parentheses).
+- If NONE of the senses actually conveys the meaning of "${word}" as it is used in this sentence — e.g. it is used figuratively, idiomatically, or as part of a multi-word expression and no listed sense captures that meaning — the PICK is -1. Do NOT force a sense that doesn't fit.
+
+Reply with exactly ONE line in the form:  PICK | TRANSLATION
+where PICK is the token chosen above (an index number, a single base word, or -1) and TRANSLATION is the best 1–3 word ${nativeLang} translation of "${word}" as used here, matching the sense you chose. Even if PICK is -1, still give your best 1–3 word ${nativeLang} translation. Examples:  "3 | the region"  |  "mano | hands"  |  "-1 | stained".`,
+    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 40, responseMimeType: 'text/plain' },
     'gemini-flash-lite-latest',
   );
 
   const reply = raw.trim();
-  if (/^-?\d+$/.test(reply)) {
-    const index = Number.parseInt(reply, 10);
+  const sepIdx = reply.indexOf('|');
+  const pickToken = (sepIdx >= 0 ? reply.slice(0, sepIdx) : reply).trim();
+  const translation = (sepIdx >= 0 ? reply.slice(sepIdx + 1) : '').trim();
+
+  if (/^-?\d+$/.test(pickToken)) {
+    const index = Number.parseInt(pickToken, 10);
     if (index < -1 || index >= senses.length) {
       throw makeContextError('Gemini sense pick returned an out-of-range index', {
         word, targetLang, raw: reply, senseCount: senses.length,
       });
     }
-    return { index };
+    return { index, translation };
   }
-  if (/^[\p{L}'-]+$/u.test(reply)) {
-    return { base: reply.toLowerCase() };
+  if (/^[\p{L}'-]+$/u.test(pickToken)) {
+    return { base: pickToken.toLowerCase(), translation };
   }
   throw makeContextError('Gemini sense pick reply was neither a number nor a single word', {
     word, targetLang, raw: reply,
@@ -164,14 +174,14 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
   const candidates = [...userSenses, ...wiktSenses];
   if (candidates.length === 0) return null; // caller falls back to full Gemini
 
-  // One path for every word: Gemini always picks. Run the pick + translation in parallel.
-  const [pick, translation] = await Promise.all([
-    pickBestSense(word, sentence, targetLang, candidates),
-    translateWordInSentence(word, sentence, targetLang, nativeLang),
-  ]);
+  // One path for every word: Gemini picks the sense AND returns a matching native translation
+  // in the same call, so the word translation can never disagree with the chosen definition.
+  const pick = await pickBestSense(word, sentence, targetLang, nativeLang, candidates);
 
   const resolved = await resolvePick(pick, candidates, sentence, targetLang, nativeLang);
   if (!resolved) return null; // no fitting sense / unresolvable base — escalate to full Gemini
+  const translation = pick.translation;
+  if (!translation) return null; // no usable translation — escalate to full Gemini
 
   return {
     word,
