@@ -32,8 +32,9 @@ async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
 
 // pickBestSense — Gemini reads the sentence and candidate senses and, in ONE call, returns both
 // (a) a PICK token — the INDEX number of the sense that states the meaning, the BASE word when the
-// best sense only points to another word (e.g. "plural of mão", "female equivalent of enfermeiro",
-// "alternative form of caracterizar", or a bare grammatical label), or -1 when none fit — and
+// best sense only points to another word (e.g. "plural of mão", "gerund of atenuar combined
+// with se", "alternative form of caracterizar", or a bare grammatical label), or -1 when none
+// fit — and
 // (b) a short native-language TRANSLATION of the word that is consistent with the sense it picked.
 // Word translation comes from here (not Google Translate) so the displayed translation never
 // disagrees with the chosen definition for polysemous words. Reply format: "PICK | TRANSLATION".
@@ -49,7 +50,7 @@ ${senseList}
 
 Pick the sense that best matches how "${word}" is used here. IMPORTANT: if ANY sense marked "(already in the learner's dictionary)" fits how the word is used here, you MUST reply with that sense's index — never pick an unmarked sense that means the same thing. Otherwise prefer the most basic, common, literal meaning that fits the context and the word's part of speech in the sentence; choose a figurative, specialized, or interjection sense only if the context clearly requires it. Then look at THAT sense's wording and decide the PICK token:
 - If the wording states the meaning (e.g. "to rip", "a fortune teller"), the PICK is its index NUMBER — even if "${word}" is grammatically derived from another word. A "contraction of X + Y" gloss DOES state the meaning (it defines the contraction itself), so use its index even if it adds a cross-reference like "feminine singular of num".
-- If the wording only points to another word and gives no meaning of its own — e.g. "plural of X", "feminine of X", "past participle of X", "alternative form of X", "female/male equivalent of X", or just a grammatical label like "third-person singular present indicative" — the PICK is that other WORD X (even if it also gives a short meaning in parentheses).
+- If the wording only points to another word and gives no meaning of its own — e.g. "plural of X", "feminine of X", "past participle of X", "alternative form of X", "female/male equivalent of X", "gerund of X combined with se/me/te/lo/la", or just a grammatical label like "third-person singular present indicative" — the PICK is that other WORD X. Ignore any "combined with ..." clitic suffix and return only X. For example, "gerund of atenuar combined with se" means PICK must be "atenuar", not the sense index and not "atenuarse".
 - If NONE of the senses actually conveys the meaning of "${word}" as it is used in this sentence — e.g. it is used figuratively, idiomatically, or as part of a multi-word expression and no listed sense captures that meaning — the PICK is -1. Do NOT force a sense that doesn't fit.
 
 Reply with exactly ONE line in the form:  PICK | TRANSLATION
