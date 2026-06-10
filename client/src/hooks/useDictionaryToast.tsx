@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// hooks/useDictionaryToast.tsx -- Global toast pill for background dictionary saves
+// hooks/useDictionaryToast.tsx -- Background dictionary saves with error-only feedback
 // ---------------------------------------------------------------------------
 
 import {
@@ -18,7 +18,7 @@ interface Job {
   status: 'pending' | 'done' | 'error';
 }
 
-type Phase = 'idle' | 'saving' | 'done' | 'error';
+type Phase = 'idle' | 'error';
 
 interface DictionaryToastContextValue {
   queueSave: (word: string, saveFn: () => Promise<void>) => void;
@@ -54,44 +54,36 @@ export function DictionaryToastProvider({ children }: { children: ReactNode }) {
   const recalc = () => {
     const jobs = jobsRef.current;
     const total = jobs.length;
-    const doneCount = jobs.filter(j => j.status === 'done').length;
     const errorCount = jobs.filter(j => j.status === 'error').length;
-    const finishedCount = doneCount + errorCount;
+    const finishedCount = jobs.filter(j => j.status !== 'pending').length;
 
     if (finishedCount < total) {
-      // Still saving
-      if (total === 1) {
-        setLabel(`Adding ${jobs[0].word} to dictionary`);
-      } else if (doneCount === 0 && errorCount === 0) {
-        setLabel(`Adding ${total} definitions to dictionary`);
-      } else {
-        setLabel(`Added ${finishedCount} of ${total} definitions`);
-      }
-      setPhase('saving');
+      setPhase('idle');
       setHiding(false);
-    } else {
-      // All finished
-      if (errorCount > 0) {
-        if (total === 1) {
-          setLabel(`Failed to add ${jobs[0].word}`);
-        } else {
-          setLabel(`${errorCount} definition${errorCount === 1 ? '' : 's'} failed to save`);
-        }
-        setPhase('error');
-      } else {
-        setLabel('Dictionary updated!');
-        setPhase('done');
-      }
-      // Auto-dismiss after 2.5s
-      clearTimers();
-      hideTimerRef.current = setTimeout(() => {
-        setHiding(true);
-        hideAnimRef.current = setTimeout(() => {
-          setPhase('idle');
-          setHiding(false);
-        }, 300);
-      }, 2500);
+      return;
     }
+
+    if (errorCount === 0) {
+      setPhase('idle');
+      setHiding(false);
+      return;
+    }
+
+    if (total === 1) {
+      setLabel(`Unable to save ${jobs[0].word}`);
+    } else {
+      setLabel(`Unable to save ${errorCount} definition${errorCount === 1 ? '' : 's'}`);
+    }
+    setPhase('error');
+
+    clearTimers();
+    hideTimerRef.current = setTimeout(() => {
+      setHiding(true);
+      hideAnimRef.current = setTimeout(() => {
+        setPhase('idle');
+        setHiding(false);
+      }, 300);
+    }, 2500);
   };
 
   const queueSave = useCallback((word: string, saveFn: () => Promise<void>) => {
@@ -125,16 +117,9 @@ export function DictionaryToastProvider({ children }: { children: ReactNode }) {
       {children}
       {phase !== 'idle' && (
         <div
-          className={
-            'dict-toast'
-            + (phase === 'done' ? ' dict-toast--done' : '')
-            + (phase === 'error' ? ' dict-toast--error' : '')
-            + (hiding ? ' dict-toast--hiding' : '')
-          }
+          className={'dict-toast dict-toast--error' + (hiding ? ' dict-toast--hiding' : '')}
         >
-          {phase === 'saving' && <div className="loading-spinner" />}
-          {phase === 'done' && <span>{'\u2713'}</span>}
-          {phase === 'error' && <span>!</span>}
+          <span>!</span>
           <span>{label}</span>
         </div>
       )}
