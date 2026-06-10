@@ -83,7 +83,9 @@
     const explainBox = popup.querySelector('.pc-popup-explanation');
     const saveBtn = popup.querySelector('.pc-popup-save');
 
-    // -- Positioning: centered above the word, flipped below if near the top --
+    // -- Positioning: prefer above, use below only when above does not fit, and
+    // never leave an expanding popup below when it would overflow the viewport.
+    // Re-run as async content changes its height.
     position();
     function position() {
       const width = popup.offsetWidth || POPUP_WIDTH;
@@ -91,15 +93,19 @@
       left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
       popup.style.left = `${left}px`;
 
-      const flipBelow = anchorRect.top < 160;
-      if (flipBelow) {
-        popup.style.top = `${anchorRect.bottom + 8}px`;
-        popup.style.bottom = '';
-      } else {
-        popup.style.top = '';
-        popup.style.bottom = `${window.innerHeight - anchorRect.top + 8}px`;
-      }
+      const height = popup.offsetHeight;
+      const belowTop = anchorRect.bottom + 8;
+      const aboveTop = anchorRect.top - height - 8;
+      const fitsBelow = belowTop + height <= window.innerHeight - 8;
+      const fitsAbove = aboveTop >= 8;
+      const top = !fitsAbove && fitsBelow ? belowTop : Math.max(8, aboveTop);
+      popup.style.top = `${top}px`;
+      popup.style.bottom = '';
     }
+
+    const resizeObserver = new ResizeObserver(position);
+    resizeObserver.observe(popup);
+    window.addEventListener('resize', position);
 
     // -- Close (X) -----------------------------------------------------------
     popup.querySelector('.pc-popup-close').addEventListener('click', (e) => {
@@ -238,6 +244,8 @@
     function destroy() {
       if (destroyed) return;
       destroyed = true;
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', position);
       popup.remove();
     }
 
