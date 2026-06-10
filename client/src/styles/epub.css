@@ -315,8 +315,7 @@
   font-size-adjust: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  transition: transform 180ms ease-out;
-  will-change: transform;
+  transition: margin-left 180ms ease-out;
 }
 
 @keyframes epub-chapter-next {

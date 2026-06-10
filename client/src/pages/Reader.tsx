@@ -364,9 +364,10 @@ export default function Reader() {
               columnGap: `${GAP}px`,
               fontFamily: fontStack(fontId),
               fontSize: `${fontScale}rem`,
-              transform: `translateX(-${pageIndex * (colW + GAP)}px)`,
+              marginLeft: `-${pageIndex * (colW + GAP)}px`,
               transition: animatePage ? undefined : 'none',
             }}
+            onTransitionEnd={() => setAnimatePage(false)}
           >
             {chapter?.blocks.map((b, i) => {
               if (b.type === 'img') {
