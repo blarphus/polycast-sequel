@@ -101,7 +101,7 @@ export default function Reader() {
   }, [book, chapter]);
 
   // Track viewport width (drives column-width + page stride).
-  useEffect(() => {
+  useLayoutEffect(() => {
     const vp = viewportRef.current;
     if (!vp) return;
     const ro = new ResizeObserver(() => {
