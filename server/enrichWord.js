@@ -445,11 +445,6 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     }
   } // end if (translation === undefined) — Path A/B
 
-  // For English target words, override Gemini frequency with SUBTLEX-US corpus data
-  const corpusFreq = applyCorpusFrequency(word, targetLang, frequency);
-  frequency = corpusFreq.frequency;
-  const frequency_count = corpusFreq.frequency_count;
-
   // Use Kaikki forms if available; find the DB row matching the resolved POS
   let kaikkiForms = null;
   if (part_of_speech && wiktRows.length > 0) {
@@ -473,6 +468,13 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     ? normalizeForms(kaikkiForms.filter(f => !/^[a-z]{2}-/.test(f) && !f.includes('table-tags') && !f.includes(' + ')).join(', '))
     : null;
   lemma = normalizeLemma(lemma, part_of_speech, targetLang) || wiktResolvedLemma;
+
+  // Lemma-level corpus frequency from wordfreq's blended Zipf data: sum the per-billion
+  // frequencies of every inflected form so the value reflects the whole paradigm and is the
+  // same no matter which conjugation was clicked. frequency_count = occurrences per billion.
+  const corpusFreq = applyCorpusFrequency(word, targetLang, frequency, { lemma, forms });
+  frequency = corpusFreq.frequency;
+  const frequency_count = corpusFreq.frequency_count;
 
   // Image: search several candidates and let Gemini vision pick the best fit —
   // the picker is the single arbiter of whether anything fits. If nothing does,
