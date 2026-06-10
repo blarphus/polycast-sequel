@@ -69,6 +69,7 @@
           <button class="pc-popup-close" title="Close">&times;</button>
         </div>
       </div>
+      <div class="pc-popup-lemma" hidden></div>
       <div class="pc-popup-body"><div class="pc-spinner"></div></div>
       <button class="pc-popup-explain" hidden>Explain in context</button>
       <div class="pc-popup-explanation" hidden></div>
@@ -212,6 +213,13 @@
         if (saveState !== 'done') {
           saveState = newSense === 'saved' ? 'saved'
             : newSense === 'new-sense' ? 'new-sense' : 'unsaved';
+        }
+
+        // Show the base form (lemma) under the clicked word — this is the form the card saves as.
+        if (res.lemma && res.lemma.trim() && res.lemma.toLowerCase() !== word.toLowerCase()) {
+          const lemmaEl = popup.querySelector('.pc-popup-lemma');
+          lemmaEl.innerHTML = `<span class="pc-popup-lemma-label">saves as</span>${escapeHtml(res.lemma)}`;
+          lemmaEl.hidden = false;
         }
 
         bodyEl.innerHTML = `

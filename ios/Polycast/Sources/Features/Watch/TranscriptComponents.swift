@@ -156,6 +156,7 @@ struct InlineTokenizedText: View {
 
 struct WordPopupView: View {
     @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var wordStore: WordStore
 
     let context: LookupContext
     let onDismiss: () -> Void
@@ -200,6 +201,19 @@ struct WordPopupView: View {
 
                         Button { onDismiss() } label: {
                             Image(systemName: "xmark")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if let lemma = lookup.lemma,
+                       !lemma.isEmpty,
+                       lemma.caseInsensitiveCompare(lookup.word) != .orderedSame {
+                        HStack(spacing: 6) {
+                            Text("SAVES AS")
+                                .font(.caption2.bold())
+                                .foregroundStyle(.purple)
+                            Text(lemma)
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.secondary)
                         }
@@ -343,13 +357,32 @@ struct WordPopupView: View {
     private func save(_ lookup: LookupResponse) async {
         saving = true
         do {
-            _ = try await APIClient.shared.saveWord(
-                word: lookup.word,
-                translation: lookup.translation,
-                definition: lookup.definition,
-                targetLanguage: session.user?.targetLanguage,
-                sentenceContext: context.sentence
+            let native = session.user?.nativeLanguage ?? "en"
+            let target = session.user?.targetLanguage
+            // Enrich (frequency, image, inflected forms) before saving, matching the web reader.
+            let enriched = try await APIClient.shared.enrichWord(
+                word: lookup.lemma ?? lookup.word,
+                sentence: context.sentence,
+                nativeLang: native,
+                targetLang: target
             )
+            let savedWord = try await APIClient.shared.saveWord(
+                word: enriched.word,
+                translation: enriched.translation,
+                definition: enriched.definition,
+                targetLanguage: target,
+                sentenceContext: context.sentence,
+                frequency: enriched.frequency,
+                frequencyCount: enriched.frequencyCount,
+                exampleSentence: enriched.exampleSentence,
+                sentenceTranslation: enriched.sentenceTranslation,
+                partOfSpeech: enriched.partOfSpeech,
+                imageUrl: enriched.imageUrl,
+                lemma: enriched.lemma,
+                forms: enriched.forms,
+                imageTerm: enriched.imageTerm
+            )
+            wordStore.insert(savedWord)
             saved = true
             error = ""
         } catch {

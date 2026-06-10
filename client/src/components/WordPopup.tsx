@@ -108,7 +108,13 @@ export default function WordPopup(props: WordPopupProps) {
           onOptimisticSave?.(normalizedWord);
         }
         queueSave(normalizedWord, async () => {
-          const enriched = await enrichWord(targetWord, sentence, nativeLang, targetLang, senseIndex);
+          const enriched = await enrichWord(
+            lemma || targetWord,
+            sentence,
+            nativeLang,
+            targetLang,
+            lemma && lemma.toLowerCase() !== targetWord.toLowerCase() ? null : senseIndex,
+          );
           const savedWord = enriched.lemma || lemma || targetWord;
           await onSaveWord({
             word: savedWord,

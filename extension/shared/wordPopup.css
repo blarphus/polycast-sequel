@@ -43,6 +43,23 @@
   gap: 2px;
 }
 
+.pc-popup-lemma {
+  font-size: 14px;
+  font-weight: 600;
+  color: #d7d3ff;
+  margin-top: -6px;
+  margin-bottom: 10px;
+}
+
+.pc-popup-lemma-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6c63ff;
+  margin-right: 6px;
+}
+
 .pc-popup-speak {
   width: 30px;
   height: 30px;
