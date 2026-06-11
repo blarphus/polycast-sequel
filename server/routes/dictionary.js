@@ -7,7 +7,7 @@ import { searchAllImages } from '../lib/imageSearch.js';
 import { getImageBytes } from '../lib/imageCache.js';
 import { validate } from '../lib/validate.js';
 import { translateText } from '../lib/googleTranslate.js';
-import { applySrsReview } from '../lib/srsUpdate.js';
+import { applySrsReview, validTimeZone } from '../lib/srsUpdate.js';
 import { audioContentType, synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext, explainSelectionInContext } from '../services/wordSemanticsService.js';
 import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
@@ -57,7 +57,7 @@ const enrichBody = z.object({
 });
 
 const imageProxyQuery = z.object({
-  url: z.string().startsWith('https://pixabay.com/', 'Only Pixabay URLs are proxied'),
+  url: z.string().regex(/^https?:\/\/(?:cdn\.)?pixabay\.com\//, 'Only Pixabay URLs are proxied'),
 });
 
 const imageSearchQuery = z.object({
@@ -97,6 +97,11 @@ const updateWordBody = z.object({
 
 const reviewBody = z.object({
   answer: z.enum(['again', 'hard', 'good', 'easy'], { message: 'answer must be again, hard, good, or easy' }),
+  timeZone: z.string().max(100).optional(),
+});
+
+const dueQuery = z.object({
+  timeZone: z.string().max(100).optional(),
 });
 
 const queueReorderBody = z.object({
@@ -243,7 +248,7 @@ router.post('/api/dictionary/enrich', authMiddleware, validate({ body: enrichBod
  * Avoids CDN rate-limiting (429) when many images load at once, and complies with
  * Pixabay's policy against hotlinking webformatURLs from end-user browsers.
  */
-router.get('/api/dictionary/image-proxy', authMiddleware, validate({ query: imageProxyQuery }), async (req, res) => {
+router.get('/api/dictionary/image-proxy', validate({ query: imageProxyQuery }), async (req, res) => {
   const { url } = req.query;
   try {
     const upstream = await fetch(url);
@@ -268,7 +273,7 @@ router.get('/api/dictionary/image-proxy', authMiddleware, validate({ query: imag
  * here and saves `/api/dictionary/image/<id>` as the word's image_url, so the
  * picture is served from our own copy rather than a (rotting) upstream link.
  */
-router.get('/api/dictionary/image/:id', authMiddleware, validate({ params: uuidParam }), async (req, res) => {
+router.get('/api/dictionary/image/:id', validate({ params: uuidParam }), async (req, res) => {
   try {
     const img = await getImageBytes(req.params.id);
     if (!img) return res.status(404).end();
@@ -459,9 +464,9 @@ router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
 /**
  * GET /api/dictionary/due -- Cards due for review + new cards
  */
-router.get('/api/dictionary/due', authMiddleware, async (req, res) => {
+router.get('/api/dictionary/due', authMiddleware, validate({ query: dueQuery }), async (req, res) => {
   try {
-    const { rows } = await listDueWords(pool, req.userId);
+    const { rows } = await listDueWords(pool, req.userId, validTimeZone(req.query.timeZone));
     return res.json(rows);
   } catch (err) {
     req.log.error({ err }, 'Error fetching due words');
@@ -474,10 +479,10 @@ router.get('/api/dictionary/due', authMiddleware, async (req, res) => {
  * Body: { answer: 'again' | 'hard' | 'good' | 'easy' }
  */
 router.patch('/api/dictionary/words/:id/review', authMiddleware, validate({ params: uuidParam, body: reviewBody }), async (req, res) => {
-  const { answer } = req.body;
+  const { answer, timeZone } = req.body;
 
   try {
-    const updated = await applySrsReview(pool, req.params.id, req.userId, answer);
+    const updated = await applySrsReview(pool, req.params.id, req.userId, answer, timeZone);
 
     if (!updated) {
       return res.status(404).json({ error: 'Word not found' });

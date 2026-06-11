@@ -1,4 +1,5 @@
 import { buildDictionaryGroups, getDueNextGroupKeys, isDictionaryEntryNew } from '../utils/dictionaryGroups';
+import { applyAnswerLocally } from '../utils/srs';
 import type { AuthSession, AuthUser } from './auth';
 import type {
   DictionarySortMode,
@@ -11,14 +12,6 @@ const OFFLINE_ENABLED_KEY = 'polycast.offline.enabled';
 const OFFLINE_USER_KEY = 'polycast.offline.user.v1';
 const OFFLINE_WORDS_KEY = 'polycast.offline.dictionary.words.v1';
 const OFFLINE_DICTIONARY_SYNC_EVENT = 'polycast-offline-dictionary-external-sync';
-
-const LEARNING_STEPS = [60, 600];
-const GRADUATING_INTERVAL = 86400;
-const EASY_GRADUATING_INTERVAL = 345600;
-const RELEARNING_STEP = 600;
-const MIN_EASE = 1.3;
-const LAPSE_INTERVAL_FACTOR = 0.1;
-const MIN_REVIEW_INTERVAL = 86400;
 
 type LocalResult = { handled: true; data: unknown } | { handled: false };
 
@@ -140,63 +133,8 @@ function toSavedWord(data: SaveWordData): SavedWord {
     image_term: data.image_term || null,
     queue_position: null,
     introduced_date: null,
+    relearning_date: null,
   };
-}
-
-function computeNextReview(card: SavedWord, answer: SrsAnswer) {
-  const inLearning = card.learning_step !== null || card.srs_interval === 0;
-  const isRelearning = card.learning_step !== null && card.srs_interval > 0;
-  let newInterval = card.srs_interval;
-  let newEase = card.ease_factor;
-  let newStep = card.learning_step;
-  let dueSeconds = GRADUATING_INTERVAL;
-
-  if (inLearning) {
-    const step = card.learning_step ?? 0;
-    if (answer === 'again') {
-      newStep = 0;
-      dueSeconds = LEARNING_STEPS[0];
-    } else if (answer === 'hard') {
-      newStep = step;
-      dueSeconds = step === 0 ? 360 : LEARNING_STEPS[1];
-    } else if (answer === 'good') {
-      if (step >= LEARNING_STEPS.length - 1) {
-        newStep = null;
-        if (isRelearning) {
-          dueSeconds = card.srs_interval;
-        } else {
-          newInterval = GRADUATING_INTERVAL;
-          dueSeconds = GRADUATING_INTERVAL;
-        }
-      } else {
-        newStep = step + 1;
-        dueSeconds = LEARNING_STEPS[step + 1];
-      }
-    } else {
-      newStep = null;
-      newInterval = EASY_GRADUATING_INTERVAL;
-      newEase = Math.max(newEase + 0.15, MIN_EASE);
-      dueSeconds = EASY_GRADUATING_INTERVAL;
-    }
-  } else if (answer === 'again') {
-    newEase = Math.max(newEase - 0.20, MIN_EASE);
-    newInterval = Math.max(Math.round(card.srs_interval * LAPSE_INTERVAL_FACTOR), MIN_REVIEW_INTERVAL);
-    newStep = 0;
-    dueSeconds = RELEARNING_STEP;
-  } else if (answer === 'hard') {
-    newEase = Math.max(newEase - 0.15, MIN_EASE);
-    newInterval = Math.max(Math.round(card.srs_interval * 1.2), MIN_REVIEW_INTERVAL);
-    dueSeconds = newInterval;
-  } else if (answer === 'good') {
-    newInterval = Math.max(Math.round(card.srs_interval * newEase), MIN_REVIEW_INTERVAL);
-    dueSeconds = newInterval;
-  } else {
-    newEase = Math.max(newEase + 0.15, MIN_EASE);
-    newInterval = Math.max(Math.round(card.srs_interval * newEase * 1.3), MIN_REVIEW_INTERVAL);
-    dueSeconds = newInterval;
-  }
-
-  return { newInterval, newEase, newStep, dueSeconds };
 }
 
 function reviewLocalWord(id: string, answer: SrsAnswer): SavedWord | null {
@@ -205,27 +143,8 @@ function reviewLocalWord(id: string, answer: SrsAnswer): SavedWord | null {
   if (index === -1) return null;
 
   const card = words[index];
-  const next = computeNextReview(card, answer);
   const now = new Date();
-  const currentStage = card.prompt_stage ?? 0;
-  const promptStage = answer === 'again'
-    ? (card.learning_step === 0 ? Math.max(currentStage - 1, 0) : currentStage)
-    : answer === 'hard'
-      ? currentStage
-      : Math.min(currentStage + 1, 4);
-
-  const updated: SavedWord = {
-    ...card,
-    srs_interval: next.newInterval,
-    ease_factor: next.newEase,
-    learning_step: next.newStep,
-    due_at: new Date(now.getTime() + next.dueSeconds * 1000).toISOString(),
-    last_reviewed_at: now.toISOString(),
-    correct_count: card.correct_count + (answer === 'again' ? 0 : 1),
-    incorrect_count: card.incorrect_count + (answer === 'again' ? 1 : 0),
-    prompt_stage: promptStage,
-    introduced_date: card.introduced_date || now.toISOString().slice(0, 10),
-  };
+  const updated = applyAnswerLocally(card, answer, now);
 
   words[index] = updated;
   writeWords(words);
@@ -235,7 +154,11 @@ function reviewLocalWord(id: string, answer: SrsAnswer): SavedWord | null {
 function dueWords(): SavedWord[] {
   const now = Date.now();
   return readWords()
-    .filter((word) => isDictionaryEntryNew(word) || !word.due_at || new Date(word.due_at).getTime() <= now)
+    .filter((word) => {
+      if (isDictionaryEntryNew(word) || !word.due_at) return true;
+      const learnAhead = word.learning_step !== null ? 20 * 60 * 1000 : 0;
+      return new Date(word.due_at).getTime() <= now + learnAhead;
+    })
     .sort((a, b) => {
       const aNew = isDictionaryEntryNew(a);
       const bNew = isDictionaryEntryNew(b);

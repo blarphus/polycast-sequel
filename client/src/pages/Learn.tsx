@@ -5,8 +5,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDueWords, reviewWord, proxyImageUrl, type SavedWord, type SrsAnswer } from '../api';
-import { getButtonTimeLabel, getNextDueSeconds } from '../utils/srs';
-import { renderTildeHighlight, renderCloze, stripTildes } from '../utils/tildeMarkup';
+import {
+  applyAnswerLocally,
+  getButtonTimeLabel,
+  getNextDueSeconds,
+  getStudyQueueBucket,
+  getStudyQueueCounts,
+  isNewCard,
+  nextPromptStage,
+} from '../utils/srs';
+import { renderTildeHighlight, stripTildes } from '../utils/tildeMarkup';
 import { playAiSpeech, stopAiSpeech, preloadCardAudio, type PreloadedSpeech } from '../utils/aiSpeech';
 import { playFlipSound, playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
 import { BookIcon, CheckCircleIcon, SpeakerIcon, TapIcon, CloseIcon, CheckIcon } from '../components/icons';
@@ -15,27 +23,39 @@ import { BookIcon, CheckCircleIcon, SpeakerIcon, TapIcon, CloseIcon, CheckIcon }
 // Prompt type derivation
 // ---------------------------------------------------------------------------
 
-export type PromptType = 'recognition' | 'recall' | 'guided-cloze' | 'context-comprehension' | 'target-cloze';
+export type PromptType = 'meet-word' | 'sentence-meaning' | 'word-production' | 'sentence-production';
 
 export function getPromptType(card: SavedWord): PromptType {
   const hasExample = !!card.example_sentence;
+  const hasSentenceTranslation = !!card.sentence_translation;
   const stage = card.prompt_stage ?? 0;
-  if (stage === 0) return 'recognition';
-  if (stage === 1) return 'recall';
-  if (!hasExample) return 'recall'; // fallback for stages 2-4
-  if (stage === 2) return 'guided-cloze';
-  if (stage === 3) return 'context-comprehension';
-  return 'target-cloze';
+  if (stage === 0) return 'meet-word';
+  if (stage === 1) return hasExample && hasSentenceTranslation ? 'sentence-meaning' : 'word-production';
+  if (stage === 2) return 'word-production';
+  return hasExample && hasSentenceTranslation ? 'sentence-production' : 'word-production';
 }
 
-function getInstructionText(promptType: PromptType): string {
-  if (promptType === 'recognition') return 'What does this word mean?';
-  if (promptType === 'recall') return 'How do you say this?';
-  return 'Fill in the blank';
+export function getInstructionText(promptType: PromptType): string {
+  if (promptType === 'meet-word') return 'What does the highlighted word mean?';
+  if (promptType === 'sentence-meaning') return 'What does this sentence mean?';
+  if (promptType === 'word-production') return 'How do you say this?';
+  return 'How do you say this sentence?';
 }
 
 function isBlueGradient(promptType: PromptType): boolean {
-  return promptType === 'recognition' || promptType === 'recall';
+  return promptType === 'meet-word';
+}
+
+function spokenText(card: SavedWord, promptType: PromptType, back: boolean): string | null {
+  const example = card.example_sentence ? stripTildes(card.example_sentence) : null;
+  if (!back) {
+    if (promptType === 'meet-word') return example || card.word;
+    if (promptType === 'sentence-meaning') return example;
+    return null;
+  }
+  if (promptType === 'word-production') return example ? `${card.word}. ${example}` : card.word;
+  if (promptType === 'sentence-production') return example || card.word;
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -70,13 +90,10 @@ export default function Learn() {
   const sessionStartRef = useRef(Date.now());
 
   // Audio played tracker (once per card)
-  const audioPlayedRef = useRef<Set<number>>(new Set());
+  const audioPlayedRef = useRef<Set<string>>(new Set());
 
   // Preloaded TTS audio: word ID -> audio URL and provider metadata
   const preloadedAudioRef = useRef<Map<string, PreloadedSpeech>>(new Map());
-
-  // Holds the API response so the re-queue timeout can use the updated card
-  const reviewedCardRef = useRef<SavedWord | null>(null);
 
   // Fetch due words
   useEffect(() => {
@@ -132,30 +149,19 @@ export default function Learn() {
     void playAiSpeech(text, lang || undefined, preloaded);
   }, []);
 
-  const promptType: PromptType = currentCard ? getPromptType(currentCard) : 'recognition';
+  const promptType: PromptType = currentCard ? getPromptType(currentCard) : 'meet-word';
 
   // Auto-play TTS based on prompt type
   useEffect(() => {
     if (!currentCard) return;
-    if (audioPlayedRef.current.has(currentIndex)) return;
-
     const pt = getPromptType(currentCard);
-
-    // Recognition: play on card appear (front is just the word)
-    if (pt === 'recognition') {
-      audioPlayedRef.current.add(currentIndex);
-      playAudio(currentCard.word, currentCard.target_language, currentCard.id);
-    } else if (isFlipped) {
-      // Recall: play just the word on flip (uses the cached word clip). Cloze
-      // types: play the full sentence, synthesized on the fly since the cached
-      // clip is only the word.
-      audioPlayedRef.current.add(currentIndex);
-      const speakSentence = pt !== 'recall' && !!currentCard.example_sentence;
-      const textToSpeak = speakSentence
-        ? stripTildes(currentCard.example_sentence!)
-        : currentCard.word;
-      playAudio(textToSpeak, currentCard.target_language, speakSentence ? undefined : currentCard.id);
-    }
+    const back = isFlipped;
+    const key = `${currentIndex}-${back ? 'back' : 'front'}`;
+    if (audioPlayedRef.current.has(key)) return;
+    const text = spokenText(currentCard, pt, back);
+    if (!text) return;
+    audioPlayedRef.current.add(key);
+    playAudio(text, currentCard.target_language, text === currentCard.word ? currentCard.id : undefined);
   }, [isFlipped, currentIndex, currentCard, playAudio]);
 
   // Play celebratory sound when session is complete
@@ -186,7 +192,11 @@ export default function Learn() {
     else playCorrectSound();
 
     const timeLabel = getButtonTimeLabel(currentCard, answer);
-    setFeedback({ answer, text: timeLabel });
+    const currentStage = Math.min(currentCard.prompt_stage ?? 0, 3);
+    setFeedback({
+      answer,
+      text: `${timeLabel} · Stage ${currentStage} → ${nextPromptStage(currentCard, answer)}`,
+    });
 
     // Update stats
     setSessionStats((prev) => ({
@@ -195,59 +205,63 @@ export default function Learn() {
       incorrect: prev.incorrect + (answer === 'again' ? 1 : 0),
     }));
 
-    // Check if this card should re-appear this session (learning-phase cards <= 10min)
+    // Anki's default learn-ahead window is 20 minutes, so intraday steps stay
+    // in this session even when no other cards remain.
     const nextDueSeconds = getNextDueSeconds(currentCard, answer);
-    const requeue = nextDueSeconds <= 600;
-
-    // Call API — store response for re-queue
-    reviewedCardRef.current = null;
-    reviewWord(currentCard.id, answer)
-      .then((updated) => { reviewedCardRef.current = updated; })
-      .catch((err) => { console.error('Review API error:', err); });
+    const requeue = nextDueSeconds <= 20 * 60;
+    const localUpdate = applyAnswerLocally(currentCard, answer);
+    const reviewPromise = reviewWord(currentCard.id, answer).catch((err) => {
+      console.error('Review API error:', err);
+      return localUpdate;
+    });
 
     // Animate exit → next card (wrong = left, right = correct)
     setExitDirection(answer === 'again' ? 'left' : 'right');
-    setTimeout(() => {
-      setIsExiting(true);
-      setTimeout(() => {
-        setFeedback(null);
-        setIsExiting(false);
-        setIsFlipped(false);
-        setDragState({ isDragging: false, deltaX: 0, startX: 0, startTime: 0 });
+    await new Promise((resolve) => window.setTimeout(resolve, 700));
+    setIsExiting(true);
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
 
-        // Re-queue short-interval cards with updated state from API
-        if (requeue) {
-          const updated = reviewedCardRef.current;
-          reviewedCardRef.current = null;
-          setCards((prev) => [...prev, { ...(updated ?? currentCard) }]);
-        }
+    const updatedCard = await reviewPromise;
+    setFeedback(null);
+    setIsExiting(false);
+    setIsFlipped(false);
+    setDragState({ isDragging: false, deltaX: 0, startX: 0, startTime: 0 });
 
-        setCurrentIndex((i) => i + 1);
-        setIsEntering(true);
-        setSubmitting(false);
+    if (requeue) {
+      // The local scheduler also carries today's direct blue/red/green status.
+      // Do not let an older server response erase that status mid-session.
+      setCards((prev) => [...prev, {
+        ...updatedCard,
+        introduced_date: updatedCard.introduced_date ?? localUpdate.introduced_date,
+        relearning_date: answer === 'again'
+          ? localUpdate.relearning_date
+          : (updatedCard.relearning_date ?? localUpdate.relearning_date),
+      }]);
+    }
 
-        // Check for more cards if queue is exhausted
-        const nextIndex = currentIndex + 1;
-        const nextCardsLength = cards.length + (requeue ? 1 : 0);
-        if (nextIndex >= nextCardsLength) {
-          setCheckingForMore(true);
-          getDueWords()
-            .then((more) => {
-              if (more.length > 0) {
-                setCards((prev) => [...prev, ...more]);
-              }
-              setCheckingForMore(false);
-            })
-            .catch((err) => {
-              console.error('Failed to check for more cards:', err);
-              setCheckingForMore(false);
-            });
-        }
+    const nextIndex = currentIndex + 1;
+    const nextCardsLength = cards.length + (requeue ? 1 : 0);
+    setCurrentIndex(nextIndex);
+    setIsEntering(true);
+    setSubmitting(false);
 
-        setTimeout(() => setIsEntering(false), 350);
-      }, 300);
-    }, 700);
-  }, [currentCard, submitting]);
+    if (nextIndex >= nextCardsLength) {
+      setCheckingForMore(true);
+      try {
+        const more = await getDueWords();
+        const knownIds = new Set(cards.map((card) => card.id));
+        knownIds.add(updatedCard.id);
+        const unseen = more.filter((card) => !knownIds.has(card.id));
+        if (unseen.length > 0) setCards((prev) => [...prev, ...unseen]);
+      } catch (err) {
+        console.error('Failed to check for more cards:', err);
+      } finally {
+        setCheckingForMore(false);
+      }
+    }
+
+    window.setTimeout(() => setIsEntering(false), 350);
+  }, [cards, currentCard, currentIndex, submitting]);
 
   // ---------------------------------------------------------------------------
   // Touch / swipe gestures
@@ -404,8 +418,11 @@ export default function Learn() {
 
   const card = currentCard;
   const hasExample = !!card.example_sentence;
-  const isNewCard = card.srs_interval === 0 && card.learning_step === null && !card.last_reviewed_at;
+  const cardIsNew = isNewCard(card);
   const useBlue = isBlueGradient(promptType);
+  const counts = getStudyQueueCounts(cards.slice(currentIndex));
+  const currentBucket = getStudyQueueBucket(card);
+  const displayStage = Math.min(card.prompt_stage ?? 0, 3);
 
   return (
     <div className={`learn-page${useBlue ? ' learn-page--recognition' : ''}`}>
@@ -416,31 +433,11 @@ export default function Learn() {
 
       {/* Anki-style progress counts */}
       <div className="flashcard-progress">
-        {(() => {
-          const remaining = cards.slice(currentIndex + 1);
-          let newCount = 0, learningCount = 0, reviewCount = 0;
-          for (const c of remaining) {
-            if (c.srs_interval === 0 && c.learning_step === null && !c.last_reviewed_at) newCount++;
-            else if (c.learning_step !== null) learningCount++;
-            else reviewCount++;
-          }
-          // Classify current card
-          const cur = cards[currentIndex];
-          if (cur) {
-            if (cur.srs_interval === 0 && cur.learning_step === null && !cur.last_reviewed_at) newCount++;
-            else if (cur.learning_step !== null) learningCount++;
-            else reviewCount++;
-          }
-          return (
-            <>
-              <span className="srs-count srs-count--new">{newCount}</span>
-              <span className="srs-count-sep">+</span>
-              <span className="srs-count srs-count--learning">{learningCount}</span>
-              <span className="srs-count-sep">+</span>
-              <span className="srs-count srs-count--review">{reviewCount}</span>
-            </>
-          );
-        })()}
+        <span className={`srs-count srs-count--new${currentBucket === 'new' ? ' is-current' : ''}`}>{counts.new}</span>
+        <span className="srs-count-sep">+</span>
+        <span className={`srs-count srs-count--learning${currentBucket === 'learning' ? ' is-current' : ''}`}>{counts.learning}</span>
+        <span className="srs-count-sep">+</span>
+        <span className={`srs-count srs-count--review${currentBucket === 'review' ? ' is-current' : ''}`}>{counts.review}</span>
       </div>
 
       {/* Card instruction */}
@@ -466,50 +463,41 @@ export default function Learn() {
           <div className={`flashcard-flip-wrapper${isFlipped ? ' flipped' : ''}`}>
             {/* Front */}
             <div className={`flashcard-front${useBlue ? ' flashcard-front--recognition' : ''}`}>
-              {isNewCard && <span className="flashcard-new-badge">New</span>}
+              <span className="flashcard-new-badge">Stage {displayStage}</span>
+              {cardIsNew && <span className="flashcard-card-state">New</span>}
 
-              {promptType === 'recognition' && (
+              {promptType === 'meet-word' && (
                 <>
-                  <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
+                  {hasExample
+                    ? <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+                    : <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>}
                   {card.image_url && (
                     <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   )}
                 </>
               )}
 
-              {promptType === 'recall' && (
+              {promptType === 'sentence-meaning' && (
+                <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+              )}
+
+              {promptType === 'word-production' && (
                 <>
                   <p className="flashcard-native-hint">{card.translation}</p>
-                  {card.definition && (
-                    <p className="flashcard-native-subhint">{card.definition}</p>
+                  {card.definition && <p className="flashcard-native-subhint">{card.definition}</p>}
+                  {card.image_url && (
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   )}
                 </>
               )}
 
-              {promptType === 'guided-cloze' && (
-                <div className="flashcard-stacked-sentences">
-                  <p className="flashcard-native-hint flashcard-native-hint--sm">
-                    {card.sentence_translation
-                      ? renderTildeHighlight(card.sentence_translation, 'flashcard-highlighted')
-                      : card.translation}
-                  </p>
-                  <p className="flashcard-sentence">{renderCloze(card.example_sentence!)}</p>
-                </div>
-              )}
-
-              {promptType === 'context-comprehension' && (
-                <div className="flashcard-stacked-sentences">
-                  <p className="flashcard-sentence">{renderCloze(card.example_sentence!)}</p>
-                  <p className="flashcard-native-hint flashcard-native-hint--sm">
-                    {card.sentence_translation
-                      ? renderCloze(card.sentence_translation)
-                      : card.translation}
-                  </p>
-                </div>
-              )}
-
-              {promptType === 'target-cloze' && (
-                <p className="flashcard-sentence">{renderCloze(card.example_sentence!)}</p>
+              {promptType === 'sentence-production' && (
+                <>
+                  <p className="flashcard-sentence">{renderTildeHighlight(card.sentence_translation!, 'flashcard-highlighted')}</p>
+                  {card.image_url && (
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  )}
+                </>
               )}
 
               <p className="flashcard-hint">
@@ -521,7 +509,7 @@ export default function Learn() {
             {/* Back */}
             <div className={`flashcard-back${useBlue ? ' flashcard-back--recognition' : ''}`}>
 
-              {promptType === 'recognition' && (
+              {promptType === 'meet-word' && (
                 <>
                   <p className="flashcard-recognition-translation">{card.translation}</p>
                   {card.image_url && (
@@ -530,76 +518,55 @@ export default function Learn() {
                   {card.definition && (
                     <p className="flashcard-back-definition">{card.definition}</p>
                   )}
-                  {hasExample && (
-                    <p className="flashcard-sentence flashcard-sentence--sm">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
-                  )}
                   {card.sentence_translation && (
-                    <p className="flashcard-sentence-translation">{card.sentence_translation}</p>
+                    <p className="flashcard-sentence-translation">{stripTildes(card.sentence_translation)}</p>
                   )}
                 </>
               )}
 
-              {promptType === 'recall' && (
+              {promptType === 'sentence-meaning' && (
+                <>
+                  <p className="flashcard-sentence">{renderTildeHighlight(card.sentence_translation!, 'flashcard-highlighted')}</p>
+                  {card.image_url && (
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  )}
+                  <p className="flashcard-back-translation"><strong>{card.word}</strong> -- {card.translation}</p>
+                </>
+              )}
+
+              {promptType === 'word-production' && (
                 <>
                   <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
                   {card.image_url && (
                     <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   )}
-                  {card.definition && (
-                    <p className="flashcard-back-definition">{card.definition}</p>
-                  )}
-                  {hasExample && (
-                    <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
-                  )}
+                  {card.definition && <p className="flashcard-back-definition">{card.definition}</p>}
+                  {hasExample && <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>}
                 </>
               )}
 
-              {promptType === 'guided-cloze' && (
+              {promptType === 'sentence-production' && (
                 <>
                   <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
-                  {card.sentence_translation && (
-                    <p className="flashcard-sentence-translation">{card.sentence_translation}</p>
+                  {card.image_url && (
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   )}
-                  <p className="flashcard-back-translation">
-                    <strong>{card.word}</strong> — {card.translation}
-                  </p>
+                  <p className="flashcard-back-translation"><strong>{card.word}</strong> -- {card.translation}</p>
                 </>
               )}
 
-              {promptType === 'context-comprehension' && (
-                <>
-                  <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
-                  {card.sentence_translation && (
-                    <p className="flashcard-sentence">{renderTildeHighlight(card.sentence_translation, 'flashcard-highlighted')}</p>
-                  )}
-                  <p className="flashcard-back-translation">
-                    <strong>{card.word}</strong> — {card.translation}
-                  </p>
-                </>
+              {spokenText(card, promptType, true) && (
+                <button
+                  className="flashcard-audio-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const text = spokenText(card, promptType, true)!;
+                    playAudio(text, card.target_language, text === card.word ? card.id : undefined);
+                  }}
+                >
+                  <SpeakerIcon size={20} />
+                </button>
               )}
-
-              {promptType === 'target-cloze' && (
-                <>
-                  <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
-                  <p className="flashcard-back-translation">
-                    <strong>{card.word}</strong> — {card.translation}
-                  </p>
-                </>
-              )}
-
-              <button
-                className="flashcard-audio-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const text = hasExample
-                    ? stripTildes(card.example_sentence!)
-                    : card.word;
-                  // Sentence is synthesized on the fly; only the bare word uses the cached clip.
-                  playAudio(text, card.target_language, hasExample ? undefined : card.id);
-                }}
-              >
-                <SpeakerIcon size={20} />
-              </button>
             </div>
           </div>
         </div>
@@ -615,6 +582,7 @@ export default function Learn() {
           <CloseIcon size={18} strokeWidth={2.5} />
           <span className="flashcard-btn-label">Incorrect</span>
           <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'again')}</span>
+          <span className="flashcard-btn-stage">Stage {nextPromptStage(card, 'again')}</span>
         </button>
         <button
           className="flashcard-btn flashcard-btn--good"
@@ -624,6 +592,7 @@ export default function Learn() {
           <CheckIcon size={18} strokeWidth={2.5} />
           <span className="flashcard-btn-label">Correct</span>
           <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'good')}</span>
+          <span className="flashcard-btn-stage">Stage {nextPromptStage(card, 'good')}</span>
         </button>
       </div>
 

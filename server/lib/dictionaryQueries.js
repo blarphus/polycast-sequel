@@ -84,7 +84,7 @@ export async function listNewTodayWords(db, userId) {
   );
 }
 
-export async function listDueWords(db, userId) {
+export async function listDueWords(db, userId, timeZone = 'UTC') {
   return db.query(
     `WITH prefs AS (
        SELECT target_language, daily_new_limit
@@ -97,7 +97,10 @@ export async function listDueWords(db, userId) {
        CROSS JOIN prefs p
        WHERE sw.user_id = $1
          AND sw.target_language IS NOT DISTINCT FROM p.target_language
-         AND sw.due_at <= NOW()
+         AND (
+           (sw.learning_step IS NOT NULL AND sw.due_at <= NOW() + INTERVAL '20 minutes')
+           OR (sw.learning_step IS NULL AND sw.due_at <= NOW())
+         )
      ),
      introduced_today AS (
        SELECT COUNT(*)::int AS cnt
@@ -105,7 +108,7 @@ export async function listDueWords(db, userId) {
        CROSS JOIN prefs p
        WHERE sw.user_id = $1
          AND sw.target_language IS NOT DISTINCT FROM p.target_language
-         AND sw.introduced_date = CURRENT_DATE
+         AND sw.introduced_date = (NOW() AT TIME ZONE $2)::date
      ),
      new_cards AS (
        SELECT sw.*
@@ -125,7 +128,7 @@ export async function listDueWords(db, userId) {
        SELECT * FROM new_cards
      ) queue_words
      ORDER BY ${DUE_QUEUE_ORDER_BY}`,
-    [userId],
+    [userId, timeZone],
   );
 }
 
@@ -297,7 +300,13 @@ export async function listDictionaryGroupPage(db, userId, { page = 0, limit = 20
   const prefs = prefsRows[0] ?? { target_language: null, daily_new_limit: 0 };
   const targetLanguage = prefs.target_language ?? null;
   const dailyNewLimit = prefs.daily_new_limit ?? 0;
-  const trimmedSearch = search.trim().toLowerCase();
+  // Fold case and diacritics so "dano" matches "daño". NFD splits accented
+  // letters into base + combining mark; stripping the marks leaves the base.
+  const trimmedSearch = search
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
   const key = _cacheKey(userId, targetLanguage, trimmedSearch, sort);
   const cached = _groupCache.get(key);
@@ -315,9 +324,13 @@ export async function listDictionaryGroupPage(db, userId, { page = 0, limit = 20
 
     if (trimmedSearch) {
       params.push(`%${trimmedSearch}%`);
+      // Strip the same diacritics on the SQL side that the JS fold above
+      // strips from the query, so "dano" matches "daño".
+      const fold = (col) =>
+        `translate(LOWER(${col}), 'áàâãäåéèêëíìîïóòôõöúùûüñçýÿ', 'aaaaaaeeeeiiiiooooouuuuncyy')`;
       whereClause += ` AND (
-        LOWER(word) LIKE $${params.length}
-        OR LOWER(translation) LIKE $${params.length}
+        ${fold('word')} LIKE $${params.length}
+        OR ${fold('translation')} LIKE $${params.length}
       )`;
     }
 

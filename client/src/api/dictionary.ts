@@ -144,6 +144,7 @@ export interface SavedWord {
   image_term: string | null;
   queue_position: number | null;
   introduced_date: string | null;
+  relearning_date: string | null;
 }
 
 export function getSavedWords() {
@@ -206,13 +207,14 @@ export function updateWordImage(id: string, imageUrl: string) {
 export type SrsAnswer = 'again' | 'hard' | 'good' | 'easy';
 
 export function getDueWords() {
-  return request<SavedWord[]>('/dictionary/due', { cacheTtlMs: 10_000 });
+  const params = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  return request<SavedWord[]>(`/dictionary/due?${params}`, { cacheTtlMs: 10_000 });
 }
 
 export function reviewWord(id: string, answer: SrsAnswer) {
   return request<SavedWord>(`/dictionary/words/${id}/review`, {
     method: 'PATCH',
-    body: { answer },
+    body: { answer, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
   });
 }
 
