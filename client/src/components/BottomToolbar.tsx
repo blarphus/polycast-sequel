@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentDashboard } from '../api';
-import { HomeIcon, BookIcon, BookOpenIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, FolderIcon, SettingsIcon, ChevronLeftIcon, ChevronRightIcon, UserIcon, PlusIcon, CloseIcon } from './icons';
+import { HomeIcon, BookIcon, BookOpenIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, FolderIcon, SettingsIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, UserIcon, PlusIcon, CloseIcon } from './icons';
 import { toErrorMessage } from '../utils/errors';
 
 const COLLAPSED_KEY = 'sidebar-collapsed';
@@ -22,6 +22,7 @@ export default function BottomToolbar() {
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingError, setPendingError] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [inProgressOpen, setInProgressOpen] = useState(false);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
   const [accountActionError, setAccountActionError] = useState('');
 
@@ -73,10 +74,8 @@ export default function BottomToolbar() {
     return () => { cancelled = true; };
   }, [isStudent]);
 
-  const isHome = isTeacher
-    ? location.pathname === '/classes' || location.pathname === '/students' || location.pathname.startsWith('/students/') || location.pathname === '/classwork' || location.pathname.startsWith('/classwork/')
-    : location.pathname === '/';
-  const isDictionary = location.pathname === '/dictionary';
+  const isHome = location.pathname === '/home';
+  const isDictionary = location.pathname === '/' || location.pathname === '/dictionary';
   const isPractice = location.pathname === '/practice' || location.pathname.startsWith('/practice/') || location.pathname === '/learn';
   const isSocial = location.pathname === '/chats';
   const isClasswork = !isTeacher && (location.pathname === '/classwork' || location.pathname.startsWith('/classwork/') || location.pathname === '/classes' || location.pathname === '/students' || location.pathname.startsWith('/students/'));
@@ -95,7 +94,7 @@ export default function BottomToolbar() {
     try {
       await switchAccount(accountId);
       setAccountMenuOpen(false);
-      // Navigate home — Home.tsx redirects teachers to /classes automatically
+      // Return to the default dictionary after switching profiles.
       navigate('/');
     } catch (err) {
       setAccountActionError(toErrorMessage(err));
@@ -113,135 +112,148 @@ export default function BottomToolbar() {
         </button>
       </div>
       <button
-        className={`toolbar-tab toolbar-tab--blue${isHome ? ' active' : ''}`}
-        onClick={() => navigate(isTeacher ? '/classes' : '/')}
+        className={`toolbar-tab toolbar-tab--red${isDictionary ? ' active' : ''}`}
+        onClick={() => navigate('/dictionary')}
       >
-        <HomeIcon size={22} />
-        <span className="toolbar-label">Home</span>
+        <BookIcon size={22} />
+        <span className="toolbar-label">Dictionary</span>
       </button>
-      {!isTeacher && (
-        <button
-          className={`toolbar-tab toolbar-tab--yellow${isPractice ? ' active' : ''}`}
-          onClick={() => navigate('/practice')}
-        >
-          <BoltIcon size={22} />
-          <span className="toolbar-label">Practice</span>
-        </button>
-      )}
-      {!isTeacher && (
-        <button
-          className={`toolbar-tab toolbar-tab--red${isDictionary ? ' active' : ''}`}
-          onClick={() => navigate('/dictionary')}
-        >
-          <BookIcon size={22} />
-          <span className="toolbar-label">Dictionary</span>
-        </button>
-      )}
       <button
-        className={`toolbar-tab toolbar-tab--purple${isSocial ? ' active' : ''}`}
-        onClick={() => navigate('/chats')}
+        className={`toolbar-tab toolbar-tab--yellow${isPractice ? ' active' : ''}`}
+        onClick={() => navigate('/learn')}
       >
-        <PeopleIcon size={22} />
-        <span className="toolbar-label">Social</span>
+        <BoltIcon size={22} />
+        <span className="toolbar-label">Practice</span>
       </button>
-      {!isTeacher && (
+      <button
+        className={`toolbar-tab toolbar-tab--indigo${isBooks ? ' active' : ''}`}
+        onClick={() => navigate('/books')}
+      >
+        <BookOpenIcon size={22} />
+        <span className="toolbar-label">Books</span>
+      </button>
+      <div className={`sidebar-in-progress${inProgressOpen ? ' open' : ''}`}>
         <button
-          className={`toolbar-tab toolbar-tab--teal${isClasswork ? ' active' : ''}`}
-          onClick={() => navigate('/classes')}
+          className="toolbar-tab sidebar-in-progress-toggle"
+          onClick={() => setInProgressOpen((open) => !open)}
+          aria-expanded={inProgressOpen}
         >
-          <span className="toolbar-tab-icon-wrap">
-            <ClassworkIcon size={22} />
-            {(pendingCount > 0 || pendingError) && <span className="toolbar-badge">{pendingError ? '!' : pendingCount}</span>}
+          <span className="sidebar-in-progress-icon">
+            <SettingsIcon size={22} />
           </span>
-          <span className="toolbar-label">Classwork</span>
+          <span className="toolbar-label">In progress</span>
+          <span className="sidebar-in-progress-chevron">
+            {inProgressOpen ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
+          </span>
         </button>
-      )}
-      <button
-        className={`toolbar-tab toolbar-tab--orange${isBrowse ? ' active' : ''}`}
-        onClick={() => navigate('/browse')}
-      >
-        <PlayCircleIcon size={22} />
-        <span className="toolbar-label">Watch</span>
-      </button>
-      {!isTeacher && (
-        <button
-          className={`toolbar-tab toolbar-tab--indigo${isBooks ? ' active' : ''}`}
-          onClick={() => navigate('/books')}
-        >
-          <BookOpenIcon size={22} />
-          <span className="toolbar-label">Books</span>
-        </button>
-      )}
-      <button
-        className={`toolbar-tab toolbar-tab--green${isLocalVideos ? ' active' : ''}`}
-        onClick={() => navigate('/local-videos')}
-      >
-        <FolderIcon size={22} />
-        <span className="toolbar-label">Local</span>
-      </button>
-      <button
-        className={`toolbar-tab toolbar-tab--profile${accountMenuOpen ? ' active' : ''}`}
-        onClick={() => {
-          setAccountMenuOpen((prev) => !prev);
-          setAccountActionError('');
-        }}
-      >
-        <UserIcon size={22} />
-        <span className="toolbar-label">Profiles</span>
-      </button>
-      {accountMenuOpen && (
-        <div className="sidebar-account-popover">
-          <div className="sidebar-account-popover-header">
-            <div>
-              <div className="sidebar-account-title">Profiles</div>
-              <div className="sidebar-account-subtitle">Switch accounts or add another login</div>
-            </div>
-            <button className="sidebar-account-close" onClick={() => setAccountMenuOpen(false)}>
-              <CloseIcon size={16} />
+        {inProgressOpen && (
+          <div className="sidebar-in-progress-items">
+            <button
+              className={`toolbar-tab toolbar-tab--blue${isHome ? ' active' : ''}`}
+              onClick={() => navigate('/home')}
+            >
+              <HomeIcon size={22} />
+              <span className="toolbar-label">Home</span>
             </button>
-          </div>
-          <div className="sidebar-account-list">
-            {savedAccounts.map((account) => (
-              <div key={account.id} className={`sidebar-account-item${account.id === user?.id ? ' active' : ''}`}>
+            <button
+              className={`toolbar-tab toolbar-tab--purple${isSocial ? ' active' : ''}`}
+              onClick={() => navigate('/chats')}
+            >
+              <PeopleIcon size={22} />
+              <span className="toolbar-label">Social</span>
+            </button>
+            {!isTeacher && (
+              <button
+                className={`toolbar-tab toolbar-tab--teal${isClasswork ? ' active' : ''}`}
+                onClick={() => navigate('/classes')}
+              >
+                <span className="toolbar-tab-icon-wrap">
+                  <ClassworkIcon size={22} />
+                  {(pendingCount > 0 || pendingError) && <span className="toolbar-badge">{pendingError ? '!' : pendingCount}</span>}
+                </span>
+                <span className="toolbar-label">Classwork</span>
+              </button>
+            )}
+            <button
+              className={`toolbar-tab toolbar-tab--orange${isBrowse ? ' active' : ''}`}
+              onClick={() => navigate('/browse')}
+            >
+              <PlayCircleIcon size={22} />
+              <span className="toolbar-label">Watch</span>
+            </button>
+            <button
+              className={`toolbar-tab toolbar-tab--green${isLocalVideos ? ' active' : ''}`}
+              onClick={() => navigate('/local-videos')}
+            >
+              <FolderIcon size={22} />
+              <span className="toolbar-label">Local</span>
+            </button>
+            <button
+              className={`toolbar-tab toolbar-tab--profile${accountMenuOpen ? ' active' : ''}`}
+              onClick={() => {
+                setAccountMenuOpen((prev) => !prev);
+                setAccountActionError('');
+              }}
+            >
+              <UserIcon size={22} />
+              <span className="toolbar-label">Profiles</span>
+            </button>
+            {accountMenuOpen && (
+              <div className="sidebar-account-popover">
+                <div className="sidebar-account-popover-header">
+                  <div>
+                    <div className="sidebar-account-title">Profiles</div>
+                    <div className="sidebar-account-subtitle">Switch accounts or add another login</div>
+                  </div>
+                  <button className="sidebar-account-close" onClick={() => setAccountMenuOpen(false)}>
+                    <CloseIcon size={16} />
+                  </button>
+                </div>
+                <div className="sidebar-account-list">
+                  {savedAccounts.map((account) => (
+                    <div key={account.id} className={`sidebar-account-item${account.id === user?.id ? ' active' : ''}`}>
+                      <button
+                        className="sidebar-account-main"
+                        onClick={() => void handleSwitchAccount(account.id)}
+                        disabled={switchingAccountId !== null}
+                      >
+                        <span className="sidebar-account-name">{account.display_name || account.username}</span>
+                        <span className="sidebar-account-meta">@{account.username} · {account.account_type}{account.id === user?.id ? ' · current' : ''}</span>
+                      </button>
+                      <button
+                        className="sidebar-account-remove"
+                        onClick={() => forgetSavedAccount(account.id)}
+                        disabled={account.id === user?.id || switchingAccountId !== null}
+                        title={account.id === user?.id ? 'Current profile' : 'Remove saved profile'}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {accountActionError && <div className="sidebar-account-error">{accountActionError}</div>}
                 <button
-                  className="sidebar-account-main"
-                  onClick={() => void handleSwitchAccount(account.id)}
-                  disabled={switchingAccountId !== null}
+                  className="sidebar-account-add"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    navigate('/login?addProfile=1', { state: { returnTo: location.pathname } });
+                  }}
                 >
-                  <span className="sidebar-account-name">{account.display_name || account.username}</span>
-                  <span className="sidebar-account-meta">@{account.username} · {account.account_type}{account.id === user?.id ? ' · current' : ''}</span>
-                </button>
-                <button
-                  className="sidebar-account-remove"
-                  onClick={() => forgetSavedAccount(account.id)}
-                  disabled={account.id === user?.id || switchingAccountId !== null}
-                  title={account.id === user?.id ? 'Current profile' : 'Remove saved profile'}
-                >
-                  Remove
+                  <PlusIcon size={16} />
+                  Add another profile
                 </button>
               </div>
-            ))}
+            )}
+            <button
+              className={`toolbar-tab toolbar-tab--settings${isSettings ? ' active' : ''}`}
+              onClick={() => navigate('/settings')}
+            >
+              <SettingsIcon size={22} />
+              <span className="toolbar-label">Settings</span>
+            </button>
           </div>
-          {accountActionError && <div className="sidebar-account-error">{accountActionError}</div>}
-          <button
-            className="sidebar-account-add"
-            onClick={() => {
-              setAccountMenuOpen(false);
-              navigate('/login?addProfile=1', { state: { returnTo: location.pathname } });
-            }}
-          >
-            <PlusIcon size={16} />
-            Add another profile
-          </button>
-        </div>
-      )}
-      <button
-        className={`toolbar-tab toolbar-tab--settings${isSettings ? ' active' : ''}`}
-        onClick={() => navigate('/settings')}
-      >
-        <SettingsIcon size={22} />
-        <span className="toolbar-label">Settings</span>
-      </button>
+        )}
+      </div>
     </nav>
   );
 }

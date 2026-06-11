@@ -138,6 +138,14 @@ export default function App() {
           path="/"
           element={
             <ProtectedRoute>
+              <Navigate to="/dictionary" replace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute>
               <Home />
             </ProtectedRoute>
           }
@@ -217,25 +225,25 @@ export default function App() {
         <Route
           path="/dictionary"
           element={
-            <StudentRoute>
+            <ProtectedRoute>
               <Dictionary />
-            </StudentRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/books"
           element={
-            <StudentRoute>
+            <ProtectedRoute>
               <Library />
-            </StudentRoute>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/books/:bookId"
           element={
-            <StudentRoute>
+            <ProtectedRoute>
               <Reader />
-            </StudentRoute>
+            </ProtectedRoute>
           }
         />
         <Route
@@ -249,9 +257,9 @@ export default function App() {
         <Route
           path="/learn"
           element={
-            <StudentRoute>
+            <ProtectedRoute>
               <Learn />
-            </StudentRoute>
+            </ProtectedRoute>
           }
         />
         <Route

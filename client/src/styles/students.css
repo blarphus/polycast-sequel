@@ -2,6 +2,47 @@
    Desktop Sidebar (≥769px)
    ========================================================================== */
 
+.sidebar-in-progress {
+  position: relative;
+  display: flex;
+  flex: 1;
+}
+
+.sidebar-in-progress-toggle {
+  width: 100%;
+}
+
+.sidebar-in-progress-icon,
+.sidebar-in-progress-chevron {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sidebar-in-progress-chevron {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.35rem;
+}
+
+.sidebar-in-progress-items {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(100px, 1fr));
+  gap: 0.35rem;
+  width: min(320px, calc(100vw - 2rem));
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.sidebar-in-progress-items .toolbar-tab {
+  min-height: 64px;
+}
+
 @media (min-width: 481px) {
   .bottom-toolbar {
     position: fixed;
@@ -81,9 +122,41 @@
     font-size: 0.9rem;
   }
 
-  .toolbar-tab--settings {
+  .sidebar-in-progress {
+    flex: 0;
+    flex-direction: column;
     margin-top: auto;
     margin-bottom: 0.75rem;
+  }
+
+  .sidebar-in-progress-toggle {
+    width: auto;
+  }
+
+  .sidebar-in-progress-chevron {
+    position: static;
+    margin-left: auto;
+  }
+
+  .sidebar-in-progress-items {
+    position: static;
+    display: flex;
+    width: auto;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .sidebar-in-progress-items .toolbar-tab {
+    min-height: 0;
+  }
+
+  .sidebar-in-progress-items .toolbar-tab--settings {
+    margin-bottom: 0;
   }
 
   .sidebar-account-popover {
@@ -247,6 +320,10 @@
   }
 
   .bottom-toolbar.collapsed .toolbar-label {
+    display: none;
+  }
+
+  .bottom-toolbar.collapsed .sidebar-in-progress-chevron {
     display: none;
   }
 
