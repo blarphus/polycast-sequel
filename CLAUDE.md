@@ -1,5 +1,11 @@
 # Polycast Sequel — Project Rules
 
+## Flashcards
+
+The flashcard stage system (what each card shows per stage, stage movement,
+audio, counters) is specified in `FLASHCARDS.md`. Read it before touching
+`PracticeView.swift`, `SRS.swift`, or `server/lib/srsUpdate.js`.
+
 ## No Fallbacks
 
 **Never use fallbacks.** No silent `.catch(() => {})`, no `|| 'default'` strings, no try/catch that swallows errors and continues silently. If something breaks, it must be visible — `console.error` the failure, set error state, or let it throw.

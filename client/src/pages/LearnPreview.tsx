@@ -5,29 +5,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDueWords, getSavedWords, proxyImageUrl, type SavedWord } from '../api';
-import { getButtonTimeLabel } from '../utils/srs';
-import { renderTildeHighlight, renderCloze, stripTildes } from '../utils/tildeMarkup';
+import { getButtonTimeLabel, nextPromptStage } from '../utils/srs';
+import { renderTildeHighlight, stripTildes } from '../utils/tildeMarkup';
 import { playAiSpeech } from '../utils/aiSpeech';
 import { playFlipSound } from '../utils/sounds';
-import { getPromptType, type PromptType } from './Learn';
+import { getInstructionText, getPromptType, type PromptType } from './Learn';
 import { SpeakerIcon, TapIcon, CloseIcon, CheckIcon, ChevronLeftIcon } from '../components/icons';
 
 const STAGE_LABELS: Record<number, string> = {
-  0: 'Stage 0: Recognition',
-  1: 'Stage 1: Recall',
-  2: 'Stage 2: Guided Cloze',
-  3: 'Stage 3: Context Comprehension',
-  4: 'Stage 4: Target-only Cloze',
+  0: 'Stage 0: Meet the word',
+  1: 'Stage 1: Translate the sentence',
+  2: 'Stage 2: Produce the word',
+  3: 'Stage 3: Produce the sentence',
 };
 
-function getInstructionText(promptType: PromptType): string {
-  if (promptType === 'recognition') return 'What does this word mean?';
-  if (promptType === 'recall') return 'How do you say this?';
-  return 'Fill in the blank';
-}
-
 function isBlueGradient(promptType: PromptType): boolean {
-  return promptType === 'recognition' || promptType === 'recall';
+  return promptType === 'meet-word';
 }
 
 export default function LearnPreview() {
@@ -43,12 +36,12 @@ export default function LearnPreview() {
       .then((due) => {
         if (due.length > 0) {
           setCard(due[0]);
-          setPromptStage(due[0].prompt_stage ?? 0);
+          setPromptStage(Math.min(due[0].prompt_stage ?? 0, 3));
         } else {
           return getSavedWords().then((all) => {
             if (all.length > 0) {
               setCard(all[0]);
-              setPromptStage(all[0].prompt_stage ?? 0);
+              setPromptStage(Math.min(all[0].prompt_stage ?? 0, 3));
             }
           });
         }
@@ -63,13 +56,13 @@ export default function LearnPreview() {
 
   // Build a virtual card with overridden prompt_stage
   const virtualCard: SavedWord | null = card ? { ...card, prompt_stage: promptStage } : null;
-  const promptType: PromptType = virtualCard ? getPromptType(virtualCard) : 'recognition';
+  const promptType: PromptType = virtualCard ? getPromptType(virtualCard) : 'meet-word';
   const useBlue = isBlueGradient(promptType);
 
   const handleAnswer = useCallback((direction: 'again' | 'good') => {
     setPromptStage((prev) => {
       if (direction === 'again') return Math.max(prev - 1, 0);
-      return Math.min(prev + 1, 4);
+      return Math.min(prev + 1, 3);
     });
     setIsFlipped(false);
   }, []);
@@ -96,6 +89,11 @@ export default function LearnPreview() {
   }
 
   const hasExample = !!card.example_sentence;
+  const backAudioText = promptType === 'word-production'
+    ? (hasExample ? `${card.word}. ${stripTildes(card.example_sentence!)}` : card.word)
+    : promptType === 'sentence-production'
+      ? stripTildes(card.example_sentence!)
+      : null;
 
   return (
     <div className={`learn-page${useBlue ? ' learn-page--recognition' : ''}`}>
@@ -122,48 +120,38 @@ export default function LearnPreview() {
             {/* Front */}
             <div className={`flashcard-front${useBlue ? ' flashcard-front--recognition' : ''}`}>
 
-              {promptType === 'recognition' && (
+              {promptType === 'meet-word' && (
                 <>
-                  <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
+                  {hasExample
+                    ? <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+                    : <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>}
                   {card.image_url && (
                     <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
                   )}
                 </>
               )}
 
-              {promptType === 'recall' && (
+              {promptType === 'sentence-meaning' && (
+                <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+              )}
+
+              {promptType === 'word-production' && (
                 <>
                   <p className="flashcard-native-hint">{card.translation}</p>
-                  {card.definition && (
-                    <p className="flashcard-native-subhint">{card.definition}</p>
+                  {card.definition && <p className="flashcard-native-subhint">{card.definition}</p>}
+                  {card.image_url && (
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
                   )}
                 </>
               )}
 
-              {promptType === 'guided-cloze' && (
-                <div className="flashcard-stacked-sentences">
-                  <p className="flashcard-native-hint flashcard-native-hint--sm">
-                    {card.sentence_translation
-                      ? renderTildeHighlight(card.sentence_translation, 'flashcard-highlighted')
-                      : card.translation}
-                  </p>
-                  <p className="flashcard-sentence">{renderCloze(card.example_sentence!)}</p>
-                </div>
-              )}
-
-              {promptType === 'context-comprehension' && (
-                <div className="flashcard-stacked-sentences">
-                  <p className="flashcard-sentence">{renderCloze(card.example_sentence!)}</p>
-                  <p className="flashcard-native-hint flashcard-native-hint--sm">
-                    {card.sentence_translation
-                      ? renderCloze(card.sentence_translation)
-                      : card.translation}
-                  </p>
-                </div>
-              )}
-
-              {promptType === 'target-cloze' && (
-                <p className="flashcard-sentence">{renderCloze(card.example_sentence!)}</p>
+              {promptType === 'sentence-production' && (
+                <>
+                  <p className="flashcard-sentence">{renderTildeHighlight(card.sentence_translation!, 'flashcard-highlighted')}</p>
+                  {card.image_url && (
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
+                  )}
+                </>
               )}
 
               <p className="flashcard-hint">
@@ -175,7 +163,7 @@ export default function LearnPreview() {
             {/* Back */}
             <div className={`flashcard-back${useBlue ? ' flashcard-back--recognition' : ''}`}>
 
-              {promptType === 'recognition' && (
+              {promptType === 'meet-word' && (
                 <>
                   <p className="flashcard-recognition-translation">{card.translation}</p>
                   {card.image_url && (
@@ -184,75 +172,54 @@ export default function LearnPreview() {
                   {card.definition && (
                     <p className="flashcard-back-definition">{card.definition}</p>
                   )}
-                  {hasExample && (
-                    <p className="flashcard-sentence flashcard-sentence--sm">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
-                  )}
                   {card.sentence_translation && (
-                    <p className="flashcard-sentence-translation">{card.sentence_translation}</p>
+                    <p className="flashcard-sentence-translation">{stripTildes(card.sentence_translation)}</p>
                   )}
                 </>
               )}
 
-              {promptType === 'recall' && (
+              {promptType === 'sentence-meaning' && (
+                <>
+                  <p className="flashcard-sentence">{renderTildeHighlight(card.sentence_translation!, 'flashcard-highlighted')}</p>
+                  {card.image_url && (
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
+                  )}
+                  <p className="flashcard-back-translation"><strong>{card.word}</strong> -- {card.translation}</p>
+                </>
+              )}
+
+              {promptType === 'word-production' && (
                 <>
                   <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
                   {card.image_url && (
                     <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
                   )}
-                  {card.definition && (
-                    <p className="flashcard-back-definition">{card.definition}</p>
-                  )}
-                  {hasExample && (
-                    <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
-                  )}
+                  {card.definition && <p className="flashcard-back-definition">{card.definition}</p>}
+                  {hasExample && <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>}
                 </>
               )}
 
-              {promptType === 'guided-cloze' && (
+              {promptType === 'sentence-production' && (
                 <>
                   <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
-                  {card.sentence_translation && (
-                    <p className="flashcard-sentence-translation">{card.sentence_translation}</p>
+                  {card.image_url && (
+                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" />
                   )}
-                  <p className="flashcard-back-translation">
-                    <strong>{card.word}</strong> — {card.translation}
-                  </p>
+                  <p className="flashcard-back-translation"><strong>{card.word}</strong> -- {card.translation}</p>
                 </>
               )}
 
-              {promptType === 'context-comprehension' && (
-                <>
-                  <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
-                  {card.sentence_translation && (
-                    <p className="flashcard-sentence">{renderTildeHighlight(card.sentence_translation, 'flashcard-highlighted')}</p>
-                  )}
-                  <p className="flashcard-back-translation">
-                    <strong>{card.word}</strong> — {card.translation}
-                  </p>
-                </>
+              {backAudioText && (
+                <button
+                  className="flashcard-audio-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    playAudio(backAudioText, card.target_language);
+                  }}
+                >
+                  <SpeakerIcon size={20} />
+                </button>
               )}
-
-              {promptType === 'target-cloze' && (
-                <>
-                  <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
-                  <p className="flashcard-back-translation">
-                    <strong>{card.word}</strong> — {card.translation}
-                  </p>
-                </>
-              )}
-
-              <button
-                className="flashcard-audio-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const text = hasExample
-                    ? stripTildes(card.example_sentence!)
-                    : card.word;
-                  playAudio(text, card.target_language);
-                }}
-              >
-                <SpeakerIcon size={20} />
-              </button>
             </div>
           </div>
         </div>
@@ -268,6 +235,7 @@ export default function LearnPreview() {
           <CloseIcon size={18} strokeWidth={2.5} />
           <span className="flashcard-btn-label">Incorrect</span>
           <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'again')}</span>
+          <span className="flashcard-btn-stage">Stage {nextPromptStage(virtualCard!, 'again')}</span>
         </button>
         <button
           className="flashcard-btn flashcard-btn--good"
@@ -277,6 +245,7 @@ export default function LearnPreview() {
           <CheckIcon size={18} strokeWidth={2.5} />
           <span className="flashcard-btn-label">Correct</span>
           <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'good')}</span>
+          <span className="flashcard-btn-stage">Stage {nextPromptStage(virtualCard!, 'good')}</span>
         </button>
       </div>
     </div>

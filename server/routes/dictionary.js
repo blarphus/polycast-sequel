@@ -8,6 +8,8 @@ import { getImageBytes } from '../lib/imageCache.js';
 import { validate } from '../lib/validate.js';
 import { translateText } from '../lib/googleTranslate.js';
 import { applySrsReview, validTimeZone } from '../lib/srsUpdate.js';
+import { generateStageSentence } from '../lib/stageSentence.js';
+import logger from '../logger.js';
 import { audioContentType, synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext, explainSelectionInContext } from '../services/wordSemanticsService.js';
 import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
@@ -96,7 +98,7 @@ const updateWordBody = z.object({
 });
 
 const reviewBody = z.object({
-  answer: z.enum(['again', 'hard', 'good', 'easy'], { message: 'answer must be again, hard, good, or easy' }),
+  answer: z.enum(['again', 'good'], { message: 'answer must be again or good' }),
   timeZone: z.string().max(100).optional(),
 });
 
@@ -476,13 +478,15 @@ router.get('/api/dictionary/due', authMiddleware, validate({ query: dueQuery }),
 
 /**
  * PATCH /api/dictionary/words/:id/review -- Record an Anki-style SRS review
- * Body: { answer: 'again' | 'hard' | 'good' | 'easy' }
+ * Body: { answer: 'again' | 'good' }  (incorrect | correct)
  */
 router.patch('/api/dictionary/words/:id/review', authMiddleware, validate({ params: uuidParam, body: reviewBody }), async (req, res) => {
   const { answer, timeZone } = req.body;
 
   try {
-    const updated = await applySrsReview(pool, req.params.id, req.userId, answer, timeZone);
+    const updated = await applySrsReview(pool, req.params.id, req.userId, answer, timeZone, {
+      onAdvanceToNewStage: scheduleStageSentence,
+    });
 
     if (!updated) {
       return res.status(404).json({ error: 'Word not found' });
@@ -495,6 +499,61 @@ router.patch('/api/dictionary/words/:id/review', authMiddleware, validate({ para
     return res.status(500).json({ error: 'Failed to record review' });
   }
 });
+
+/**
+ * Fire-and-forget generator for the next per-stage example sentence. Called
+ * by applySrsReview when a card just advanced to a new high stage (>= 4) for
+ * the first time. Uses the request's pool for a fresh connection so the
+ * review transaction is not blocked, and never throws to the caller.
+ */
+async function scheduleStageSentence({ db, card, newStage }) {
+  // Resolve the user's languages — same query shape dictionary.js uses
+  // elsewhere; cheaper than another join here.
+  const { rows: langRows } = await db.query(
+    'SELECT target_language, native_language FROM users WHERE id = $1',
+    [card.user_id],
+  );
+  const targetLang = langRows[0]?.target_language || null;
+  const nativeLang = langRows[0]?.native_language || 'en';
+
+  const previousSentences = Array.isArray(card.stage_sentences)
+    ? card.stage_sentences
+    : [];
+
+  const generated = await generateStageSentence({
+    word: card.word,
+    translation: card.translation,
+    definition: card.definition,
+    lemma: card.lemma,
+    forms: card.forms,
+    partOfSpeech: card.part_of_speech,
+    targetLang,
+    nativeLang,
+    previousSentences,
+  });
+
+  // Append atomically. We re-read stage_sentences inside the UPDATE so a
+  // concurrent race (two correct answers landing in the same second) cannot
+  // clobber a sibling's append. JSONB || appends without a read-modify-write.
+  const client = await db.connect();
+  try {
+    await client.query(
+      `UPDATE saved_words
+       SET stage_sentences = COALESCE(stage_sentences, '[]'::jsonb) || $1::jsonb
+       WHERE id = $2 AND user_id = $3`,
+      [
+        JSON.stringify([
+          { stage: newStage, example: generated.example, translation: generated.translation },
+        ]),
+        card.id,
+        card.user_id,
+      ],
+    );
+    logger.info({ cardId: card.id, stage: newStage }, 'stage-sentence generated');
+  } finally {
+    client.release();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Saved Words CRUD

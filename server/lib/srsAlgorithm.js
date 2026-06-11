@@ -4,7 +4,9 @@
 
 const LEARNING_STEPS = [60, 600];        // 1 min, 10 min
 const GRADUATING_INTERVAL = 86400;       // 1 day
-const EASY_GRADUATING_INTERVAL = 345600; // 4 days
+// const EASY_GRADUATING_INTERVAL = 345600; // 4 days -- unused since the rating
+//   collapsed to a binary correct/incorrect (good/again only). Flagged for
+//   deletion in a future audit.
 const RELEARNING_STEP = 600;             // 10 min (one relearning step)
 const MIN_EASE = 1.3;
 const MIN_REVIEW_INTERVAL = 86400;       // 1 day minimum
@@ -15,8 +17,11 @@ function roundedDayInterval(seconds) {
 
 /**
  * Compute the next SRS state for a card given an answer.
+ *
+ * The rating is binary: 'again' (incorrect) or 'good' (correct). There is no
+ * hard/easy — the UI only exposes correct/incorrect.
  * @param {object} card - Current card state from the database
- * @param {'again'|'hard'|'good'|'easy'} answer - User's answer
+ * @param {'again'|'good'} answer - User's answer
  * @returns {{ srs_interval, ease_factor, learning_step, due_seconds, correct_delta, incorrect_delta }}
  */
 export function computeNextReview(card, answer) {
@@ -30,82 +35,45 @@ export function computeNextReview(card, answer) {
 
   if (isRelearning) {
     // ---- Relearning phase (one 10-minute step) ----
-    switch (answer) {
-      case 'again':
-        newStep = 0;
-        dueSeconds = RELEARNING_STEP;
-        break;
-      case 'hard':
-        newStep = 0;
-        dueSeconds = Math.round(RELEARNING_STEP * 1.5);
-        break;
-      case 'good':
-        newStep = null;
-        dueSeconds = card.srs_interval;
-        break;
-      case 'easy':
-        newStep = null;
-        newInterval = roundedDayInterval(card.srs_interval + MIN_REVIEW_INTERVAL);
-        dueSeconds = newInterval;
-        break;
+    if (answer === 'again') {
+      newStep = 0;
+      dueSeconds = RELEARNING_STEP;
+    } else {
+      // good — graduate back out of relearning at the stored interval.
+      newStep = null;
+      dueSeconds = card.srs_interval;
     }
   } else if (isLearning) {
     // ---- New-card learning phase ----
     const step = card.learning_step ?? 0;
 
-    switch (answer) {
-      case 'again':
-        newStep = 0;
-        dueSeconds = LEARNING_STEPS[0]; // 1 min
-        break;
-      case 'hard':
-        newStep = step;
-        dueSeconds = step === 0 ? 330 : LEARNING_STEPS[1]; // 5.5 min or 10 min
-        break;
-      case 'good':
-        if (step >= LEARNING_STEPS.length - 1) {
-          // Graduate
-          newStep = null;
-          newInterval = GRADUATING_INTERVAL;
-          dueSeconds = GRADUATING_INTERVAL;
-        } else {
-          newStep = step + 1;
-          dueSeconds = LEARNING_STEPS[step + 1];
-        }
-        break;
-      case 'easy':
-        newStep = null;
-        newInterval = EASY_GRADUATING_INTERVAL;
-        newEase = Math.max(newEase + 0.15, MIN_EASE);
-        dueSeconds = EASY_GRADUATING_INTERVAL;
-        break;
+    if (answer === 'again') {
+      newStep = 0;
+      dueSeconds = LEARNING_STEPS[0]; // 1 min
+    } else if (step >= LEARNING_STEPS.length - 1) {
+      // good on the last step — graduate.
+      newStep = null;
+      newInterval = GRADUATING_INTERVAL;
+      dueSeconds = GRADUATING_INTERVAL;
+    } else {
+      // good — advance to the next learning step.
+      newStep = step + 1;
+      dueSeconds = LEARNING_STEPS[step + 1];
     }
   } else {
     // ---- Review phase (graduated cards) ----
     const oldInterval = card.srs_interval;
 
-    switch (answer) {
-      case 'again':
-        newEase = Math.max(newEase - 0.20, MIN_EASE);
-        // Stock Anki default: New Interval 0%, clamped to the 1-day minimum.
-        newInterval = MIN_REVIEW_INTERVAL;
-        newStep = 0; // Enter relearning
-        dueSeconds = RELEARNING_STEP; // 10 min
-        break;
-      case 'hard':
-        newEase = Math.max(newEase - 0.15, MIN_EASE);
-        newInterval = roundedDayInterval(oldInterval * 1.2);
-        dueSeconds = newInterval;
-        break;
-      case 'good':
-        newInterval = roundedDayInterval(oldInterval * newEase);
-        dueSeconds = newInterval;
-        break;
-      case 'easy':
-        newEase = Math.max(newEase + 0.15, MIN_EASE);
-        newInterval = roundedDayInterval(oldInterval * newEase * 1.3);
-        dueSeconds = newInterval;
-        break;
+    if (answer === 'again') {
+      newEase = Math.max(newEase - 0.20, MIN_EASE);
+      // Stock Anki default: New Interval 0%, clamped to the 1-day minimum.
+      newInterval = MIN_REVIEW_INTERVAL;
+      newStep = 0; // Enter relearning
+      dueSeconds = RELEARNING_STEP; // 10 min
+    } else {
+      // good — grow the interval by the ease factor.
+      newInterval = roundedDayInterval(oldInterval * newEase);
+      dueSeconds = newInterval;
     }
   }
 

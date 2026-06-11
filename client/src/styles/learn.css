@@ -36,6 +36,7 @@
 }
 
 .srs-count { font-variant-numeric: tabular-nums; }
+.srs-count.is-current { text-decoration: underline; text-underline-offset: 3px; }
 .srs-count--new { color: #3b82f6; }
 .srs-count--learning { color: #e74c3c; }
 .srs-count--review { color: #22a55e; }
@@ -120,6 +121,23 @@
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
   z-index: 1;
+}
+
+.flashcard-card-state {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #2563eb;
+}
+
+.flashcard-btn-stage {
+  font-size: 0.68rem;
+  font-weight: 700;
+  opacity: 0.8;
 }
 
 /* Front face */

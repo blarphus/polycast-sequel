@@ -1,13 +1,31 @@
 import { computeNextReview } from './srsAlgorithm.js';
 
 /**
+ * Soft cap on the prompt-stage ladder. Stages 0-3 are the original four
+ * (meet / translate / produce word / produce sentence). Each stage beyond 3
+ * uses the stage-3 layout with a fresh example sentence generated for that
+ * stage, so there is no hard upper limit — this cap is just a safety net
+ * against unbounded growth in pathological cases.
+ */
+export const MAX_PROMPT_STAGE = 20;
+
+/**
  * Apply an SRS review to a saved word.
  *
  * @param {import('pg').Pool|import('pg').PoolClient} db - Pool or client
  * @param {string} wordId - saved_words.id
  * @param {string} userId - owner user ID
- * @param {'again'|'hard'|'good'|'easy'} answer
+ * @param {'again'|'good'} answer - binary rating: incorrect or correct
  * @param {string} timeZone - user's IANA timezone for calendar-day intervals
+ * @param {object} [options]
+ * @param {(args: { db: import('pg').Pool, card: object, newStage: number }) => Promise<void>} [options.onAdvanceToNewStage]
+ *   Called when the card advances to a stage that has no entry in
+ *   `stage_sentences` yet (i.e. the user just beat the previous stage for the
+ *   first time at this height). Implementations are expected to generate a
+ *   new example sentence off the request path and persist it. The handler is
+ *   invoked synchronously inside applySrsReview, so callers should fire-and-
+ *   forget it (`void handler(...).catch(...)`) if they don't want the review
+ *   response to wait on Gemini.
  * @returns {Promise<object|null>} Updated row, or null if not found
  */
 export function validTimeZone(timeZone) {
@@ -20,7 +38,14 @@ export function validTimeZone(timeZone) {
   }
 }
 
-export async function applySrsReview(db, wordId, userId, answer, timeZone = 'UTC') {
+export async function applySrsReview(
+  db,
+  wordId,
+  userId,
+  answer,
+  timeZone = 'UTC',
+  { onAdvanceToNewStage } = {},
+) {
   const { rows: existing } = await db.query(
     'SELECT * FROM saved_words WHERE id = $1 AND user_id = $2',
     [wordId, userId],
@@ -34,16 +59,12 @@ export async function applySrsReview(db, wordId, userId, answer, timeZone = 'UTC
   // Difficulty track (prompt_stage) — fully independent of time scheduling.
   // Moves exactly one stage per review: up on correct, down on incorrect.
   // Stages 0-3: meet word -> translate sentence -> produce word -> produce sentence.
+  // Stages 4+ reuse the stage-3 layout with a fresh per-stage example sentence.
   const currentStage = card.prompt_stage ?? 0;
-  let newStage;
-  if (answer === 'again') {
-    newStage = Math.max(currentStage - 1, 0);
-  } else if (answer === 'hard') {
-    newStage = currentStage;
-  } else {
-    // good or easy — advance difficulty
-    newStage = Math.min(currentStage + 1, 3);
-  }
+  // again (incorrect) drops one stage; good (correct) advances one, soft-capped.
+  const newStage = answer === 'again'
+    ? Math.max(currentStage - 1, 0)
+    : Math.min(currentStage + 1, MAX_PROMPT_STAGE);
 
   // Time track — pure Anki, no overrides
   const finalLearningStep = next.learning_step;
@@ -94,5 +115,46 @@ export async function applySrsReview(db, wordId, userId, answer, timeZone = 'UTC
     ],
   );
 
+  // Fire-and-forget: if the card just advanced to a new high stage (>= 4)
+  // for the first time, kick off a Gemini call to produce the per-stage
+  // example sentence off the request path. Errors are logged but never
+  // propagate to the review response — the user will see the card with the
+  // stage-2 fallback layout (per FLASHCARDS.md) and we will retry the
+  // generation on the next correct answer from the same stage.
+  if (
+    newStage > currentStage
+    && newStage >= 4
+    && typeof onAdvanceToNewStage === 'function'
+  ) {
+    const existingStages = stageStageList(card.stage_sentences);
+    if (!existingStages.includes(newStage)) {
+      void Promise.resolve()
+        .then(() => onAdvanceToNewStage({ db, card, newStage }))
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.error('[srsUpdate] stage-sentence generation failed:', err);
+        });
+    }
+  }
+
   return updated[0] || null;
+}
+
+/**
+ * Read the stage numbers present in a saved_words.stage_sentences JSONB value.
+ * Robust to null, malformed JSON, and non-array shapes (returns [] in those
+ * cases — treat as "no per-stage sentences yet").
+ */
+function stageStageList(raw) {
+  if (raw == null) return [];
+  let parsed;
+  try {
+    parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .map((entry) => (entry && typeof entry === 'object' ? entry.stage : null))
+    .filter((s) => Number.isInteger(s));
 }

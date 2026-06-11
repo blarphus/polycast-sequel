@@ -204,7 +204,7 @@ export function updateWordImage(id: string, imageUrl: string) {
   });
 }
 
-export type SrsAnswer = 'again' | 'hard' | 'good' | 'easy';
+export type SrsAnswer = 'again' | 'good';
 
 export function getDueWords() {
   const params = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });

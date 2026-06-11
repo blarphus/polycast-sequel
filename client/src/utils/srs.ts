@@ -7,7 +7,9 @@ import type { SavedWord, SrsAnswer } from '../api/dictionary';
 // Constants matching server/routes/dictionary.js
 const LEARNING_STEPS = [60, 600];        // 1 min, 10 min
 const GRADUATING_INTERVAL = 86400;       // 1 day
-const EASY_GRADUATING_INTERVAL = 345600; // 4 days
+// const EASY_GRADUATING_INTERVAL = 345600; // 4 days -- unused since the rating
+//   collapsed to a binary correct/incorrect (good/again only). Flagged for
+//   deletion in a future audit.
 const RELEARNING_STEP = 600;             // 10 min (one relearning step)
 const MIN_EASE = 1.3;
 const MIN_REVIEW_INTERVAL = 86400;       // 1 day
@@ -43,55 +45,34 @@ export function computeNextReviewState(card: SavedWord, answer: SrsAnswer): Next
     if (answer === 'again') {
       learningStep = 0;
       dueSeconds = RELEARNING_STEP;
-    } else if (answer === 'hard') {
-      learningStep = 0;
-      dueSeconds = Math.round(RELEARNING_STEP * 1.5);
-    } else if (answer === 'good') {
+    } else {
+      // good — graduate back out of relearning at the stored interval.
       learningStep = null;
       dueSeconds = card.srs_interval;
-    } else {
-      learningStep = null;
-      srsInterval = roundedDayInterval(card.srs_interval + MIN_REVIEW_INTERVAL);
-      dueSeconds = srsInterval;
     }
   } else if (isNewLearning(card)) {
     const step = card.learning_step ?? 0;
     if (answer === 'again') {
       learningStep = 0;
       dueSeconds = LEARNING_STEPS[0];
-    } else if (answer === 'hard') {
-      learningStep = step;
-      dueSeconds = step === 0 ? 330 : LEARNING_STEPS[1];
-    } else if (answer === 'good') {
-      if (step >= LEARNING_STEPS.length - 1) {
-        learningStep = null;
-        srsInterval = GRADUATING_INTERVAL;
-        dueSeconds = GRADUATING_INTERVAL;
-      } else {
-        learningStep = step + 1;
-        dueSeconds = LEARNING_STEPS[step + 1];
-      }
-    } else {
+    } else if (step >= LEARNING_STEPS.length - 1) {
+      // good on the last step — graduate.
       learningStep = null;
-      srsInterval = EASY_GRADUATING_INTERVAL;
-      easeFactor = Math.max(easeFactor + 0.15, MIN_EASE);
-      dueSeconds = EASY_GRADUATING_INTERVAL;
+      srsInterval = GRADUATING_INTERVAL;
+      dueSeconds = GRADUATING_INTERVAL;
+    } else {
+      // good — advance to the next learning step.
+      learningStep = step + 1;
+      dueSeconds = LEARNING_STEPS[step + 1];
     }
   } else if (answer === 'again') {
     easeFactor = Math.max(easeFactor - 0.20, MIN_EASE);
     srsInterval = MIN_REVIEW_INTERVAL;
     learningStep = 0;
     dueSeconds = RELEARNING_STEP;
-  } else if (answer === 'hard') {
-    easeFactor = Math.max(easeFactor - 0.15, MIN_EASE);
-    srsInterval = roundedDayInterval(card.srs_interval * 1.2);
-    dueSeconds = srsInterval;
-  } else if (answer === 'good') {
-    srsInterval = roundedDayInterval(card.srs_interval * easeFactor);
-    dueSeconds = srsInterval;
   } else {
-    easeFactor = Math.max(easeFactor + 0.15, MIN_EASE);
-    srsInterval = roundedDayInterval(card.srs_interval * easeFactor * 1.3);
+    // good — grow the interval by the ease factor.
+    srsInterval = roundedDayInterval(card.srs_interval * easeFactor);
     dueSeconds = srsInterval;
   }
 
@@ -109,7 +90,6 @@ export function getNextDueSeconds(card: SavedWord, answer: SrsAnswer): number {
 export function nextPromptStage(card: SavedWord, answer: SrsAnswer): number {
   const stage = Math.min(card.prompt_stage ?? 0, 3);
   if (answer === 'again') return Math.max(stage - 1, 0);
-  if (answer === 'hard') return stage;
   return Math.min(stage + 1, 3);
 }
 

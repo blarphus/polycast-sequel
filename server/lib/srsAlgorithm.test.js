@@ -27,9 +27,10 @@ test('one good answer graduates a relearning card', () => {
   assert.equal(graduated.due_seconds, 86400);
 });
 
-test('easy on the single relearning step schedules two days', () => {
-  const graduated = computeNextReview({ ...reviewCard, srs_interval: 86400, learning_step: 0 }, 'easy');
-  assert.equal(graduated.learning_step, null);
-  assert.equal(graduated.srs_interval, 172800);
-  assert.equal(graduated.due_seconds, 172800);
+test('good on a graduated review grows the interval by the ease factor', () => {
+  const reviewed = computeNextReview(reviewCard, 'good');
+  assert.equal(reviewed.learning_step, null);
+  // 30 days * 2.5 ease = 75 days
+  assert.equal(reviewed.srs_interval, 75 * 86400);
+  assert.equal(reviewed.due_seconds, 75 * 86400);
 });
