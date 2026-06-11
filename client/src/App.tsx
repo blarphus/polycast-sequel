@@ -138,7 +138,7 @@ export default function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Navigate to="/dictionary" replace />
+              <Navigate to="/learn" replace />
             </ProtectedRoute>
           }
         />

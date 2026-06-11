@@ -94,7 +94,7 @@ export default function BottomToolbar() {
     try {
       await switchAccount(accountId);
       setAccountMenuOpen(false);
-      // Return to the default dictionary after switching profiles.
+      // Return to the default flashcards after switching profiles.
       navigate('/');
     } catch (err) {
       setAccountActionError(toErrorMessage(err));
