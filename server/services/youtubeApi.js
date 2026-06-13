@@ -82,16 +82,24 @@ export async function fetchYouTubePlaylistVideoIds(playlistId, apiKey, maxResult
 
 export async function fetchYouTubeVideoDetails(videoIds, apiKey, part = 'snippet,contentDetails') {
   if (!videoIds.length) return [];
-  const detailUrl =
-    `https://www.googleapis.com/youtube/v3/videos` +
-    `?part=${part}&id=${videoIds.join(',')}` +
-    `&key=${apiKey}`;
-  const data = await fetchYouTubeJson(
-    detailUrl,
-    'Failed to fetch video details from YouTube',
-    'YouTube video details API error',
-  );
-  return data.items || [];
+  // videos.list accepts at most 50 ids per request — chunk so callers that
+  // aggregate across channels (e.g. the highlights carousel) don't 400.
+  const CHUNK = 50;
+  const items = [];
+  for (let i = 0; i < videoIds.length; i += CHUNK) {
+    const batch = videoIds.slice(i, i + CHUNK);
+    const detailUrl =
+      `https://www.googleapis.com/youtube/v3/videos` +
+      `?part=${part}&id=${batch.join(',')}` +
+      `&key=${apiKey}`;
+    const data = await fetchYouTubeJson(
+      detailUrl,
+      'Failed to fetch video details from YouTube',
+      'YouTube video details API error',
+    );
+    if (data.items) items.push(...data.items);
+  }
+  return items;
 }
 
 export async function searchCaptionedVideoIds(query, lang, regionCode, apiKey, maxResults = 25) {
