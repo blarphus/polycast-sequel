@@ -92,7 +92,9 @@ export async function getChannelSummaries(lang = 'en') {
     throw err;
   }
 
-  const cacheKey = `channels:${lang}`;
+  // channels2 — bumped when the curated channel list changes so the new
+  // entries appear without waiting for the previous cache to expire.
+  const cacheKey = `channels2:${lang}`;
   const apiKey = getYouTubeApiKey();
 
   const { data } = await cachedFetch(cacheKey, async () => {
@@ -114,6 +116,40 @@ export async function getChannelSummaries(lang = 'en') {
   return data;
 }
 
+/**
+ * A carousel of "popular new videos" across the curated channels for a
+ * language: the latest few uploads from each channel, ranked by view count.
+ * Used above the channel list in the Videos tab.
+ */
+export async function getChannelHighlights(lang = 'en', userRegion) {
+  const channels = CHANNELS_BY_LANG[lang];
+  if (!channels) {
+    const err = new Error('No channels for this language');
+    err.status = 404;
+    throw err;
+  }
+
+  const { userRegion: resolvedUserRegion } = resolveUserRegion(lang, userRegion);
+  const cacheKey = `highlights:${lang}:${resolvedUserRegion}`;
+  const apiKey = getYouTubeApiKey();
+
+  const { data } = await cachedFetch(cacheKey, async () => {
+    // Latest 5 uploads per channel — "new" — then rank the pool by views.
+    const idLists = await Promise.all(
+      channels.map((ch) => fetchYouTubePlaylistVideoIds(ch.uploadsPlaylist, apiKey, 5)),
+    );
+    const videoIds = idLists.flat();
+    if (videoIds.length === 0) return [];
+
+    const items = await fetchYouTubeVideoDetails(videoIds, apiKey, 'snippet,contentDetails,statistics');
+    const videos = filterAndMapTrendingItems(items, resolvedUserRegion, { skipCaptionFilter: true });
+    videos.sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0));
+    return videos.slice(0, 15);
+  }, 21600);
+
+  return data;
+}
+
 export async function getChannelDetail(handle, lang = 'en', userRegion) {
   const channel = findChannelByHandle(handle);
   if (!channel) {
@@ -123,7 +159,8 @@ export async function getChannelDetail(handle, lang = 'en', userRegion) {
   }
 
   const { userRegion: resolvedUserRegion } = resolveUserRegion(lang, userRegion);
-  const cacheKey = `channel3:${handle}:${resolvedUserRegion}`;
+  // cache key bumped to channel4 — response now carries view_count per video.
+  const cacheKey = `channel4:${handle}:${resolvedUserRegion}`;
   const apiKey = getYouTubeApiKey();
 
   const { data } = await cachedFetch(cacheKey, async () => {
@@ -131,7 +168,8 @@ export async function getChannelDetail(handle, lang = 'en', userRegion) {
     if (videoIds.length === 0) {
       return { channel: { name: channel.name, handle: channel.handle }, videos: [] };
     }
-    const items = await fetchYouTubeVideoDetails(videoIds, apiKey);
+    // Include statistics so the client can sort by view count ("most popular").
+    const items = await fetchYouTubeVideoDetails(videoIds, apiKey, 'snippet,contentDetails,statistics');
     const videos = filterAndMapTrendingItems(items, resolvedUserRegion, { skipCaptionFilter: true });
     videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
     return { channel: { name: channel.name, handle: channel.handle }, videos };

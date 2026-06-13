@@ -152,6 +152,9 @@ export function filterAndMapTrendingItems(items, userRegion, opts = {}) {
                  `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`,
       duration_seconds: parseDuration(item.contentDetails.duration),
       published_at: item.snippet.publishedAt,
+      // Present only when the caller requested the `statistics` part (channel
+      // detail does, for the "most popular" sort); null otherwise.
+      view_count: item.statistics?.viewCount != null ? Number(item.statistics.viewCount) : null,
       has_captions: item.contentDetails.caption === 'true',
     }));
 }

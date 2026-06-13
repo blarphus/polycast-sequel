@@ -13,6 +13,7 @@ import {
   getTrendingVideosForLanguage,
   searchVideosForLanguage,
   getChannelSummaries,
+  getChannelHighlights,
   getChannelDetail,
   getLessonSummaries,
   getLessonDetail,
@@ -81,6 +82,17 @@ router.get('/api/videos/channels', authMiddleware, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, 'GET /api/videos/channels failed');
     res.status(err.status || 500).json({ error: err.message || 'Failed to fetch channels' });
+  }
+});
+
+router.get('/api/videos/highlights', authMiddleware, async (req, res) => {
+  try {
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    const userRegion = req.query.userRegion?.toString();
+    res.json(await getChannelHighlights(lang, userRegion));
+  } catch (err) {
+    req.log.error({ err }, 'GET /api/videos/highlights failed');
+    res.status(err.status || 500).json({ error: err.message || 'Failed to fetch highlights' });
   }
 });
 
