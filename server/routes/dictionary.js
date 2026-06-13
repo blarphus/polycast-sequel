@@ -13,6 +13,7 @@ import logger from '../logger.js';
 import { audioContentType, synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext, explainSelectionInContext } from '../services/wordSemanticsService.js';
 import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
+import { mergeForm } from '../lib/normalizeWordFields.js';
 
 const router = Router();
 
@@ -127,7 +128,14 @@ const saveWordBody = z.object({
   image_url: z.string().nullable().optional(),
   lemma: z.string().nullable().optional(),
   forms: z.string().nullable().optional(),
+  // The exact surface form the learner tapped. Always merged into `forms` so
+  // that conjugation highlights even when the inflection table omitted it.
+  surface_form: z.string().nullable().optional(),
   image_term: z.string().nullable().optional(),
+});
+
+const addFormBody = z.object({
+  form: z.string().min(1, 'form is required'),
 });
 
 /**
@@ -594,7 +602,10 @@ router.get('/api/dictionary/word-groups', authMiddleware, validate({ query: word
  * POST /api/dictionary/words -- Save a word to the personal dictionary
  */
 router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBody }), async (req, res) => {
-  const { word, translation, definition, target_language, sentence_context, frequency, frequency_count, example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, image_term } = req.body;
+  const { word, translation, definition, target_language, sentence_context, frequency, frequency_count, example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, surface_form, image_term } = req.body;
+
+  // Guarantee the tapped surface form is among the stored inflections.
+  const mergedForms = surface_form ? mergeForm(forms, surface_form) : (forms || null);
 
   try {
     // Check if this exact definition already exists
@@ -605,14 +616,29 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
          AND definition = $4`,
       [req.userId, word, target_language || null, definition || ''],
     );
-    if (existing.length > 0) return res.status(200).json({ ...existing[0], _created: false });
+    if (existing.length > 0) {
+      // Already saved — still ensure the tapped surface form is a stored form.
+      const row = existing[0];
+      if (surface_form) {
+        const withForm = mergeForm(row.forms, surface_form);
+        if (withForm !== row.forms) {
+          const { rows: updatedRows } = await pool.query(
+            'UPDATE saved_words SET forms = $3 WHERE id = $1 AND user_id = $2 RETURNING *',
+            [row.id, req.userId, withForm],
+          );
+          invalidateDictionaryCache(req.userId);
+          return res.status(200).json({ ...updatedRows[0], _created: false });
+        }
+      }
+      return res.status(200).json({ ...row, _created: false });
+    }
 
     // Insert new definition
     const { rows } = await pool.query(
       `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, frequency_count, image_term)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
-      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, sentence_translation || null, part_of_speech || null, image_url || null, lemma || null, forms || null, frequency_count ?? null, image_term || null],
+      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, sentence_translation || null, part_of_speech || null, image_url || null, lemma || null, mergedForms, frequency_count ?? null, image_term || null],
     );
     invalidateDictionaryCache(req.userId);
     return res.status(201).json({ ...rows[0], _created: true });
@@ -653,6 +679,32 @@ router.patch('/api/dictionary/words/:id', authMiddleware, validate({ params: uui
   } catch (err) {
     req.log.error({ err }, 'Error updating word');
     return res.status(500).json({ error: 'Failed to update word' });
+  }
+});
+
+/**
+ * POST /api/dictionary/words/:id/forms -- Append a surface form to a saved
+ * word's inflection list (idempotent). Lets the reader "learn" an inflection
+ * it encounters so every conjugation of an already-saved word highlights.
+ */
+router.post('/api/dictionary/words/:id/forms', authMiddleware, validate({ params: uuidParam, body: addFormBody }), async (req, res) => {
+  try {
+    const { rows: existing } = await pool.query(
+      'SELECT forms FROM saved_words WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.userId],
+    );
+    if (existing.length === 0) return res.status(404).json({ error: 'Word not found' });
+
+    const merged = mergeForm(existing[0].forms, req.body.form);
+    const { rows } = await pool.query(
+      'UPDATE saved_words SET forms = $3 WHERE id = $1 AND user_id = $2 RETURNING *',
+      [req.params.id, req.userId, merged],
+    );
+    invalidateDictionaryCache(req.userId);
+    return res.json(rows[0]);
+  } catch (err) {
+    req.log.error({ err }, 'Error adding word form');
+    return res.status(500).json({ error: 'Failed to add word form' });
   }
 });
 
