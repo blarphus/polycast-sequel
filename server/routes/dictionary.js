@@ -89,6 +89,7 @@ const wordImageBody = z.object({
 });
 
 const updateWordBody = z.object({
+  word: z.string().min(1).optional(),
   translation: z.string().optional(),
   definition: z.string().optional(),
   example_sentence: z.string().nullable().optional(),
@@ -652,7 +653,7 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
  * PATCH /api/dictionary/words/:id -- Update editable fields on a saved word
  */
 router.patch('/api/dictionary/words/:id', authMiddleware, validate({ params: uuidParam, body: updateWordBody }), async (req, res) => {
-  const fields = ['translation', 'definition', 'example_sentence', 'sentence_translation', 'part_of_speech', 'image_url', 'image_term'];
+  const fields = ['word', 'translation', 'definition', 'example_sentence', 'sentence_translation', 'part_of_speech', 'image_url', 'image_term'];
   const sets = [];
   const values = [req.params.id, req.userId];
   let idx = 3;
