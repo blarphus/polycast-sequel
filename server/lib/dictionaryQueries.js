@@ -132,6 +132,34 @@ export async function listDueWords(db, userId, timeZone = 'UTC') {
   );
 }
 
+/**
+ * Counts for the practice start screen: reviews/learning due now, the pool of
+ * never-introduced cards available, and the user's current daily-new limit.
+ * The `due` predicate mirrors listDueWords so the count matches the session.
+ */
+export async function listStudyOverview(db, userId) {
+  const { rows } = await db.query(
+    `WITH prefs AS (
+       SELECT target_language, daily_new_limit FROM users WHERE id = $1
+     )
+     SELECT
+       (SELECT COUNT(*)::int FROM saved_words sw CROSS JOIN prefs p
+          WHERE sw.user_id = $1
+            AND sw.target_language IS NOT DISTINCT FROM p.target_language
+            AND (
+              (sw.learning_step IS NOT NULL AND sw.due_at <= NOW() + INTERVAL '20 minutes')
+              OR (sw.learning_step IS NULL AND sw.due_at <= NOW())
+            )) AS due,
+       (SELECT COUNT(*)::int FROM saved_words sw CROSS JOIN prefs p
+          WHERE sw.user_id = $1
+            AND sw.target_language IS NOT DISTINCT FROM p.target_language
+            AND sw.due_at IS NULL AND sw.last_reviewed_at IS NULL) AS new_available,
+       (SELECT COALESCE(daily_new_limit, 0) FROM prefs) AS daily_new_limit`,
+    [userId],
+  );
+  return rows[0] || { due: 0, new_available: 0, daily_new_limit: 0 };
+}
+
 function isDictionaryEntryNew(word) {
   return word.srs_interval === 0 && word.learning_step === null && !word.last_reviewed_at;
 }

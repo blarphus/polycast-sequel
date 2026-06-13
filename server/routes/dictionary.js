@@ -12,7 +12,7 @@ import { generateStageSentence } from '../lib/stageSentence.js';
 import logger from '../logger.js';
 import { audioContentType, synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext, explainSelectionInContext } from '../services/wordSemanticsService.js';
-import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
+import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listStudyOverview, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
 import { mergeForm } from '../lib/normalizeWordFields.js';
 
 const router = Router();
@@ -471,6 +471,20 @@ router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
 // ---------------------------------------------------------------------------
 // SRS (Spaced Repetition) — Anki-style algorithm
 // ---------------------------------------------------------------------------
+
+/**
+ * GET /api/dictionary/study-overview -- Counts for the practice start screen:
+ * reviews due now, never-seen cards available, and the daily-new limit.
+ */
+router.get('/api/dictionary/study-overview', authMiddleware, async (req, res) => {
+  try {
+    const overview = await listStudyOverview(pool, req.userId);
+    return res.json(overview);
+  } catch (err) {
+    req.log.error({ err }, 'Error fetching study overview');
+    return res.status(500).json({ error: 'Failed to fetch study overview' });
+  }
+});
 
 /**
  * GET /api/dictionary/due -- Cards due for review + new cards
