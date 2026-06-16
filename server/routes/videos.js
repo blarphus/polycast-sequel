@@ -12,11 +12,15 @@ import {
 import {
   getTrendingVideosForLanguage,
   searchVideosForLanguage,
-  getChannelSummaries,
+  getChannelSummariesForUser,
   getChannelHighlights,
   getChannelDetail,
+  getChannelSubscription,
+  getSubscriptionFeed,
   getLessonSummaries,
   getLessonDetail,
+  subscribeToChannel,
+  unsubscribeFromChannel,
 } from '../services/videoCatalogService.js';
 
 const router = Router();
@@ -30,6 +34,10 @@ const videoSearchQuery = z.object({
   q: z.string().min(1, 'Query parameter "q" is required'),
   lang: z.string().optional(),
   userRegion: z.string().optional(),
+});
+
+const uuidParam = z.object({
+  id: z.string().uuid(),
 });
 
 router.get('/api/videos', authMiddleware, async (req, res) => {
@@ -78,10 +86,51 @@ router.get('/api/videos/search', authMiddleware, validate({ query: videoSearchQu
 router.get('/api/videos/channels', authMiddleware, async (req, res) => {
   try {
     const lang = (req.query.lang || 'en').toString().toLowerCase();
-    res.json(await getChannelSummaries(lang));
+    res.json(await getChannelSummariesForUser(req.userId, lang));
   } catch (err) {
     req.log.error({ err }, 'GET /api/videos/channels failed');
     res.status(err.status || 500).json({ error: err.message || 'Failed to fetch channels' });
+  }
+});
+
+router.get('/api/videos/subscriptions', authMiddleware, async (req, res) => {
+  try {
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    const userRegion = req.query.userRegion?.toString();
+    res.json(await getSubscriptionFeed(req.userId, lang, userRegion));
+  } catch (err) {
+    req.log.error({ err }, 'GET /api/videos/subscriptions failed');
+    res.status(err.status || 500).json({ error: err.message || 'Failed to fetch subscription videos' });
+  }
+});
+
+router.get('/api/videos/channels/:handle/subscription', authMiddleware, async (req, res) => {
+  try {
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    res.json(await getChannelSubscription(req.userId, lang, req.params.handle));
+  } catch (err) {
+    req.log.error({ err }, 'GET /api/videos/channels/:handle/subscription failed');
+    res.status(err.status || 500).json({ error: err.message || 'Failed to fetch channel subscription' });
+  }
+});
+
+router.post('/api/videos/channels/:handle/subscription', authMiddleware, async (req, res) => {
+  try {
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    res.json(await subscribeToChannel(req.userId, lang, req.params.handle));
+  } catch (err) {
+    req.log.error({ err }, 'POST /api/videos/channels/:handle/subscription failed');
+    res.status(err.status || 500).json({ error: err.message || 'Failed to subscribe to channel' });
+  }
+});
+
+router.delete('/api/videos/channels/:handle/subscription', authMiddleware, async (req, res) => {
+  try {
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    res.json(await unsubscribeFromChannel(req.userId, lang, req.params.handle));
+  } catch (err) {
+    req.log.error({ err }, 'DELETE /api/videos/channels/:handle/subscription failed');
+    res.status(err.status || 500).json({ error: err.message || 'Failed to unsubscribe from channel' });
   }
 });
 
@@ -131,7 +180,7 @@ router.get('/api/videos/lesson/:id', authMiddleware, async (req, res) => {
   }
 });
 
-router.get('/api/videos/:id', authMiddleware, async (req, res) => {
+router.get('/api/videos/:id', authMiddleware, validate({ params: uuidParam }), async (req, res) => {
   try {
     res.json(await getVideoDetail(req.params.id));
   } catch (err) {

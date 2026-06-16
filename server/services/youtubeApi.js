@@ -80,6 +80,37 @@ export async function fetchYouTubePlaylistVideoIds(playlistId, apiKey, maxResult
   return (data.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
 }
 
+export async function fetchYouTubeChannel(channelRef, apiKey) {
+  const normalized = String(channelRef || '').trim().replace(/^@+/, '');
+  if (!normalized) return null;
+
+  const params = new URLSearchParams({
+    part: 'snippet,contentDetails',
+    key: apiKey,
+  });
+  if (normalized.startsWith('UC')) {
+    params.set('id', normalized);
+  } else {
+    params.set('forHandle', normalized);
+  }
+
+  const data = await fetchYouTubeJson(
+    `https://www.googleapis.com/youtube/v3/channels?${params}`,
+    'Failed to fetch channel from YouTube',
+    'YouTube channel API error',
+  );
+  const item = data.items?.[0];
+  if (!item) return null;
+
+  return {
+    name: item.snippet.title,
+    handle: item.id,
+    channelId: item.id,
+    uploadsPlaylist: item.contentDetails?.relatedPlaylists?.uploads,
+    thumbnails: [item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url].filter(Boolean),
+  };
+}
+
 export async function fetchYouTubeVideoDetails(videoIds, apiKey, part = 'snippet,contentDetails') {
   if (!videoIds.length) return [];
   // videos.list accepts at most 50 ids per request — chunk so callers that
@@ -124,7 +155,7 @@ export async function searchCaptionedVideoIds(query, lang, regionCode, apiKey, m
 export async function fetchTrendingPage(regionCode, apiKey, pageToken) {
   const ytUrl =
     `https://www.googleapis.com/youtube/v3/videos` +
-    `?part=snippet,contentDetails&chart=mostPopular` +
+    `?part=snippet,contentDetails,statistics&chart=mostPopular` +
     `&regionCode=${regionCode}&maxResults=50&key=${apiKey}` +
     (pageToken ? `&pageToken=${pageToken}` : '');
   return fetchYouTubeJson(
@@ -177,7 +208,7 @@ export async function fetchMoviesAndTV(apiKey, userRegion) {
     throw new Error('Movies & TV playlist returned no videos');
   }
 
-  const items = await fetchYouTubeVideoDetails(videoIds, apiKey);
+  const items = await fetchYouTubeVideoDetails(videoIds, apiKey, 'snippet,contentDetails,statistics');
   return filterAndMapTrendingItems(items, userRegion);
 }
 
@@ -190,12 +221,12 @@ export async function fetchAllChannelVideos(lang, apiKey, userRegion) {
 
   const allVideos = await Promise.all(
     channels.map(async (ch) => {
-      const cacheKey = `channel3:${ch.handle}:${userRegion}`;
+      const cacheKey = `channel5:${ch.handle}:${userRegion}`;
       const { data } = await cachedFetch(cacheKey, async () => {
         const videoIds = await fetchYouTubePlaylistVideoIds(ch.uploadsPlaylist, apiKey);
         if (videoIds.length === 0) return { channel: { name: ch.name, handle: ch.handle }, videos: [] };
 
-        const items = await fetchYouTubeVideoDetails(videoIds, apiKey);
+        const items = await fetchYouTubeVideoDetails(videoIds, apiKey, 'snippet,contentDetails,statistics');
         const videos = filterAndMapTrendingItems(items, userRegion, { skipCaptionFilter: true });
         videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
 
