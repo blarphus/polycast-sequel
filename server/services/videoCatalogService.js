@@ -142,23 +142,21 @@ export async function searchVideosForLanguage(query, lang = 'en', userRegion) {
 export async function getChannelSummaries(lang = 'en') {
   const channels = getChannelsForLanguage(lang);
 
-  // channels2 — bumped when the curated channel list changes so the new
-  // entries appear without waiting for the previous cache to expire.
-  const cacheKey = `channels2:${lang}`;
+  // channels3 — summaries now use channel profile images instead of recent
+  // upload thumbnails.
+  const cacheKey = `channels3:${lang}`;
   const apiKey = getYouTubeApiKey();
 
   const { data } = await cachedFetch(cacheKey, async () => {
     return Promise.all(
       channels.map(async (ch) => {
-        const videoIds = await fetchYouTubePlaylistVideoIds(ch.uploadsPlaylist, apiKey, 5);
-        if (videoIds.length === 0) {
-          return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails: [] };
-        }
-        const items = await fetchYouTubeVideoDetails(videoIds, apiKey, 'snippet');
-        const thumbnails = items
-          .slice(0, 3)
-          .map((item) => item.snippet.thumbnails?.medium?.url || `https://img.youtube.com/vi/${item.id}/mqdefault.jpg`);
-        return { name: ch.name, handle: ch.handle, channelId: ch.channelId, thumbnails };
+        const channel = await fetchYouTubeChannel(ch.channelId, apiKey).catch(() => null);
+        return {
+          name: channel?.name || ch.name,
+          handle: ch.handle,
+          channelId: ch.channelId,
+          thumbnails: channel?.thumbnails || [],
+        };
       }),
     );
   }, 43200);
