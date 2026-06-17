@@ -21,6 +21,46 @@ function markSelectedWord(sentence, word) {
   return sentence.replace(new RegExp(`\\b${escaped}\\b`, 'iu'), `~${word}~`);
 }
 
+function normalizeForRepairDistance(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+function editDistance(a, b) {
+  const left = Array.from(a);
+  const right = Array.from(b);
+  const previous = Array.from({ length: right.length + 1 }, (_, i) => i);
+  const current = new Array(right.length + 1);
+
+  for (let i = 0; i < left.length; i += 1) {
+    current[0] = i + 1;
+    for (let j = 0; j < right.length; j += 1) {
+      const cost = left[i] === right[j] ? 0 : 1;
+      current[j + 1] = Math.min(
+        current[j] + 1,
+        previous[j + 1] + 1,
+        previous[j] + cost,
+      );
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+
+  return previous[right.length];
+}
+
+function isCloseCaptionRepair(original, repaired) {
+  const source = normalizeForRepairDistance(original);
+  const target = normalizeForRepairDistance(repaired);
+  if (!source || !target) return false;
+  if (source === target) return true;
+  const maxDistance = Math.max(2, Math.ceil(Math.max(source.length, target.length) * 0.35));
+  return editDistance(source, target) <= maxDistance;
+}
+
 async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   // Wrap the word in tildes so we can locate its translation inside the
   // translated sentence; fall back to translating the word alone if the
@@ -43,7 +83,7 @@ async function repairUnrecognizedLookup({ word, sentence, nativeLang, targetLang
 
 The normal dictionary lookup decided "${word}" is NOT a recognized standalone word, so this is a fallback for subtitle typos, missing accent marks, bad auto-captions, slangy inflections, or truncated/incorrect forms.
 
-Infer the most likely REAL ${targetLang || 'target-language'} word or short expression the learner intended to click. Use the surrounding sentence as evidence. If there is no plausible real word/expression, return valid:false.
+Infer the most likely REAL ${targetLang || 'target-language'} word or short expression the learner intended to click. Use the surrounding sentence as evidence. Prefer the smallest spelling/sound correction of "${word}" that makes grammatical sense. Do NOT replace it with a loose synonym or paraphrase. For example, if a caption token is missing letters, restore the likely word rather than choosing a different word with a similar meaning. If there is no plausible close correction, return valid:false.
 
 Return ONLY JSON with exactly these keys:
 {"valid":true/false,"target_word":"...","translation":"...","definition":"...","part_of_speech":"...","lemma":"...","sentence_translation":"...","example":"...","example_translation":"...","is_phrase":true/false,"phrase":"...","phrase_translation":"...","phrase_definition":"..."}
@@ -100,6 +140,11 @@ Return ONLY JSON with exactly these keys:
     return null;
   }
 
+  const isPhrase = parsed.is_phrase === true && !!(parsed.phrase && String(parsed.phrase).trim());
+  if (!isPhrase && !isCloseCaptionRepair(word, targetWord)) {
+    return null;
+  }
+
   if (targetLang) {
     persistGeminiFallbackSense({
       word: lemma,
@@ -124,7 +169,7 @@ Return ONLY JSON with exactly these keys:
     example: parsed.example || null,
     example_translation: parsed.example_translation || null,
     sentence_translation: parsed.sentence_translation || null,
-    is_phrase: parsed.is_phrase === true && !!(parsed.phrase && String(parsed.phrase).trim()),
+    is_phrase: isPhrase,
     phrase: (parsed.phrase && String(parsed.phrase).trim()) || null,
     phrase_translation: (parsed.phrase_translation && String(parsed.phrase_translation).trim()) || null,
     phrase_definition: (parsed.phrase_definition && String(parsed.phrase_definition).trim()) || null,
