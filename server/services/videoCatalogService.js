@@ -8,6 +8,7 @@ import {
   fetchAllChannelVideos,
   fetchYouTubeChannel,
   fetchTrendingPage,
+  fetchYouTubePlaylistVideoPage,
   fetchYouTubePlaylistVideoIds,
   fetchYouTubeVideoDetails,
   getYouTubeApiKey,
@@ -333,23 +334,33 @@ export async function getSubscriptionFeed(userId, lang = 'en', userRegion) {
   return data;
 }
 
-export async function getChannelDetail(handle, lang = 'en', userRegion) {
+export async function getChannelDetail(handle, lang = 'en', userRegion, pageToken) {
   const { userRegion: resolvedUserRegion } = resolveUserRegion(lang, userRegion);
   // cache key bumped to channel4 — response now carries view_count per video.
   const apiKey = getYouTubeApiKey();
   const channel = await resolveChannel(handle, apiKey);
-  const cacheKey = `channel5:${channel.handle}:${resolvedUserRegion}`;
+  const normalizedPageToken = pageToken ? String(pageToken) : '';
+  const cacheKey = `channel6:${channel.handle}:${resolvedUserRegion}:${normalizedPageToken}`;
 
   const { data } = await cachedFetch(cacheKey, async () => {
-    const videoIds = await fetchYouTubePlaylistVideoIds(channel.uploadsPlaylist, apiKey);
+    const page = await fetchYouTubePlaylistVideoPage(channel.uploadsPlaylist, apiKey, 50, normalizedPageToken);
+    const videoIds = page.videoIds;
     if (videoIds.length === 0) {
-      return { channel: { name: channel.name, handle: channel.handle, channelId: channel.channelId }, videos: [] };
+      return {
+        channel: { name: channel.name, handle: channel.handle, channelId: channel.channelId },
+        videos: [],
+        next_page_token: page.nextPageToken,
+      };
     }
     // Include statistics so the client can sort by view count ("most popular").
     const items = await fetchYouTubeVideoDetails(videoIds, apiKey, 'snippet,contentDetails,statistics');
     const videos = filterAndMapTrendingItems(items, resolvedUserRegion, { skipCaptionFilter: true });
     videos.sort((a, b) => (b.has_captions ? 1 : 0) - (a.has_captions ? 1 : 0));
-    return { channel: { name: channel.name, handle: channel.handle, channelId: channel.channelId }, videos };
+    return {
+      channel: { name: channel.name, handle: channel.handle, channelId: channel.channelId },
+      videos,
+      next_page_token: page.nextPageToken,
+    };
   }, 21600);
 
   return data;

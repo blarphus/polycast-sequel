@@ -67,17 +67,32 @@ export async function fetchYouTubeVideoMetadata(youtubeId, apiKey) {
   return data.items?.[0] || null;
 }
 
-export async function fetchYouTubePlaylistVideoIds(playlistId, apiKey, maxResults = 50) {
+export async function fetchYouTubePlaylistVideoPage(playlistId, apiKey, maxResults = 50, pageToken) {
+  const params = new URLSearchParams({
+    part: 'contentDetails',
+    playlistId,
+    maxResults: String(maxResults),
+    key: apiKey,
+  });
+  if (pageToken) params.set('pageToken', pageToken);
+
   const plUrl =
     `https://www.googleapis.com/youtube/v3/playlistItems` +
-    `?part=contentDetails&playlistId=${playlistId}` +
-    `&maxResults=${maxResults}&key=${apiKey}`;
+    `?${params}`;
   const data = await fetchYouTubeJson(
     plUrl,
     'Failed to fetch playlist from YouTube',
     'YouTube playlist API error',
   );
-  return (data.items || []).map((item) => item.contentDetails.videoId).filter(Boolean);
+  return {
+    videoIds: (data.items || []).map((item) => item.contentDetails.videoId).filter(Boolean),
+    nextPageToken: data.nextPageToken || null,
+  };
+}
+
+export async function fetchYouTubePlaylistVideoIds(playlistId, apiKey, maxResults = 50) {
+  const page = await fetchYouTubePlaylistVideoPage(playlistId, apiKey, maxResults);
+  return page.videoIds;
 }
 
 export async function fetchYouTubeChannel(channelRef, apiKey) {

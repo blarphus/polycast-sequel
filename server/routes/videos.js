@@ -163,7 +163,8 @@ router.get('/api/videos/channel/:handle', authMiddleware, async (req, res) => {
     const { handle } = req.params;
     const lang = (req.query.lang || 'en').toString().toLowerCase();
     const userRegion = req.query.userRegion?.toString();
-    res.json(await getChannelDetail(handle, lang, userRegion));
+    const pageToken = req.query.pageToken?.toString();
+    res.json(await getChannelDetail(handle, lang, userRegion, pageToken));
   } catch (err) {
     req.log.error({ err }, 'GET /api/videos/channel/:handle failed');
     res.status(err.status || 500).json({ error: err.message || 'Failed to fetch channel videos' });
