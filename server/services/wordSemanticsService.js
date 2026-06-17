@@ -21,46 +21,6 @@ function markSelectedWord(sentence, word) {
   return sentence.replace(new RegExp(`\\b${escaped}\\b`, 'iu'), `~${word}~`);
 }
 
-function normalizeForRepairDistance(value) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\p{L}\p{N}]+/gu, '');
-}
-
-function editDistance(a, b) {
-  const left = Array.from(a);
-  const right = Array.from(b);
-  const previous = Array.from({ length: right.length + 1 }, (_, i) => i);
-  const current = new Array(right.length + 1);
-
-  for (let i = 0; i < left.length; i += 1) {
-    current[0] = i + 1;
-    for (let j = 0; j < right.length; j += 1) {
-      const cost = left[i] === right[j] ? 0 : 1;
-      current[j + 1] = Math.min(
-        current[j] + 1,
-        previous[j + 1] + 1,
-        previous[j] + cost,
-      );
-    }
-    previous.splice(0, previous.length, ...current);
-  }
-
-  return previous[right.length];
-}
-
-function isCloseCaptionRepair(original, repaired) {
-  const source = normalizeForRepairDistance(original);
-  const target = normalizeForRepairDistance(repaired);
-  if (!source || !target) return false;
-  if (source === target) return true;
-  const maxDistance = Math.max(2, Math.ceil(Math.max(source.length, target.length) * 0.35));
-  return editDistance(source, target) <= maxDistance;
-}
-
 async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   // Wrap the word in tildes so we can locate its translation inside the
   // translated sentence; fall back to translating the word alone if the
@@ -74,107 +34,6 @@ async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
 
   const fallback = await translateText(word, sourceLang, targetLang);
   return fallback.trim();
-}
-
-async function repairUnrecognizedLookup({ word, sentence, nativeLang, targetLang }) {
-  const raw = await callGemini(
-    `A language-learning popup selected "${word}" in this ${targetLang || 'target-language'} caption sentence:
-"${sentence}"
-
-The normal dictionary lookup decided "${word}" is NOT a recognized standalone word, so this is a fallback for subtitle typos, missing accent marks, bad auto-captions, slangy inflections, or truncated/incorrect forms.
-
-Infer the most likely REAL ${targetLang || 'target-language'} word or short expression the learner intended to click. Use the surrounding sentence as evidence. Prefer the smallest spelling/sound correction of "${word}" that makes grammatical sense. Do NOT replace it with a loose synonym or paraphrase. For example, if a caption token is missing letters, restore the likely word rather than choosing a different word with a similar meaning. If there is no plausible close correction, return valid:false.
-
-Return ONLY JSON with exactly these keys:
-{"valid":true/false,"target_word":"...","translation":"...","definition":"...","part_of_speech":"...","lemma":"...","sentence_translation":"...","example":"...","example_translation":"...","is_phrase":true/false,"phrase":"...","phrase_translation":"...","phrase_definition":"..."}
-
-- valid: true only if you can infer a plausible real word/expression from the sentence.
-- target_word: the corrected surface word/expression in ${targetLang || 'the target language'}.
-- translation: the standard ${nativeLang} translation of target_word in this context, 1-3 words.
-- definition: define target_word itself in ${nativeLang}, 12 words max.
-- part_of_speech: one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle.
-- lemma: the base/dictionary form to save.
-- sentence_translation: translate the full sentence into ${nativeLang}. Surround the word(s) corresponding to target_word with tildes.
-- example: a short beginner-level example sentence in ${targetLang || 'the target language'} using target_word or its lemma. Surround it with tildes.
-- example_translation: translate example into ${nativeLang}; wrap the equivalent word(s) in tildes.
-- is_phrase/phrase/phrase_translation/phrase_definition: fill these only when the best card is a fixed phrase; otherwise false and empty strings.`,
-    {
-      thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 420,
-      responseMimeType: 'application/json',
-    },
-  );
-
-  const parsed = parseGeminiJson(raw, 'Unrecognized word repair lookup');
-  ensureGeminiKeys(
-    parsed,
-    [
-      'valid',
-      'target_word',
-      'translation',
-      'definition',
-      'part_of_speech',
-      'lemma',
-      'sentence_translation',
-      'example',
-      'example_translation',
-      'is_phrase',
-      'phrase',
-      'phrase_translation',
-      'phrase_definition',
-    ],
-    'Unrecognized word repair lookup',
-  );
-
-  if (parsed.valid === false) {
-    return null;
-  }
-
-  const targetWord = String(parsed.target_word || '').trim();
-  const lemma = String(parsed.lemma || '').trim();
-  const translation = String(parsed.translation || '').trim();
-  const definition = String(parsed.definition || '').trim();
-  const partOfSpeech = String(parsed.part_of_speech || '').trim();
-
-  if (!targetWord || !lemma || !translation || !definition || !partOfSpeech) {
-    return null;
-  }
-
-  const isPhrase = parsed.is_phrase === true && !!(parsed.phrase && String(parsed.phrase).trim());
-  if (!isPhrase && !isCloseCaptionRepair(word, targetWord)) {
-    return null;
-  }
-
-  if (targetLang) {
-    persistGeminiFallbackSense({
-      word: lemma,
-      lang: targetLang,
-      pos: partOfSpeech,
-      definition,
-    });
-  }
-
-  return {
-    word,
-    target_word: targetWord,
-    valid: true,
-    translation,
-    definition,
-    part_of_speech: partOfSpeech,
-    sense_index: null,
-    matched_gloss: null,
-    lemma,
-    is_native: false,
-    definition_source: 'gemini-unrecognized-fallback',
-    example: parsed.example || null,
-    example_translation: parsed.example_translation || null,
-    sentence_translation: parsed.sentence_translation || null,
-    is_phrase: isPhrase,
-    phrase: (parsed.phrase && String(parsed.phrase).trim()) || null,
-    phrase_translation: (parsed.phrase_translation && String(parsed.phrase_translation).trim()) || null,
-    phrase_definition: (parsed.phrase_definition && String(parsed.phrase_definition).trim()) || null,
-    repaired_from_unrecognized: true,
-  };
 }
 
 // pickBestSense — Gemini reads the sentence and candidate senses and, in ONE call, returns both
@@ -501,11 +360,6 @@ ${senseInstruction}
       : ['target_word', 'valid', 'translation', 'definition', 'part_of_speech', 'lemma'],
     'Dictionary lookup',
   );
-
-  if (parsed.valid === false) {
-    const repaired = await repairUnrecognizedLookup({ word, sentence, nativeLang, targetLang });
-    if (repaired) return repaired;
-  }
 
   let sense_index = null;
   let matched_gloss = null;

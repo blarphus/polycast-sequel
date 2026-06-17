@@ -201,7 +201,10 @@
         lastLookup = res;
 
         if (!res || res.valid === false) {
-          bodyEl.innerHTML = `<div class="pc-popup-error">Not a recognized word</div>`;
+          bodyEl.innerHTML = `<div class="pc-popup-error">Not in dictionary</div>`;
+          explainBtn.hidden = !handlers.explain;
+          saveBtn.hidden = true;
+          position();
           return;
         }
 
