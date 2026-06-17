@@ -186,6 +186,53 @@ export async function searchYouTubeChannels(query, lang, regionCode, apiKey, max
     .filter(Boolean);
 }
 
+export async function searchYouTubeVideoAndChannelResults(query, lang, regionCode, apiKey, maxResults = 30) {
+  const searchParams = new URLSearchParams({
+    part: 'snippet',
+    type: 'video,channel',
+    regionCode,
+    relevanceLanguage: lang,
+    maxResults: String(maxResults),
+    q: query,
+    key: apiKey,
+  });
+  const data = await fetchYouTubeJson(
+    `https://www.googleapis.com/youtube/v3/search?${searchParams}`,
+    'Failed to search YouTube videos and channels',
+    'YouTube mixed search API error',
+  );
+
+  return (data.items || [])
+    .map((item, index) => {
+      if (item.id?.kind === 'youtube#video' && item.id.videoId) {
+        return {
+          type: 'video',
+          video_id: item.id.videoId,
+          search_rank: index,
+        };
+      }
+
+      const channelId = item.id?.channelId || item.snippet?.channelId;
+      if (item.id?.kind === 'youtube#channel' && channelId) {
+        return {
+          type: 'channel',
+          name: item.snippet?.title || 'YouTube channel',
+          handle: channelId,
+          channel_id: channelId,
+          thumbnails: [
+            item.snippet?.thumbnails?.medium?.url ||
+              item.snippet?.thumbnails?.high?.url ||
+              item.snippet?.thumbnails?.default?.url,
+          ].filter(Boolean),
+          search_rank: index,
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean);
+}
+
 export async function fetchTrendingPage(regionCode, apiKey, pageToken) {
   const ytUrl =
     `https://www.googleapis.com/youtube/v3/videos` +

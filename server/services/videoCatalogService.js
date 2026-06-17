@@ -12,7 +12,7 @@ import {
   fetchYouTubeVideoDetails,
   getYouTubeApiKey,
   searchCaptionedVideoIds,
-  searchYouTubeChannels,
+  searchYouTubeVideoAndChannelResults,
 } from './youtubeApi.js';
 
 const LANG_TO_REGION = {
@@ -146,23 +146,47 @@ export async function searchVideosAndChannelsForUser(userId, query, lang = 'en',
   const apiKey = getYouTubeApiKey();
   const subscribedHandles = await getSubscribedHandles(userId, lang);
 
-  const [videos, remoteChannels] = await Promise.all([
-    searchVideosForLanguage(query, lang, userRegion),
-    cachedFetch(`channel-search1:${lang}:${resolvedUserRegion}:${normalizedQuery}`, () => (
-      searchYouTubeChannels(query, lang, trendingRegion, apiKey)
-    ), 3600).then((result) => result.data),
-  ]);
+  const { data: mixedResults } = await cachedFetch(
+    `mixed-search1:${lang}:${resolvedUserRegion}:${normalizedQuery}`,
+    () => searchYouTubeVideoAndChannelResults(query, lang, trendingRegion, apiKey),
+    3600,
+  );
+
+  const videoIds = mixedResults
+    .filter((item) => item.type === 'video')
+    .map((item) => item.video_id)
+    .filter(Boolean);
+
+  const videoItems = videoIds.length > 0
+    ? await fetchYouTubeVideoDetails(videoIds, apiKey, 'snippet,contentDetails,statistics')
+    : [];
+  const filteredVideos = filterAndMapTrendingItems(videoItems, resolvedUserRegion);
+  const videoById = new Map(filteredVideos.map((video) => [video.youtube_id, video]));
+
+  const videos = mixedResults
+    .filter((item) => item.type === 'video')
+    .map((item) => {
+      const video = videoById.get(item.video_id);
+      return video ? { ...video, search_rank: item.search_rank } : null;
+    })
+    .filter(Boolean);
+
+  const remoteChannels = mixedResults
+    .filter((item) => item.type === 'channel')
+    .map(({ type, ...channel }) => channel);
 
   const curatedMatches = getChannelsForLanguage(lang)
-    .filter((channel) => {
+    .map((channel, index) => ({ channel, index }))
+    .filter(({ channel }) => {
       const haystack = `${channel.name} ${channel.handle}`.toLowerCase();
       return haystack.includes(normalizedQuery);
     })
-    .map((channel) => ({
+    .map(({ channel, index }) => ({
       name: channel.name,
       handle: channel.handle,
       channel_id: channel.channelId,
       thumbnails: [],
+      search_rank: 1000 + index,
     }));
 
   const seen = new Set();
