@@ -36,6 +36,102 @@ async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   return fallback.trim();
 }
 
+async function repairUnrecognizedLookup({ word, sentence, nativeLang, targetLang }) {
+  const raw = await callGemini(
+    `A language-learning popup selected "${word}" in this ${targetLang || 'target-language'} caption sentence:
+"${sentence}"
+
+The normal dictionary lookup decided "${word}" is NOT a recognized standalone word, so this is a fallback for subtitle typos, missing accent marks, bad auto-captions, slangy inflections, or truncated/incorrect forms.
+
+Infer the most likely REAL ${targetLang || 'target-language'} word or short expression the learner intended to click. Use the surrounding sentence as evidence. If there is no plausible real word/expression, return valid:false.
+
+Return ONLY JSON with exactly these keys:
+{"valid":true/false,"target_word":"...","translation":"...","definition":"...","part_of_speech":"...","lemma":"...","sentence_translation":"...","example":"...","example_translation":"...","is_phrase":true/false,"phrase":"...","phrase_translation":"...","phrase_definition":"..."}
+
+- valid: true only if you can infer a plausible real word/expression from the sentence.
+- target_word: the corrected surface word/expression in ${targetLang || 'the target language'}.
+- translation: the standard ${nativeLang} translation of target_word in this context, 1-3 words.
+- definition: define target_word itself in ${nativeLang}, 12 words max.
+- part_of_speech: one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle.
+- lemma: the base/dictionary form to save.
+- sentence_translation: translate the full sentence into ${nativeLang}. Surround the word(s) corresponding to target_word with tildes.
+- example: a short beginner-level example sentence in ${targetLang || 'the target language'} using target_word or its lemma. Surround it with tildes.
+- example_translation: translate example into ${nativeLang}; wrap the equivalent word(s) in tildes.
+- is_phrase/phrase/phrase_translation/phrase_definition: fill these only when the best card is a fixed phrase; otherwise false and empty strings.`,
+    {
+      thinkingConfig: { thinkingBudget: 0 },
+      maxOutputTokens: 420,
+      responseMimeType: 'application/json',
+    },
+  );
+
+  const parsed = parseGeminiJson(raw, 'Unrecognized word repair lookup');
+  ensureGeminiKeys(
+    parsed,
+    [
+      'valid',
+      'target_word',
+      'translation',
+      'definition',
+      'part_of_speech',
+      'lemma',
+      'sentence_translation',
+      'example',
+      'example_translation',
+      'is_phrase',
+      'phrase',
+      'phrase_translation',
+      'phrase_definition',
+    ],
+    'Unrecognized word repair lookup',
+  );
+
+  if (parsed.valid === false) {
+    return null;
+  }
+
+  const targetWord = String(parsed.target_word || '').trim();
+  const lemma = String(parsed.lemma || '').trim();
+  const translation = String(parsed.translation || '').trim();
+  const definition = String(parsed.definition || '').trim();
+  const partOfSpeech = String(parsed.part_of_speech || '').trim();
+
+  if (!targetWord || !lemma || !translation || !definition || !partOfSpeech) {
+    return null;
+  }
+
+  if (targetLang) {
+    persistGeminiFallbackSense({
+      word: lemma,
+      lang: targetLang,
+      pos: partOfSpeech,
+      definition,
+    });
+  }
+
+  return {
+    word,
+    target_word: targetWord,
+    valid: true,
+    translation,
+    definition,
+    part_of_speech: partOfSpeech,
+    sense_index: null,
+    matched_gloss: null,
+    lemma,
+    is_native: false,
+    definition_source: 'gemini-unrecognized-fallback',
+    example: parsed.example || null,
+    example_translation: parsed.example_translation || null,
+    sentence_translation: parsed.sentence_translation || null,
+    is_phrase: parsed.is_phrase === true && !!(parsed.phrase && String(parsed.phrase).trim()),
+    phrase: (parsed.phrase && String(parsed.phrase).trim()) || null,
+    phrase_translation: (parsed.phrase_translation && String(parsed.phrase_translation).trim()) || null,
+    phrase_definition: (parsed.phrase_definition && String(parsed.phrase_definition).trim()) || null,
+    repaired_from_unrecognized: true,
+  };
+}
+
 // pickBestSense — Gemini reads the sentence and candidate senses and, in ONE call, returns both
 // (a) a PICK token — the INDEX number of the sense that states the meaning, the BASE word when the
 // best sense only points to another word (e.g. "plural of mão", "gerund of atenuar combined
@@ -360,6 +456,11 @@ ${senseInstruction}
       : ['target_word', 'valid', 'translation', 'definition', 'part_of_speech', 'lemma'],
     'Dictionary lookup',
   );
+
+  if (parsed.valid === false) {
+    const repaired = await repairUnrecognizedLookup({ word, sentence, nativeLang, targetLang });
+    if (repaired) return repaired;
+  }
 
   let sense_index = null;
   let matched_gloss = null;
