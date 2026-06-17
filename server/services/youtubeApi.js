@@ -173,6 +173,7 @@ export async function fetchTrendingPage(regionCode, apiKey, pageToken) {
  * @param {string} userRegion - the user's actual country code for geo-restriction checks
  */
 export function filterAndMapTrendingItems(items, userRegion, opts = {}) {
+  const wantLang = opts.lang ? String(opts.lang).toLowerCase().split('-')[0] : null;
   return (items || [])
     .filter((item) => opts.skipCaptionFilter || item.contentDetails.caption === 'true')
     .filter((item) => parseDuration(item.contentDetails.duration) > 60)
@@ -182,6 +183,16 @@ export function filterAndMapTrendingItems(items, userRegion, opts = {}) {
       if (rr.allowed) return rr.allowed.includes(userRegion);
       if (rr.blocked) return !rr.blocked.includes(userRegion);
       return true;
+    })
+    // Keep only target-language videos: region "most popular" otherwise leaks
+    // other-language hits (e.g. English music in a Spanish feed). Drop items
+    // YouTube tags as a different language; keep untagged ones (no reliable
+    // signal, and they're usually in-language for a region feed).
+    .filter((item) => {
+      if (!wantLang) return true;
+      const vlang = (item.snippet.defaultAudioLanguage || item.snippet.defaultLanguage || '')
+        .toLowerCase().split('-')[0];
+      return !vlang || vlang === wantLang;
     })
     .map((item) => ({
       youtube_id: item.id,

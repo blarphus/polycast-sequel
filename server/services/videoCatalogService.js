@@ -96,8 +96,8 @@ export async function getTrendingVideosForLanguage(lang = 'en', userRegion) {
   const { trendingRegion, userRegion: resolvedUserRegion } = resolveUserRegion(lang, userRegion);
   const isEnglish = lang === 'en';
   const cacheKey = isEnglish
-    ? `trending3:en:movies:${resolvedUserRegion}`
-    : `trending3:${lang}:${resolvedUserRegion}`;
+    ? `trending4:en:movies:${resolvedUserRegion}`
+    : `trending4:${lang}:${resolvedUserRegion}`;
   const apiKey = getYouTubeApiKey();
 
   const { data } = await cachedFetch(cacheKey, async () => {
@@ -112,7 +112,7 @@ export async function getTrendingVideosForLanguage(lang = 'en', userRegion) {
 
     for (let page = 0; page < MAX_PAGES && collected.length < TARGET; page++) {
       const ytData = await fetchTrendingPage(trendingRegion, apiKey, pageToken);
-      collected.push(...filterAndMapTrendingItems(ytData.items, resolvedUserRegion));
+      collected.push(...filterAndMapTrendingItems(ytData.items, resolvedUserRegion, { lang }));
       pageToken = ytData.nextPageToken;
       if (!pageToken) break;
     }
