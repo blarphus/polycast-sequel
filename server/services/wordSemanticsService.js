@@ -15,6 +15,12 @@ function makeContextError(message, context = {}) {
   return error;
 }
 
+function markSelectedWord(sentence, word) {
+  if (sentence.includes('~')) return sentence;
+  const escaped = String(word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return sentence.replace(new RegExp(`\\b${escaped}\\b`, 'iu'), `~${word}~`);
+}
+
 async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   // Wrap the word in tildes so we can locate its translation inside the
   // translated sentence; fall back to translating the word alone if the
@@ -210,20 +216,31 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
   };
 }
 
-// explainWordInContext — on-demand: ask Gemini to explain what a word means specifically in
-// the sentence it appears in, written in the learner's native language. Used by the popup's
-// "Explain in context" button.
-export async function explainWordInContext({ word, sentence, nativeLang, targetLang, context }) {
+export function buildExplainWordPrompt({ word, sentence, nativeLang, targetLang, context }) {
   // `context` is a wider passage (a rolling transcript window) used only to
   // understand the usage; `sentence` is the exact spot the word was clicked.
+  const markedSentence = markSelectedWord(sentence, word);
   const passage = (context && context.trim()) ? context.trim() : sentence;
+  const markedPassage = markSelectedWord(passage, word);
   const passageBlock = passage !== sentence
-    ? `Wider passage (for context): "${passage}"\n`
+    ? `Wider passage (for context): "${markedPassage}"\n`
     : '';
+  return `${passageBlock}The learner clicked the text wrapped in tildes in this ${targetLang || 'target-language'} sentence: "${markedSentence}"
+Translate the entire sentence into ${nativeLang}. In the sentence translation, wrap the ${nativeLang} words that translate the clicked text in tildes, like ~translated words~. Then explain what "${word}" means as used specifically in that sentence, in simple ${nativeLang} for a language learner.
+
+Return exactly two short lines:
+Sentence: <natural ${nativeLang} translation of the full sentence, with only the clicked text's translated equivalent wrapped in tildes>
+${word}: <simple meaning of "${word}" in this sentence, using common words; include only the most important grammar or usage note if needed>
+
+Do NOT add a preamble, markdown, bullets, or extra lines. Do not repeat the ${targetLang || 'target-language'} sentence.`;
+}
+
+// explainWordInContext — on-demand: ask Gemini to translate the full sentence and explain
+// what a word means specifically in that sentence, written in the learner's native language.
+// Used by the popup's "Explain in context" button.
+export async function explainWordInContext({ word, sentence, nativeLang, targetLang, context }) {
   const raw = await callGemini(
-    `${passageBlock}The learner clicked "${word}" in this ${targetLang || 'target-language'} sentence: "${sentence}"
-Explain what "${word}" means as used here, in ${nativeLang}, in 1–2 short sentences.
-Begin with the bare meaning itself (e.g. "A park bench." or "To realize something."). Do NOT restate or quote "${word}", and do NOT use any lead-in such as "Here's", "In this context", "It means", "This refers to", "So", or "Well". Do not repeat the sentence.`,
+    buildExplainWordPrompt({ word, sentence, nativeLang, targetLang, context }),
     { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 300 },
   );
   const explanation = raw.trim();
