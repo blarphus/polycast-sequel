@@ -132,21 +132,26 @@ almost always missing sentence data, not a stage-logic bug.
 
 `blue + red + green`, with each distinct queued card counted exactly once:
 
-- **Blue** — cards introduced today that are still active, including ordinary
-  new-card learning steps. Never-seen cards selected for today are also blue.
-- **Red** — active cards that received `Again` on the current local calendar
-  day. Scheduler learning steps alone do not make a card red.
-- **Green** — previously reviewed cards still active in today's queue that have
-  not received `Again` today.
+- **Blue** — never-answered cards (no first answer yet). A card is blue only
+  until its first answer this session; the first answer (right or wrong) moves
+  it out of the new bucket immediately.
+- **Red** — active cards whose **most recent answer** was `Again`. Red tracks
+  the last answer only: a card answered `Again` and then `good` later the same
+  day is no longer red. A new card answered incorrectly on its first attempt
+  becomes red. Scheduler learning steps alone do not make a card red.
+- **Green** — cards that have been answered (so no longer new) and still active
+  in today's queue whose most recent answer was correct. A new card answered
+  correctly on its first attempt moves straight here.
 - Each active card ID contributes exactly one count. Queue copies and repeated
   attempts never add another count.
-- `Again` moves a blue or green card to red. Another `Again` leaves it red.
-  Completing any card removes it from the counts; a failed card is green rather
-  than red when it next becomes due on a later day.
+- `Again` moves a blue or green card to red. A correct (`good`) answer clears
+  the red mark, moving the card to green — or out of today's queue entirely if
+  the correct answer schedules it past today. Completing any card removes it
+  from the counts.
 
-With stock Anki lapse defaults, a failed (`again`) review enters a 10-minute
-relearning step and its post-relearning review interval resets to 1 day. A
-correct (`good`) answer on that single relearning step graduates the card back
+A failed (`again`) review enters a **1-minute** relearning step (Josh's choice —
+not the stock Anki 10-minute default) and its post-relearning review interval
+resets to 1 day. A correct (`good`) answer on that single relearning step graduates the card back
 to its stored interval.
 
 Sub-day learning steps use exact timestamps. Intervals of 1 day or longer are

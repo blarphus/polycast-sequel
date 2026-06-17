@@ -7,7 +7,7 @@ const GRADUATING_INTERVAL = 86400;       // 1 day
 // const EASY_GRADUATING_INTERVAL = 345600; // 4 days -- unused since the rating
 //   collapsed to a binary correct/incorrect (good/again only). Flagged for
 //   deletion in a future audit.
-const RELEARNING_STEP = 600;             // 10 min (one relearning step)
+const RELEARNING_STEP = 60;              // 1 min (one relearning step) — a wrong answer bumps to 1 min, not 10
 const MIN_EASE = 1.3;
 const MIN_REVIEW_INTERVAL = 86400;       // 1 day minimum
 
