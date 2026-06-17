@@ -16,6 +16,7 @@ export function invalidateDictionaryCache(userId) {
 
 const NEW_TODAY_ORDER_BY = `
   sw.priority DESC,
+  sw.frequency_count DESC NULLS LAST,
   sw.frequency DESC NULLS LAST,
   sw.created_at ASC,
   sw.queue_position ASC NULLS LAST
@@ -27,6 +28,7 @@ const DUE_QUEUE_ORDER_BY = `
        ELSE 2 END,
   due_at ASC NULLS LAST,
   CASE WHEN due_at IS NULL AND priority = true THEN 0 ELSE 1 END ASC,
+  frequency_count DESC NULLS LAST,
   frequency DESC NULLS LAST,
   created_at ASC
 `;
@@ -84,10 +86,30 @@ export async function listNewTodayWords(db, userId) {
   );
 }
 
-export async function listDueWords(db, userId, timeZone = 'UTC') {
+export async function listNewWordPreview(db, userId, limit = 10) {
   return db.query(
     `WITH prefs AS (
-       SELECT target_language, daily_new_limit
+       SELECT target_language
+       FROM users
+       WHERE id = $1
+     )
+     SELECT sw.*
+     FROM saved_words sw
+     CROSS JOIN prefs p
+     WHERE sw.user_id = $1
+       AND sw.target_language IS NOT DISTINCT FROM p.target_language
+       AND sw.due_at IS NULL
+       AND sw.last_reviewed_at IS NULL
+     ORDER BY ${NEW_TODAY_ORDER_BY}
+     LIMIT $2`,
+    [userId, limit],
+  );
+}
+
+export async function listDueWords(db, userId, timeZone = 'UTC', newLimitOverride = null) {
+  return db.query(
+    `WITH prefs AS (
+       SELECT target_language, COALESCE($3::int, daily_new_limit) AS daily_new_limit
        FROM users
        WHERE id = $1
      ),
@@ -128,7 +150,7 @@ export async function listDueWords(db, userId, timeZone = 'UTC') {
        SELECT * FROM new_cards
      ) queue_words
      ORDER BY ${DUE_QUEUE_ORDER_BY}`,
-    [userId, timeZone],
+    [userId, timeZone, newLimitOverride],
   );
 }
 
@@ -179,6 +201,10 @@ function compareNewEntries(a, b) {
   const bPriority = b.priority ? 0 : 1;
   if (aPriority !== bPriority) return aPriority - bPriority;
 
+  const aFreqCount = a.frequency_count ?? 0;
+  const bFreqCount = b.frequency_count ?? 0;
+  if (aFreqCount !== bFreqCount) return bFreqCount - aFreqCount;
+
   const aFrequency = a.frequency ?? 0;
   const bFrequency = b.frequency ?? 0;
   if (aFrequency !== bFrequency) return bFrequency - aFrequency;
@@ -203,6 +229,10 @@ function compareReviewEntries(a, b) {
   const aPriority = a.priority ? 0 : 1;
   const bPriority = b.priority ? 0 : 1;
   if (aPriority !== bPriority) return aPriority - bPriority;
+
+  const aFreqCount = a.frequency_count ?? 0;
+  const bFreqCount = b.frequency_count ?? 0;
+  if (aFreqCount !== bFreqCount) return bFreqCount - aFreqCount;
 
   const aFrequency = a.frequency ?? 0;
   const bFrequency = b.frequency ?? 0;

@@ -201,17 +201,29 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
     example: null,
     example_translation: null,
     sentence_translation: null,
+    // The fast path only resolves when a single sense fits, so it is never a
+    // phrase; phrase detection happens on the full Gemini path below.
+    is_phrase: false,
+    phrase: null,
+    phrase_translation: null,
+    phrase_definition: null,
   };
 }
 
 // explainWordInContext — on-demand: ask Gemini to explain what a word means specifically in
 // the sentence it appears in, written in the learner's native language. Used by the popup's
 // "Explain in context" button.
-export async function explainWordInContext({ word, sentence, nativeLang, targetLang }) {
+export async function explainWordInContext({ word, sentence, nativeLang, targetLang, context }) {
+  // `context` is a wider passage (a rolling transcript window) used only to
+  // understand the usage; `sentence` is the exact spot the word was clicked.
+  const passage = (context && context.trim()) ? context.trim() : sentence;
+  const passageBlock = passage !== sentence
+    ? `Wider passage (for context): "${passage}"\n`
+    : '';
   const raw = await callGemini(
-    `In this ${targetLang || 'target-language'} sentence: "${sentence}"
-explain what the word "${word}" means in THIS specific context — its sense here, and any nuance or idiom it carries in the sentence.
-Write the explanation in ${nativeLang}. Be clear and concise (1–3 sentences). Do not repeat the sentence or add a preamble.`,
+    `${passageBlock}The learner clicked "${word}" in this ${targetLang || 'target-language'} sentence: "${sentence}"
+Explain what "${word}" means as used here, in ${nativeLang}, in 1–2 short sentences.
+Begin with the bare meaning itself (e.g. "A park bench." or "To realize something."). Do NOT restate or quote "${word}", and do NOT use any lead-in such as "Here's", "In this context", "It means", "This refers to", "So", or "Well". Do not repeat the sentence.`,
     { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 300 },
   );
   const explanation = raw.trim();
@@ -270,6 +282,10 @@ export async function resolveDictionaryLookup({
       matched_gloss: null,
       lemma: null,
       is_native: true,
+      is_phrase: false,
+      phrase: null,
+      phrase_translation: null,
+      phrase_definition: null,
     };
   }
 
@@ -281,9 +297,10 @@ export async function resolveDictionaryLookup({
   const senseBlock = hasSenses
     ? `\nHere are the dictionary senses for "${word}":\n${wiktSenses.map((s, i) => `${i}: [${s.pos}] ${s.gloss}`).join('\n')}\n`
     : '';
+  const phraseKeys = `"is_phrase":true/false,"phrase":"...","phrase_translation":"...","phrase_definition":"..."`;
   const jsonKeys = hasSenses
-    ? `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","sense_index":0,"lemma":"...","target_word":"...","sentence_translation":"...","example":"...","example_translation":"..."}`
-    : `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","lemma":"...","target_word":"...","sentence_translation":"...","example":"...","example_translation":"..."}`;
+    ? `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","sense_index":0,"lemma":"...","target_word":"...","sentence_translation":"...","example":"...","example_translation":"...",${phraseKeys}}`
+    : `{"valid":true/false,"translation":"...","definition":"...","part_of_speech":"...","lemma":"...","target_word":"...","sentence_translation":"...","example":"...","example_translation":"...",${phraseKeys}}`;
   const senseInstruction = hasSenses
     ? `\n- sense_index: the integer index (0-${wiktSenses.length - 1}) of the sense that best matches this sentence. If NONE of the senses match how the word is used, return -1 and provide your own definition.`
     : '';
@@ -306,7 +323,11 @@ ${senseInstruction}
 - lemma: the dictionary/base form of the target-language word.
 - sentence_translation: translate the full sentence "${sentence}" into ${nativeLang}. Surround the word(s) that correspond to "${word}" with tildes like ~translated word~.
 - example: a short, simple beginner-level example sentence in ${targetLang || 'the target language'} using the word. Surround the word with tildes like ~word~. Keep it under 8 words.
-- example_translation: the ${nativeLang} translation of the example sentence. Surround the word(s) that correspond to "${word}" with tildes like ~translated word~.`,
+- example_translation: the ${nativeLang} translation of the example sentence. Surround the word(s) that correspond to "${word}" with tildes like ~translated word~.
+- is_phrase: true ONLY if "${word}" is being used here as part of a fixed multi-word expression, idiom, or slang phrase whose meaning is NOT obvious from the individual words (e.g. "kick the bucket", "darse cuenta", "echar de menos"). For ordinary literal words or free word combinations, set false.
+- phrase: when is_phrase is true, the full expression in ${targetLang || 'the target language'}, in its base/dictionary form (e.g. "darse cuenta", not "se dio cuenta"). Empty string when is_phrase is false.
+- phrase_translation: when is_phrase is true, the ${nativeLang} translation of the whole phrase, 1-4 words. Empty otherwise.
+- phrase_definition: when is_phrase is true, a short ${nativeLang} definition of the phrase, 12 words max. Empty otherwise.`,
     {
       thinkingConfig: { thinkingBudget: 0 },
       maxOutputTokens: 350,
@@ -357,6 +378,10 @@ ${senseInstruction}
     example: parsed.example || null,
     example_translation: parsed.example_translation || null,
     sentence_translation: parsed.sentence_translation || null,
+    is_phrase: parsed.is_phrase === true && !!(parsed.phrase && String(parsed.phrase).trim()),
+    phrase: (parsed.phrase && String(parsed.phrase).trim()) || null,
+    phrase_translation: (parsed.phrase_translation && String(parsed.phrase_translation).trim()) || null,
+    phrase_definition: (parsed.phrase_definition && String(parsed.phrase_definition).trim()) || null,
   };
 }
 

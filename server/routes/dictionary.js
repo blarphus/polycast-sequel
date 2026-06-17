@@ -12,7 +12,7 @@ import { generateStageSentence } from '../lib/stageSentence.js';
 import logger from '../logger.js';
 import { audioContentType, synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext, explainSelectionInContext } from '../services/wordSemanticsService.js';
-import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listStudyOverview, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
+import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listNewWordPreview, listStudyOverview, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
 import { mergeForm } from '../lib/normalizeWordFields.js';
 
 const router = Router();
@@ -30,6 +30,9 @@ const lookupQuery = z.object({
   nativeLang: z.string().min(1, 'nativeLang is required'),
   targetLang: z.string().optional(),
   isNative: z.string().optional(),
+  // Optional wider passage (rolling ~50-word transcript window) used only by
+  // /explain to read how the word is used beyond the single on-screen line.
+  context: z.string().optional(),
 });
 
 const explainSelectionBody = z.object({
@@ -106,6 +109,11 @@ const reviewBody = z.object({
 
 const dueQuery = z.object({
   timeZone: z.string().max(100).optional(),
+  newLimitOverride: z.coerce.number().int().min(0).max(50).optional(),
+});
+
+const newWordPreviewQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 
 const queueReorderBody = z.object({
@@ -173,9 +181,9 @@ router.get('/api/dictionary/lookup', authMiddleware, validate({ query: lookupQue
  * Asks Gemini to explain the word's meaning specifically in its sentence context.
  */
 router.get('/api/dictionary/explain', authMiddleware, validate({ query: lookupQuery }), async (req, res) => {
-  const { word, sentence, nativeLang, targetLang } = req.query;
+  const { word, sentence, nativeLang, targetLang, context } = req.query;
   try {
-    const result = await explainWordInContext({ word, sentence, nativeLang, targetLang });
+    const result = await explainWordInContext({ word, sentence, nativeLang, targetLang, context });
     return res.json(result);
   } catch (err) {
     req.log.error({ err }, 'Dictionary explain error');
@@ -468,6 +476,19 @@ router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/dictionary/new-preview -- Upcoming new cards without changing the queue
+ */
+router.get('/api/dictionary/new-preview', authMiddleware, validate({ query: newWordPreviewQuery }), async (req, res) => {
+  try {
+    const { rows } = await listNewWordPreview(pool, req.userId, req.query.limit ?? 10);
+    return res.json(rows);
+  } catch (err) {
+    req.log.error({ err }, 'Error fetching new-word preview');
+    return res.status(500).json({ error: 'Failed to fetch new-word preview' });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // SRS (Spaced Repetition) — Anki-style algorithm
 // ---------------------------------------------------------------------------
@@ -491,7 +512,12 @@ router.get('/api/dictionary/study-overview', authMiddleware, async (req, res) =>
  */
 router.get('/api/dictionary/due', authMiddleware, validate({ query: dueQuery }), async (req, res) => {
   try {
-    const { rows } = await listDueWords(pool, req.userId, validTimeZone(req.query.timeZone));
+    const { rows } = await listDueWords(
+      pool,
+      req.userId,
+      validTimeZone(req.query.timeZone),
+      req.query.newLimitOverride ?? null,
+    );
     return res.json(rows);
   } catch (err) {
     req.log.error({ err }, 'Error fetching due words');
