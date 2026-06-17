@@ -12,6 +12,7 @@ import {
 import {
   getTrendingVideosForLanguage,
   searchVideosForLanguage,
+  searchVideosAndChannelsForUser,
   getChannelSummariesForUser,
   getChannelHighlights,
   getChannelDetail,
@@ -80,6 +81,18 @@ router.get('/api/videos/search', authMiddleware, validate({ query: videoSearchQu
   } catch (err) {
     req.log.error({ err }, 'GET /api/videos/search failed');
     res.status(err.status || 500).json({ error: err.message || 'Failed to search videos' });
+  }
+});
+
+router.get('/api/videos/search/full', authMiddleware, validate({ query: videoSearchQuery }), async (req, res) => {
+  try {
+    const query = req.query.q.trim();
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    const userRegion = req.query.userRegion?.toString();
+    res.json(await searchVideosAndChannelsForUser(req.userId, query, lang, userRegion));
+  } catch (err) {
+    req.log.error({ err }, 'GET /api/videos/search/full failed');
+    res.status(err.status || 500).json({ error: err.message || 'Failed to search videos and channels' });
   }
 });
 

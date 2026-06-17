@@ -152,6 +152,40 @@ export async function searchCaptionedVideoIds(query, lang, regionCode, apiKey, m
   return (data.items || []).map((item) => item.id.videoId).filter(Boolean);
 }
 
+export async function searchYouTubeChannels(query, lang, regionCode, apiKey, maxResults = 6) {
+  const searchParams = new URLSearchParams({
+    part: 'snippet',
+    type: 'channel',
+    regionCode,
+    relevanceLanguage: lang,
+    maxResults: String(maxResults),
+    q: query,
+    key: apiKey,
+  });
+  const data = await fetchYouTubeJson(
+    `https://www.googleapis.com/youtube/v3/search?${searchParams}`,
+    'Failed to search YouTube channels',
+    'YouTube channel search API error',
+  );
+
+  return (data.items || [])
+    .map((item) => {
+      const channelId = item.id?.channelId || item.snippet?.channelId;
+      if (!channelId) return null;
+      return {
+        name: item.snippet?.title || 'YouTube channel',
+        handle: channelId,
+        channel_id: channelId,
+        thumbnails: [
+          item.snippet?.thumbnails?.medium?.url ||
+            item.snippet?.thumbnails?.high?.url ||
+            item.snippet?.thumbnails?.default?.url,
+        ].filter(Boolean),
+      };
+    })
+    .filter(Boolean);
+}
+
 export async function fetchTrendingPage(regionCode, apiKey, pageToken) {
   const ytUrl =
     `https://www.googleapis.com/youtube/v3/videos` +

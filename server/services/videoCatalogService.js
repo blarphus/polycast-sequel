@@ -12,6 +12,7 @@ import {
   fetchYouTubeVideoDetails,
   getYouTubeApiKey,
   searchCaptionedVideoIds,
+  searchYouTubeChannels,
 } from './youtubeApi.js';
 
 const LANG_TO_REGION = {
@@ -137,6 +138,47 @@ export async function searchVideosForLanguage(query, lang = 'en', userRegion) {
   }, 3600);
 
   return data;
+}
+
+export async function searchVideosAndChannelsForUser(userId, query, lang = 'en', userRegion) {
+  const { trendingRegion, userRegion: resolvedUserRegion } = resolveUserRegion(lang, userRegion);
+  const normalizedQuery = query.toLowerCase().replace(/\s+/g, ' ');
+  const apiKey = getYouTubeApiKey();
+  const subscribedHandles = await getSubscribedHandles(userId, lang);
+
+  const [videos, remoteChannels] = await Promise.all([
+    searchVideosForLanguage(query, lang, userRegion),
+    cachedFetch(`channel-search1:${lang}:${resolvedUserRegion}:${normalizedQuery}`, () => (
+      searchYouTubeChannels(query, lang, trendingRegion, apiKey)
+    ), 3600).then((result) => result.data),
+  ]);
+
+  const curatedMatches = getChannelsForLanguage(lang)
+    .filter((channel) => {
+      const haystack = `${channel.name} ${channel.handle}`.toLowerCase();
+      return haystack.includes(normalizedQuery);
+    })
+    .map((channel) => ({
+      name: channel.name,
+      handle: channel.handle,
+      channel_id: channel.channelId,
+      thumbnails: [],
+    }));
+
+  const seen = new Set();
+  const channels = [...curatedMatches, ...remoteChannels]
+    .filter((channel) => {
+      const key = (channel.channel_id || channel.handle || channel.name).toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((channel) => ({
+      ...channel,
+      subscribed: subscribedHandles.has(channel.handle),
+    }));
+
+  return { channels, videos };
 }
 
 export async function getChannelSummaries(lang = 'en') {
