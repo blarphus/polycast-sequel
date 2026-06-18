@@ -306,15 +306,15 @@ export function filterAndMapTrendingItems(items, userRegion, opts = {}) {
 }
 
 /**
- * Map captioned, short-duration YouTube videos into the same normalized shape
- * used by the app's video feeds. YouTube Data API does not expose a reliable
- * "is Short" field, so callers still need a playback/orientation check.
+ * Map short-duration YouTube videos into the same normalized shape used by the
+ * app's video feeds. YouTube Data API does not expose a reliable "is Short"
+ * field or complete caption availability, so the app still verifies orientation
+ * and timed captions before showing a candidate.
  */
 export function filterAndMapShortCandidateItems(items, userRegion, opts = {}) {
-  const maxDurationSeconds = opts.maxDurationSeconds || 180;
+  const maxDurationSeconds = opts.maxDurationSeconds || 240;
   const minDurationSeconds = opts.minDurationSeconds || 5;
   return (items || [])
-    .filter((item) => item.contentDetails?.caption === 'true')
     .filter((item) => {
       const duration = parseDuration(item.contentDetails?.duration || '');
       return duration >= minDurationSeconds && duration <= maxDurationSeconds;
@@ -336,7 +336,7 @@ export function filterAndMapShortCandidateItems(items, userRegion, opts = {}) {
       duration_seconds: parseDuration(item.contentDetails.duration),
       published_at: item.snippet.publishedAt,
       view_count: item.statistics?.viewCount != null ? Number(item.statistics.viewCount) : null,
-      has_captions: true,
+      has_captions: item.contentDetails.caption === 'true',
     }));
 }
 
