@@ -4,6 +4,7 @@ import { cachedFetch } from '../lib/redisCache.js';
 import pool from '../db.js';
 import {
   filterAndMapTrendingItems,
+  filterAndMapShortCandidateItems,
   fetchMoviesAndTV,
   fetchAllChannelVideos,
   fetchYouTubeChannel,
@@ -15,6 +16,9 @@ import {
   searchCaptionedVideoIds,
   searchYouTubeVideoAndChannelResults,
 } from './youtubeApi.js';
+
+const SHORTS_PAGE_SIZE = 36;
+const SHORTS_UPLOADS_PER_CHANNEL = 25;
 
 const LANG_TO_REGION = {
   en: 'US',
@@ -67,6 +71,21 @@ function getChannelsForLanguage(lang) {
     throw err;
   }
   return channels;
+}
+
+function encodeCursor(offset) {
+  return Buffer.from(JSON.stringify({ offset }), 'utf8').toString('base64url');
+}
+
+function decodeCursor(cursor) {
+  if (!cursor) return 0;
+  try {
+    const parsed = JSON.parse(Buffer.from(String(cursor), 'base64url').toString('utf8'));
+    const offset = Number(parsed.offset);
+    return Number.isFinite(offset) && offset > 0 ? Math.floor(offset) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 async function ensureDefaultSubscriptions(userId, lang) {
@@ -332,6 +351,67 @@ export async function getSubscriptionFeed(userId, lang = 'en', userRegion) {
   }, 1800);
 
   return data;
+}
+
+export async function getShortsFeed(userId, lang = 'en', userRegion, cursor) {
+  const subscribedHandles = await getSubscribedHandles(userId, lang);
+  const apiKey = getYouTubeApiKey();
+  const curatedChannels = getChannelsForLanguage(lang);
+  const subscribedChannels = (
+    await Promise.all([...subscribedHandles].map((handle) => resolveChannel(handle, apiKey).catch(() => null)))
+  ).filter(Boolean);
+  const subscribedKeys = new Set(subscribedChannels.map((channel) => channel.handle.toLowerCase()));
+  const fillChannels = curatedChannels.filter((channel) => !subscribedKeys.has(channel.handle.toLowerCase()));
+  const sourceChannels = [...subscribedChannels, ...fillChannels];
+  if (sourceChannels.length === 0) return { videos: [], next_cursor: null };
+
+  const { userRegion: resolvedUserRegion } = resolveUserRegion(lang, userRegion);
+  const cacheKey = `shorts1:${lang}:${resolvedUserRegion}:${[...subscribedHandles].sort().join(',')}`;
+
+  const { data } = await cachedFetch(cacheKey, async () => {
+    const idLists = await Promise.all(
+      sourceChannels.map((channel) => fetchYouTubePlaylistVideoIds(
+        channel.uploadsPlaylist,
+        apiKey,
+        SHORTS_UPLOADS_PER_CHANNEL,
+      ).catch(() => [])),
+    );
+
+    const rankedIds = [];
+    const seenIds = new Set();
+    idLists.forEach((ids, sourceIndex) => {
+      ids.forEach((id, uploadIndex) => {
+        if (!id || seenIds.has(id)) return;
+        seenIds.add(id);
+        rankedIds.push({ id, sourceIndex, uploadIndex });
+      });
+    });
+    if (rankedIds.length === 0) return [];
+
+    const items = await fetchYouTubeVideoDetails(
+      rankedIds.map((item) => item.id),
+      apiKey,
+      'snippet,contentDetails,statistics',
+    );
+    const videos = filterAndMapShortCandidateItems(items, resolvedUserRegion);
+    const rankById = new Map(rankedIds.map((item) => [item.id, item]));
+
+    return videos.sort((a, b) => {
+      const aRank = rankById.get(a.youtube_id) || { sourceIndex: 9999, uploadIndex: 9999 };
+      const bRank = rankById.get(b.youtube_id) || { sourceIndex: 9999, uploadIndex: 9999 };
+      if (aRank.sourceIndex !== bRank.sourceIndex) return aRank.sourceIndex - bRank.sourceIndex;
+      if (aRank.uploadIndex !== bRank.uploadIndex) return aRank.uploadIndex - bRank.uploadIndex;
+      return (b.published_at || '').localeCompare(a.published_at || '');
+    });
+  }, 1800);
+
+  const offset = decodeCursor(cursor);
+  const videos = data.slice(offset, offset + SHORTS_PAGE_SIZE);
+  const nextOffset = offset + videos.length;
+  return {
+    videos,
+    next_cursor: nextOffset < data.length ? encodeCursor(nextOffset) : null,
+  };
 }
 
 export async function getChannelDetail(handle, lang = 'en', userRegion, pageToken) {

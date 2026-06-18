@@ -306,6 +306,41 @@ export function filterAndMapTrendingItems(items, userRegion, opts = {}) {
 }
 
 /**
+ * Map captioned, short-duration YouTube videos into the same normalized shape
+ * used by the app's video feeds. YouTube Data API does not expose a reliable
+ * "is Short" field, so callers still need a playback/orientation check.
+ */
+export function filterAndMapShortCandidateItems(items, userRegion, opts = {}) {
+  const maxDurationSeconds = opts.maxDurationSeconds || 180;
+  const minDurationSeconds = opts.minDurationSeconds || 5;
+  return (items || [])
+    .filter((item) => item.contentDetails?.caption === 'true')
+    .filter((item) => {
+      const duration = parseDuration(item.contentDetails?.duration || '');
+      return duration >= minDurationSeconds && duration <= maxDurationSeconds;
+    })
+    .filter((item) => {
+      const rr = item.contentDetails.regionRestriction;
+      if (!rr) return true;
+      if (rr.allowed) return rr.allowed.includes(userRegion);
+      if (rr.blocked) return !rr.blocked.includes(userRegion);
+      return true;
+    })
+    .map((item) => ({
+      youtube_id: item.id,
+      title: item.snippet.title,
+      channel: item.snippet.channelTitle,
+      thumbnail: item.snippet.thumbnails?.high?.url ||
+                 item.snippet.thumbnails?.medium?.url ||
+                 `https://img.youtube.com/vi/${item.id}/hqdefault.jpg`,
+      duration_seconds: parseDuration(item.contentDetails.duration),
+      published_at: item.snippet.publishedAt,
+      view_count: item.statistics?.viewCount != null ? Number(item.statistics.viewCount) : null,
+      has_captions: true,
+    }));
+}
+
+/**
  * Fetch free movies & TV from YouTube's dedicated channel (English only).
  */
 export async function fetchMoviesAndTV(apiKey, userRegion) {

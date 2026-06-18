@@ -18,6 +18,7 @@ import {
   getChannelDetail,
   getChannelSubscription,
   getSubscriptionFeed,
+  getShortsFeed,
   getLessonSummaries,
   getLessonDetail,
   subscribeToChannel,
@@ -155,6 +156,18 @@ router.get('/api/videos/highlights', authMiddleware, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, 'GET /api/videos/highlights failed');
     res.status(err.status || 500).json({ error: err.message || 'Failed to fetch highlights' });
+  }
+});
+
+router.get('/api/videos/shorts', authMiddleware, async (req, res) => {
+  try {
+    const lang = (req.query.lang || 'en').toString().toLowerCase();
+    const userRegion = req.query.userRegion?.toString();
+    const cursor = req.query.cursor?.toString();
+    res.json(await getShortsFeed(req.userId, lang, userRegion, cursor));
+  } catch (err) {
+    req.log.error({ err }, 'GET /api/videos/shorts failed');
+    res.status(err.status || 500).json({ error: err.message || 'Failed to fetch shorts' });
   }
 });
 
