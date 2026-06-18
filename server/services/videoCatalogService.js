@@ -366,7 +366,7 @@ export async function getShortsFeed(userId, lang = 'en', userRegion, cursor) {
   if (sourceChannels.length === 0) return { videos: [], next_cursor: null };
 
   const { userRegion: resolvedUserRegion } = resolveUserRegion(lang, userRegion);
-  const cacheKey = `shorts1:${lang}:${resolvedUserRegion}:${[...subscribedHandles].sort().join(',')}`;
+  const cacheKey = `shorts2:${lang}:${resolvedUserRegion}:${[...subscribedHandles].sort().join(',')}`;
 
   const { data } = await cachedFetch(cacheKey, async () => {
     const idLists = await Promise.all(
