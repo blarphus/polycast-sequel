@@ -6,6 +6,7 @@ dist/
 .model-cache/
 build/
 ios/build/
+ios/build-*/
 test-results/
 checkpoints/
 polycast.db

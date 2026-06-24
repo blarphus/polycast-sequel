@@ -1,13 +1,22 @@
 import SwiftUI
 
 struct AuthContainerView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var mode: AuthMode = .login
+
+    private var isDark: Bool { colorScheme == .dark }
 
     var body: some View {
         NavigationStack {
             ZStack {
                 LinearGradient(
-                    colors: [.purple.opacity(0.6), .blue.opacity(0.4), .black.opacity(0.95)],
+                    colors: isDark
+                        ? [.purple.opacity(0.6), .blue.opacity(0.4), .black.opacity(0.95)]
+                        : [
+                            Color(red: 0.96, green: 0.88, blue: 1.0),
+                            Color(red: 0.84, green: 0.91, blue: 1.0),
+                            Color(red: 0.92, green: 0.96, blue: 1.0),
+                        ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -28,7 +37,7 @@ struct AuthContainerView: View {
                             )
                         Text("Language learning built around real media, transcripts, and review.")
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(isDark ? Color.white.opacity(0.7) : Color.black.opacity(0.62))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
                     }
@@ -110,10 +119,10 @@ struct LoginView: View {
 
             Button("Create an account", action: showSignup)
                 .buttonStyle(.plain)
-                .foregroundStyle(.white.opacity(0.5))
+                .authSecondaryActionStyle()
         }
         .padding(28)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28))
+        .authPanelStyle()
     }
 }
 
@@ -167,30 +176,70 @@ struct SignupView: View {
 
             Button("Already have an account?", action: showLogin)
                 .buttonStyle(.plain)
-                .foregroundStyle(.white.opacity(0.5))
+                .authSecondaryActionStyle()
         }
         .padding(28)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28))
+        .authPanelStyle()
     }
 }
 
 // MARK: - Auth Field & Button Styles
 
 private struct AuthFieldModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
     func body(content: Content) -> some View {
         content
             .padding(14)
-            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-            .foregroundStyle(.white)
+            .background(
+                colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.82),
+                in: RoundedRectangle(cornerRadius: 14)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.08))
+            }
+            .foregroundStyle(colorScheme == .dark ? Color.white : Color.black.opacity(0.84))
+            .tint(colorScheme == .dark ? .white : .purple)
+    }
+}
+
+private struct AuthPanelModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.7),
+                in: RoundedRectangle(cornerRadius: 28)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 28)
+                    .stroke(colorScheme == .dark ? Color.white.opacity(0.08) : Color.white.opacity(0.8))
+            }
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.1), radius: 20, y: 10)
+    }
+}
+
+private struct AuthSecondaryActionModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.black.opacity(0.62))
     }
 }
 
 private struct AuthButtonModifier: ViewModifier {
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
         content
-            .foregroundStyle(.white)
+            .foregroundStyle(
+                isEnabled || colorScheme == .dark
+                    ? Color.white
+                    : Color.black.opacity(0.5)
+            )
             .padding(.vertical, 14)
             .background(
                 LinearGradient(
@@ -198,9 +247,10 @@ private struct AuthButtonModifier: ViewModifier {
                     startPoint: .leading,
                     endPoint: .trailing
                 )
-                .opacity(isEnabled ? 1 : 0.4),
+                .opacity(isEnabled ? 1 : (colorScheme == .dark ? 0.4 : 0.22)),
                 in: RoundedRectangle(cornerRadius: 16)
             )
+            .contentShape(RoundedRectangle(cornerRadius: 16))
     }
 }
 
@@ -212,6 +262,14 @@ extension View {
     fileprivate func authButtonStyle() -> some View {
         buttonStyle(.plain)
             .modifier(AuthButtonModifier())
+    }
+
+    fileprivate func authPanelStyle() -> some View {
+        modifier(AuthPanelModifier())
+    }
+
+    fileprivate func authSecondaryActionStyle() -> some View {
+        modifier(AuthSecondaryActionModifier())
     }
 }
 

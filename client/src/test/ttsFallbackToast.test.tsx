@@ -28,9 +28,34 @@ describe('TtsFallbackToast', () => {
     );
 
     act(() => {
-      vi.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(7000);
     });
     expect(container.querySelector('[role="status"]')).toBeNull();
+
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('shows generic fallback notices with failure detail', () => {
+    vi.useFakeTimers();
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => root.render(<TtsFallbackToast />));
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('polycast:fallback', {
+        detail: {
+          title: 'Example fallback used',
+          message: 'Image-grounded example generation failed.',
+          detail: 'Keeping the original example sentence.',
+        },
+      }));
+    });
+
+    expect(container.querySelector('[role="status"]')?.textContent).toContain(
+      'Example fallback usedImage-grounded example generation failed. Keeping the original example sentence.',
+    );
 
     act(() => root.unmount());
     container.remove();

@@ -73,7 +73,7 @@ struct ImagePickerView: View {
                             onSelect(urlString)
                             dismiss()
                         } label: {
-                            AsyncImage(url: url) { phase in
+                            AuthorizedAsyncImage(url: url) { phase in
                                 switch phase {
                                 case .success(let image):
                                     image

@@ -21,6 +21,18 @@
     return div.innerHTML;
   }
 
+  function renderTildeMarkup(container, text, highlightClass) {
+    container.textContent = '';
+    const parts = String(text || '').split(/~([^~]+)~/g);
+    parts.forEach((part, i) => {
+      if (!part) return;
+      const node = document.createElement(i % 2 === 1 ? 'span' : 'span');
+      node.textContent = part;
+      if (i % 2 === 1) node.className = highlightClass;
+      container.appendChild(node);
+    });
+  }
+
   /**
    * createWordPopup(opts) -> { el, destroy }
    *
@@ -31,10 +43,13 @@
    *   container   - element to append into (defaults to document.body)
    *   onClose     - called when the user clicks the popup's close (X) button
    *   initialSavedHint - optional bool: show the saved state before lookup resolves
+   *   initialLookupResult - optional lookup result; skips handlers.lookup when provided
+   *   autoExplain - optional bool: fetch and show the contextual explanation immediately
    *   handlers:
    *     lookup({ word, sentence })  -> Promise<{ valid, translation, definition, part_of_speech, ... }>
    *     explain({ word, sentence }) -> Promise<{ explanation }>
    *     save({ word, sentence, lookupResult }) -> Promise<void>   (optimistic; may be omitted)
+   *     remove({ word, sentence, lookupResult }) -> Promise<void> (may be omitted)
    *     resolveSavedState(lookupResult) -> 'saved' | 'new-sense' | 'unsaved'
    */
   function createWordPopup(opts) {
@@ -45,6 +60,8 @@
       container = document.body,
       onClose,
       initialSavedHint = false,
+      initialLookupResult = null,
+      autoExplain = false,
       nativeMode = false,
       handlers = {},
     } = opts;
@@ -127,8 +144,15 @@
     }
 
     // -- Save button state machine ------------------------------------------
-    let saveState = 'unsaved'; // 'unsaved' | 'new-sense' | 'saved' | 'done'
+    let saveState = 'unsaved'; // 'unsaved' | 'new-sense' | 'saved' | 'done' | 'removing'
     let lastLookup = null;
+    // 'word' = add the single clicked word; 'phrase' = add the detected phrase.
+    let mode = 'word';
+    // What the Add button will save — reassigned when the lookup resolves and
+    // when the user toggles between word and phrase.
+    let getSaveTarget = () => ({ word, sentence, lookupResult: lastLookup });
+    let autoExplanationState = autoExplain && handlers.explain ? 'loading' : 'idle';
+    let autoExplanation = '';
 
     function renderSaveButton() {
       if (!handlers.save) { saveBtn.hidden = true; return; }
@@ -138,13 +162,17 @@
         saveBtn.classList.add('pc-popup-save--saved');
         saveBtn.innerHTML = '&#10003; Added';
       } else if (saveState === 'saved') {
-        saveBtn.disabled = true;
+        saveBtn.disabled = !handlers.remove;
         saveBtn.classList.add('pc-popup-save--saved');
         saveBtn.innerHTML = '&#10003; In your dictionary';
+      } else if (saveState === 'removing') {
+        saveBtn.disabled = true;
+        saveBtn.classList.add('pc-popup-save--saved');
+        saveBtn.textContent = 'Removing...';
       } else {
         saveBtn.disabled = false;
         saveBtn.classList.remove('pc-popup-save--saved');
-        saveBtn.textContent = '+ Add to dictionary';
+        saveBtn.textContent = mode === 'phrase' ? '+ Add phrase' : '+ Add to dictionary';
       }
     }
 
@@ -152,11 +180,38 @@
 
     saveBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (saveState === 'saved' || saveState === 'done') return;
+      if (saveState === 'saved') {
+        if (!handlers.remove || !lastLookup) return;
+        const target = (mode === 'phrase' && lastLookup.phrase)
+          ? lastLookup.phrase
+          : (lastLookup.lemma || lastLookup.target_word || word);
+        if (!window.confirm(`Remove ${target} from dictionary?`)) return;
+        saveState = 'removing';
+        renderSaveButton();
+        Promise.resolve(handlers.remove(getSaveTarget()))
+          .then(() => {
+            if (destroyed) return;
+            saveState = 'unsaved';
+            if (lastLookup) {
+              lastLookup.is_existing = false;
+              lastLookup.saved_word_id = null;
+            }
+            renderSaveButton();
+          })
+          .catch((err) => {
+            console.error('[word-popup] remove failed:', err);
+            if (!destroyed) {
+              saveState = 'saved';
+              renderSaveButton();
+            }
+          });
+        return;
+      }
+      if (saveState === 'done' || saveState === 'removing') return;
       saveState = 'done';
       renderSaveButton();
       if (handlers.save) {
-        Promise.resolve(handlers.save({ word, sentence, lookupResult: lastLookup }))
+        Promise.resolve(handlers.save(getSaveTarget()))
           .catch((err) => console.error('[word-popup] save failed:', err));
       }
     });
@@ -171,7 +226,11 @@
       Promise.resolve(handlers.explain({ word, sentence }))
         .then((res) => {
           if (destroyed) return;
-          explainBox.textContent = (res && res.explanation) || 'No explanation available';
+          renderTildeMarkup(
+            explainBox,
+            (res && res.explanation) || 'No explanation available',
+            'pc-popup-explanation-highlight',
+          );
         })
         .catch((err) => {
           if (destroyed) return;
@@ -183,7 +242,7 @@
 
     // -- Lookup --------------------------------------------------------------
     function showActions() {
-      explainBtn.hidden = !handlers.explain;
+      explainBtn.hidden = !handlers.explain || autoExplain;
       renderSaveButton();
       position();
     }
@@ -195,7 +254,11 @@
       return { el: popup, destroy };
     }
 
-    Promise.resolve(handlers.lookup({ word, sentence }))
+    const lookupPromise = initialLookupResult
+      ? Promise.resolve(initialLookupResult)
+      : Promise.resolve(handlers.lookup({ word, sentence }));
+
+    lookupPromise
       .then((res) => {
         if (destroyed) return;
         lastLookup = res;
@@ -209,10 +272,14 @@
         }
 
         const translation = res.translation || res.definition || '';
-        const definition = res.definition || '';
-        const showDef = definition && definition !== translation;
+        const dictionaryDefinition = res.matched_gloss || res.definition || '';
+        const definitionLabel = res.matched_gloss ? 'Dictionary' : 'Meaning';
+        const geminiDefinition = res.gemini_definition || '';
+        const showGeminiDefinition = geminiDefinition
+          && geminiDefinition.toLowerCase() !== dictionaryDefinition.toLowerCase()
+          && geminiDefinition.toLowerCase() !== translation.toLowerCase();
 
-        if (!translation && !definition && !res.part_of_speech) {
+        if (!translation && !dictionaryDefinition && !geminiDefinition && !res.part_of_speech) {
           bodyEl.innerHTML = `<div class="pc-popup-error">No definition found</div>`;
           return;
         }
@@ -224,19 +291,123 @@
             : newSense === 'new-sense' ? 'new-sense' : 'unsaved';
         }
 
-        // Show the base form (lemma) under the clicked word — this is the form the card saves as.
-        if (res.lemma && res.lemma.trim() && res.lemma.toLowerCase() !== word.toLowerCase()) {
-          const lemmaEl = popup.querySelector('.pc-popup-lemma');
-          lemmaEl.innerHTML = `<span class="pc-popup-lemma-label">saves as</span>${escapeHtml(res.lemma)}`;
-          lemmaEl.hidden = false;
+        // When the clicked word is part of a fixed phrase/idiom/slang, let the
+        // learner choose to add the whole phrase instead of the single word.
+        const hasPhrase = !!(res.is_phrase && res.phrase && String(res.phrase).trim()
+          && res.phrase.toLowerCase() !== word.toLowerCase());
+        const lemmaEl = popup.querySelector('.pc-popup-lemma');
+
+        function applyMode() {
+          if (mode === 'phrase') {
+            getSaveTarget = () => ({
+              word: res.phrase,
+              sentence,
+              lookupResult: {
+                ...res,
+                word: res.phrase,
+                target_word: res.phrase,
+                lemma: null,
+                sense_index: null,
+                matched_gloss: null,
+                translation: res.phrase_translation || res.phrase,
+                definition: res.phrase_definition || '',
+                is_existing: false,
+              },
+            });
+          } else {
+            getSaveTarget = () => ({ word, sentence, lookupResult: res });
+          }
         }
 
-        bodyEl.innerHTML = `
-          ${translation ? `<div class="pc-popup-translation">${escapeHtml(translation)}${saveState === 'new-sense' ? '<span class="pc-popup-new-def-pill">New definition!</span>' : ''}</div>` : ''}
-          ${res.part_of_speech ? `<div class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</div>` : ''}
-          ${showDef ? `<div class="pc-popup-definition">${escapeHtml(definition)}</div>` : ''}
-        `;
+        function autoExplanationHtml() {
+          if (autoExplanationState === 'idle') return '';
+          if (autoExplanationState === 'loading') {
+            return `<div class="pc-popup-definition pc-popup-definition-context">
+              <span class="pc-popup-definition-label">In context</span>
+              <div class="pc-spinner pc-spinner-inline"></div>
+            </div>`;
+          }
+          if (autoExplanationState === 'error') {
+            return `<div class="pc-popup-definition pc-popup-definition-context">
+              <span class="pc-popup-definition-label">In context</span>
+              Context explanation unavailable
+            </div>`;
+          }
+          return `<div class="pc-popup-definition pc-popup-definition-context">
+            <span class="pc-popup-definition-label">In context</span>
+            ${escapeHtml(autoExplanation)}
+          </div>`;
+        }
+
+        function renderBody() {
+          const toggle = hasPhrase ? `
+            <div class="pc-popup-mode-toggle">
+              <button type="button" class="pc-popup-mode${mode === 'word' ? ' pc-popup-mode--active' : ''}" data-mode="word">Word</button>
+              <button type="button" class="pc-popup-mode${mode === 'phrase' ? ' pc-popup-mode--active' : ''}" data-mode="phrase">Phrase</button>
+            </div>` : '';
+
+          if (mode === 'phrase') {
+            lemmaEl.hidden = true;
+            const pt = res.phrase_translation || '';
+            const pd = res.phrase_definition || '';
+            bodyEl.innerHTML = `${toggle}
+              <div class="pc-popup-phrase">${escapeHtml(res.phrase)}</div>
+              ${pt ? `<div class="pc-popup-translation">${escapeHtml(pt)}</div>` : ''}
+              <div class="pc-popup-pos">phrase</div>
+              ${pd ? `<div class="pc-popup-definition">${escapeHtml(pd)}</div>` : ''}`;
+          } else {
+            // Word mode: show the base form (lemma) — the form the card saves as.
+            if (res.lemma && res.lemma.trim() && res.lemma.toLowerCase() !== word.toLowerCase()) {
+              lemmaEl.innerHTML = `<span class="pc-popup-lemma-label">saves as</span>${escapeHtml(res.lemma)}`;
+              lemmaEl.hidden = false;
+            } else {
+              lemmaEl.hidden = true;
+            }
+            bodyEl.innerHTML = `${toggle}
+              ${translation ? `<div class="pc-popup-translation">${escapeHtml(translation)}${saveState === 'new-sense' ? '<span class="pc-popup-new-def-pill">New definition!</span>' : ''}</div>` : ''}
+              ${res.part_of_speech ? `<div class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</div>` : ''}
+              ${dictionaryDefinition ? `<div class="pc-popup-definition"><span class="pc-popup-definition-label">${definitionLabel}</span>${escapeHtml(dictionaryDefinition)}</div>` : ''}
+              ${showGeminiDefinition ? `<div class="pc-popup-definition"><span class="pc-popup-definition-label">Meaning</span>${escapeHtml(geminiDefinition)}</div>` : autoExplanationHtml()}`;
+          }
+
+          if (hasPhrase) {
+            bodyEl.querySelectorAll('.pc-popup-mode').forEach((btn) => {
+              btn.addEventListener('click', (e2) => {
+                e2.stopPropagation();
+                if (btn.dataset.mode === mode) return;
+                mode = btn.dataset.mode;
+                // Each form can be added independently.
+                if (saveState === 'done') saveState = 'unsaved';
+                applyMode();
+                renderBody();
+                renderSaveButton();
+                position();
+              });
+            });
+          }
+        }
+
+        applyMode();
+        renderBody();
         showActions();
+
+        if (autoExplanationState === 'loading') {
+          Promise.resolve(handlers.explain({ word, sentence }))
+            .then((explainRes) => {
+              if (destroyed) return;
+              autoExplanation = (explainRes && explainRes.explanation) || '';
+              autoExplanationState = autoExplanation ? 'ready' : 'error';
+              renderBody();
+              showActions();
+            })
+            .catch((err) => {
+              console.error('[word-popup] auto explain failed:', err);
+              if (destroyed) return;
+              autoExplanationState = 'error';
+              renderBody();
+              showActions();
+            });
+        }
       })
       .catch((err) => {
         if (destroyed) return;

@@ -24,6 +24,7 @@ export interface EpubChapter {
 export interface ParsedEpub {
   title: string;
   author: string;
+  language: string | null;
   coverHref: string | null;
   chapters: EpubChapter[];
   files: Record<string, Uint8Array>;
@@ -109,6 +110,49 @@ function splitSentences(text: string): string[] {
     } catch { /* fall through to regex */ }
   }
   return clean.split(/(?<=[.!?…])\s+/).map((s) => s.trim()).filter(Boolean);
+}
+
+function normalizeLanguage(raw: string | null | undefined): string | null {
+  const trimmed = raw?.trim().toLowerCase();
+  if (!trimmed) return null;
+  const primary = trimmed.split(/[-_]/)[0];
+  return primary || null;
+}
+
+function inferLanguageFromText(chapters: EpubChapter[]): string | null {
+  const sample = chapters
+    .flatMap((chapter) => chapter.blocks)
+    .flatMap((block) => block.sentences || [])
+    .join(' ')
+    .toLowerCase()
+    .slice(0, 8000);
+  if (!sample) return null;
+
+  const tokens = sample.match(/\p{L}+/gu) || [];
+  const counts = new Map<string, number>();
+  for (const token of tokens) counts.set(token, (counts.get(token) || 0) + 1);
+
+  const score = (words: string[]) => words.reduce((sum, word) => sum + (counts.get(word) || 0), 0);
+  const scores = [
+    {
+      lang: 'es',
+      score: score(['el', 'la', 'los', 'las', 'que', 'una', 'pero', 'para', 'con', 'por', 'del', 'al', 'hay', 'hoy', 'puedo', 'voy', 'sin']),
+    },
+    {
+      lang: 'pt',
+      score: score(['o', 'a', 'os', 'as', 'que', 'uma', 'mas', 'para', 'com', 'por', 'não', 'dos', 'das', 'está', 'foi', 'vou']),
+    },
+    {
+      lang: 'fr',
+      score: score(['le', 'la', 'les', 'que', 'une', 'mais', 'pour', 'avec', 'des', 'est', 'pas', 'dans', 'sur']),
+    },
+    {
+      lang: 'en',
+      score: score(['the', 'and', 'that', 'you', 'with', 'for', 'not', 'this', 'have', 'will', 'from']),
+    },
+  ].sort((a, b) => b.score - a.score);
+
+  return scores[0].score >= 8 && scores[0].score >= scores[1].score + 3 ? scores[0].lang : null;
 }
 
 // --- TOC --------------------------------------------------------------------
@@ -201,6 +245,7 @@ export function parseEpub(bytes: Uint8Array): ParsedEpub {
   // 2. metadata
   const title = localTag(opf, 'title')[0]?.textContent?.trim() || 'Untitled';
   const author = localTag(opf, 'creator')[0]?.textContent?.trim() || 'Unknown author';
+  let language = normalizeLanguage(localTag(opf, 'language')[0]?.textContent);
 
   // 3. manifest: id -> { href, properties }
   const manifest = new Map<string, { href: string; properties: string }>();
@@ -244,8 +289,9 @@ export function parseEpub(bytes: Uint8Array): ParsedEpub {
   }
 
   if (!chapters.length) throw new Error('EPUB has no readable chapters');
+  language ||= inferLanguageFromText(chapters);
 
-  return { title, author, coverHref, chapters, files };
+  return { title, author, language, coverHref, chapters, files };
 }
 
 // --- image resolution -------------------------------------------------------

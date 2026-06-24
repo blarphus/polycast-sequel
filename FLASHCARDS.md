@@ -149,10 +149,11 @@ almost always missing sentence data, not a stage-logic bug.
   the correct answer schedules it past today. Completing any card removes it
   from the counts.
 
-A failed (`again`) review enters a **1-minute** relearning step (Josh's choice —
-not the stock Anki 10-minute default) and its post-relearning review interval
-resets to 1 day. A correct (`good`) answer on that single relearning step graduates the card back
-to its stored interval.
+A failed (`again`) review enters the same minute ladder as a new-card learning
+miss: **1 minute**, then **10 minutes**, then graduation. Its post-relearning
+review interval resets to 1 day. A correct (`good`) answer at 1 minute advances
+the card to the 10-minute step; a correct answer at the 10-minute step
+graduates the card back to its stored interval.
 
 Sub-day learning steps use exact timestamps. Intervals of 1 day or longer are
 calendar-day intervals and become due at midnight in the user's local timezone,

@@ -58,7 +58,7 @@ export default function Call() {
   const { controlsHidden, showControls } = useAutoHideControls();
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(streamRef);
   const { isScreenSharing, toggleScreenShare } = useScreenShare(streamRef, pcRef, localVideoRef);
-  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords();
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = useSavedWords();
 
   // ---- Shared cleanup helper (WebRTC only — transcription handled by hook) --
 
@@ -364,7 +364,7 @@ export default function Call() {
         />
       </div>
 
-      <TranscriptPanel entries={transcriptEntries} nativeLang={user?.native_language ?? undefined} targetLang={(remoteLang || user?.target_language) ?? undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} isDefinitionSaved={isDefinitionSaved} onSaveWord={addWord} onOptimisticSave={addOptimistic} />
+      <TranscriptPanel entries={transcriptEntries} nativeLang={user?.native_language ?? undefined} targetLang={(remoteLang || user?.target_language) ?? undefined} savedWords={savedWordsSet} isWordSaved={isWordSaved} isDefinitionSaved={isDefinitionSaved} onSaveWord={addWord} onRemoveWord={removeWord} onOptimisticSave={addOptimistic} />
     </div>
   );
 }

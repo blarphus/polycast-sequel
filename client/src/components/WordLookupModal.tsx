@@ -107,6 +107,7 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
         frequency: enriched.frequency,
         frequency_count: enriched.frequency_count,
         example_sentence: enriched.example_sentence,
+        sentence_translation: enriched.sentence_translation,
         image_url: enriched.image_url,
         target_language: targetLang,
         lemma: enriched.lemma || null,

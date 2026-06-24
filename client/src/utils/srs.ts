@@ -10,7 +10,6 @@ const GRADUATING_INTERVAL = 86400;       // 1 day
 // const EASY_GRADUATING_INTERVAL = 345600; // 4 days -- unused since the rating
 //   collapsed to a binary correct/incorrect (good/again only). Flagged for
 //   deletion in a future audit.
-const RELEARNING_STEP = 600;             // 10 min (one relearning step)
 const MIN_EASE = 1.3;
 const MIN_REVIEW_INTERVAL = 86400;       // 1 day
 
@@ -42,13 +41,18 @@ export function computeNextReviewState(card: SavedWord, answer: SrsAnswer): Next
   let dueSeconds = MIN_REVIEW_INTERVAL;
 
   if (isRelearning(card)) {
+    const step = card.learning_step ?? 0;
     if (answer === 'again') {
       learningStep = 0;
-      dueSeconds = RELEARNING_STEP;
-    } else {
-      // good — graduate back out of relearning at the stored interval.
+      dueSeconds = LEARNING_STEPS[0];
+    } else if (step >= LEARNING_STEPS.length - 1) {
+      // good on the last relearning step — graduate back out at the stored interval.
       learningStep = null;
       dueSeconds = card.srs_interval;
+    } else {
+      // good — advance to the next relearning step.
+      learningStep = step + 1;
+      dueSeconds = LEARNING_STEPS[step + 1];
     }
   } else if (isNewLearning(card)) {
     const step = card.learning_step ?? 0;
@@ -69,7 +73,7 @@ export function computeNextReviewState(card: SavedWord, answer: SrsAnswer): Next
     easeFactor = Math.max(easeFactor - 0.20, MIN_EASE);
     srsInterval = MIN_REVIEW_INTERVAL;
     learningStep = 0;
-    dueSeconds = RELEARNING_STEP;
+    dueSeconds = LEARNING_STEPS[0];
   } else {
     // good — grow the interval by the ease factor.
     srsInterval = roundedDayInterval(card.srs_interval * easeFactor);
@@ -112,8 +116,8 @@ export function applyAnswerLocally(card: SavedWord, answer: SrsAnswer, now = new
     correct_count: card.correct_count + (answer === 'again' ? 0 : 1),
     incorrect_count: card.incorrect_count + (answer === 'again' ? 1 : 0),
     prompt_stage: nextPromptStage(card, answer),
-    introduced_date: card.introduced_date || localDateKey(now),
-    relearning_date: answer === 'again' ? localDateKey(now) : card.relearning_date,
+    introduced_date: card.introduced_date || (isNewLearning(card) ? localDateKey(now) : null),
+    relearning_date: answer === 'again' ? localDateKey(now) : null,
   };
 }
 
@@ -139,13 +143,13 @@ export function getStudyQueueBucket(card: SavedWord, now = new Date()): StudyQue
 }
 
 /** Count distinct cards still present in each queue, never steps or completed cards. */
-export function getStudyQueueCounts(cards: SavedWord[]) {
+export function getStudyQueueCounts(cards: SavedWord[], now = new Date()) {
   const counts = { new: 0, learning: 0, review: 0 };
   const seen = new Set<string>();
   for (const card of cards) {
     if (seen.has(card.id)) continue;
     seen.add(card.id);
-    const bucket = getStudyQueueBucket(card);
+    const bucket = getStudyQueueBucket(card, now);
     if (bucket === 'new') counts.new += 1;
     else if (bucket === 'learning') counts.learning += 1;
     else counts.review += 1;
@@ -178,25 +182,29 @@ export interface DueStatus {
 
 /** Compute due-status info for Dictionary badges. */
 export function getDueStatus(card: SavedWord): DueStatus {
-  // New card: never reviewed
-  if (card.srs_interval === 0 && card.learning_step === null && !card.last_reviewed_at) {
-    return { label: 'New', urgency: 'new' };
-  }
-
   // Has a due date — cards become due at midnight of their due date
   if (card.due_at) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dueDate = new Date(card.due_at);
     dueDate.setHours(0, 0, 0, 0);
+    const isNew = card.srs_interval === 0 && card.learning_step === null && !card.last_reviewed_at;
 
     if (dueDate <= today) {
-      return { label: 'Due now', urgency: 'due' };
+      return { label: isNew ? 'New today' : 'Due now', urgency: isNew ? 'new' : 'due' };
     }
 
     const diffDays = Math.round((dueDate.getTime() - today.getTime()) / 86_400_000);
-    const label = diffDays === 1 ? 'Due tomorrow' : `Due in ${diffDays} d`;
-    return { label, urgency: 'upcoming' };
+    const label = diffDays === 1
+      ? (isNew ? 'New tomorrow' : 'Due tomorrow')
+      : `${isNew ? 'New' : 'Due'} in ${diffDays} d`;
+    return { label, urgency: isNew ? 'new' : 'upcoming' };
+  }
+
+  // New card without due_at should be rare after the scheduler pass, but keep
+  // it visible instead of pretending it is due.
+  if (card.srs_interval === 0 && card.learning_step === null && !card.last_reviewed_at) {
+    return { label: 'Unscheduled', urgency: 'upcoming' };
   }
 
   // Learning / relearning without due_at

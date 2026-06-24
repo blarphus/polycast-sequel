@@ -1,4 +1,4 @@
-import { buildDictionaryGroups, getDueNextGroupKeys, isDictionaryEntryNew } from '../utils/dictionaryGroups';
+import { buildDictionaryGroups, isDictionaryEntryNew } from '../utils/dictionaryGroups';
 import { applyAnswerLocally } from '../utils/srs';
 import type { AuthSession, AuthUser } from './auth';
 import type {
@@ -97,6 +97,74 @@ function writeWords(words: SavedWord[]) {
   window.dispatchEvent(new CustomEvent(OFFLINE_DICTIONARY_SYNC_EVENT, { detail: { words } }));
 }
 
+function startOfToday() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function compareNewEntries(a: SavedWord, b: SavedWord): number {
+  const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
+  const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
+  if (aQueue !== bQueue) return aQueue - bQueue;
+
+  const aPriority = a.priority ? 0 : 1;
+  const bPriority = b.priority ? 0 : 1;
+  if (aPriority !== bPriority) return aPriority - bPriority;
+
+  const aFrequencyCount = a.frequency_count ?? 0;
+  const bFrequencyCount = b.frequency_count ?? 0;
+  if (aFrequencyCount !== bFrequencyCount) return bFrequencyCount - aFrequencyCount;
+
+  const aFrequency = a.frequency ?? 0;
+  const bFrequency = b.frequency ?? 0;
+  if (aFrequency !== bFrequency) return bFrequency - aFrequency;
+
+  const createdDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  if (createdDiff !== 0) return createdDiff;
+
+  return a.id.localeCompare(b.id);
+}
+
+function normalizeOfflineNewCards(words: SavedWord[]): SavedWord[] {
+  return words.map((word) => (
+    isDictionaryEntryNew(word) && word.due_at ? { ...word, due_at: null } : word
+  ));
+}
+
+function readScheduledWords(): SavedWord[] {
+  const words = readWords();
+  const normalized = normalizeOfflineNewCards(words);
+  if (normalized.some((word, index) => word.due_at !== words[index]?.due_at)) {
+    writeWords(normalized);
+  }
+  return normalized;
+}
+
+function dailyNewLimitRemaining(words: SavedWord[]): number {
+  const dailyLimit = Math.max(getOfflineUser().daily_new_limit || 0, 0);
+  if (dailyLimit <= 0) return 0;
+
+  const todayKey = localDateKey(startOfToday());
+  const introducedToday = words.filter((word) => word.introduced_date === todayKey).length;
+  return Math.max(dailyLimit - introducedToday, 0);
+}
+
+function availableNewWords(words: SavedWord[], limit = dailyNewLimitRemaining(words)): SavedWord[] {
+  if (limit <= 0) return [];
+  return words
+    .filter(isDictionaryEntryNew)
+    .sort(compareNewEntries)
+    .slice(0, limit);
+}
+
 function basicDefinition(word: string, sentence?: string | null) {
   const context = sentence?.trim();
   return context ? `Saved offline from: ${context}` : `Saved offline. Add a definition when the server is available.`;
@@ -138,7 +206,7 @@ function toSavedWord(data: SaveWordData): SavedWord {
 }
 
 function reviewLocalWord(id: string, answer: SrsAnswer): SavedWord | null {
-  const words = readWords();
+  const words = readScheduledWords();
   const index = words.findIndex((word) => word.id === id);
   if (index === -1) return null;
 
@@ -153,9 +221,13 @@ function reviewLocalWord(id: string, answer: SrsAnswer): SavedWord | null {
 
 function dueWords(): SavedWord[] {
   const now = Date.now();
-  return readWords()
+  const words = readScheduledWords();
+  const availableNewIds = new Set(availableNewWords(words).map((word) => word.id));
+
+  return words
     .filter((word) => {
-      if (isDictionaryEntryNew(word) || !word.due_at) return true;
+      if (isDictionaryEntryNew(word)) return availableNewIds.has(word.id);
+      if (!word.due_at) return true;
       const learnAhead = word.learning_step !== null ? 20 * 60 * 1000 : 0;
       return new Date(word.due_at).getTime() <= now + learnAhead;
     })
@@ -163,6 +235,7 @@ function dueWords(): SavedWord[] {
       const aNew = isDictionaryEntryNew(a);
       const bNew = isDictionaryEntryNew(b);
       if (aNew !== bNew) return aNew ? -1 : 1;
+      if (aNew && bNew) return compareNewEntries(a, b);
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
 }
@@ -172,8 +245,12 @@ function dictionaryGroups(searchParams: URLSearchParams) {
   const limit = Math.max(1, Number(searchParams.get('limit') || 20));
   const search = searchParams.get('search') || '';
   const sort = (searchParams.get('sort') || 'queue') as DictionarySortMode;
-  const groups = buildDictionaryGroups(readWords(), search, sort);
-  const dueNextGroupKeys = Array.from(getDueNextGroupKeys(groups, getOfflineUser().daily_new_limit || 20));
+  const words = readScheduledWords();
+  const groups = buildDictionaryGroups(words, search, sort);
+  const availableNewIds = new Set(availableNewWords(words).map((word) => word.id));
+  const dueNextGroupKeys = groups
+    .filter((group) => group.entries.some((entry) => availableNewIds.has(entry.id)))
+    .map((group) => group.key);
   const totalGroups = groups.length;
   const totalPages = Math.max(1, Math.ceil(totalGroups / limit));
   const adjustedPage = Math.min(page, totalPages - 1);
@@ -199,8 +276,9 @@ function saveWord(data: SaveWordData) {
   if (existing) return { ...existing, _created: false };
 
   const saved = toSavedWord({ ...data, target_language: targetLanguage || undefined });
-  writeWords([saved, ...words]);
-  return { ...saved, _created: true };
+  const nextWords = normalizeOfflineNewCards([saved, ...words]);
+  writeWords(nextWords);
+  return { ...nextWords[0], _created: true };
 }
 
 export async function handleOfflineRequest(path: string, method: string, body?: unknown): Promise<LocalResult> {
@@ -263,7 +341,7 @@ export async function handleOfflineRequest(path: string, method: string, body?: 
 
   if (normalizedPath === '/dictionary/words' && upperMethod === 'GET') {
     markOfflineEnabled();
-    return { handled: true, data: readWords() };
+    return { handled: true, data: readScheduledWords() };
   }
 
   if (normalizedPath === '/dictionary/words' && upperMethod === 'POST') {
@@ -278,7 +356,14 @@ export async function handleOfflineRequest(path: string, method: string, body?: 
 
   if (normalizedPath === '/dictionary/new-today' && upperMethod === 'GET') {
     markOfflineEnabled();
-    return { handled: true, data: readWords().filter(isDictionaryEntryNew) };
+    const words = readScheduledWords();
+    return { handled: true, data: availableNewWords(words) };
+  }
+
+  if (normalizedPath === '/dictionary/new-preview' && upperMethod === 'GET') {
+    markOfflineEnabled();
+    const limit = Math.max(1, Number(url.searchParams.get('limit') || 10));
+    return { handled: true, data: availableNewWords(readScheduledWords(), limit) };
   }
 
   if (normalizedPath === '/dictionary/word-groups' && upperMethod === 'GET') {
@@ -288,10 +373,11 @@ export async function handleOfflineRequest(path: string, method: string, body?: 
 
   if (normalizedPath === '/home/student-dashboard' && upperMethod === 'GET') {
     markOfflineEnabled();
+    const words = readScheduledWords();
     return {
       handled: true,
       data: {
-        newToday: readWords().filter(isDictionaryEntryNew),
+        newToday: availableNewWords(words),
         dueWords: dueWords(),
         pendingClasswork: { count: 0, posts: [] },
       },

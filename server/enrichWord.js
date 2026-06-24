@@ -6,7 +6,7 @@
 
 import { applyCorpusFrequency } from './lib/wordFrequency.js';
 import { normalizeLemma, normalizeForms } from './lib/normalizeWordFields.js';
-import { callGemini } from './lib/gemini.js';
+import { callGemini, callGeminiVision, parseGeminiJson } from './lib/gemini.js';
 import { searchAllImages } from './lib/imageSearch.js';
 import { pickBestImage } from './lib/imagePick.js';
 import { generateWordImage } from './lib/imageGenerate.js';
@@ -258,6 +258,149 @@ const FIELD_LEMMA = `- LEMMA: The dictionary/base form of this word in the targe
   If the word is already its base form, return it unchanged. Leave empty for
   particles, prepositions, conjunctions, and other uninflected words.`;
 
+async function describeFlashcardImage({ word, definition, image }) {
+  if (!image?.buffer || !image?.contentType) return { description: null, failure: null };
+
+  try {
+    const raw = await callGeminiVision(
+      [
+        {
+          text: `This image was chosen for a language-learning flashcard for "${word}"` +
+            (definition ? ` (meaning: ${definition})` : '') + `. ` +
+            `Describe what is visibly happening in the image in one short English phrase or sentence. ` +
+            `Focus on concrete subjects, actions, setting, and mood that could naturally appear in an example sentence. ` +
+            `Do not mention the word "image", "photo", "illustration", or any uncertainty.`,
+        },
+        { inlineData: { mimeType: image.contentType, data: image.buffer.toString('base64') } },
+      ],
+      { maxOutputTokens: 80, temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } },
+    );
+    const description = raw.trim().replace(/^["']|["']$/g, '');
+    if (!description) {
+      return {
+        description: null,
+        failure: 'Image scene description returned no usable description.',
+      };
+    }
+    return { description, failure: null };
+  } catch (err) {
+    logger.error('describeFlashcardImage failed for "%s": %s', word, err.message);
+    return {
+      description: null,
+      failure: `Image scene description failed: ${err.message}`,
+    };
+  }
+}
+
+function ensureMarkedExample(sentence, word) {
+  if (!sentence) return null;
+  if (sentence.includes('~')) return sentence;
+  const escaped = String(word || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!escaped) return sentence;
+  return sentence.replace(new RegExp(`\\b(${escaped})\\b`, 'iu'), '~$1~');
+}
+
+async function generateImageGroundedExample({
+  word,
+  targetLang,
+  nativeLang,
+  translation,
+  definition,
+  partOfSpeech,
+  imageContext,
+}) {
+  if (!imageContext) return { result: null, failure: null };
+
+  const prompt = `A language learner is saving the ${targetLang || 'target-language'} word "${word}".
+Native language: ${nativeLang}
+Word translation: ${translation || ''}
+Definition: ${definition || ''}
+Part of speech: ${partOfSpeech || ''}
+Chosen flashcard image scene: ${imageContext}
+
+Create the INITIAL flashcard example sentence so it matches what is visibly happening in the chosen image.
+Return ONLY JSON with exactly these keys:
+{"example_sentence":"...","sentence_translation":"..."}
+
+Rules:
+- example_sentence must be a short, natural beginner-level sentence in ${targetLang || 'the target language'}.
+- It must use "${word}" in the same sense as the definition.
+- It must describe or fit the chosen image scene. Do not introduce unrelated objects or actions.
+- Wrap the target word, or the exact inflected form used, with tildes like ~word~.
+- Keep example_sentence under 15 words.
+- sentence_translation must be a natural ${nativeLang} translation of the example sentence.
+- In sentence_translation, wrap the translated equivalent of the target word with tildes.`;
+
+  try {
+    const raw = await callGemini(
+      prompt,
+      {
+        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: 180,
+        responseMimeType: 'application/json',
+      },
+    );
+    const parsed = parseGeminiJson(raw, 'Image-grounded example generation');
+    const example = ensureMarkedExample(String(parsed.example_sentence || '').trim(), word);
+    const sentenceTranslation = String(parsed.sentence_translation || '').trim() || null;
+    if (!example) {
+      return { result: null, failure: 'Image-grounded example generation returned an empty sentence.' };
+    }
+    return {
+      result: { example_sentence: example, sentence_translation: sentenceTranslation },
+      failure: null,
+    };
+  } catch (err) {
+    logger.error('generateImageGroundedExample failed for "%s": %s', word, err.message);
+    return {
+      result: null,
+      failure: `Image-grounded example generation failed: ${err.message}`,
+    };
+  }
+}
+
+async function generateExampleSentenceTranslation({
+  word,
+  targetLang,
+  nativeLang,
+  exampleSentence,
+}) {
+  if (!exampleSentence) return { translation: null, failure: null };
+
+  const prompt = `Translate this ${targetLang || 'target-language'} flashcard example sentence into ${nativeLang}.
+
+The target word or inflected form is wrapped in tildes in the source sentence. In your translation, wrap only the natural ${nativeLang} equivalent of that marked word or phrase in tildes.
+
+Return ONLY JSON with exactly this key:
+{"sentence_translation":"..."}
+
+Source sentence: ${exampleSentence}
+Target word: ${word}`;
+
+  try {
+    const raw = await callGemini(
+      prompt,
+      {
+        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: 120,
+        responseMimeType: 'application/json',
+      },
+    );
+    const parsed = parseGeminiJson(raw, 'Example sentence translation');
+    const translation = String(parsed.sentence_translation || '').trim();
+    if (!translation) {
+      return { translation: null, failure: 'Example sentence translation returned no usable text.' };
+    }
+    return { translation, failure: null };
+  } catch (err) {
+    logger.error('generateExampleSentenceTranslation failed for "%s": %s', word, err.message);
+    return {
+      translation: null,
+      failure: `Example sentence translation failed: ${err.message}`,
+    };
+  }
+}
+
 /**
  * Build a Gemini enrichment prompt from shared + path-specific parts.
  *
@@ -300,6 +443,7 @@ ${FIELD_LEMMA}`;
  */
 export async function enrichWord(word, sentence, nativeLang, targetLang, senseIndex = null) {
   const _t0 = Date.now();
+  const fallback_notices = [];
 
   // Query Wiktionary DB directly — gives access to both senses AND forms
   let wiktRows = targetLang
@@ -488,19 +632,84 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     : null;
   let imageSource = 'stock';
   if (!chosen) {
+    if (candidates.length > 0) {
+      fallback_notices.push({
+        title: 'Image fallback used',
+        message: `No stock image clearly matched "${word}", so Polycast generated one instead.`,
+      });
+    } else {
+      fallback_notices.push({
+        title: 'Image fallback used',
+        message: `Image search returned no candidates for "${imageSearchTerm}", so Polycast generated an image instead.`,
+      });
+    }
     chosen = await generateWordImage(word, definition, { sentence, imageTerm: imageSearchTerm });
     imageSource = 'generated';
   }
   let image_url = null;
   if (chosen) {
+    if (chosen.fallbackNotice) {
+      fallback_notices.push(chosen.fallbackNotice);
+    }
+    const imageDescription = await describeFlashcardImage({ word, definition, image: chosen });
+    if (imageDescription.failure) {
+      fallback_notices.push({
+        title: 'Example fallback used',
+        message: `${imageDescription.failure} Keeping the original example sentence.`,
+      });
+    }
+    const visualExample = await generateImageGroundedExample({
+      word,
+      targetLang,
+      nativeLang,
+      translation,
+      definition,
+      partOfSpeech: part_of_speech,
+      imageContext: imageDescription.description,
+    });
+    if (visualExample.failure) {
+      fallback_notices.push({
+        title: 'Example fallback used',
+        message: `${visualExample.failure} Keeping the original example sentence.`,
+      });
+    }
+    if (visualExample.result) {
+      example_sentence = visualExample.result.example_sentence;
+      sentence_translation = visualExample.result.sentence_translation;
+      logger.info('[enrich] %s — image-grounded example: "%s"', word, example_sentence);
+    }
+
     const id = await storeImageBytes(chosen.buffer, chosen.contentType, chosen.url ?? null);
     image_url = `/api/dictionary/image/${id}`;
   } else {
+    fallback_notices.push({
+      title: 'Image unavailable',
+      message: `Polycast could not find or generate an image for "${word}". Keeping the text-only flashcard data.`,
+    });
     logger.warn('enrichWord: no image found or generated for "%s" (term "%s")', word, imageSearchTerm);
   }
+
+  if (example_sentence && !sentence_translation) {
+    const generatedTranslation = await generateExampleSentenceTranslation({
+      word,
+      targetLang,
+      nativeLang,
+      exampleSentence: example_sentence,
+    });
+    if (generatedTranslation.translation) {
+      sentence_translation = generatedTranslation.translation;
+      logger.info('[enrich] %s — generated missing sentence translation: "%s"', word, sentence_translation);
+    } else if (generatedTranslation.failure) {
+      fallback_notices.push({
+        title: 'Sentence translation fallback failed',
+        message: `${generatedTranslation.failure} The flashcard was saved without a sentence translation.`,
+      });
+    }
+  }
+
   const _tImg1 = Date.now();
   logger.info('[enrich-timing] %s — Image %s ("%s"): %dms', word, imageSource, imageSearchTerm, _tImg1 - _tImg0);
   logger.info('[enrich-timing] %s — TOTAL: %dms', word, _tImg1 - _t0);
 
-  return { word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term: geminiImageTerm || translation || word };
+  return { word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term: geminiImageTerm || translation || word, fallback_notices };
 }

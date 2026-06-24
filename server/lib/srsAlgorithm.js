@@ -7,7 +7,6 @@ const GRADUATING_INTERVAL = 86400;       // 1 day
 // const EASY_GRADUATING_INTERVAL = 345600; // 4 days -- unused since the rating
 //   collapsed to a binary correct/incorrect (good/again only). Flagged for
 //   deletion in a future audit.
-const RELEARNING_STEP = 60;              // 1 min (one relearning step) — a wrong answer bumps to 1 min, not 10
 const MIN_EASE = 1.3;
 const MIN_REVIEW_INTERVAL = 86400;       // 1 day minimum
 
@@ -34,14 +33,20 @@ export function computeNextReview(card, answer) {
   let dueSeconds;
 
   if (isRelearning) {
-    // ---- Relearning phase (one 10-minute step) ----
+    // ---- Relearning phase ----
+    const step = card.learning_step ?? 0;
+
     if (answer === 'again') {
       newStep = 0;
-      dueSeconds = RELEARNING_STEP;
-    } else {
-      // good — graduate back out of relearning at the stored interval.
+      dueSeconds = LEARNING_STEPS[0];
+    } else if (step >= LEARNING_STEPS.length - 1) {
+      // good on the last relearning step — graduate back out at the stored interval.
       newStep = null;
       dueSeconds = card.srs_interval;
+    } else {
+      // good — advance to the next relearning step.
+      newStep = step + 1;
+      dueSeconds = LEARNING_STEPS[step + 1];
     }
   } else if (isLearning) {
     // ---- New-card learning phase ----
@@ -69,7 +74,7 @@ export function computeNextReview(card, answer) {
       // Stock Anki default: New Interval 0%, clamped to the 1-day minimum.
       newInterval = MIN_REVIEW_INTERVAL;
       newStep = 0; // Enter relearning
-      dueSeconds = RELEARNING_STEP; // 10 min
+      dueSeconds = LEARNING_STEPS[0]; // 1 min
     } else {
       // good — grow the interval by the ease factor.
       newInterval = roundedDayInterval(oldInterval * newEase);

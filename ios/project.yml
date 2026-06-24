@@ -20,10 +20,15 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: Polycast/Sources
+      - path: Polycast/Assets.xcassets
     dependencies:
       - package: WebRTC
       - package: socket.io-client-swift
         product: SocketIO
+    infoPlist:
+      NSAppTransportSecurity:
+        NSAllowsArbitraryLoads: YES
+        NSAllowsLocalNetworking: YES
     settings:
       base:
         PRODUCT_NAME: Polycast
@@ -39,8 +44,11 @@ targets:
         INFOPLIST_KEY_UIBackgroundModes:
           - voip
           - remote-notification
+          - audio
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 0.1.0
     scheme:

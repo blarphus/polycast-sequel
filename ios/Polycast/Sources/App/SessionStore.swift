@@ -32,6 +32,7 @@ final class SessionStore: ObservableObject {
 
         do {
             user = try await api.getMe()
+            await renewSessionToken()
             SocketClient.shared.connect()
             VoIPPushManager.shared.refreshRegistration()
         } catch {
@@ -48,7 +49,10 @@ final class SessionStore: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            let response = try await api.login(username: username, password: password)
+            let response = try await api.login(
+                username: username.trimmingCharacters(in: .whitespacesAndNewlines),
+                password: password
+            )
             api.token = response.token
             tokenStore.save(token: response.token)
             user = response.user
@@ -67,7 +71,11 @@ final class SessionStore: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            let response = try await api.signup(username: username, password: password, displayName: displayName)
+            let response = try await api.signup(
+                username: username.trimmingCharacters(in: .whitespacesAndNewlines),
+                password: password,
+                displayName: displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
             api.token = response.token
             tokenStore.save(token: response.token)
             user = response.user
@@ -105,5 +113,15 @@ final class SessionStore: ObservableObject {
         api.token = nil
         user = nil
         authError = nil
+    }
+
+    private func renewSessionToken() async {
+        do {
+            let token = try await api.exportSessionToken()
+            api.token = token
+            tokenStore.save(token: token)
+        } catch {
+            print("[Polycast] Session token refresh failed: \(error)")
+        }
     }
 }

@@ -335,8 +335,9 @@
   position: fixed;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.08);
+  padding: 14px 16px;
   pointer-events: auto;
   animation: fadeIn 0.15s ease;
 }
@@ -345,13 +346,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.6rem 0.8rem;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.5rem;
 }
 
 .word-popup-word {
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.15rem;
   color: var(--accent);
 }
 
@@ -359,10 +359,10 @@
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   cursor: pointer;
   line-height: 1;
-  padding: 0 0.2rem;
+  padding: 0 0.15rem;
 }
 
 .word-popup-close:hover {
@@ -370,9 +370,7 @@
 }
 
 .word-popup-body {
-  padding: 0.7rem 0.8rem;
-  max-height: 150px;
-  overflow-y: auto;
+  min-height: 36px;
 }
 
 .word-popup-loading {
@@ -382,19 +380,61 @@
   padding: 0.5rem 0;
 }
 
+/* Primary gloss line — the translation, shown in the reading colour (matches the
+   subtitle-extension popup) rather than the accent colour. */
 .word-popup-translation {
   font-weight: 700;
-  font-size: 1.1rem;
-  color: var(--accent);
-  margin-bottom: 0.3rem;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
 }
 
 .word-popup-definition {
   font-size: 0.85rem;
   color: var(--text-secondary);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
+/* Explain-in-context button + the revealed explanation (Gemini, contextual). */
+.word-popup-explain,
+.word-popup-add {
+  width: 100%;
+  margin-top: 0.625rem;
+  padding: 0.5rem 0;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+
+.word-popup-explain:hover,
+.word-popup-add:hover:not(:disabled) {
+  background: var(--accent-light);
+}
+
+.word-popup-add.saved {
+  border-color: var(--success);
+  color: var(--success);
+  background: var(--success-dim);
+  cursor: default;
+}
+
+.word-popup-explanation {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* UNUSED — replaced by the extension-style layout (explain + full-width add).
+   Flagged for deletion in a future CSS audit.
 .word-popup-example {
   margin: 0.2rem 0;
 }
@@ -415,7 +455,6 @@
   color: var(--text-secondary);
   margin: 0.15rem 0 0;
 }
-
 .word-popup-footer {
   display: flex;
   align-items: center;
@@ -436,7 +475,6 @@
 .word-popup-toggle:hover {
   background: rgba(255, 255, 255, 0.08);
 }
-
 .word-popup-source {
   display: inline-block;
   font-size: 0.6rem;
@@ -455,7 +493,6 @@
   background: rgba(249, 115, 22, 0.15);
   color: #f97316;
 }
-
 .word-popup-save {
   width: auto;
   margin: 0 0.4rem 0 auto;
@@ -470,18 +507,17 @@
   transition: border-color var(--transition), color var(--transition), background var(--transition);
   white-space: nowrap;
 }
-
 .word-popup-save:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
 }
-
 .word-popup-save.saved {
   border-color: var(--success);
   color: var(--success);
   background: rgba(34, 165, 94, 0.1);
   cursor: default;
 }
+*/
 
 .word-popup-translation-row {
   display: flex;
@@ -576,7 +612,7 @@
   padding: 0.65rem 1rem;
   background: var(--bg-surface);
   border: 1.5px solid #d97706;
-  border-radius: 12px;
+  border-radius: 999px;
   box-shadow: var(--shadow);
   color: #b45309;
   font-size: 0.88rem;
@@ -592,6 +628,23 @@
   height: 20px;
   border: 1.5px solid currentColor;
   border-radius: 50%;
+}
+
+.tts-fallback-toast > span:last-child {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.tts-fallback-toast strong {
+  white-space: nowrap;
+}
+
+.tts-fallback-toast strong + span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dict-toast--hiding {

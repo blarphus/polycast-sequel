@@ -6,6 +6,7 @@ struct WordEditView: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    @State private var wordText: String
     @State private var translation: String
     @State private var definition: String
     @State private var exampleSentence: String
@@ -18,6 +19,7 @@ struct WordEditView: View {
     init(word: SavedWord, onUpdate: @escaping (SavedWord) -> Void) {
         self.word = word
         self.onUpdate = onUpdate
+        _wordText = State(initialValue: word.word)
         _translation = State(initialValue: word.translation)
         _definition = State(initialValue: word.definition)
         _exampleSentence = State(initialValue: word.exampleSentence ?? "")
@@ -29,9 +31,9 @@ struct WordEditView: View {
         NavigationStack {
             Form {
                 Section("Word") {
-                    Text(word.word)
+                    TextField("Word", text: $wordText)
                         .font(.title3.bold())
-                        .foregroundStyle(.tint)
+                        .autocorrectionDisabled()
                 }
 
                 Section("Translation") {
@@ -57,7 +59,7 @@ struct WordEditView: View {
 
                 Section("Image") {
                     if let url = APIClient.proxyImageURL(word.imageUrl) {
-                        AsyncImage(url: url) { phase in
+                        AuthorizedAsyncImage(url: url) { phase in
                             switch phase {
                             case .success(let image):
                                 image
@@ -98,7 +100,11 @@ struct WordEditView: View {
                     Button("Save") {
                         Task { await save() }
                     }
-                    .disabled(saving || translation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(
+                        saving
+                        || wordText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        || translation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    )
                 }
             }
             .sheet(isPresented: $showingImagePicker) {
@@ -119,6 +125,7 @@ struct WordEditView: View {
         do {
             let updated = try await APIClient.shared.updateWord(
                 id: word.id,
+                word: wordText.trimmingCharacters(in: .whitespacesAndNewlines),
                 translation: translation.trimmingCharacters(in: .whitespacesAndNewlines),
                 definition: definition.trimmingCharacters(in: .whitespacesAndNewlines),
                 exampleSentence: exampleSentence.trimmingCharacters(in: .whitespacesAndNewlines),

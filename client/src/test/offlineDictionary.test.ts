@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   handleOfflineRequest,
   OFFLINE_DICTIONARY_SYNC_EVENT,
@@ -19,6 +19,44 @@ describe('offlineDictionary', () => {
       },
     });
   });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function makeWord(index: number, overrides: Partial<SavedWord> = {}): SavedWord {
+    return {
+      id: `word-${index}`,
+      word: `palabra-${index}`,
+      translation: '',
+      definition: '',
+      target_language: 'es',
+      sentence_context: null,
+      created_at: new Date(2026, 0, 1, 0, index).toISOString(),
+      frequency: null,
+      frequency_count: null,
+      example_sentence: null,
+      sentence_translation: null,
+      part_of_speech: null,
+      srs_interval: 0,
+      due_at: null,
+      last_reviewed_at: null,
+      correct_count: 0,
+      incorrect_count: 0,
+      ease_factor: 2.5,
+      learning_step: null,
+      image_url: null,
+      lemma: null,
+      forms: null,
+      prompt_stage: 0,
+      priority: false,
+      image_term: null,
+      queue_position: index,
+      introduced_date: null,
+      relearning_date: null,
+      ...overrides,
+    };
+  }
 
   it('handles offline auth/session and settings flows', async () => {
     const login = await handleOfflineRequest('/login', 'POST', { username: 'reader' });
@@ -98,5 +136,56 @@ describe('offlineDictionary', () => {
     expect(stored[0].correct_count).toBe(1);
 
     window.removeEventListener(OFFLINE_DICTIONARY_SYNC_EVENT, syncListener);
+  });
+
+  it('does not stack offline new words from missed scheduled days', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 15, 12));
+
+    await handleOfflineRequest('/me/settings', 'PATCH', { daily_new_limit: 10 });
+    const staleScheduledWords = Array.from({ length: 30 }, (_, index) => makeWord(index, {
+      due_at: new Date(2026, 0, 1 + Math.floor(index / 10)).toISOString(),
+    }));
+    window.localStorage.setItem(OFFLINE_WORDS_KEY, JSON.stringify(staleScheduledWords));
+
+    const due = await handleOfflineRequest('/dictionary/due', 'GET');
+    expect(due.handled).toBe(true);
+    if (!due.handled) throw new Error('due should be handled');
+    expect(due.data as SavedWord[]).toHaveLength(10);
+    expect((due.data as SavedWord[]).map((word) => word.id)).toEqual(
+      Array.from({ length: 10 }, (_, index) => `word-${index}`),
+    );
+
+    const newToday = await handleOfflineRequest('/dictionary/new-today', 'GET');
+    expect(newToday.handled).toBe(true);
+    if (!newToday.handled) throw new Error('new-today should be handled');
+    expect(newToday.data as SavedWord[]).toHaveLength(10);
+
+    const stored = JSON.parse(window.localStorage.getItem(OFFLINE_WORDS_KEY) || '[]') as SavedWord[];
+    expect(stored.filter((word) => word.due_at)).toHaveLength(0);
+  });
+
+  it('subtracts words already introduced today from the offline daily new count', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 15, 12));
+
+    await handleOfflineRequest('/me/settings', 'PATCH', { daily_new_limit: 10 });
+    const introducedToday = Array.from({ length: 3 }, (_, index) => makeWord(index, {
+      srs_interval: 0,
+      learning_step: 1,
+      last_reviewed_at: new Date(2026, 0, 15, 9, index).toISOString(),
+      due_at: new Date(2026, 0, 16).toISOString(),
+      introduced_date: '2026-01-15',
+    }));
+    const newWords = Array.from({ length: 20 }, (_, index) => makeWord(index + 3));
+    window.localStorage.setItem(OFFLINE_WORDS_KEY, JSON.stringify([...introducedToday, ...newWords]));
+
+    const newToday = await handleOfflineRequest('/dictionary/new-today', 'GET');
+    expect(newToday.handled).toBe(true);
+    if (!newToday.handled) throw new Error('new-today should be handled');
+    expect(newToday.data as SavedWord[]).toHaveLength(7);
+    expect((newToday.data as SavedWord[]).map((word) => word.id)).toEqual(
+      Array.from({ length: 7 }, (_, index) => `word-${index + 3}`),
+    );
   });
 });

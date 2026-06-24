@@ -90,12 +90,12 @@ export async function applySrsReview(
          incorrect_count = incorrect_count + $6,
          prompt_stage = $7,
          introduced_date = CASE
-           WHEN last_reviewed_at IS NULL THEN (NOW() AT TIME ZONE $10)::date
+           WHEN last_reviewed_at IS NULL AND srs_interval = 0 THEN (NOW() AT TIME ZONE $10)::date
            ELSE introduced_date
          END,
          relearning_date = CASE
            WHEN $12::text = 'again' THEN (NOW() AT TIME ZONE $10)::date
-           ELSE relearning_date
+           ELSE NULL
          END
      WHERE id = $8 AND user_id = $9
      RETURNING *`,

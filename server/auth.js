@@ -9,19 +9,25 @@ if (!process.env.JWT_SECRET) {
 }
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 const SALT_ROUNDS = 12;
+const DEFAULT_SESSION_TTL_DAYS = 365;
+const configuredSessionTtlDays = Number.parseInt(process.env.SESSION_TTL_DAYS || '', 10);
+const SESSION_TTL_DAYS = Number.isFinite(configuredSessionTtlDays) && configuredSessionTtlDays > 0
+  ? configuredSessionTtlDays
+  : DEFAULT_SESSION_TTL_DAYS;
+const SESSION_TTL_MS = SESSION_TTL_DAYS * 24 * 60 * 60 * 1000;
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  maxAge: SESSION_TTL_MS,
 };
 
 /**
- * Sign a JWT for the given user ID with a 7-day expiry.
+ * Sign a JWT for the given user ID with the configured session expiry.
  */
 export function signToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: `${SESSION_TTL_DAYS}d` });
 }
 
 /**

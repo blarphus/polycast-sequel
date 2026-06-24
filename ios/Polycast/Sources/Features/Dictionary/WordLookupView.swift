@@ -5,11 +5,14 @@ struct WordLookupView: View {
     let targetLang: String
     let onSave: (SavedWord) -> Void
 
+    @EnvironmentObject private var wordStore: WordStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var searchText = ""
     @State private var loading = false
     @State private var senses: [WiktSense] = []
+    // savingIndex is no longer used now that saving is optimistic (instant checkmark).
+    // Flagged for deletion in a future audit.
     @State private var savingIndex: Int?
     @State private var savedIndices: Set<Int> = []
     @State private var error = ""
@@ -74,13 +77,13 @@ struct WordLookupView: View {
     private var senseList: some View {
         List(Array(senses.enumerated()), id: \.offset) { index, sense in
             Button {
-                guard savingIndex == nil, !savedIndices.contains(index) else { return }
-                Task { await save(sense: sense, index: index) }
+                guard !savedIndices.contains(index) else { return }
+                save(sense: sense, index: index)
             } label: {
                 senseRow(sense: sense, index: index)
             }
             .buttonStyle(.plain)
-            .disabled(savingIndex != nil || savedIndices.contains(index))
+            .disabled(savedIndices.contains(index))
         }
         .listStyle(.plain)
     }
@@ -146,40 +149,86 @@ struct WordLookupView: View {
         loading = false
     }
 
-    private func save(sense: WiktSense, index: Int) async {
-        savingIndex = index
+    /// Optimistic save, matching the Watch/Reader flow: mark the sense saved and
+    /// insert a placeholder row instantly, then run the slow enrichment + save in
+    /// the background and swap in the server's row when it lands.
+    private func save(sense: WiktSense, index: Int) {
+        let word = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !word.isEmpty else { return }
+
+        savedIndices.insert(index)
         error = ""
 
-        do {
-            let enriched = try await APIClient.shared.enrichWord(
-                word: searchText.trimmingCharacters(in: .whitespacesAndNewlines),
-                sentence: "\(searchText): \(sense.gloss)",
-                nativeLang: nativeLang,
-                targetLang: targetLang
-            )
+        let tempId = "optimistic-\(UUID().uuidString)"
+        let placeholder = SavedWord(
+            id: tempId,
+            word: word,
+            translation: "",
+            definition: sense.gloss,
+            targetLanguage: targetLang,
+            sentenceContext: nil,
+            createdAt: ISO8601DateFormatter().string(from: .now),
+            frequency: nil,
+            frequencyCount: nil,
+            exampleSentence: sense.example?.text,
+            sentenceTranslation: nil,
+            partOfSpeech: sense.pos,
+            srsInterval: 0,
+            dueAt: nil,
+            lastReviewedAt: nil,
+            correctCount: 0,
+            incorrectCount: 0,
+            easeFactor: 2.5,
+            learningStep: nil,
+            promptStage: 0,
+            imageUrl: nil,
+            lemma: nil,
+            forms: nil,
+            priority: false,
+            imageTerm: nil,
+            queuePosition: nil,
+            introducedDate: nil,
+            relearningDate: nil,
+            stageSentences: nil
+        )
+        wordStore.insert(placeholder)
+        onSave(placeholder)
 
-            let saved = try await APIClient.shared.saveWord(
-                word: enriched.word,
-                translation: enriched.translation,
-                definition: enriched.definition,
-                targetLanguage: targetLang,
-                frequency: enriched.frequency,
-                frequencyCount: enriched.frequencyCount,
-                exampleSentence: enriched.exampleSentence,
-                sentenceTranslation: enriched.sentenceTranslation,
-                partOfSpeech: enriched.partOfSpeech,
-                imageUrl: enriched.imageUrl,
-                lemma: enriched.lemma,
-                forms: enriched.forms,
-                imageTerm: enriched.imageTerm
-            )
+        Task {
+            do {
+                let enriched = try await APIClient.shared.enrichWord(
+                    word: word,
+                    sentence: "\(word): \(sense.gloss)",
+                    nativeLang: nativeLang,
+                    targetLang: targetLang
+                )
 
-            savedIndices.insert(index)
-            onSave(saved)
-        } catch {
-            self.error = error.localizedDescription
+                let saved = try await APIClient.shared.saveWord(
+                    word: enriched.word,
+                    translation: enriched.translation,
+                    definition: enriched.definition,
+                    targetLanguage: targetLang,
+                    frequency: enriched.frequency,
+                    frequencyCount: enriched.frequencyCount,
+                    exampleSentence: enriched.exampleSentence,
+                    sentenceTranslation: enriched.sentenceTranslation,
+                    partOfSpeech: enriched.partOfSpeech,
+                    imageUrl: enriched.imageUrl,
+                    lemma: enriched.lemma,
+                    forms: enriched.forms,
+                    surfaceForm: word,
+                    imageTerm: enriched.imageTerm
+                )
+
+                wordStore.remove(id: tempId)
+                wordStore.insert(saved)
+            } catch {
+                // Roll back the optimistic row and surface the failure.
+                print("[Polycast] Save word failed: \(error.localizedDescription)")
+                wordStore.remove(id: tempId)
+                savedIndices.remove(index)
+                self.error = error.localizedDescription
+            }
         }
-
-        savingIndex = nil
     }
 }

@@ -17,6 +17,7 @@ interface SubtitleBarProps {
   isWordSaved?: (word: string) => boolean;
   isDefinitionSaved?: (word: string, definition: string) => boolean;
   onSaveWord?: (data: SaveWordData) => Promise<{ _created: boolean }>;
+  onRemoveWord?: (id: string) => Promise<void>;
   onOptimisticSave?: (word: string) => void;
 }
 
@@ -68,7 +69,7 @@ function useSubtitleLines(text: string): string[] {
   return linesRef.current;
 }
 
-export default function SubtitleBar({ localText, remoteText, remoteLang, nativeLang, savedWords, isWordSaved, isDefinitionSaved, onSaveWord, onOptimisticSave }: SubtitleBarProps) {
+export default function SubtitleBar({ localText, remoteText, remoteLang, nativeLang, savedWords, isWordSaved, isDefinitionSaved, onSaveWord, onRemoveWord, onOptimisticSave }: SubtitleBarProps) {
   const [popup, setPopup] = useState<PopupState | null>(null);
 
   const localLines = useSubtitleLines(localText);
@@ -125,6 +126,7 @@ export default function SubtitleBar({ localText, remoteText, remoteLang, nativeL
           isWordSaved={isWordSaved}
           isDefinitionSaved={isDefinitionSaved}
           onSaveWord={onSaveWord}
+          onRemoveWord={onRemoveWord}
           onOptimisticSave={onOptimisticSave}
         />
       )}

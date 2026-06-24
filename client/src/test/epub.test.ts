@@ -15,6 +15,7 @@ function makeEpub(overrides: Record<string, string> = {}) {
         <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
           <dc:title>Fixture Book</dc:title>
           <dc:creator>Test Author</dc:creator>
+          <dc:language>es-ES</dc:language>
         </metadata>
         <manifest>
           <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
@@ -62,6 +63,7 @@ describe('parseEpub', () => {
 
     expect(parsed.title).toBe('Fixture Book');
     expect(parsed.author).toBe('Test Author');
+    expect(parsed.language).toBe('es');
     expect(parsed.coverHref).toBe('OPS/images/cover.jpg');
     expect(parsed.chapters).toHaveLength(2);
     expect(parsed.chapters.map((chapter) => chapter.label)).toEqual(['Opening', 'Second']);
@@ -78,6 +80,33 @@ describe('parseEpub', () => {
     const cover = coverBlob(parsed);
     expect(cover?.type).toBe('image/jpeg');
     expect(cover?.size).toBe(4);
+  });
+
+  it('infers Spanish language when EPUB metadata omits dc:language', () => {
+    const parsed = parseEpub(makeEpub({
+      'OPS/content.opf': `<?xml version="1.0"?>
+        <package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+          <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <dc:title>Fixture Book</dc:title>
+            <dc:creator>Test Author</dc:creator>
+          </metadata>
+          <manifest>
+            <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+            <item id="cover" href="images/cover.jpg" media-type="image/jpeg" properties="cover-image"/>
+            <item id="c1" href="chapters/one.xhtml" media-type="application/xhtml+xml"/>
+          </manifest>
+          <spine>
+            <itemref idref="c1"/>
+          </spine>
+        </package>`,
+      'OPS/chapters/one.xhtml': `<!doctype html>
+        <html><body>
+          <p>El chico sabe que la noche es larga, pero no puede salir.</p>
+          <p>La casa de los amigos está cerca del parque y hay una luz.</p>
+        </body></html>`,
+    }));
+
+    expect(parsed.language).toBe('es');
   });
 
   it('rejects archives without an OPF', () => {

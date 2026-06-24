@@ -30,3 +30,11 @@ export function renderCloze(text: string) {
 export function stripTildes(text: string): string {
   return text.replace(/~([^~]+)~/g, '$1');
 }
+
+/** Return the contents of the first ~word~ span (tildes stripped), or null.
+ *  Used to identify a card's own target word so it can be excluded from
+ *  tap-to-add. */
+export function tildeWord(text: string): string | null {
+  const m = text.match(/~([^~]+)~/);
+  return m ? m[1] : null;
+}

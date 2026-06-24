@@ -9,5 +9,6 @@ export interface StudentDashboard {
 }
 
 export function getStudentDashboard() {
-  return request<StudentDashboard>('/home/student-dashboard', { cacheTtlMs: 15_000 });
+  const params = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  return request<StudentDashboard>(`/home/student-dashboard?${params}`, { cacheTtlMs: 15_000 });
 }

@@ -55,7 +55,8 @@
 
 /* Card container with perspective */
 .flashcard-container {
-  perspective: 1000px;
+  perspective: 1400px;
+  perspective-origin: 50% 45%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -65,15 +66,28 @@
 
 /* Card outer shell — handles drag transform */
 .flashcard {
+  --card-drag-x: 0px;
+  --card-drag-rotate: 0deg;
   width: min(70vw, 500px);
   height: min(50vh, 350px);
   cursor: pointer;
   border-radius: var(--radius-lg);
   border: 2px solid transparent;
   transform-style: preserve-3d;
-  transition: border-color 0.15s ease;
+  transform: translateX(var(--card-drag-x)) rotate(var(--card-drag-rotate));
+  transition: transform 0.18s ease, border-color 0.15s ease, filter 0.18s ease;
   user-select: none;
   -webkit-user-select: none;
+  will-change: transform;
+  touch-action: pan-y;
+}
+
+.flashcard.is-revealed {
+  cursor: grab;
+}
+
+.flashcard.is-revealed:active {
+  cursor: grabbing;
 }
 
 /* Flip wrapper — handles rotateY */
@@ -82,7 +96,8 @@
   height: 100%;
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.62s cubic-bezier(0.2, 0.78, 0.2, 1);
+  will-change: transform;
 }
 
 .flashcard-flip-wrapper.flipped {
@@ -104,7 +119,21 @@
   padding: 1.5rem;
   text-align: center;
   overflow-y: auto;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.04);
+  box-shadow: 0 18px 40px rgba(31, 41, 55, 0.14), 0 2px 8px rgba(31, 41, 55, 0.06);
+  transform-style: preserve-3d;
+}
+
+.flashcard-front::after,
+.flashcard-back::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(115deg, rgba(255,255,255,0.45), rgba(255,255,255,0) 34%),
+    linear-gradient(290deg, rgba(255,255,255,0.18), rgba(255,255,255,0) 40%);
+  opacity: 0.8;
 }
 
 /* New card badge */
@@ -435,46 +464,48 @@
 
 /* Card entry animation */
 .flashcard.card-enter {
-  animation: cardEnter 0.35s ease;
+  animation: cardEnter 0.34s cubic-bezier(0.2, 0.78, 0.2, 1);
 }
 
 @keyframes cardEnter {
   0% {
     opacity: 0;
-    transform: scale(0.8);
+    transform: translateY(24px) scale(0.94);
   }
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0) scale(1);
   }
 }
 
 /* Card exit animations — directional */
 .flashcard.card-exit-right {
-  animation: cardExitRight 0.3s ease forwards;
+  animation: cardExitRight 0.42s cubic-bezier(0.34, 0.78, 0.34, 1) forwards;
+  pointer-events: none;
 }
 .flashcard.card-exit-left {
-  animation: cardExitLeft 0.3s ease forwards;
+  animation: cardExitLeft 0.42s cubic-bezier(0.34, 0.78, 0.34, 1) forwards;
+  pointer-events: none;
 }
 
 @keyframes cardExitRight {
   0% {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateX(var(--card-drag-x)) rotate(var(--card-drag-rotate)) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translateX(120px) scale(0.85);
+    transform: translateX(calc(110vw + 240px)) rotate(28deg) scale(0.92);
   }
 }
 @keyframes cardExitLeft {
   0% {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateX(var(--card-drag-x)) rotate(var(--card-drag-rotate)) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translateX(-120px) scale(0.85);
+    transform: translateX(calc(-110vw - 240px)) rotate(-28deg) scale(0.92);
   }
 }
 

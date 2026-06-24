@@ -46,8 +46,35 @@
         <span id="word-count-num">0</span> saved words
       </div>
 
+      <label class="target-control" for="target-language-select">
+        <span>Learning language</span>
+        <select id="target-language-select">
+          <option value="es">Spanish</option>
+          <option value="pt">Portuguese</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="it">Italian</option>
+          <option value="ja">Japanese</option>
+          <option value="ko">Korean</option>
+          <option value="zh">Chinese</option>
+          <option value="ar">Arabic</option>
+          <option value="ru">Russian</option>
+        </select>
+      </label>
+
+      <label class="api-control" for="api-base-input">
+        <span>API server</span>
+        <input type="url" id="api-base-input" placeholder="https://polycast-sequel.onrender.com">
+      </label>
+      <div class="api-actions">
+        <button id="save-api-base-btn" class="btn-small" type="button">Save API</button>
+        <button id="use-local-api-btn" class="btn-small" type="button">Use local</button>
+      </div>
+      <div id="settings-message" class="settings-message hidden"></div>
+
       <p class="hint">Click words in video subtitles to look them up.</p>
 
+      <button id="open-app-btn" class="btn-open-app">Open Web App</button>
       <button id="logout-btn" class="btn-logout">Sign Out</button>
     </div>
   </div>

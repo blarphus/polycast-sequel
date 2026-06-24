@@ -32,6 +32,35 @@ let targetLanguage = null;
   }
 })();
 
+// ---- Rolling caption context window ---------------------------------------
+// YouTube removes old captions from the DOM, so to "Explain in context" with
+// more than the current line we keep a rolling window of the most recent
+// caption text (~50 words) as it streams by.
+
+const CAPTION_CONTEXT_WORDS = 50;
+let recentCaptions = [];
+
+function pushCaptionContext(text) {
+  const t = (text || '').trim();
+  if (!t) return;
+  const last = recentCaptions[recentCaptions.length - 1];
+  if (t === last) return; // exact re-tokenize of the same caption
+  if (last && (t.startsWith(last) || last.startsWith(t))) {
+    // Same caption line growing/shrinking incrementally — keep the longer.
+    recentCaptions[recentCaptions.length - 1] = t.length >= last.length ? t : last;
+  } else {
+    recentCaptions.push(t);
+  }
+  // Trim from the front so the joined window stays near the word cap.
+  while (recentCaptions.length > 1 && recentCaptions.join(' ').split(/\s+/).length > CAPTION_CONTEXT_WORDS) {
+    recentCaptions.shift();
+  }
+}
+
+function captionContext() {
+  return recentCaptions.join(' ').trim();
+}
+
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'WORDS_UPDATED') {
     savedWordsSet = new Set(msg.savedWords || []);
@@ -40,6 +69,8 @@ chrome.runtime.onMessage.addListener((msg) => {
       const word = el.textContent.toLowerCase();
       el.classList.toggle('pc-saved', savedWordsSet.has(word));
     });
+  } else if (msg.type === 'TARGET_LANGUAGE_UPDATED') {
+    targetLanguage = msg.targetLanguage ? msg.targetLanguage.toLowerCase() : null;
   }
 });
 
@@ -55,17 +86,31 @@ function isWordToken(token) {
 
 // ---- Escape HTML ----------------------------------------------------------
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+// UNUSED since the popup moved to shared/wordPopupCore.js (which has its own
+// escapeHtml). FLAGGED FOR DELETION in a future audit.
+// function escapeHtml(str) {
+//   const div = document.createElement('div');
+//   div.textContent = str;
+//   return div.innerHTML;
+// }
+
+// ---- Caption cleaning -----------------------------------------------------
+// Strip YouTube's bracketed annotation cues ([Music], [música], [risadas],
+// [Applause], …) so they aren't shown. A bracket is only stripped when it
+// contains a letter or number; the profanity-censor marker "[ __ ]" (brackets
+// around underscores) is kept so swears stay visible.
+function cleanCaptionText(text) {
+  return (text || '')
+    .replace(/\[[^\]]*[\p{L}\p{N}][^\]]*\]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // ---- Tokenize a subtitle element ------------------------------------------
 
 function tokenizeElement(container) {
-  const text = container.textContent;
-  if (!text || !text.trim()) return;
+  const rawText = container.textContent;
+  if (!rawText || !rawText.trim()) return;
 
   // Recovery guard: if cursor is no longer over this container but hover-pause is stuck, resume.
   if (pcPausedByHover && !activePopup && !container.matches(':hover')) {
@@ -73,18 +118,20 @@ function tokenizeElement(container) {
   }
 
   // Skip if already tokenized with the same text
-  if (container.dataset.pcTokenized === text) return;
-  container.dataset.pcTokenized = text;
+  if (container.dataset.pcTokenized === rawText) return;
+  container.dataset.pcTokenized = rawText;
+
+  const text = cleanCaptionText(rawText);
+  // A cue that is entirely an annotation ([música], [Applause], …) becomes
+  // empty after cleaning — hide it instead of rendering empty brackets.
+  if (!text) { container.textContent = ''; return; }
+  pushCaptionContext(text);
 
   // Attach container-level hover listeners once — survives subtitle text changes
   if (!container.dataset.pcHoverListened) {
     container.dataset.pcHoverListened = 'true';
     container.addEventListener('mouseenter', () => {
-      const video = document.querySelector('video');
-      if (video && !video.paused) {
-        video.pause();
-        pcPausedByHover = true;
-      }
+      pauseForHover();
     });
     container.addEventListener('mouseleave', () => {
       if (pcPausedByHover && !activePopup) {
@@ -123,25 +170,54 @@ function tokenizeElement(container) {
 
 let activePopup = null;
 let pcPausedByHover = false;
+let pcHoverPauseVideo = null;
+let pcHoverPauseKeepAlive = null;
+
+function keepHoverPaused() {
+  if (!pcPausedByHover || !pcHoverPauseVideo) return;
+  if (!pcHoverPauseVideo.paused) {
+    pcHoverPauseVideo.pause();
+  }
+}
+
+function pauseForHover() {
+  const video = document.querySelector('video');
+  if (!video || video.paused) return;
+
+  pcHoverPauseVideo = video;
+  pcPausedByHover = true;
+  video.pause();
+
+  if (!pcHoverPauseKeepAlive) {
+    pcHoverPauseKeepAlive = window.setInterval(keepHoverPaused, 250);
+  }
+}
 
 function resumeIfWePaused() {
   if (pcPausedByHover) {
-    const video = document.querySelector('video');
-    if (video) video.play();
+    if (pcHoverPauseKeepAlive) {
+      window.clearInterval(pcHoverPauseKeepAlive);
+      pcHoverPauseKeepAlive = null;
+    }
+    const video = pcHoverPauseVideo || document.querySelector('video');
+    if (video) {
+      video.play().catch(() => {});
+    }
+    pcHoverPauseVideo = null;
     pcPausedByHover = false;
   }
 }
 
 function removePopup() {
   if (activePopup) {
-    activePopup.remove();
+    activePopup.destroy();
     activePopup = null;
   }
 }
 
 // Close popup on click outside
 document.addEventListener('click', (e) => {
-  if (activePopup && !activePopup.contains(e.target) && !e.target.closest('.pc-word')) {
+  if (activePopup && !activePopup.el.contains(e.target) && !e.target.closest('.pc-word')) {
     removePopup();
     resumeIfWePaused();
   }
@@ -155,154 +231,136 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-function handleWordClick(word, sentence, anchorEl) {
-  removePopup();
+// Promise wrapper around chrome.runtime.sendMessage with an MV3-aware timeout
+// (the service worker can die), surfacing errors as rejections the shared
+// popup core can render.
+function sendMessageAsync(message, { timeoutMs = 15000 } = {}) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error('Lookup timed out — try again'));
+    }, timeoutMs);
 
-  const rect = anchorEl.getBoundingClientRect();
-  const popup = document.createElement('div');
-  popup.className = 'pc-popup';
-
-  // Position near the clicked word
-  popup.style.position = 'fixed';
-  popup.style.left = `${Math.min(rect.left, window.innerWidth - 300)}px`;
-  popup.style.top = `${rect.top - 10}px`;
-  popup.style.transform = 'translateY(-100%)';
-  popup.style.zIndex = '2147483647';
-
-  const isSaved = savedWordsSet.has(word.toLowerCase());
-
-  popup.innerHTML = `
-    <div class="pc-popup-header">
-      <span class="pc-popup-word">${escapeHtml(word)}</span>
-      <button class="pc-popup-close" title="Close">&times;</button>
-    </div>
-    <div class="pc-popup-body">
-      <div class="pc-spinner"></div>
-    </div>
-    <button class="pc-popup-save" ${isSaved ? 'disabled' : ''}>
-      ${isSaved ? '&#10003; Saved' : '+ Add to dictionary'}
-    </button>
-  `;
-
-  document.body.appendChild(popup);
-  activePopup = popup;
-
-  // Adjust if popup goes off-screen top
-  requestAnimationFrame(() => {
-    const popupRect = popup.getBoundingClientRect();
-    if (popupRect.top < 8) {
-      popup.style.transform = 'none';
-      popup.style.top = `${rect.bottom + 10}px`;
-    }
-  });
-
-  // Gemini lookup — contextual translation + definition + POS
-  const body = popup.querySelector('.pc-popup-body');
-  let lookupResolved = false;
-
-  // Timeout: if no response in 15s, show error (MV3 service worker may have died)
-  const lookupTimeout = setTimeout(() => {
-    if (lookupResolved) return;
-    lookupResolved = true;
-    if (!activePopup || activePopup !== popup) return;
-    body.innerHTML = `<div class="pc-popup-error">Lookup timed out — try again</div>`;
-  }, 15000);
-
-  try {
-    chrome.runtime.sendMessage(
-      { type: 'LOOKUP_WORD', word, sentence },
-      (res) => {
-        if (lookupResolved) return;
-        lookupResolved = true;
-        clearTimeout(lookupTimeout);
-
+    try {
+      chrome.runtime.sendMessage(message, (res) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         if (chrome.runtime.lastError) {
-          console.error('Polycast lookup error:', chrome.runtime.lastError.message);
-          if (!activePopup || activePopup !== popup) return;
-          body.innerHTML = `<div class="pc-popup-error">Extension reloaded — refresh this page</div>`;
-          return;
-        }
-
-        if (!activePopup || activePopup !== popup) return;
-
-        if (!res) {
-          body.innerHTML = `<div class="pc-popup-error">No response — try refreshing the page</div>`;
-          return;
-        }
-
-        if (res.error) {
-          body.innerHTML = `<div class="pc-popup-error">${escapeHtml(res.error)}</div>`;
-          return;
-        }
-
-        if (res.valid === false) {
-          body.innerHTML = `<div class="pc-popup-error">Not a recognized word</div>`;
-          return;
-        }
-
-        const hasContent = res.translation || res.definition || res.part_of_speech;
-        if (!hasContent) {
-          body.innerHTML = `<div class="pc-popup-error">No definition found</div>`;
-          return;
-        }
-
-        body.innerHTML = `
-          ${res.translation ? `<div class="pc-popup-translation">${escapeHtml(res.translation)}</div>` : ''}
-          ${res.part_of_speech ? `<div class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</div>` : ''}
-          ${res.definition ? `<div class="pc-popup-definition">${escapeHtml(res.definition)}</div>` : ''}
-        `;
-      },
-    );
-  } catch {
-    lookupResolved = true;
-    clearTimeout(lookupTimeout);
-    body.innerHTML = `<div class="pc-popup-error">Extension reloaded — refresh this page</div>`;
-  }
-
-  // Close button
-  popup.querySelector('.pc-popup-close').addEventListener('click', (e) => {
-    e.stopPropagation();
-    removePopup();
-    resumeIfWePaused();
-  });
-
-  // Save button
-  const saveBtn = popup.querySelector('.pc-popup-save');
-  if (!isSaved) {
-    saveBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      saveBtn.disabled = true;
-      saveBtn.innerHTML = '&#10003; Saved';
-      saveBtn.classList.add('pc-popup-save--saved');
-
-      // Optimistically mark all matching words on the page immediately
-      const lower = word.toLowerCase();
-      savedWordsSet.add(lower);
-      document.querySelectorAll('.pc-word').forEach((el) => {
-        if (el.textContent.toLowerCase() === lower) {
-          el.classList.add('pc-saved');
+          reject(new Error('Extension reloaded — refresh this page'));
+        } else if (!res) {
+          reject(new Error('No response — try refreshing the page'));
+        } else if (res.error) {
+          reject(new Error(res.error));
+        } else {
+          resolve(res);
         }
       });
-
-      try {
-        chrome.runtime.sendMessage(
-          { type: 'SAVE_WORD', word, sentence },
-          (res) => {
-            if (chrome.runtime.lastError) {
-              console.error('Polycast save error:', chrome.runtime.lastError.message);
-              return;
-            }
-            if (res && res.error) {
-              console.error('Polycast save error:', res.error);
-              return;
-            }
-          },
-        );
-      } catch {
-        saveBtn.disabled = false;
-        saveBtn.textContent = '!';
-        saveBtn.title = 'Extension reloaded — refresh this page';
-      }
-    });
-  }
+    } catch {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(new Error('Extension reloaded — refresh this page'));
+    }
+  });
 }
+
+// When a tapped word turns out to be an inflection of an already-saved word
+// that we weren't highlighting (its form was missing from the saved word's
+// list), persist that form so it — and this exact surface form — highlight
+// from now on, both here and on every future page load.
+function selfHealHighlight(word, res) {
+  if (!res || !res.is_existing || !res.saved_word_id) return;
+  const lower = word.toLowerCase();
+  if (savedWordsSet.has(lower)) return;
+
+  savedWordsSet.add(lower);
+  document.querySelectorAll('.pc-word').forEach((el) => {
+    if (el.textContent.toLowerCase() === lower) el.classList.add('pc-saved');
+  });
+  sendMessageAsync({ type: 'ADD_WORD_FORM', savedWordId: res.saved_word_id, form: word })
+    .catch((err) => console.debug('[Polycast] could not persist form:', err.message));
+}
+
+function openWordPopup({
+  word,
+  sentence,
+  anchorRect,
+  context,
+  initialLookupResult = null,
+  autoExplain = false,
+  onClosed,
+}) {
+  removePopup();
+
+  const lower = word.toLowerCase();
+  const explanationContext = (context && context.trim()) || captionContext();
+  if (initialLookupResult) selfHealHighlight(word, initialLookupResult);
+
+  activePopup = PolycastWordPopup.createWordPopup({
+    word,
+    sentence,
+    anchorRect,
+    container: document.body,
+    initialSavedHint: savedWordsSet.has(lower),
+    initialLookupResult,
+    autoExplain,
+    onClose: () => {
+      removePopup();
+      resumeIfWePaused();
+      if (onClosed) onClosed();
+    },
+    handlers: {
+      lookup: async ({ word, sentence }) => {
+        const res = await sendMessageAsync({ type: 'LOOKUP_WORD', word, sentence });
+        selfHealHighlight(word, res);
+        return res;
+      },
+      explain: ({ word, sentence }) => sendMessageAsync({ type: 'EXPLAIN_WORD', word, sentence, context: explanationContext }),
+      save: async ({ word, sentence, lookupResult }) => {
+        // Save as the base form (lemma) when the lookup resolved one.
+        const lemma = lookupResult && lookupResult.lemma ? lookupResult.lemma : null;
+        const savedForm = (lemma || word).toLowerCase();
+        // Optimistically mark the clicked form and the base form on the page immediately
+        savedWordsSet.add(word.toLowerCase());
+        savedWordsSet.add(savedForm);
+        document.querySelectorAll('.pc-word').forEach((el) => {
+          const t = el.textContent.toLowerCase();
+          if (t === word.toLowerCase() || t === savedForm) {
+            el.classList.add('pc-saved');
+          }
+        });
+        await sendMessageAsync({ type: 'SAVE_WORD', word, sentence, lemma });
+      },
+      remove: async ({ word, lookupResult }) => {
+        await sendMessageAsync({
+          type: 'REMOVE_WORD',
+          word,
+          savedWordId: lookupResult && lookupResult.saved_word_id,
+        });
+      },
+      // Sense-level: server reports is_existing for this exact sense; otherwise
+      // a word we already have some sense of is a "new definition".
+      resolveSavedState: (res) =>
+        res.is_existing ? 'saved' : (savedWordsSet.has(lower) ? 'new-sense' : 'unsaved'),
+    },
+  });
+}
+
+function handleWordClick(word, sentence, anchorEl) {
+  openWordPopup({
+    word,
+    sentence,
+    anchorRect: anchorEl.getBoundingClientRect(),
+  });
+}
+
+globalThis.PolycastContent = {
+  ...(globalThis.PolycastContent || {}),
+  cleanCaptionText,
+  isWordToken,
+  openWordPopup,
+  sendMessageAsync,
+};

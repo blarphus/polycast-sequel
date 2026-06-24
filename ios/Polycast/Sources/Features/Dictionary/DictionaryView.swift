@@ -21,17 +21,37 @@ struct DictionaryView: View {
     @State private var page = 0
     @State private var editingWord: SavedWord?
     @State private var deletingWord: SavedWord?
+    @State private var groupedWords: [WordGroup] = []
 
     private var words: [SavedWord] { wordStore.words }
     private var loading: Bool { wordStore.loading }
     private var error: String { wordStore.error }
 
     var body: some View {
-        listContent
-            .listStyle(.plain)
+        VStack(spacing: 0) {
+            listContent
+
+            // Pagination lives OUTSIDE the List as a fixed footer. As a List row
+            // its buttons stopped receiving taps once the page changed (a SwiftUI
+            // hit-testing quirk for interactive controls in a scrolled List),
+            // which froze paging past page 2.
+            if totalPages > 1 {
+                paginationControls
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    .padding(.bottom, 6)
+            }
+        }
             .searchable(text: $search, prompt: "Search saved words")
-            .onChange(of: search) { page = 0 }
-            .onChange(of: sortMode) { page = 0 }
+            .onChange(of: search) {
+                rebuildGroups(resetPage: true)
+            }
+            .onChange(of: sortMode) {
+                rebuildGroups(resetPage: true)
+            }
+            .onChange(of: words) {
+                rebuildGroups()
+            }
             .texturedBackground()
             .navigationTitle("Dictionary")
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -75,13 +95,24 @@ struct DictionaryView: View {
                 }
             }
             .task {
-                if words.isEmpty && !loading {
-                    await wordStore.load()
+                if groupedWords.isEmpty {
+                    rebuildGroups()
+                }
+                if !loading {
+                    if words.isEmpty || hasMissingSchedules {
+                        await wordStore.load()
+                    } else {
+                        await wordStore.load(showLoading: false)
+                    }
                 }
             }
             .refreshable {
                 await wordStore.load()
             }
+    }
+
+    private var hasMissingSchedules: Bool {
+        words.contains { !isNewCard($0) && $0.dueAt == nil }
     }
 
     // MARK: - List Content
@@ -111,6 +142,7 @@ struct DictionaryView: View {
                 }
                 .buttonStyle(.plain)
                 .contentShape(Rectangle())
+                .accessibilityIdentifier("dictionary-row-\(group.key)")
                 .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
 
                 if expandedKey == group.key {
@@ -129,13 +161,9 @@ struct DictionaryView: View {
                 }
             }
 
-            if totalPages > 1 {
-                paginationControls
-                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-                    .listRowBackground(Color.clear)
-            }
         }
         .scrollContentBackground(.hidden)
+        .listStyle(.plain)
     }
 
     // MARK: - Toolbar
@@ -167,17 +195,24 @@ struct DictionaryView: View {
     private var dueStatusSummary: some View {
         let newCount = words.filter { isNewCard($0) }.count
         let dueCount = words.filter { w in
+            guard !isNewCard(w) else { return false }
             guard let dueAt = w.dueAt,
-                  let date = ISO8601DateFormatter().date(from: dueAt) else {
+                  let date = parseISO8601Date(dueAt) else {
                 return w.learningStep != nil && !isNewCard(w)
             }
             return date <= .now
         }.count
 
         let nextDue: Date? = words.compactMap { w in
-            guard let dueAt = w.dueAt,
-                  let date = ISO8601DateFormatter().date(from: dueAt),
-                  date > .now else { return nil }
+            let date: Date?
+            if isNewCard(w) {
+                date = newCardDueDate(w)
+            } else if let dueAt = w.dueAt {
+                date = parseISO8601Date(dueAt)
+            } else {
+                date = nil
+            }
+            guard let date, date > .now else { return nil }
             return date
         }.min()
 
@@ -186,7 +221,7 @@ struct DictionaryView: View {
                 .font(.caption.weight(.medium))
                 .foregroundStyle(dueCount > 0 ? .orange : .secondary)
 
-            Label("\(newCount) new", systemImage: "sparkles")
+            Label("\(newCount) new", systemImage: "plus.circle")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(newCount > 0 ? .blue : .secondary)
 
@@ -209,7 +244,7 @@ struct DictionaryView: View {
 
     private func wordHeader(group: WordGroup) -> some View {
         let entry = group.primaryEntry
-        let status = getDueStatus(entry)
+        let status = dictionaryDueStatus(entry)
 
         return HStack(spacing: 8) {
             Text(group.word)
@@ -248,6 +283,29 @@ struct DictionaryView: View {
         }
     }
 
+    private func dictionaryDueStatus(_ word: SavedWord) -> DueStatus {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+
+        if isNewCard(word), let date = newCardDueDate(word) {
+            let dueDay = calendar.startOfDay(for: date)
+            let days = calendar.dateComponents([.day], from: today, to: dueDay).day ?? 0
+            if days <= 0 { return DueStatus(label: "New today", urgency: .new) }
+            if days == 1 { return DueStatus(label: "New tomorrow", urgency: .new) }
+            return DueStatus(label: "New in \(days) d", urgency: .new)
+        }
+
+        if let dueAt = word.dueAt, let date = parseISO8601Date(dueAt) {
+            let dueDay = calendar.startOfDay(for: date)
+            let days = calendar.dateComponents([.day], from: today, to: dueDay).day ?? 0
+            if days <= 0 { return DueStatus(label: "Due now", urgency: .due) }
+            if days == 1 { return DueStatus(label: "Due tomorrow", urgency: .upcoming) }
+            return DueStatus(label: "Due in \(days) d", urgency: .upcoming)
+        }
+
+        return getDueStatus(word)
+    }
+
     // MARK: - Word Detail
 
     private func wordDetail(word: SavedWord) -> some View {
@@ -274,7 +332,7 @@ struct DictionaryView: View {
             }
 
             if let url = APIClient.proxyImageURL(word.imageUrl) {
-                AsyncImage(url: url) { phase in
+                AuthorizedAsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image):
                         image
@@ -295,11 +353,18 @@ struct DictionaryView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                if word.srsInterval > 0 {
-                    Label(formatDuration(word.srsInterval), systemImage: "clock")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+
+                let scheduleText = reviewScheduleText(word)
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                    Text(scheduleText)
                 }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("dictionary-schedule-\(word.id)")
+                .accessibilityLabel(scheduleText)
 
                 Spacer()
 
@@ -324,14 +389,48 @@ struct DictionaryView: View {
         }
     }
 
+    private func reviewScheduleText(_ word: SavedWord) -> String {
+        func dueDateText(_ date: Date) -> String {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
+            return formatter.string(from: date)
+        }
+
+        if isNewCard(word) {
+            guard let dueDate = newCardDueDate(word) else { return "Queue pending" }
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: .now)
+            let dueDay = calendar.startOfDay(for: dueDate)
+            let days = calendar.dateComponents([.day], from: today, to: dueDay).day ?? 0
+            let dateText = dueDateText(dueDate)
+            if days <= 0 { return "Next seen \(dateText) (today)" }
+            if days == 1 { return "Next seen \(dateText) (tomorrow)" }
+            return "Next seen \(dateText) (in \(days) days)"
+        }
+
+        guard let dueAt = word.dueAt,
+              let dueDate = parseISO8601Date(dueAt),
+              let reviewedAt = word.lastReviewedAt.flatMap({ parseISO8601Date($0) })
+        else {
+            return word.learningStep != nil ? "Learning schedule missing" : "Schedule missing"
+        }
+
+        let total = max(Int(dueDate.timeIntervalSince(reviewedAt)), 1)
+        let elapsed = min(total, max(Int(Date().timeIntervalSince(reviewedAt)), 0))
+        let remaining = max(Int(dueDate.timeIntervalSinceNow), 0)
+        let prefix = remaining == 0 ? "Due now" : "Reappears in \(formatDuration(remaining))"
+        return "\(prefix), \(dueDateText(dueDate)) · \(formatDuration(elapsed)) of \(formatDuration(total)) elapsed"
+    }
+
     // MARK: - Pagination
 
     private var totalPages: Int {
-        max(1, Int(ceil(Double(sortedGroups.count) / Double(wordsPerPage))))
+        max(1, Int(ceil(Double(groupedWords.count) / Double(wordsPerPage))))
     }
 
     private var currentPageGroups: [WordGroup] {
-        let all = sortedGroups
+        let all = groupedWords
         let start = page * wordsPerPage
         guard start < all.count else { return [] }
         let end = min(start + wordsPerPage, all.count)
@@ -367,6 +466,18 @@ struct DictionaryView: View {
         }
     }
 
+    private func rebuildGroups(resetPage: Bool = false) {
+        let nextGroups = makeSortedGroups()
+        groupedWords = nextGroups
+        if resetPage {
+            page = 0
+        }
+        let maxPage = max(0, Int(ceil(Double(nextGroups.count) / Double(wordsPerPage))) - 1)
+        if page > maxPage {
+            page = maxPage
+        }
+    }
+
     // MARK: - Data
 
     private struct WordGroup: Identifiable {
@@ -377,11 +488,98 @@ struct DictionaryView: View {
         var primaryEntry: SavedWord { entries.first! }
     }
 
-    private var sortedGroups: [WordGroup] {
+    private var dailyNewLimit: Int {
+        max(session.user?.dailyNewLimit ?? 5, 0)
+    }
+
+    private var introducedTodayCount: Int {
+        let todayKey = localDateKey()
+        return words.filter { $0.introducedDate == todayKey }.count
+    }
+
+    private func localDateKey(_ date: Date = .now) -> String {
+        let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        guard let year = components.year,
+              let month = components.month,
+              let day = components.day else { return "" }
+        return String(format: "%04d-%02d-%02d", year, month, day)
+    }
+
+    private func newCardDueDate(_ word: SavedWord) -> Date? {
+        newCardDueDate(word, dailyNewLimit: dailyNewLimit, introducedToday: introducedTodayCount)
+    }
+
+    private func newCardDueDate(_ word: SavedWord, dailyNewLimit limit: Int, introducedToday: Int) -> Date? {
+        guard isNewCard(word),
+              limit > 0,
+              let queuePosition = word.queuePosition else { return nil }
+        let today = Calendar.current.startOfDay(for: .now)
+        let offset = max((queuePosition + introducedToday) / limit, 0)
+        return Calendar.current.date(byAdding: .day, value: offset, to: today)
+    }
+
+    private func makeSortedGroups() -> [WordGroup] {
+        let limit = dailyNewLimit
+        let introducedToday = introducedTodayCount
+        var dueCache: [String: Date] = [:]
+
+        func cachedDueDay(_ word: SavedWord) -> Date {
+            if let cached = dueCache[word.id] { return cached }
+            let date: Date
+            if isNewCard(word) {
+                date = newCardDueDate(word, dailyNewLimit: limit, introducedToday: introducedToday) ?? .distantFuture
+            } else if let dueAt = word.dueAt, let parsed = parseISO8601Date(dueAt) {
+                date = Calendar.current.startOfDay(for: parsed)
+            } else {
+                date = .distantFuture
+            }
+            dueCache[word.id] = date
+            return date
+        }
+
+        func exactDueTime(_ word: SavedWord) -> Date {
+            if isNewCard(word) {
+                return newCardDueDate(word, dailyNewLimit: limit, introducedToday: introducedToday) ?? .distantFuture
+            }
+            if let dueAt = word.dueAt, let parsed = parseISO8601Date(dueAt) {
+                return parsed
+            }
+            return .distantFuture
+        }
+
+        func compareEntries(_ lhs: SavedWord, _ rhs: SavedWord) -> Bool {
+            let lhsDueDay = cachedDueDay(lhs)
+            let rhsDueDay = cachedDueDay(rhs)
+            if lhsDueDay != rhsDueDay { return lhsDueDay < rhsDueDay }
+
+            let lhsNew = isNewCard(lhs)
+            let rhsNew = isNewCard(rhs)
+            if lhsNew != rhsNew { return !lhsNew }
+
+            let lhsLearning = lhs.learningStep != nil
+            let rhsLearning = rhs.learningStep != nil
+            if lhsLearning != rhsLearning { return lhsLearning }
+
+            if lhsNew && rhsNew {
+                let lhsQueue = lhs.queuePosition ?? Int.max
+                let rhsQueue = rhs.queuePosition ?? Int.max
+                if lhsQueue != rhsQueue { return lhsQueue < rhsQueue }
+            } else {
+                let lhsExactDue = exactDueTime(lhs)
+                let rhsExactDue = exactDueTime(rhs)
+                if lhsExactDue != rhsExactDue { return lhsExactDue < rhsExactDue }
+            }
+
+            if lhs.createdAt != rhs.createdAt { return lhs.createdAt > rhs.createdAt }
+            return lhs.id < rhs.id
+        }
+
+        // Diacritic-insensitive match so "dano" finds "daño".
+        let query = search.trimmingCharacters(in: .whitespacesAndNewlines).searchFolded()
         let filtered = words.filter {
-            search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-            $0.word.localizedCaseInsensitiveContains(search) ||
-            $0.translation.localizedCaseInsensitiveContains(search)
+            query.isEmpty ||
+            $0.word.searchFolded().contains(query) ||
+            $0.translation.searchFolded().contains(query)
         }
 
         let grouped = Dictionary(grouping: filtered, by: { "\($0.word)|\($0.targetLanguage ?? "")" })
@@ -389,19 +587,25 @@ struct DictionaryView: View {
             WordGroup(
                 key: kv.key,
                 word: kv.value.first?.word ?? "",
-                entries: kv.value.sorted { $0.createdAt > $1.createdAt }
+                entries: kv.value.sorted(by: compareEntries)
             )
         }
 
         switch sortMode {
         case .queue:
             groups.sort { a, b in
+                let aDueDay = cachedDueDay(a.primaryEntry)
+                let bDueDay = cachedDueDay(b.primaryEntry)
+                if aDueDay != bDueDay { return aDueDay < bDueDay }
                 let aNew = isNewCard(a.primaryEntry)
                 let bNew = isNewCard(b.primaryEntry)
-                if aNew != bNew { return aNew }
+                if aNew != bNew { return !aNew }
                 let aQ = a.primaryEntry.queuePosition ?? Int.max
                 let bQ = b.primaryEntry.queuePosition ?? Int.max
                 if aQ != bQ { return aQ < bQ }
+                let aExactDue = exactDueTime(a.primaryEntry)
+                let bExactDue = exactDueTime(b.primaryEntry)
+                if aExactDue != bExactDue { return aExactDue < bExactDue }
                 let aF = a.primaryEntry.frequency ?? 0
                 let bF = b.primaryEntry.frequency ?? 0
                 if aF != bF { return bF < aF }
@@ -429,12 +633,15 @@ struct DictionaryView: View {
             }
         case .dueSoonest:
             groups.sort { a, b in
+                let aDueDay = cachedDueDay(a.primaryEntry)
+                let bDueDay = cachedDueDay(b.primaryEntry)
+                if aDueDay != bDueDay { return aDueDay < bDueDay }
                 let aNew = isNewCard(a.primaryEntry)
                 let bNew = isNewCard(b.primaryEntry)
-                if aNew != bNew { return aNew }
-                let aDue = a.primaryEntry.dueAt ?? ""
-                let bDue = b.primaryEntry.dueAt ?? ""
-                if aDue != bDue { return aDue < bDue }
+                if aNew != bNew { return !aNew }
+                let aExactDue = exactDueTime(a.primaryEntry)
+                let bExactDue = exactDueTime(b.primaryEntry)
+                if aExactDue != bExactDue { return aExactDue < bExactDue }
                 return a.key < b.key
             }
         }

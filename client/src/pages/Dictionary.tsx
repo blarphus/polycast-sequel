@@ -29,6 +29,33 @@ function DueStatusBadge({ word }: { word: SavedWord }) {
 
 // -- Review field for expanded view -----------------------------------------
 
+function secondsBetween(a: Date, b: Date): number {
+  return Math.max(0, Math.round((b.getTime() - a.getTime()) / 1000));
+}
+
+function newScheduleLabel(word: SavedWord): string {
+  if (!word.due_at) return 'Scheduled for today (sync pending)';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDate = new Date(word.due_at);
+  dueDate.setHours(0, 0, 0, 0);
+  const days = Math.round((dueDate.getTime() - today.getTime()) / 86_400_000);
+  if (days <= 0) return 'Scheduled for today';
+  if (days === 1) return 'Scheduled for tomorrow';
+  return `Scheduled in ${days} days`;
+}
+
+function reviewCountdownLabel(word: SavedWord): string {
+  if (!word.due_at || !word.last_reviewed_at) return 'No review schedule yet';
+  const now = new Date();
+  const reviewedAt = new Date(word.last_reviewed_at);
+  const dueAt = new Date(word.due_at);
+  const total = Math.max(1, secondsBetween(reviewedAt, dueAt));
+  const elapsed = Math.min(total, secondsBetween(reviewedAt, now));
+  const remaining = Math.max(0, secondsBetween(now, dueAt));
+  return `${remaining === 0 ? 'Due now' : `Reappears in ${formatDuration(remaining)}`} · ${formatDuration(elapsed)} of ${formatDuration(total)} elapsed`;
+}
+
 function ReviewField({ word }: { word: SavedWord }) {
   const isNew = word.srs_interval === 0 && word.learning_step === null && !word.last_reviewed_at;
   const inLearning = word.learning_step !== null;
@@ -37,7 +64,7 @@ function ReviewField({ word }: { word: SavedWord }) {
     return (
       <div className="dict-field">
         <span className="dict-field-label">Review</span>
-        <span className="dict-field-value text-muted">Not yet reviewed</span>
+        <span className="dict-field-value text-muted">{newScheduleLabel(word)}</span>
       </div>
     );
   }
@@ -46,7 +73,9 @@ function ReviewField({ word }: { word: SavedWord }) {
     return (
       <div className="dict-field">
         <span className="dict-field-label">Review</span>
-        <span className="dict-field-value text-muted">Learning</span>
+        <span className="dict-field-value text-muted">
+          Learning · {reviewCountdownLabel(word)}
+        </span>
       </div>
     );
   }
@@ -55,12 +84,13 @@ function ReviewField({ word }: { word: SavedWord }) {
   const status = getDueStatus(word);
   const easePercent = Math.round(word.ease_factor * 100);
   const intervalLabel = formatDuration(word.srs_interval);
+  const countdown = reviewCountdownLabel(word);
 
   return (
     <div className="dict-field">
       <span className="dict-field-label">Review</span>
       <span className="dict-field-value text-muted">
-        {status.label} &middot; Ease: {easePercent}% &middot; Interval: {intervalLabel}
+        {status.label} &middot; {countdown} &middot; Ease: {easePercent}% &middot; Interval: {intervalLabel}
       </span>
     </div>
   );
