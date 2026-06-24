@@ -20,6 +20,7 @@ function parseWordForms(rawForms: string | null | undefined) {
 
 interface UseSavedWordsOptions {
   skipInitialLoad?: boolean;
+  targetLanguage?: string | null;
 }
 
 export function useSavedWords(options: UseSavedWordsOptions = {}) {
@@ -31,7 +32,7 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
   const loadWords = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getSavedWords();
+      const data = await getSavedWords(options.targetLanguage);
       setWords(data);
       setError('');
       return data;
@@ -42,7 +43,7 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [options.targetLanguage]);
 
   useEffect(() => {
     if (options.skipInitialLoad) {
@@ -50,7 +51,7 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
       return undefined;
     }
     let cancelled = false;
-    getSavedWords()
+    getSavedWords(options.targetLanguage)
       .then((data) => {
         if (!cancelled) setWords(data);
       })
@@ -62,13 +63,14 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [options.skipInitialLoad]);
+  }, [options.skipInitialLoad, options.targetLanguage]);
 
   // Set of lowercased words for O(1) highlighting lookups (includes all inflected forms + optimistic)
   const savedWordsSet = useMemo(() => {
     const set = new Set<string>(optimisticWords);
     for (const w of words) {
       set.add(w.word.toLowerCase());
+      if (w.lemma) set.add(w.lemma.toLowerCase());
       if (w.forms) {
         const formsList = parseWordForms(w.forms);
         for (const form of formsList) set.add(form.toLowerCase());
@@ -87,6 +89,7 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
       words.some((w) => {
         if (w.definition !== definition) return false;
         if (w.word.toLowerCase() === word.toLowerCase()) return true;
+        if (w.lemma?.toLowerCase() === word.toLowerCase()) return true;
         if (w.forms) {
           const fl = parseWordForms(w.forms);
           if (fl.some(f => f.toLowerCase() === word.toLowerCase())) return true;
@@ -115,6 +118,7 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
       setOptimisticWords((prev) => {
         const next = new Set(prev);
         next.add(data.word.toLowerCase());
+        if (data.lemma) next.add(data.lemma.toLowerCase());
         if (data.forms) {
           const fl = parseWordForms(data.forms);
           for (const f of fl) next.add(f.toLowerCase());

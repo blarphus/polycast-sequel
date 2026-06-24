@@ -27,9 +27,12 @@ export default function Reader() {
   const { bookId } = useParams<{ bookId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords();
 
   const [book, setBook] = useState<ParsedEpub | null>(null);
+  const bookLanguage = book?.language || user?.target_language || null;
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords({
+    targetLanguage: bookLanguage,
+  });
   const [loadError, setLoadError] = useState('');
   const [chapterIndex, setChapterIndex] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
@@ -441,7 +444,7 @@ export default function Reader() {
           word={popup.word}
           sentence={popup.sentence}
           nativeLang={user.native_language || 'en'}
-          targetLang={user.target_language || undefined}
+          targetLang={bookLanguage || undefined}
           anchorRect={popup.rect}
           onClose={() => setPopup(null)}
           isWordSaved={isWordSaved}

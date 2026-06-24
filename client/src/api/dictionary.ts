@@ -147,8 +147,10 @@ export interface SavedWord {
   relearning_date: string | null;
 }
 
-export function getSavedWords() {
-  return request<SavedWord[]>('/dictionary/words', { cacheTtlMs: 30_000 });
+export function getSavedWords(targetLanguage?: string | null) {
+  const params = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  if (targetLanguage) params.set('targetLanguage', targetLanguage);
+  return request<SavedWord[]>(`/dictionary/words?${params}`, { cacheTtlMs: 30_000 });
 }
 
 export type DictionarySortMode = 'queue' | 'date' | 'az' | 'freq-high' | 'freq-low' | 'due';

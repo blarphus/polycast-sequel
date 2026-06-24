@@ -116,6 +116,10 @@ const newWordPreviewQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 
+const savedWordsQuery = z.object({
+  targetLanguage: z.string().max(20).optional(),
+});
+
 const queueReorderBody = z.object({
   items: z.array(z.object({
     id: z.string().uuid('Invalid ID'),
@@ -611,13 +615,14 @@ async function scheduleStageSentence({ db, card, newStage }) {
 /**
  * GET /api/dictionary/words -- List all saved words for the authenticated user
  */
-router.get('/api/dictionary/words', authMiddleware, async (req, res) => {
+router.get('/api/dictionary/words', authMiddleware, validate({ query: savedWordsQuery }), async (req, res) => {
   try {
+    const requestedLanguage = req.query.targetLanguage || null;
     const { rows } = await pool.query(
       `SELECT * FROM saved_words WHERE user_id = $1
-         AND target_language = (SELECT target_language FROM users WHERE id = $1)
+         AND target_language = COALESCE($2, (SELECT target_language FROM users WHERE id = $1))
        ORDER BY created_at DESC`,
-      [req.userId],
+      [req.userId, requestedLanguage],
     );
     return res.json(rows);
   } catch (err) {
