@@ -43,26 +43,26 @@
 /* ---- Variable overrides -------------------------------------------------- */
 
 [data-theme="dark"] {
-  --bg-primary: #171923;
-  --bg-surface: #222638;
-  --bg-surface-hover: #2b3046;
-  --bg-elevated: #30364d;
-  --accent: #8a84ff;
-  --accent-hover: #a09bff;
-  --accent-light: rgba(138, 132, 255, 0.16);
+  --bg-primary: #202331;
+  --bg-surface: #2a2f43;
+  --bg-surface-hover: #343a52;
+  --bg-elevated: #3b425b;
+  --accent: #958fff;
+  --accent-hover: #aba6ff;
+  --accent-light: rgba(149, 143, 255, 0.14);
   --text-primary: #f3f4f8;
-  --text-secondary: #c0c5d3;
-  --text-muted: #858ca3;
-  --border: #384057;
-  --border-light: #4b5570;
+  --text-secondary: #c9cede;
+  --text-muted: #969db2;
+  --border: #424b64;
+  --border-light: #56617c;
   --danger: #ef6f7f;
   --danger-hover: #d43a4c;
   --success: #53c987;
   --success-dim: rgba(83, 201, 135, 0.18);
-  --shadow: 0 8px 26px rgba(6, 9, 20, 0.28);
-  --shadow-sm: 0 1px 2px rgba(6, 9, 20, 0.22), 0 1px 1px rgba(6, 9, 20, 0.14);
-  --shadow-md: 0 10px 28px rgba(6, 9, 20, 0.28), 0 1px 4px rgba(6, 9, 20, 0.18);
-  --shadow-lg: 0 16px 52px rgba(6, 9, 20, 0.36);
+  --shadow: 0 8px 24px rgba(10, 13, 24, 0.22);
+  --shadow-sm: 0 1px 2px rgba(10, 13, 24, 0.18), 0 1px 1px rgba(10, 13, 24, 0.1);
+  --shadow-md: 0 10px 28px rgba(10, 13, 24, 0.24), 0 1px 4px rgba(10, 13, 24, 0.14);
+  --shadow-lg: 0 16px 48px rgba(10, 13, 24, 0.3);
 }
 
 /* ---- Button hover glows -------------------------------------------------- */
@@ -149,8 +149,8 @@
 /* ---- Toolbar tab colors -------------------------------------------------- */
 
 [data-theme="dark"] .toolbar-tab--red.active {
-  background: rgba(108, 99, 255, 0.15);
-  color: #6c63ff;
+  background: rgba(149, 143, 255, 0.16);
+  color: #aaa5ff;
 }
 
 [data-theme="dark"] .toolbar-tab--green.active {
@@ -159,8 +159,8 @@
 }
 
 [data-theme="dark"] .toolbar-tab--purple.active {
-  background: rgba(108, 99, 255, 0.15);
-  color: #6c63ff;
+  background: rgba(149, 143, 255, 0.16);
+  color: #aaa5ff;
 }
 
 [data-theme="dark"] .toolbar-tab--blue.active {
@@ -191,20 +191,20 @@
 /* ---- Dictionary shadows -------------------------------------------------- */
 
 [data-theme="dark"] .dict-item {
-  background: #252a3e;
-  border-color: #3a435b;
+  background: #30364d;
+  border-color: #46506a;
   box-shadow: var(--shadow-sm);
 }
 
 [data-theme="dark"] .dict-item:hover,
 [data-theme="dark"] .dict-item.open {
-  border-color: #4b5570;
+  border-color: #5f6b88;
   box-shadow: var(--shadow);
 }
 
 [data-theme="dark"] .dict-container {
-  background: rgba(31, 35, 52, 0.92);
-  border-color: #3a435b;
+  background: rgba(42, 47, 67, 0.9);
+  border-color: #424b64;
 }
 
 [data-theme="dark"] .dict-item-header:hover {
@@ -212,14 +212,14 @@
 }
 
 [data-theme="dark"] .dict-item--in-bracket {
-  background: #283047;
-  border-color: #465177;
-  box-shadow: 0 6px 18px rgba(8, 12, 24, 0.18);
+  background: #343b55;
+  border-color: #566488;
+  box-shadow: 0 5px 16px rgba(10, 13, 24, 0.16);
 }
 
 [data-theme="dark"] .dict-item--in-bracket .dict-item-header,
 [data-theme="dark"] .dict-item--in-bracket .dict-item-body {
-  background: rgba(138, 132, 255, 0.045);
+  background: rgba(149, 143, 255, 0.055);
 }
 
 [data-theme="dark"] .dict-item--in-bracket .dict-item-header::after {
@@ -227,27 +227,27 @@
 }
 
 [data-theme="dark"] .dict-queue-bracket {
-  border-color: rgba(138, 132, 255, 0.72);
+  border-color: rgba(149, 143, 255, 0.58);
 }
 
 [data-theme="dark"] .dict-queue-bracket-label {
-  color: #b8b4ff;
+  color: #bbb7ff;
 }
 
 [data-theme="dark"] .dict-word {
-  color: #9f9aff;
+  color: #aaa5ff;
 }
 
 [data-theme="dark"] .dict-count,
 [data-theme="dark"] .dict-search,
 [data-theme="dark"] .dict-sort {
-  background: #202536;
-  border-color: #3a435b;
+  background: #252a3c;
+  border-color: #424b64;
 }
 
 [data-theme="dark"] .dict-definition-card {
-  background: #1f2435;
-  border-color: #384057;
+  background: #272d40;
+  border-color: #424b64;
 }
 
 /* ---- Dictionary highlight ------------------------------------------------ */
@@ -259,8 +259,8 @@
 /* ---- Due badges ---------------------------------------------------------- */
 
 [data-theme="dark"] .dict-due-badge--new {
-  background: rgba(138, 132, 255, 0.16);
-  color: #c4c0ff;
+  background: rgba(149, 143, 255, 0.15);
+  color: #cbc8ff;
 }
 
 [data-theme="dark"] .dict-due-badge--learning {
@@ -390,22 +390,22 @@
 /* ---- Background textures (dark) ----------------------------------------- */
 
 [data-theme="dark"][data-bg-texture="dots"] body::before {
-  background: radial-gradient(circle, rgba(138,132,255,0.11) 1.2px, transparent 1.2px) 0 0 / 24px 24px;
+  background: radial-gradient(circle, rgba(149,143,255,0.075) 1.2px, transparent 1.2px) 0 0 / 24px 24px;
 }
 
 [data-theme="dark"][data-bg-texture="lines"] body::before {
-  background: repeating-linear-gradient(135deg, rgba(138,132,255,0.045) 0px, rgba(138,132,255,0.045) 1px, transparent 1px, transparent 12px);
+  background: repeating-linear-gradient(135deg, rgba(149,143,255,0.03) 0px, rgba(149,143,255,0.03) 1px, transparent 1px, transparent 12px);
 }
 
 [data-theme="dark"][data-bg-texture="noise"] body::before {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  opacity: 0.2;
+  opacity: 0.12;
 }
 
 [data-theme="dark"][data-bg-texture="grid"] body::before {
   background:
-    linear-gradient(rgba(138,132,255,0.045) 1px, transparent 1px) 0 0 / 20px 20px,
-    linear-gradient(90deg, rgba(138,132,255,0.045) 1px, transparent 1px) 0 0 / 20px 20px;
+    linear-gradient(rgba(149,143,255,0.03) 1px, transparent 1px) 0 0 / 20px 20px,
+    linear-gradient(90deg, rgba(149,143,255,0.03) 1px, transparent 1px) 0 0 / 20px 20px;
 }
 
 /* ---- Read article level loading ------------------------------------------ */
@@ -527,8 +527,8 @@
 
 @media (min-width: 481px) {
   [data-theme="dark"] .bottom-toolbar {
-    background: rgba(15, 15, 25, 0.96);
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(30, 34, 48, 0.96);
+    border-right: 1px solid rgba(132, 143, 170, 0.18);
   }
 }
 
