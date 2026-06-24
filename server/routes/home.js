@@ -5,6 +5,7 @@ import { getUserAccountType } from '../lib/userQueries.js';
 import { listLegacyTeacherIdsForStudent } from '../services/classroomService.js';
 import { listDueWords, listNewTodayWords } from '../lib/dictionaryQueries.js';
 import { WORD_COUNT_JOIN } from '../lib/streamPostQueries.js';
+import { validTimeZone } from '../lib/srsUpdate.js';
 
 const router = Router();
 
@@ -19,10 +20,11 @@ router.get('/api/home/student-dashboard', authMiddleware, async (req, res) => {
     }
 
     const visibleTeacherIds = await listLegacyTeacherIdsForStudent(req.userId);
+    const timeZone = validTimeZone(req.query.timeZone);
 
     const [newTodayResult, dueWordsResult, pendingClassworkResult] = await Promise.all([
-      listNewTodayWords(pool, req.userId),
-      listDueWords(pool, req.userId),
+      listNewTodayWords(pool, req.userId, timeZone),
+      listDueWords(pool, req.userId, timeZone),
       visibleTeacherIds.length === 0
         ? Promise.resolve({ rows: [] })
         : pool.query(

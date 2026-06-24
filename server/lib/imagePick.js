@@ -54,7 +54,13 @@ export async function pickBestImage({ word, definition, sentence, candidates }) 
     // Vision pick failed — log it (visible, not swallowed) and use the first
     // candidate, which is the same result the old top-1 path would have given.
     logger.error('pickBestImage vision call failed for "%s": %s', word, err.message);
-    return downloaded[0];
+    return {
+      ...downloaded[0],
+      fallbackNotice: {
+        title: 'Image picker fallback used',
+        message: `Gemini image selection failed for "${word}": ${err.message}. Using the first image candidate.`,
+      },
+    };
   }
 
   const match = text.match(/-?\d+/);
@@ -65,7 +71,13 @@ export async function pickBestImage({ word, definition, sentence, candidates }) 
   }
   if (!Number.isInteger(idx) || idx < 0 || idx >= downloaded.length) {
     logger.info('pickBestImage "%s": unparseable pick "%s", using candidate 0', word, text.trim());
-    return downloaded[0];
+    return {
+      ...downloaded[0],
+      fallbackNotice: {
+        title: 'Image picker fallback used',
+        message: `Gemini returned an invalid image choice for "${word}" ("${text.trim()}"). Using the first image candidate.`,
+      },
+    };
   }
   logger.info('pickBestImage "%s": chose %d of %d candidates', word, idx, downloaded.length);
   return downloaded[idx];

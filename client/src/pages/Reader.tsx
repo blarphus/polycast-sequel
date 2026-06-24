@@ -30,7 +30,7 @@ export default function Reader() {
 
   const [book, setBook] = useState<ParsedEpub | null>(null);
   const bookLanguage = book?.language || user?.target_language || null;
-  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords({
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = useSavedWords({
     targetLanguage: bookLanguage,
   });
   const [loadError, setLoadError] = useState('');
@@ -450,6 +450,7 @@ export default function Reader() {
           isWordSaved={isWordSaved}
           isDefinitionSaved={isDefinitionSaved}
           onSaveWord={addWord}
+          onRemoveWord={removeWord}
           onOptimisticSave={addOptimistic}
         />
       )}

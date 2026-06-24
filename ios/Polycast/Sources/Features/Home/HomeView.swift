@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var session: SessionStore
+    @Environment(\.scenePhase) private var scenePhase
     @State private var dashboard: StudentDashboard?
     @State private var trending: [TrendingVideo] = []
     @State private var news: [NewsArticle] = []
@@ -42,9 +43,41 @@ struct HomeView: View {
         .texturedBackground()
         .navigationTitle("Home")
         .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    SettingsView()
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
         .task {
             guard dashboard == nil else { return }
             await load()
+        }
+        .task {
+            // Refresh dashboard at midnight when new cards become due
+            while !Task.isCancelled {
+                let now = Date()
+                let calendar = Calendar.current
+                guard let nextMidnight = calendar.nextDate(
+                    after: now,
+                    matching: DateComponents(hour: 0, minute: 0, second: 0),
+                    matchingPolicy: .nextTime
+                ) else { break }
+                let delay = nextMidnight.timeIntervalSince(now)
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                guard !Task.isCancelled else { break }
+                await load()
+            }
+        }
+        .onChange(of: scenePhase) {
+            // Re-fetch when the app returns to the foreground so progress made
+            // on another device shows up here (cross-device sync).
+            guard scenePhase == .active else { return }
+            Task { await load() }
         }
         .refreshable {
             await load()

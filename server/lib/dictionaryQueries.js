@@ -15,11 +15,11 @@ export function invalidateDictionaryCache(userId) {
 }
 
 const NEW_TODAY_ORDER_BY = `
-  sw.priority DESC,
+  sw.queue_position ASC NULLS LAST,
   sw.frequency_count DESC NULLS LAST,
   sw.frequency DESC NULLS LAST,
   sw.created_at ASC,
-  sw.queue_position ASC NULLS LAST
+  sw.id ASC
 `;
 
 const DUE_QUEUE_ORDER_BY = `
@@ -32,6 +32,119 @@ const DUE_QUEUE_ORDER_BY = `
   frequency DESC NULLS LAST,
   created_at ASC
 `;
+
+export async function ensureCardsScheduled(db, userId, timeZone = 'UTC') {
+  await db.query(
+    `WITH prefs AS (
+       SELECT target_language
+       FROM users
+       WHERE id = $1
+     ),
+     ranked AS (
+       SELECT
+         sw.id,
+         ROW_NUMBER() OVER (
+           ORDER BY
+             CASE
+               WHEN sw.srs_interval = 0
+                AND sw.learning_step IS NULL
+                AND sw.last_reviewed_at IS NULL THEN 0
+               ELSE 1
+             END ASC,
+             sw.frequency_count DESC NULLS LAST,
+             sw.frequency DESC NULLS LAST,
+             sw.created_at ASC,
+             sw.id ASC
+         ) - 1 AS new_position
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+     )
+     UPDATE saved_words sw
+     SET queue_position = ranked.new_position
+     FROM ranked
+     WHERE sw.id = ranked.id
+       AND sw.queue_position IS DISTINCT FROM ranked.new_position`,
+    [userId],
+  );
+
+  await db.query(
+    `UPDATE saved_words sw
+     SET due_at = NULL
+     FROM users u
+     WHERE sw.user_id = $1
+       AND u.id = sw.user_id
+       AND sw.target_language IS NOT DISTINCT FROM u.target_language
+       AND sw.srs_interval = 0
+       AND sw.learning_step IS NULL
+       AND sw.last_reviewed_at IS NULL
+       AND sw.due_at IS NOT NULL`,
+    [userId],
+  );
+
+  await db.query(
+    `UPDATE saved_words sw
+     SET due_at = CASE
+       WHEN sw.last_reviewed_at IS NOT NULL AND GREATEST(COALESCE(sw.srs_interval, 0), 0) >= 86400 THEN (
+         date_trunc('day', sw.last_reviewed_at AT TIME ZONE $2)
+         + make_interval(days => GREATEST(CEIL(COALESCE(sw.srs_interval, 0)::numeric / 86400), 1)::int)
+       ) AT TIME ZONE $2
+       WHEN sw.last_reviewed_at IS NOT NULL THEN sw.last_reviewed_at + make_interval(secs => GREATEST(COALESCE(sw.srs_interval, 0), 60))
+       ELSE COALESCE(sw.created_at, NOW())
+     END
+     FROM users u
+     WHERE sw.user_id = $1
+       AND u.id = sw.user_id
+       AND sw.target_language IS NOT DISTINCT FROM u.target_language
+       AND sw.due_at IS NULL
+       AND NOT (
+         sw.srs_interval = 0
+         AND sw.learning_step IS NULL
+         AND sw.last_reviewed_at IS NULL
+     )`,
+    [userId, timeZone],
+  );
+
+  const rollover = await db.query(
+    `WITH prefs AS (
+       SELECT target_language
+       FROM users
+       WHERE id = $1
+     ),
+     review_cards AS (
+       SELECT sw.id, (sw.due_at AT TIME ZONE $2)::date AS due_date
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND sw.last_reviewed_at IS NOT NULL
+         AND sw.learning_step IS NULL
+         AND GREATEST(COALESCE(sw.srs_interval, 0), 0) >= 86400
+         AND sw.due_at IS NOT NULL
+     ),
+     shift AS (
+       SELECT ((NOW() AT TIME ZONE $2)::date - MIN(due_date))::int AS days
+       FROM review_cards
+       HAVING MIN(due_date) < (NOW() AT TIME ZONE $2)::date
+     )
+     UPDATE saved_words sw
+     SET due_at = (
+       date_trunc('day', sw.due_at AT TIME ZONE $2)
+       + make_interval(days => shift.days)
+     ) AT TIME ZONE $2
+     FROM prefs p, shift
+     WHERE sw.user_id = $1
+       AND sw.target_language IS NOT DISTINCT FROM p.target_language
+       AND sw.last_reviewed_at IS NOT NULL
+       AND sw.learning_step IS NULL
+       AND GREATEST(COALESCE(sw.srs_interval, 0), 0) >= 86400
+       AND sw.due_at IS NOT NULL
+       AND shift.days > 0`,
+    [userId, timeZone],
+  );
+  if ((rollover.rowCount ?? 0) > 0) invalidateDictionaryCache(userId);
+}
 
 /**
  * Fetch a user's already-saved definitions for a word and its lemma-siblings, so they can be
@@ -58,7 +171,8 @@ export async function fetchUserSavedSensesForWord(db, userId, targetLang, word, 
   return rows;
 }
 
-export async function listNewTodayWords(db, userId) {
+export async function listNewTodayWords(db, userId, timeZone = 'UTC') {
+  await ensureCardsScheduled(db, userId, timeZone);
   return db.query(
     `WITH prefs AS (
        SELECT target_language, daily_new_limit
@@ -71,22 +185,24 @@ export async function listNewTodayWords(db, userId) {
        CROSS JOIN prefs p
        WHERE sw.user_id = $1
          AND sw.target_language IS NOT DISTINCT FROM p.target_language
-         AND sw.introduced_date = CURRENT_DATE
+         AND sw.introduced_date = (NOW() AT TIME ZONE $2)::date
      )
      SELECT sw.*
      FROM saved_words sw
      CROSS JOIN prefs p
      WHERE sw.user_id = $1
        AND sw.target_language IS NOT DISTINCT FROM p.target_language
-       AND sw.due_at IS NULL
+       AND sw.srs_interval = 0
+       AND sw.learning_step IS NULL
        AND sw.last_reviewed_at IS NULL
      ORDER BY ${NEW_TODAY_ORDER_BY}
      LIMIT GREATEST(COALESCE((SELECT daily_new_limit FROM prefs), 0) - (SELECT cnt FROM introduced_today), 0)`,
-    [userId],
+    [userId, timeZone],
   );
 }
 
-export async function listNewWordPreview(db, userId, limit = 10) {
+export async function listNewWordPreview(db, userId, limit = 10, timeZone = 'UTC') {
+  await ensureCardsScheduled(db, userId, timeZone);
   return db.query(
     `WITH prefs AS (
        SELECT target_language
@@ -98,7 +214,8 @@ export async function listNewWordPreview(db, userId, limit = 10) {
      CROSS JOIN prefs p
      WHERE sw.user_id = $1
        AND sw.target_language IS NOT DISTINCT FROM p.target_language
-       AND sw.due_at IS NULL
+       AND sw.srs_interval = 0
+       AND sw.learning_step IS NULL
        AND sw.last_reviewed_at IS NULL
      ORDER BY ${NEW_TODAY_ORDER_BY}
      LIMIT $2`,
@@ -107,22 +224,12 @@ export async function listNewWordPreview(db, userId, limit = 10) {
 }
 
 export async function listDueWords(db, userId, timeZone = 'UTC', newLimitOverride = null) {
-  return db.query(
+  await ensureCardsScheduled(db, userId, timeZone);
+  const result = await db.query(
     `WITH prefs AS (
        SELECT target_language, COALESCE($3::int, daily_new_limit) AS daily_new_limit
        FROM users
        WHERE id = $1
-     ),
-     due_cards AS (
-       SELECT sw.*
-       FROM saved_words sw
-       CROSS JOIN prefs p
-       WHERE sw.user_id = $1
-         AND sw.target_language IS NOT DISTINCT FROM p.target_language
-         AND (
-           (sw.learning_step IS NOT NULL AND sw.due_at <= NOW() + INTERVAL '20 minutes')
-           OR (sw.learning_step IS NULL AND sw.due_at <= NOW())
-         )
      ),
      introduced_today AS (
        SELECT COUNT(*)::int AS cnt
@@ -132,26 +239,44 @@ export async function listDueWords(db, userId, timeZone = 'UTC', newLimitOverrid
          AND sw.target_language IS NOT DISTINCT FROM p.target_language
          AND sw.introduced_date = (NOW() AT TIME ZONE $2)::date
      ),
+     review_cards AS (
+       SELECT sw.*
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND (
+           (sw.learning_step IS NOT NULL AND sw.due_at <= NOW() + INTERVAL '20 minutes')
+           OR (
+             sw.learning_step IS NULL
+             AND sw.last_reviewed_at IS NOT NULL
+             AND sw.due_at <= NOW()
+           )
+         )
+     ),
      new_cards AS (
        SELECT sw.*
        FROM saved_words sw
        CROSS JOIN prefs p
        WHERE sw.user_id = $1
          AND sw.target_language IS NOT DISTINCT FROM p.target_language
-         AND sw.due_at IS NULL
+         AND sw.srs_interval = 0
+         AND sw.learning_step IS NULL
          AND sw.last_reviewed_at IS NULL
        ORDER BY ${NEW_TODAY_ORDER_BY}
        LIMIT GREATEST(COALESCE((SELECT daily_new_limit FROM prefs), 0) - (SELECT cnt FROM introduced_today), 0)
      )
      SELECT *
      FROM (
-       SELECT * FROM due_cards
+       SELECT * FROM review_cards
        UNION ALL
        SELECT * FROM new_cards
      ) queue_words
      ORDER BY ${DUE_QUEUE_ORDER_BY}`,
     [userId, timeZone, newLimitOverride],
   );
+  result.rows = interleaveStudyQueueRows(result.rows);
+  return result;
 }
 
 /**
@@ -159,10 +284,29 @@ export async function listDueWords(db, userId, timeZone = 'UTC', newLimitOverrid
  * never-introduced cards available, and the user's current daily-new limit.
  * The `due` predicate mirrors listDueWords so the count matches the session.
  */
-export async function listStudyOverview(db, userId) {
+export async function listStudyOverview(db, userId, timeZone = 'UTC') {
+  await ensureCardsScheduled(db, userId, timeZone);
   const { rows } = await db.query(
     `WITH prefs AS (
        SELECT target_language, daily_new_limit FROM users WHERE id = $1
+     ),
+     introduced_today AS (
+       SELECT COUNT(*)::int AS cnt
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND sw.introduced_date = (NOW() AT TIME ZONE $2)::date
+     ),
+     new_remaining AS (
+       SELECT COUNT(*)::int AS cnt
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND sw.srs_interval = 0
+         AND sw.learning_step IS NULL
+         AND sw.last_reviewed_at IS NULL
      )
      SELECT
        (SELECT COUNT(*)::int FROM saved_words sw CROSS JOIN prefs p
@@ -170,14 +314,18 @@ export async function listStudyOverview(db, userId) {
             AND sw.target_language IS NOT DISTINCT FROM p.target_language
             AND (
               (sw.learning_step IS NOT NULL AND sw.due_at <= NOW() + INTERVAL '20 minutes')
-              OR (sw.learning_step IS NULL AND sw.due_at <= NOW())
+              OR (
+                sw.learning_step IS NULL
+                AND sw.last_reviewed_at IS NOT NULL
+                AND sw.due_at <= NOW()
+              )
             )) AS due,
-       (SELECT COUNT(*)::int FROM saved_words sw CROSS JOIN prefs p
-          WHERE sw.user_id = $1
-            AND sw.target_language IS NOT DISTINCT FROM p.target_language
-            AND sw.due_at IS NULL AND sw.last_reviewed_at IS NULL) AS new_available,
+       LEAST(
+         (SELECT cnt FROM new_remaining),
+         GREATEST(COALESCE((SELECT daily_new_limit FROM prefs), 0) - (SELECT cnt FROM introduced_today), 0)
+       )::int AS new_available,
        (SELECT COALESCE(daily_new_limit, 0) FROM prefs) AS daily_new_limit`,
-    [userId],
+    [userId, timeZone],
   );
   return rows[0] || { due: 0, new_available: 0, daily_new_limit: 0 };
 }
@@ -197,6 +345,13 @@ function getDueTime(word) {
 }
 
 function compareNewEntries(a, b) {
+  const dueDiff = getDueTime(a) - getDueTime(b);
+  if (dueDiff !== 0) return dueDiff;
+
+  const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
+  const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
+  if (aQueue !== bQueue) return aQueue - bQueue;
+
   const aPriority = a.priority ? 0 : 1;
   const bPriority = b.priority ? 0 : 1;
   if (aPriority !== bPriority) return aPriority - bPriority;
@@ -212,9 +367,37 @@ function compareNewEntries(a, b) {
   const createdDiff = getCreatedTime(a) - getCreatedTime(b);
   if (createdDiff !== 0) return createdDiff;
 
-  const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
-  const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
   return aQueue - bQueue;
+}
+
+function interleaveStudyQueueRows(rows) {
+  const newRows = rows.filter(isDictionaryEntryNew).sort(compareNewEntries);
+  if (newRows.length === 0) return rows;
+
+  const reviewRows = rows.filter((row) => !isDictionaryEntryNew(row));
+  if (reviewRows.length === 0) return newRows;
+
+  const reviewInterval = Math.max(Math.floor(reviewRows.length / newRows.length), 1);
+  const interleaved = [];
+  let reviewIndex = 0;
+  let newIndex = 0;
+
+  while (reviewIndex < reviewRows.length) {
+    const nextReviewIndex = Math.min(reviewIndex + reviewInterval, reviewRows.length);
+    interleaved.push(...reviewRows.slice(reviewIndex, nextReviewIndex));
+    reviewIndex = nextReviewIndex;
+
+    if (newIndex < newRows.length) {
+      interleaved.push(newRows[newIndex]);
+      newIndex += 1;
+    }
+  }
+
+  if (newIndex < newRows.length) {
+    interleaved.push(...newRows.slice(newIndex));
+  }
+
+  return interleaved;
 }
 
 function compareReviewEntries(a, b) {
@@ -288,7 +471,7 @@ function buildDictionaryGroups(words, sort, dailyNewLimit) {
     groups
       .filter((group) => group.nextNewEntry)
       .sort((a, b) => compareNewEntries(a.nextNewEntry, b.nextNewEntry))
-      .slice(0, Math.max(0, dailyNewLimit))
+      .slice(0, Math.max(dailyNewLimit, 0))
       .map((group) => group.key),
   );
 
@@ -350,7 +533,8 @@ function buildDictionaryGroups(words, sort, dailyNewLimit) {
   };
 }
 
-export async function listDictionaryGroupPage(db, userId, { page = 0, limit = 20, search = '', sort = 'queue' } = {}) {
+export async function listDictionaryGroupPage(db, userId, { page = 0, limit = 20, search = '', sort = 'queue', timeZone = 'UTC' } = {}) {
+  await ensureCardsScheduled(db, userId, timeZone);
   const { rows: prefsRows } = await db.query(
     'SELECT target_language, daily_new_limit FROM users WHERE id = $1',
     [userId],
@@ -402,8 +586,8 @@ export async function listDictionaryGroupPage(db, userId, { page = 0, limit = 20
         `SELECT COUNT(*)::int AS cnt FROM saved_words
          WHERE user_id = $1
            AND target_language IS NOT DISTINCT FROM $2
-           AND introduced_date = CURRENT_DATE`,
-        [userId, targetLanguage],
+           AND introduced_date = (NOW() AT TIME ZONE $3)::date`,
+        [userId, targetLanguage, timeZone],
       ),
     ]);
 
@@ -429,40 +613,89 @@ export async function listDictionaryGroupPage(db, userId, { page = 0, limit = 20
   };
 }
 
-export async function listCalendarCounts(db, userId, year, month) {
+export async function listCalendarCounts(db, userId, year, month, timeZone = 'UTC') {
+  await ensureCardsScheduled(db, userId, timeZone);
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
   // First day of next month
   const nextMonth = month === 12 ? 1 : month + 1;
   const nextYear = month === 12 ? year + 1 : year;
   const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
 
-  const { rows: prefsRows } = await db.query(
-    'SELECT target_language, daily_new_limit FROM users WHERE id = $1',
-    [userId],
-  );
-  const targetLanguage = prefsRows[0]?.target_language ?? null;
-
   const { rows: dayCounts } = await db.query(
-    `SELECT due_at::date AS date, COUNT(*)::int AS count
-     FROM saved_words
-     WHERE user_id = $1
-       AND target_language IS NOT DISTINCT FROM $2
-       AND due_at IS NOT NULL
-       AND due_at::date >= $3::date
-       AND due_at::date < $4::date
-     GROUP BY due_at::date
-     ORDER BY due_at::date`,
-    [userId, targetLanguage, startDate, endDate],
+    `WITH prefs AS (
+       SELECT target_language, COALESCE(daily_new_limit, 0) AS daily_new_limit
+       FROM users
+       WHERE id = $1
+     ),
+     introduced_today AS (
+       SELECT COUNT(*)::int AS cnt
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND sw.introduced_date = (NOW() AT TIME ZONE $2)::date
+     ),
+     review_due AS (
+       SELECT (sw.due_at AT TIME ZONE $2)::date AS date
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND sw.due_at IS NOT NULL
+         AND (sw.due_at AT TIME ZONE $2)::date >= $3::date
+         AND (sw.due_at AT TIME ZONE $2)::date < $4::date
+     ),
+     new_due AS (
+       SELECT (
+         date_trunc('day', NOW() AT TIME ZONE $2)
+         + make_interval(days => FLOOR(((COALESCE(sw.queue_position, 2147483647) + (SELECT cnt FROM introduced_today))::numeric) / NULLIF((SELECT daily_new_limit FROM prefs), 0))::int)
+       )::date AS date
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND (SELECT daily_new_limit FROM prefs) > 0
+         AND sw.srs_interval = 0
+         AND sw.learning_step IS NULL
+         AND sw.last_reviewed_at IS NULL
+     )
+     SELECT date, COUNT(*)::int AS count
+     FROM (
+       SELECT date FROM review_due
+       UNION ALL
+       SELECT date FROM new_due
+       WHERE date >= $3::date AND date < $4::date
+     ) due_dates
+     GROUP BY date
+     ORDER BY date`,
+    [userId, timeZone, startDate, endDate],
   );
 
   const { rows: newRows } = await db.query(
-    `SELECT COUNT(*)::int AS count
-     FROM saved_words
-     WHERE user_id = $1
-       AND target_language IS NOT DISTINCT FROM $2
-       AND due_at IS NULL
-       AND last_reviewed_at IS NULL`,
-    [userId, targetLanguage],
+    `WITH prefs AS (
+       SELECT target_language, COALESCE(daily_new_limit, 0) AS daily_new_limit
+       FROM users
+       WHERE id = $1
+     ),
+     introduced_today AS (
+       SELECT COUNT(*)::int AS cnt
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND sw.introduced_date = (NOW() AT TIME ZONE $2)::date
+     )
+     SELECT COUNT(*)::int AS count
+     FROM saved_words sw
+     CROSS JOIN prefs p
+     WHERE sw.user_id = $1
+       AND sw.target_language IS NOT DISTINCT FROM p.target_language
+       AND (SELECT daily_new_limit FROM prefs) > 0
+       AND sw.srs_interval = 0
+       AND sw.learning_step IS NULL
+       AND sw.last_reviewed_at IS NULL
+       AND FLOOR(((COALESCE(sw.queue_position, 2147483647) + (SELECT cnt FROM introduced_today))::numeric) / NULLIF((SELECT daily_new_limit FROM prefs), 0))::int = 0`,
+    [userId, timeZone],
   );
 
   return {
@@ -471,20 +704,56 @@ export async function listCalendarCounts(db, userId, year, month) {
   };
 }
 
-export async function listCalendarDayWords(db, userId, date) {
-  const { rows: prefsRows } = await db.query(
-    'SELECT target_language FROM users WHERE id = $1',
-    [userId],
-  );
-  const targetLanguage = prefsRows[0]?.target_language ?? null;
-
+export async function listCalendarDayWords(db, userId, date, timeZone = 'UTC') {
+  await ensureCardsScheduled(db, userId, timeZone);
   const { rows } = await db.query(
-    `SELECT * FROM saved_words
-     WHERE user_id = $1
-       AND target_language IS NOT DISTINCT FROM $2
-       AND due_at::date = $3::date
-     ORDER BY due_at ASC`,
-    [userId, targetLanguage, date],
+    `WITH prefs AS (
+       SELECT target_language, COALESCE(daily_new_limit, 0) AS daily_new_limit
+       FROM users
+       WHERE id = $1
+     ),
+     introduced_today AS (
+       SELECT COUNT(*)::int AS cnt
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND sw.introduced_date = (NOW() AT TIME ZONE $3)::date
+     ),
+     review_cards AS (
+       SELECT sw.*, (sw.due_at AT TIME ZONE $3)::date AS calendar_due_date, sw.due_at AS sort_due_at
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND sw.due_at IS NOT NULL
+         AND (sw.due_at AT TIME ZONE $3)::date = $2::date
+     ),
+     new_cards AS (
+       SELECT
+         sw.*,
+         (
+           date_trunc('day', NOW() AT TIME ZONE $3)
+           + make_interval(days => FLOOR(((COALESCE(sw.queue_position, 2147483647) + (SELECT cnt FROM introduced_today))::numeric) / NULLIF((SELECT daily_new_limit FROM prefs), 0))::int)
+         )::date AS calendar_due_date,
+         NULL::timestamptz AS sort_due_at
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND (SELECT daily_new_limit FROM prefs) > 0
+         AND sw.srs_interval = 0
+         AND sw.learning_step IS NULL
+         AND sw.last_reviewed_at IS NULL
+     )
+     SELECT *
+     FROM (
+       SELECT * FROM review_cards
+       UNION ALL
+       SELECT * FROM new_cards WHERE calendar_due_date = $2::date
+     ) day_words
+     ORDER BY sort_due_at ASC NULLS LAST, queue_position ASC NULLS LAST`,
+    [userId, date, timeZone],
   );
   return rows;
 }

@@ -11,9 +11,38 @@ const inflightGetRequests = new Map<string, Promise<unknown>>();
 const responseCache = new Map<string, { data: unknown; expiresAt: number }>();
 let cacheEpoch = 0;
 
+interface FallbackNotice {
+  title?: string;
+  message?: string;
+  detail?: string;
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('polycast-offline-dictionary-external-sync', () => {
     invalidateApiCache();
+  });
+}
+
+function emitFallbackNotice(notice: FallbackNotice) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('polycast:fallback', { detail: notice }));
+}
+
+function emitServerFallbackNotices(payload: unknown) {
+  if (!payload || typeof payload !== 'object') return;
+  const notices = (payload as { fallback_notices?: unknown }).fallback_notices;
+  if (!Array.isArray(notices)) return;
+  for (const notice of notices) {
+    if (!notice || typeof notice !== 'object') continue;
+    emitFallbackNotice(notice as FallbackNotice);
+  }
+}
+
+function emitOfflineFallback(path: string, reason: string) {
+  emitFallbackNotice({
+    title: 'Offline fallback used',
+    message: `${path} used local offline data.`,
+    detail: reason,
   });
 }
 
@@ -82,7 +111,10 @@ export async function request<T>(path: string, opts: ApiOptions = {}): Promise<T
   const executeRequest = async (): Promise<T> => {
     if (shouldTryOfflineFirst()) {
       const fallback = await getOfflineFallback(path, upperMethod, body);
-      if (fallback.handled) return fallback.data as T;
+      if (fallback.handled) {
+        emitOfflineFallback(path, 'Offline mode is enabled.');
+        return fallback.data as T;
+      }
     }
 
     let res: Response;
@@ -90,7 +122,10 @@ export async function request<T>(path: string, opts: ApiOptions = {}): Promise<T
       res = await fetch(`${BASE}${path}`, fetchOpts);
     } catch (err) {
       const fallback = await getOfflineFallback(path, upperMethod, body);
-      if (fallback.handled) return fallback.data as T;
+      if (fallback.handled) {
+        emitOfflineFallback(path, err instanceof Error ? err.message : 'Network request failed.');
+        return fallback.data as T;
+      }
       throw err;
     }
 
@@ -100,7 +135,10 @@ export async function request<T>(path: string, opts: ApiOptions = {}): Promise<T
       }
       if (isUnavailableStatus(res.status)) {
         const fallback = await getOfflineFallback(path, upperMethod, body);
-        if (fallback.handled) return fallback.data as T;
+        if (fallback.handled) {
+          emitOfflineFallback(path, `Server returned ${res.status} ${res.statusText}.`);
+          return fallback.data as T;
+        }
       }
       let payload: any;
       try {
@@ -114,7 +152,9 @@ export async function request<T>(path: string, opts: ApiOptions = {}): Promise<T
 
     if (res.status === 204) return undefined as unknown as T;
 
-    return res.json() as Promise<T>;
+    const payload = await res.json();
+    emitServerFallbackNotices(payload);
+    return payload as T;
   };
 
   if (upperMethod === 'GET') {

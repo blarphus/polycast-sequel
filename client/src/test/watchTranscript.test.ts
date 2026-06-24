@@ -118,7 +118,7 @@ describe('mergeTranscriptSegmentsForDisplay', () => {
     expect(merged[2].text).toBe('E qual é?');
   });
 
-  it('keeps standalone cues separate from dialogue and lyrics', () => {
+  it('strips standalone annotation cues before merging dialogue and lyrics', () => {
     const merged = mergeTranscriptSegmentsForDisplay([
       segment('[música]', 0, 1000),
       segment('Se você', 1100, 1000),
@@ -127,11 +127,9 @@ describe('mergeTranscriptSegmentsForDisplay', () => {
       segment('>> Se chorar,', 5100, 1000),
     ]);
 
-    expect(merged).toHaveLength(4);
+    expect(merged).toHaveLength(2);
     expect(merged.map((item) => item.text)).toEqual([
-      '[música]',
       'Se você já pensou em desistir,',
-      '>> [música]',
       '>> Se chorar,',
     ]);
   });

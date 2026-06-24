@@ -64,17 +64,33 @@ describe('Anki-style study queues', () => {
 
     expect(getStudyQueueBucket(failedNew, today)).toBe('learning');
     expect(getStudyQueueBucket(failedReview, today)).toBe('learning');
-    expect(getStudyQueueCounts([failedNew, failedReview])).toEqual({
+    expect(getStudyQueueCounts([failedNew, failedReview], today)).toEqual({
       new: 0,
       learning: 2,
       review: 0,
     });
   });
 
-  it('graduates a red relearning card out of today after one correct answer', () => {
+  it('advances a red relearning card to the 10-minute step after one correct answer', () => {
     const relearning = card({
       srs_interval: 86_400,
       learning_step: 0,
+      last_reviewed_at: today.toISOString(),
+      relearning_date: '2026-06-11',
+    });
+    const next = computeNextReviewState(relearning, 'good');
+    const advanced = applyAnswerLocally(relearning, 'good', today);
+
+    expect(next.learningStep).toBe(1);
+    expect(next.dueSeconds).toBe(600);
+    expect(getStudyQueueBucket(advanced, today)).toBe('review');
+    expect(getStudyQueueCounts([advanced], today)).toEqual({ new: 0, learning: 0, review: 1 });
+  });
+
+  it('graduates a relearning card after the final 10-minute step', () => {
+    const relearning = card({
+      srs_interval: 86_400,
+      learning_step: 1,
       last_reviewed_at: today.toISOString(),
       relearning_date: '2026-06-11',
     });
@@ -83,15 +99,14 @@ describe('Anki-style study queues', () => {
 
     expect(next.learningStep).toBeNull();
     expect(next.dueSeconds).toBe(86_400);
-    expect(getStudyQueueBucket(graduated, today)).toBe('learning');
-    expect(getStudyQueueCounts([])).toEqual({ new: 0, learning: 0, review: 0 });
+    expect(getStudyQueueBucket(graduated, today)).toBe('review');
   });
 
   it('counts distinct cards once and ignores duplicate queue entries', () => {
     const firstStep = card({ learning_step: 0, last_reviewed_at: today.toISOString(), relearning_date: '2026-06-11' });
     const secondStep = card({ id: 'card-2', learning_step: 1, last_reviewed_at: today.toISOString(), relearning_date: '2026-06-11' });
 
-    expect(getStudyQueueCounts([firstStep, secondStep, firstStep])).toEqual({
+    expect(getStudyQueueCounts([firstStep, secondStep, firstStep], today)).toEqual({
       new: 0,
       learning: 2,
       review: 0,
@@ -107,8 +122,8 @@ describe('Anki-style study queues', () => {
     });
     const failedAgain = applyAnswerLocally(relearning, 'again', today);
 
-    expect(getStudyQueueCounts([relearning])).toEqual({ new: 0, learning: 1, review: 0 });
-    expect(getStudyQueueCounts([failedAgain])).toEqual({ new: 0, learning: 1, review: 0 });
+    expect(getStudyQueueCounts([relearning], today)).toEqual({ new: 0, learning: 1, review: 0 });
+    expect(getStudyQueueCounts([failedAgain], today)).toEqual({ new: 0, learning: 1, review: 0 });
   });
 
   it('counts ordinary new-card learning as blue, not red', () => {
@@ -116,7 +131,7 @@ describe('Anki-style study queues', () => {
 
     expect(learningNewCard.learning_step).toBe(1);
     expect(getStudyQueueBucket(learningNewCard, today)).toBe('new');
-    expect(getStudyQueueCounts([learningNewCard])).toEqual({ new: 1, learning: 0, review: 0 });
+    expect(getStudyQueueCounts([learningNewCard], today)).toEqual({ new: 1, learning: 0, review: 0 });
   });
 
   it('resets a failed one-month review to a one-day post-relearning interval', () => {
@@ -127,7 +142,7 @@ describe('Anki-style study queues', () => {
     const failed = computeNextReviewState(monthlyReview, 'again');
 
     expect(failed.learningStep).toBe(0);
-    expect(failed.dueSeconds).toBe(600);
+    expect(failed.dueSeconds).toBe(60);
     expect(failed.srsInterval).toBe(86_400);
   });
 

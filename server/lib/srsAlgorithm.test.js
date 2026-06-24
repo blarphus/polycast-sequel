@@ -8,21 +8,27 @@ const reviewCard = {
   learning_step: null,
 };
 
-test('a failed review enters the single 10-minute relearning step', () => {
+test('a failed review enters the 1-minute relearning step', () => {
   const failed = computeNextReview(reviewCard, 'again');
   assert.equal(failed.learning_step, 0);
-  assert.equal(failed.due_seconds, 600);
+  assert.equal(failed.due_seconds, 60);
   assert.equal(failed.srs_interval, 86400);
 });
 
-test('failing again while relearning stays on the 10-minute step', () => {
+test('failing again while relearning returns to the 1-minute step', () => {
   const failedAgain = computeNextReview({ ...reviewCard, learning_step: 0 }, 'again');
   assert.equal(failedAgain.learning_step, 0);
-  assert.equal(failedAgain.due_seconds, 600);
+  assert.equal(failedAgain.due_seconds, 60);
 });
 
-test('one good answer graduates a relearning card', () => {
-  const graduated = computeNextReview({ ...reviewCard, srs_interval: 86400, learning_step: 0 }, 'good');
+test('one good answer advances a relearning card to the 10-minute step', () => {
+  const advanced = computeNextReview({ ...reviewCard, srs_interval: 86400, learning_step: 0 }, 'good');
+  assert.equal(advanced.learning_step, 1);
+  assert.equal(advanced.due_seconds, 600);
+});
+
+test('good on the final relearning step graduates the card', () => {
+  const graduated = computeNextReview({ ...reviewCard, srs_interval: 86400, learning_step: 1 }, 'good');
   assert.equal(graduated.learning_step, null);
   assert.equal(graduated.due_seconds, 86400);
 });

@@ -173,8 +173,14 @@
   font-size: 13px;
   color: #d0d0e0;
   line-height: 1.45;
+  white-space: pre-line;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 8px;
+}
+
+.pc-popup-explanation-highlight {
+  color: #fbbf24;
+  font-weight: 700;
 }
 
 .pc-popup-body {
@@ -218,12 +224,61 @@
   font-size: 13px;
   color: #b0b0c8;
   line-height: 1.4;
+  margin-top: 6px;
+}
+
+.pc-popup-definition-label {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #a78bfa;
+}
+
+.pc-popup-definition-context {
+  color: #d0d0e0;
 }
 
 .pc-popup-native-word {
   font-size: 16px;
   font-weight: 600;
   color: #fff;
+}
+
+/* Word / Phrase toggle (shown when the clicked word is part of a phrase). */
+.pc-popup-mode-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+}
+
+.pc-popup-mode {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b0b0c8;
+  background: transparent;
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+
+.pc-popup-mode--active {
+  color: #fff;
+  background: rgba(167, 139, 250, 0.28);
+}
+
+.pc-popup-phrase {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6px;
 }
 
 .pc-popup-error {
@@ -241,6 +296,12 @@
   border-radius: 50%;
   animation: pc-spin 0.6s linear infinite;
   margin: 8px auto;
+}
+
+.pc-spinner-inline {
+  width: 16px;
+  height: 16px;
+  margin: 4px 0 0;
 }
 
 @keyframes pc-spin {

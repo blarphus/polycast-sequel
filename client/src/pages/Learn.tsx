@@ -15,6 +15,10 @@ import {
   nextPromptStage,
 } from '../utils/srs';
 import { renderTildeHighlight, stripTildes } from '../utils/tildeMarkup';
+import { useAuth } from '../hooks/useAuth';
+import { useSavedWords } from '../hooks/useSavedWords';
+import WordPopup from '../components/WordPopup';
+import TappableFlashcardSentence from '../components/TappableFlashcardSentence';
 import { playAiSpeech, stopAiSpeech, preloadCardAudio, type PreloadedSpeech } from '../utils/aiSpeech';
 import { playFlipSound, playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
 import { BookIcon, CheckCircleIcon, SpeakerIcon, TapIcon, CloseIcon, CheckIcon } from '../components/icons';
@@ -66,6 +70,20 @@ export default function Learn() {
   const navigate = useNavigate();
 
   // Card queue
+  const { user } = useAuth();
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = useSavedWords();
+  const [popup, setPopup] = useState<{ word: string; sentence: string; rect: DOMRect } | null>(null);
+
+  // Tap a target-language word on the card to add it to the dictionary. Stop
+  // propagation so it never flips the card.
+  const handleWordClick = (e: React.MouseEvent<HTMLSpanElement>, word: string, sentence: string) => {
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) return;
+    e.stopPropagation();
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    setPopup({ word, sentence, rect });
+  };
+
   const [cards, setCards] = useState<SavedWord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -185,7 +203,7 @@ export default function Learn() {
   // ---------------------------------------------------------------------------
 
   const handleAnswer = useCallback(async (answer: SrsAnswer) => {
-    if (!currentCard || submitting) return;
+    if (!currentCard || submitting || !isFlipped) return;
     setSubmitting(true);
 
     if (answer === 'again') playIncorrectSound();
@@ -217,9 +235,8 @@ export default function Learn() {
 
     // Animate exit → next card (wrong = left, right = correct)
     setExitDirection(answer === 'again' ? 'left' : 'right');
-    await new Promise((resolve) => window.setTimeout(resolve, 700));
     setIsExiting(true);
-    await new Promise((resolve) => window.setTimeout(resolve, 300));
+    await new Promise((resolve) => window.setTimeout(resolve, 420));
 
     const updatedCard = await reviewPromise;
     setFeedback(null);
@@ -261,44 +278,39 @@ export default function Learn() {
     }
 
     window.setTimeout(() => setIsEntering(false), 350);
-  }, [cards, currentCard, currentIndex, submitting]);
+  }, [cards, currentCard, currentIndex, submitting, isFlipped]);
 
   // ---------------------------------------------------------------------------
   // Touch / swipe gestures
   // ---------------------------------------------------------------------------
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!isFlipped || submitting || isExiting) return;
     setDragState({
       isDragging: true,
       deltaX: 0,
       startX: e.touches[0].clientX,
       startTime: Date.now(),
     });
-  }, []);
+  }, [isFlipped, submitting, isExiting]);
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!dragState.isDragging) return;
+    if (!dragState.isDragging || !isFlipped) return;
     const deltaX = e.touches[0].clientX - dragState.startX;
     setDragState((prev) => ({ ...prev, deltaX }));
-  }, [dragState.isDragging, dragState.startX]);
+  }, [dragState.isDragging, dragState.startX, isFlipped]);
 
   const onTouchEnd = useCallback(() => {
     if (!dragState.isDragging) return;
     const elapsed = Date.now() - dragState.startTime;
     const absDelta = Math.abs(dragState.deltaX);
 
-    if (absDelta > 60 && elapsed < 800) {
-      if (!isFlipped) {
-        // Any swipe when not flipped → flip
-        playFlipSound();
-        setIsFlipped(true);
+    if (isFlipped && absDelta > 60 && elapsed < 800) {
+      // Flipped: right = good, left = again
+      if (dragState.deltaX > 0) {
+        handleAnswer('good');
       } else {
-        // Flipped: right = good, left = again
-        if (dragState.deltaX > 0) {
-          handleAnswer('good');
-        } else {
-          handleAnswer('again');
-        }
+        handleAnswer('again');
       }
     }
 
@@ -311,10 +323,9 @@ export default function Learn() {
 
   const dragTranslateX = dragState.isDragging ? dragState.deltaX : 0;
   const dragRotation = dragState.isDragging ? dragState.deltaX * 0.03 : 0;
-  const leftSwipeIntensity = dragState.isDragging && dragState.deltaX < 0
+  const swipeIntensity = dragState.isDragging
     ? Math.min(Math.abs(dragState.deltaX) / 150, 1)
     : 0;
-
   // ---------------------------------------------------------------------------
   // Render: Loading
   // ---------------------------------------------------------------------------
@@ -448,13 +459,16 @@ export default function Learn() {
       {/* Card container */}
       <div className="flashcard-container">
         <div
-          className={`flashcard${isExiting ? ` card-exit-${exitDirection}` : ''}${isEntering ? ' card-enter' : ''}`}
+          className={`flashcard${isFlipped ? ' is-revealed' : ''}${isExiting ? ` card-exit-${exitDirection}` : ''}${isEntering ? ' card-enter' : ''}`}
           style={{
-            transform: `translateX(${dragTranslateX}px) rotate(${dragRotation}deg)`,
-            borderColor: leftSwipeIntensity > 0
-              ? `rgba(231, 76, 94, ${0.3 + leftSwipeIntensity * 0.7})`
+            '--card-drag-x': `${dragTranslateX}px`,
+            '--card-drag-rotate': `${dragRotation}deg`,
+            borderColor: dragState.isDragging
+              ? dragState.deltaX < 0
+                ? `rgba(231, 76, 94, ${0.25 + swipeIntensity * 0.75})`
+                : `rgba(34, 165, 94, ${0.25 + swipeIntensity * 0.75})`
               : undefined,
-          }}
+          } as React.CSSProperties}
           onClick={() => { if (!isFlipped && !submitting) { playFlipSound(); setIsFlipped(true); } }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
@@ -469,7 +483,7 @@ export default function Learn() {
               {promptType === 'meet-word' && (
                 <>
                   {hasExample
-                    ? <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+                    ? <TappableFlashcardSentence text={card.example_sentence!} savedWords={savedWordsSet} onWordClick={handleWordClick} />
                     : <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>}
                   {card.image_url && (
                     <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
@@ -478,7 +492,7 @@ export default function Learn() {
               )}
 
               {promptType === 'sentence-meaning' && (
-                <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+                <TappableFlashcardSentence text={card.example_sentence!} savedWords={savedWordsSet} onWordClick={handleWordClick} />
               )}
 
               {promptType === 'word-production' && (
@@ -541,13 +555,13 @@ export default function Learn() {
                     <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   )}
                   {card.definition && <p className="flashcard-back-definition">{card.definition}</p>}
-                  {hasExample && <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>}
+                  {hasExample && <TappableFlashcardSentence text={card.example_sentence!} savedWords={savedWordsSet} onWordClick={handleWordClick} />}
                 </>
               )}
 
               {promptType === 'sentence-production' && (
                 <>
-                  <p className="flashcard-sentence">{renderTildeHighlight(card.example_sentence!, 'flashcard-highlighted')}</p>
+                  <TappableFlashcardSentence text={card.example_sentence!} savedWords={savedWordsSet} onWordClick={handleWordClick} />
                   {card.image_url && (
                     <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   )}
@@ -601,6 +615,22 @@ export default function Learn() {
         <div className={`flashcard-feedback flashcard-feedback--${feedback.answer}`}>
           <span>{feedback.text}</span>
         </div>
+      )}
+
+      {popup && user && (
+        <WordPopup
+          word={popup.word}
+          sentence={popup.sentence}
+          nativeLang={user.native_language || 'en'}
+          targetLang={user.target_language || undefined}
+          anchorRect={popup.rect}
+          onClose={() => setPopup(null)}
+          isWordSaved={isWordSaved}
+          isDefinitionSaved={isDefinitionSaved}
+          onSaveWord={addWord}
+          onRemoveWord={removeWord}
+          onOptimisticSave={addOptimistic}
+        />
       )}
     </div>
   );

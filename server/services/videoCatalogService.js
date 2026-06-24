@@ -18,7 +18,7 @@ import {
 } from './youtubeApi.js';
 
 const SHORTS_PAGE_SIZE = 36;
-const SHORTS_UPLOADS_PER_CHANNEL = 25;
+const SHORTS_UPLOADS_PER_CHANNEL = 8;
 
 const LANG_TO_REGION = {
   en: 'US',
@@ -48,6 +48,22 @@ function findChannelByHandle(handle) {
 
 function normalizeChannelRef(handle) {
   return String(handle || '').trim().replace(/^@+/, '');
+}
+
+function normalizedHandle(channel) {
+  return normalizeChannelRef(channel?.handle || '').toLowerCase();
+}
+
+function channelIdentity(channel) {
+  return (channel?.channelId || channel?.handle || channel?.name || '').toLowerCase();
+}
+
+function channelTags(channel) {
+  if (!channel) return [];
+  return Array.from(new Set([
+    channel.primaryNiche,
+    ...(channel.tags || []),
+  ].filter(Boolean))).sort();
 }
 
 async function resolveChannel(handle, apiKey) {
@@ -357,16 +373,21 @@ export async function getShortsFeed(userId, lang = 'en', userRegion, cursor) {
   const subscribedHandles = await getSubscribedHandles(userId, lang);
   const apiKey = getYouTubeApiKey();
   const curatedChannels = getChannelsForLanguage(lang);
-  const subscribedChannels = (
-    await Promise.all([...subscribedHandles].map((handle) => resolveChannel(handle, apiKey).catch(() => null)))
+  const curatedHandles = new Set(curatedChannels.map(normalizedHandle));
+  const subscribedCurated = curatedChannels.filter((channel) => subscribedHandles.has(channel.handle));
+  const subscribedRemoteHandles = [...subscribedHandles].filter(
+    (handle) => !curatedHandles.has(normalizeChannelRef(handle).toLowerCase()),
+  );
+  const subscribedRemote = (
+    await Promise.all(subscribedRemoteHandles.map((handle) => resolveChannel(handle, apiKey).catch(() => null)))
   ).filter(Boolean);
-  const subscribedKeys = new Set(subscribedChannels.map((channel) => channel.handle.toLowerCase()));
-  const fillChannels = curatedChannels.filter((channel) => !subscribedKeys.has(channel.handle.toLowerCase()));
-  const sourceChannels = [...subscribedChannels, ...fillChannels];
+  const subscribedKeys = new Set([...subscribedCurated, ...subscribedRemote].map(channelIdentity));
+  const fillChannels = curatedChannels.filter((channel) => !subscribedKeys.has(channelIdentity(channel)));
+  const sourceChannels = [...subscribedCurated, ...subscribedRemote, ...fillChannels];
   if (sourceChannels.length === 0) return { videos: [], next_cursor: null };
 
   const { userRegion: resolvedUserRegion } = resolveUserRegion(lang, userRegion);
-  const cacheKey = `shorts2:${lang}:${resolvedUserRegion}:${[...subscribedHandles].sort().join(',')}`;
+  const cacheKey = `shorts3:${lang}:${resolvedUserRegion}:${[...subscribedHandles].sort().join(',')}`;
 
   const { data } = await cachedFetch(cacheKey, async () => {
     const idLists = await Promise.all(
@@ -383,7 +404,7 @@ export async function getShortsFeed(userId, lang = 'en', userRegion, cursor) {
       ids.forEach((id, uploadIndex) => {
         if (!id || seenIds.has(id)) return;
         seenIds.add(id);
-        rankedIds.push({ id, sourceIndex, uploadIndex });
+        rankedIds.push({ id, sourceIndex, uploadIndex, channel: sourceChannels[sourceIndex] });
       });
     });
     if (rankedIds.length === 0) return [];
@@ -396,11 +417,22 @@ export async function getShortsFeed(userId, lang = 'en', userRegion, cursor) {
     const videos = filterAndMapShortCandidateItems(items, resolvedUserRegion);
     const rankById = new Map(rankedIds.map((item) => [item.id, item]));
 
-    return videos.sort((a, b) => {
+    return videos.map((video) => {
+      const rank = rankById.get(video.youtube_id);
+      const channel = rank?.channel;
+      return {
+        ...video,
+        channel_handle: channel?.handle || null,
+        channel_id: channel?.channelId || null,
+        primary_niche: channel?.primaryNiche || null,
+        tags: channelTags(channel),
+        isabella_priority: Boolean(channel?.isabellaPriority),
+      };
+    }).sort((a, b) => {
       const aRank = rankById.get(a.youtube_id) || { sourceIndex: 9999, uploadIndex: 9999 };
       const bRank = rankById.get(b.youtube_id) || { sourceIndex: 9999, uploadIndex: 9999 };
-      if (aRank.sourceIndex !== bRank.sourceIndex) return aRank.sourceIndex - bRank.sourceIndex;
       if (aRank.uploadIndex !== bRank.uploadIndex) return aRank.uploadIndex - bRank.uploadIndex;
+      if (aRank.sourceIndex !== bRank.sourceIndex) return aRank.sourceIndex - bRank.sourceIndex;
       return (b.published_at || '').localeCompare(a.published_at || '');
     });
   }, 1800);

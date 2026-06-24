@@ -32,7 +32,7 @@ export default function LocalWatch() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords();
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = useSavedWords();
 
   const decodedFilename = filename ? decodeURIComponent(filename) : '';
 
@@ -279,6 +279,7 @@ export default function LocalWatch() {
             isWordSaved={isWordSaved}
             isDefinitionSaved={isDefinitionSaved}
             onSaveWord={addWord}
+            onRemoveWord={removeWord}
             onOptimisticSave={addOptimistic}
           />
         )}

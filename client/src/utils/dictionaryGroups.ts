@@ -36,9 +36,24 @@ export function isDictionaryEntryNew(word: SavedWord): boolean {
 }
 
 function compareNewEntries(a: SavedWord, b: SavedWord): number {
+  const aDue = getDueTime(a);
+  const bDue = getDueTime(b);
+  if (isFiniteNumber(aDue) || isFiniteNumber(bDue)) {
+    const dueDiff = aDue - bDue;
+    if (dueDiff !== 0) return dueDiff;
+  }
+
+  const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
+  const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
+  if (aQueue !== bQueue) return aQueue - bQueue;
+
   const aPriority = a.priority ? 0 : 1;
   const bPriority = b.priority ? 0 : 1;
   if (aPriority !== bPriority) return aPriority - bPriority;
+
+  const aFrequencyCount = a.frequency_count ?? 0;
+  const bFrequencyCount = b.frequency_count ?? 0;
+  if (aFrequencyCount !== bFrequencyCount) return bFrequencyCount - aFrequencyCount;
 
   const aFrequency = a.frequency ?? 0;
   const bFrequency = b.frequency ?? 0;
@@ -47,9 +62,7 @@ function compareNewEntries(a: SavedWord, b: SavedWord): number {
   const createdDiff = getCreatedTime(a) - getCreatedTime(b);
   if (createdDiff !== 0) return createdDiff;
 
-  const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
-  const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
-  return aQueue - bQueue;
+  return a.id.localeCompare(b.id);
 }
 
 function compareDisplayEntries(a: SavedWord, b: SavedWord): number {

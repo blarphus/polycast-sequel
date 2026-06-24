@@ -2,11 +2,17 @@ import Foundation
 
 @MainActor
 final class WordStore: ObservableObject {
-    @Published var words: [SavedWord] = []
+    @Published var words: [SavedWord] = [] {
+        didSet { savedForms = savedWordForms(words) }
+    }
+    /// Lowercased set of every saved word, lemma, and inflected form — computed
+    /// once per change so views can highlight tokens cheaply.
+    @Published private(set) var savedForms: Set<String> = []
     @Published var loading = false
     @Published var error = ""
 
     private var hasFetched = false
+    private var lastLoadedAt: Date?
 
     func prefetch() {
         guard !hasFetched && !loading else { return }
@@ -17,15 +23,28 @@ final class WordStore: ObservableObject {
         }
     }
 
-    func load() async {
-        loading = true
+    func load(showLoading: Bool = true) async {
+        if showLoading {
+            loading = true
+        }
         error = ""
         do {
             words = try await APIClient.shared.savedWords()
+            hasFetched = true
+            lastLoadedAt = Date()
         } catch {
             self.error = error.localizedDescription
         }
-        loading = false
+        if showLoading {
+            loading = false
+        }
+    }
+
+    func loadIfStale(maxAge: TimeInterval, showLoading: Bool = false) async {
+        if let lastLoadedAt, Date().timeIntervalSince(lastLoadedAt) < maxAge {
+            return
+        }
+        await load(showLoading: showLoading)
     }
 
     func insert(_ word: SavedWord) {
@@ -37,6 +56,23 @@ final class WordStore: ObservableObject {
     func update(_ word: SavedWord) {
         if let idx = words.firstIndex(where: { $0.id == word.id }) {
             words[idx] = word
+        }
+    }
+
+    /// Replace the matching word in place, or insert it if not present. Used
+    /// when self-heal persists a newly-encountered inflection onto a saved word.
+    func upsert(_ word: SavedWord) {
+        if let idx = words.firstIndex(where: { $0.id == word.id }) {
+            words[idx] = word
+        } else {
+            words.insert(word, at: 0)
+        }
+    }
+
+    func upsert(contentsOf incomingWords: [SavedWord]) {
+        guard !incomingWords.isEmpty else { return }
+        for word in incomingWords {
+            upsert(word)
         }
     }
 

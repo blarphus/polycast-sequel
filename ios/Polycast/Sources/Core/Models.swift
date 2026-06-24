@@ -90,7 +90,62 @@ struct TrendingVideo: Codable, Identifiable {
     let thumbnail: String
     let durationSeconds: Int?
     let publishedAt: String?
+    let viewCount: Int?
     let hasCaptions: Bool?
+    let searchRank: Int?
+    let channelHandle: String?
+    let channelId: String?
+    let primaryNiche: String?
+    let tags: [String]?
+    let isabellaPriority: Bool?
+
+    init(
+        youtubeId: String,
+        title: String,
+        channel: String,
+        thumbnail: String,
+        durationSeconds: Int?,
+        publishedAt: String?,
+        viewCount: Int?,
+        hasCaptions: Bool?,
+        searchRank: Int? = nil,
+        channelHandle: String? = nil,
+        channelId: String? = nil,
+        primaryNiche: String? = nil,
+        tags: [String]? = nil,
+        isabellaPriority: Bool? = nil
+    ) {
+        self.youtubeId = youtubeId
+        self.title = title
+        self.channel = channel
+        self.thumbnail = thumbnail
+        self.durationSeconds = durationSeconds
+        self.publishedAt = publishedAt
+        self.viewCount = viewCount
+        self.hasCaptions = hasCaptions
+        self.searchRank = searchRank
+        self.channelHandle = channelHandle
+        self.channelId = channelId
+        self.primaryNiche = primaryNiche
+        self.tags = tags
+        self.isabellaPriority = isabellaPriority
+    }
+}
+
+struct StudyOverview: Codable {
+    let due: Int
+    let newAvailable: Int
+    let dailyNewLimit: Int
+}
+
+/// YouTube's own related/recommended videos for a single video, plus the
+/// video's channel, parsed from the InnerTube `next` endpoint.
+struct RelatedContent {
+    let channelName: String?
+    let channelHandle: String?
+    let channelID: String?
+    let channelAvatarURL: String?
+    let videos: [TrendingVideo]
 }
 
 struct ChannelSummary: Codable, Identifiable {
@@ -99,16 +154,46 @@ struct ChannelSummary: Codable, Identifiable {
     let handle: String
     let channelId: String
     let thumbnails: [String]
+    let subscribed: Bool?
+    let searchRank: Int?
+
+    init(
+        name: String,
+        handle: String,
+        channelId: String,
+        thumbnails: [String],
+        subscribed: Bool?,
+        searchRank: Int? = nil
+    ) {
+        self.name = name
+        self.handle = handle
+        self.channelId = channelId
+        self.thumbnails = thumbnails
+        self.subscribed = subscribed
+        self.searchRank = searchRank
+    }
+}
+
+struct VideoSearchResults: Codable {
+    let channels: [ChannelSummary]
+    let videos: [TrendingVideo]
+}
+
+struct ShortsFeedResponse: Codable {
+    let videos: [TrendingVideo]
+    let nextCursor: String?
 }
 
 struct ChannelDetail: Codable {
     struct ChannelInfo: Codable {
         let name: String
         let handle: String
+        let channelId: String?
     }
 
     let channel: ChannelInfo
     let videos: [TrendingVideo]
+    let nextPageToken: String?
 }
 
 struct LessonSummary: Codable, Identifiable {
@@ -160,10 +245,17 @@ struct LookupResponse: Codable {
     let partOfSpeech: String?
     let lemma: String?
     let isNative: Bool
+    let isExisting: Bool?
+    let savedWordId: String?
     let definitionSource: String?
     let example: String?
     let exampleTranslation: String?
     let sentenceTranslation: String?
+    // Set when the clicked word is part of a fixed phrase/idiom/slang.
+    let isPhrase: Bool?
+    let phrase: String?
+    let phraseTranslation: String?
+    let phraseDefinition: String?
 }
 
 struct SavedWord: Codable, Identifiable, Hashable {
@@ -193,6 +285,9 @@ struct SavedWord: Codable, Identifiable, Hashable {
     let priority: Bool
     let imageTerm: String?
     let queuePosition: Int?
+    let introducedDate: String?
+    let relearningDate: String?
+    let stageSentences: [StageSentence]?
 }
 
 struct SavedWordResponse: Codable {
@@ -223,6 +318,9 @@ struct SavedWordResponse: Codable {
     let priority: Bool
     let imageTerm: String?
     let queuePosition: Int?
+    let introducedDate: String?
+    let relearningDate: String?
+    let stageSentences: [StageSentence]?
 
     var value: SavedWord {
         SavedWord(
@@ -251,51 +349,25 @@ struct SavedWordResponse: Codable {
             forms: forms,
             priority: priority,
             imageTerm: imageTerm,
-            queuePosition: queuePosition
+            queuePosition: queuePosition,
+            introducedDate: introducedDate,
+            relearningDate: relearningDate,
+            stageSentences: stageSentences
         )
     }
 }
 
+/// One per-stage example-sentence pair for stages >= 3. Mirrors the
+/// `stage_sentences` JSONB column on saved_words. See FLASHCARDS.md for the
+/// ladder rules.
+struct StageSentence: Codable, Hashable {
+    let stage: Int
+    let example: String
+    let translation: String
+}
+
 struct OKResponse: Codable {
     let ok: Bool
-}
-
-struct QuizQuestion: Codable, Hashable {
-    let type: String
-    let prompt: String
-    let expected: String
-    let inputMode: String
-    let distractors: [String]
-    let hint: String
-    let savedWordId: String?
-}
-
-struct QuizAnswerResult: Codable {
-    let isCorrect: Bool
-    let expectedAnswer: String
-    let aiFeedback: String
-}
-
-struct QuizSessionEnvelope: Codable {
-    let sessionId: String
-}
-
-struct QuizSessionResult: Codable {
-    struct Answer: Codable, Hashable {
-        let questionIndex: Int
-        let questionType: String
-        let prompt: String
-        let expectedAnswer: String
-        let userAnswer: String
-        let isCorrect: Bool
-        let aiFeedback: String
-    }
-
-    let sessionId: String
-    let questionCount: Int
-    let correctCount: Int
-    let percentage: Int
-    let answers: [Answer]
 }
 
 struct DrillSessionsEnvelope: Codable {
@@ -346,6 +418,22 @@ struct EnrichResponse: Codable {
     let lemma: String?
     let forms: String?
     let imageTerm: String?
+}
+
+// MARK: - Reader (explain / translate)
+
+struct ExplainResponse: Codable {
+    let word: String
+    let explanation: String
+}
+
+struct TranslateResponse: Codable {
+    let translation: String
+}
+
+struct SelectionExplainResponse: Codable {
+    let selection: String
+    let explanation: String
 }
 
 // MARK: - Social / Messaging

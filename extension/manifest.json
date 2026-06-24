@@ -8,10 +8,14 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "contextMenus"],
   "host_permissions": [
     "*://*.youtube.com/*",
     "https://*.netflix.com/*",
+    "http://localhost:5173/*",
+    "http://127.0.0.1:5173/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
     "http://localhost:3001/*",
     "https://polycast-sequel.onrender.com/*"
   ],
@@ -21,15 +25,45 @@
   "content_scripts": [
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["content/shared.js", "content/youtube.js"],
-      "css": ["overlay.css"],
+      "js": ["shared/wordPopupCore.js", "content/shared.js", "content/youtube.js", "content/selection.js"],
+      "css": ["shared/wordPopup.css", "overlay.css"],
       "run_at": "document_idle"
     },
     {
       "matches": ["https://*.netflix.com/*"],
-      "js": ["content/shared.js", "content/netflix.js"],
-      "css": ["overlay.css"],
+      "js": ["shared/wordPopupCore.js", "content/shared.js", "content/netflix.js", "content/selection.js"],
+      "css": ["shared/wordPopup.css", "overlay.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "exclude_matches": [
+        "*://*.youtube.com/*",
+        "https://*.netflix.com/*",
+        "http://localhost:5173/*",
+        "http://127.0.0.1:5173/*",
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*"
+      ],
+      "js": ["shared/wordPopupCore.js", "content/shared.js", "content/selection.js"],
+      "css": ["shared/wordPopup.css", "overlay.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://localhost:5173/*",
+        "http://127.0.0.1:5173/*",
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*"
+      ],
+      "js": ["content/app-bridge.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content/youtube-page.js"],
+      "matches": ["*://*.youtube.com/*"]
     }
   ],
   "action": {

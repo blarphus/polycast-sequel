@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var accountType = "student"
     @State private var cefrLevel = "A1"
     @State private var savedMessage = ""
+    @State private var savingTargetLanguage = false
     @AppStorage(BackgroundTexture.storageKey) private var bgTextureRaw: String = BackgroundTexture.dots.rawValue
     @AppStorage(AppTheme.storageKey) private var themeRaw: String = AppTheme.dark.rawValue
 
@@ -39,6 +40,15 @@ struct SettingsView: View {
                 Picker("Target Language", selection: $targetLanguage) {
                     ForEach(LanguageOptions.all.filter { $0.code != nativeLanguage }) { language in
                         Text(language.name).tag(language.code)
+                    }
+                }
+
+                if savingTargetLanguage {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Switching target language...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -88,13 +98,7 @@ struct SettingsView: View {
             Section {
                 Button("Save Settings") {
                     Task {
-                        let success = await session.updateSettings(
-                            nativeLanguage: nativeLanguage,
-                            targetLanguage: targetLanguage,
-                            dailyNewLimit: dailyNewLimit,
-                            accountType: accountType,
-                            cefrLevel: cefrLevel
-                        )
+                        let success = await saveSettings()
                         savedMessage = success ? "Settings saved." : ""
                     }
                 }
@@ -114,5 +118,24 @@ struct SettingsView: View {
             accountType = session.user?.accountType ?? "student"
             cefrLevel = session.user?.cefrLevel ?? "A1"
         }
+        .onChange(of: targetLanguage) { _, newValue in
+            guard !newValue.isEmpty, newValue != session.user?.targetLanguage else { return }
+            Task {
+                savingTargetLanguage = true
+                let success = await saveSettings()
+                savingTargetLanguage = false
+                savedMessage = success ? "Target language switched." : ""
+            }
+        }
+    }
+
+    private func saveSettings() async -> Bool {
+        await session.updateSettings(
+            nativeLanguage: nativeLanguage,
+            targetLanguage: targetLanguage,
+            dailyNewLimit: dailyNewLimit,
+            accountType: accountType,
+            cefrLevel: cefrLevel
+        )
     }
 }

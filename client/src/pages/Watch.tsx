@@ -9,7 +9,7 @@ import { useSavedWords } from '../hooks/useSavedWords';
 import TranscriptList from '../components/watch/TranscriptList';
 import TranscriptStatus from '../components/watch/TranscriptStatus';
 import WordPopup from '../components/WordPopup';
-import { PopupState } from '../textTokens';
+import { PopupState, lastNWords } from '../textTokens';
 import { TargetIcon } from '../components/icons';
 import { useTranscriptAutoScroll } from '../hooks/useTranscriptAutoScroll';
 import { useWatchVideoData } from '../hooks/useWatchVideoData';
@@ -23,7 +23,7 @@ export default function Watch() {
 
   const [popup, setPopup] = useState<PopupState | null>(null);
 
-  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic } = useSavedWords();
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = useSavedWords();
   const {
     video,
     loading,
@@ -70,7 +70,13 @@ export default function Watch() {
 
   const handleWordClick = (e: React.MouseEvent<HTMLSpanElement>, word: string, sentence: string) => {
     const rect = (e.target as HTMLElement).getBoundingClientRect();
-    setPopup({ word, sentence, rect });
+    // Rolling ~50-word window: the clicked segment plus the ones before it, so
+    // "Explain in context" reads usage beyond the single line.
+    const idx = mergedSegments.findIndex((s) => s.text === sentence);
+    const upTo = idx >= 0
+      ? mergedSegments.slice(0, idx + 1).map((s) => s.text).join(' ')
+      : sentence;
+    setPopup({ word, sentence, rect, context: lastNWords(upTo, 50) });
   };
 
   if (loading) {
@@ -163,10 +169,12 @@ export default function Watch() {
           nativeLang={user.native_language || 'en'}
           targetLang={user.target_language || undefined}
           anchorRect={popup.rect}
+          context={popup.context}
           onClose={() => setPopup(null)}
           isWordSaved={isWordSaved}
           isDefinitionSaved={isDefinitionSaved}
           onSaveWord={addWord}
+          onRemoveWord={removeWord}
           onOptimisticSave={addOptimistic}
         />
       )}

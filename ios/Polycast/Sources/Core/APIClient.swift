@@ -41,6 +41,26 @@ final class APIClient: @unchecked Sendable {
         Locale.current.region?.identifier
     }
 
+    private func surfaceFallbackNotices(from data: Data) {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let notices = object["fallback_notices"] as? [[String: Any]]
+        else { return }
+
+        for item in notices {
+            let title = item["title"] as? String ?? "Fallback used"
+            let message = item["message"] as? String ?? ""
+            let detail = item["detail"] as? String ?? ""
+            let combined = [message, detail]
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
+            Task { @MainActor in
+                FallbackNoticeCenter.shared.show(title: title, message: combined.isEmpty ? "Polycast used a fallback path." : combined)
+            }
+        }
+    }
+
     private func request<T: Decodable>(
         _ path: String,
         method: String = "GET",
@@ -94,6 +114,7 @@ final class APIClient: @unchecked Sendable {
                 throw APIError.server("Request failed with status \(http.statusCode).")
             }
 
+            surfaceFallbackNotices(from: data)
             return try decoder.decode(T.self, from: data)
         }
 
@@ -119,6 +140,15 @@ final class APIClient: @unchecked Sendable {
         try await request("/me")
     }
 
+    func exportSessionToken() async throws -> String {
+        struct SessionTokenResponse: Codable {
+            let token: String
+        }
+
+        let response: SessionTokenResponse = try await request("/session/export", method: "POST")
+        return response.token
+    }
+
     func updateSettings(
         nativeLanguage: String?,
         targetLanguage: String?,
@@ -139,7 +169,9 @@ final class APIClient: @unchecked Sendable {
     }
 
     func studentDashboard() async throws -> StudentDashboard {
-        try await request("/home/student-dashboard")
+        try await request("/home/student-dashboard", queryItems: [
+            URLQueryItem(name: "timeZone", value: TimeZone.current.identifier),
+        ])
     }
 
     func classesToday() async throws -> [UpcomingClass] {
@@ -162,9 +194,43 @@ final class APIClient: @unchecked Sendable {
         try await request("/videos/channels", queryItems: [.init(name: "lang", value: lang)])
     }
 
-    func channelDetail(handle: String, lang: String) async throws -> ChannelDetail {
+    /// Popular recent videos across the curated channels, for the Videos carousel.
+    func channelHighlights(lang: String) async throws -> [TrendingVideo] {
+        try await request("/videos/highlights", queryItems: [.init(name: "lang", value: lang)])
+    }
+
+    func subscriptionVideos(lang: String) async throws -> [TrendingVideo] {
         var items = [URLQueryItem(name: "lang", value: lang)]
         if let region = regionCode() { items.append(.init(name: "userRegion", value: region)) }
+        return try await request("/videos/subscriptions", queryItems: items)
+    }
+
+    func shortsFeed(lang: String, cursor: String? = nil) async throws -> ShortsFeedResponse {
+        var items = [URLQueryItem(name: "lang", value: lang)]
+        if let region = regionCode() { items.append(.init(name: "userRegion", value: region)) }
+        if let cursor, !cursor.isEmpty { items.append(.init(name: "cursor", value: cursor)) }
+        return try await request("/videos/shorts", queryItems: items)
+    }
+
+    func channelSubscription(handle: String, lang: String) async throws -> ChannelSummary {
+        try await request(
+            "/videos/channels/\(handle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? handle)/subscription",
+            queryItems: [.init(name: "lang", value: lang)]
+        )
+    }
+
+    func setChannelSubscription(handle: String, lang: String, subscribed: Bool) async throws -> ChannelSummary {
+        try await request(
+            "/videos/channels/\(handle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? handle)/subscription",
+            method: subscribed ? "POST" : "DELETE",
+            queryItems: [.init(name: "lang", value: lang)]
+        )
+    }
+
+    func channelDetail(handle: String, lang: String, pageToken: String? = nil) async throws -> ChannelDetail {
+        var items = [URLQueryItem(name: "lang", value: lang)]
+        if let region = regionCode() { items.append(.init(name: "userRegion", value: region)) }
+        if let pageToken, !pageToken.isEmpty { items.append(.init(name: "pageToken", value: pageToken)) }
         return try await request("/videos/channel/\(handle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? handle)", queryItems: items)
     }
 
@@ -187,6 +253,15 @@ final class APIClient: @unchecked Sendable {
         ]
         if let region = regionCode() { items.append(.init(name: "userRegion", value: region)) }
         return try await request("/videos/search", queryItems: items)
+    }
+
+    func searchVideosAndChannels(query: String, lang: String) async throws -> VideoSearchResults {
+        var items = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "lang", value: lang),
+        ]
+        if let region = regionCode() { items.append(.init(name: "userRegion", value: region)) }
+        return try await request("/videos/search/full", queryItems: items)
     }
 
     func videoDetail(id: String) async throws -> VideoDetail {
@@ -215,11 +290,30 @@ final class APIClient: @unchecked Sendable {
     }
 
     func savedWords() async throws -> [SavedWord] {
-        try await request("/dictionary/words")
+        try await request("/dictionary/words", queryItems: [
+            URLQueryItem(name: "timeZone", value: TimeZone.current.identifier),
+        ])
     }
 
-    func dueWords() async throws -> [SavedWord] {
-        try await request("/dictionary/due")
+    func studyOverview() async throws -> StudyOverview {
+        try await request("/dictionary/study-overview", queryItems: [
+            URLQueryItem(name: "timeZone", value: TimeZone.current.identifier),
+        ])
+    }
+
+    func newWordPreview(limit: Int = 50) async throws -> [SavedWord] {
+        try await request("/dictionary/new-preview", queryItems: [
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "timeZone", value: TimeZone.current.identifier),
+        ])
+    }
+
+    func dueWords(newLimitOverride: Int? = nil) async throws -> [SavedWord] {
+        var items = [URLQueryItem(name: "timeZone", value: TimeZone.current.identifier)]
+        if let newLimitOverride {
+            items.append(URLQueryItem(name: "newLimitOverride", value: String(newLimitOverride)))
+        }
+        return try await request("/dictionary/due", queryItems: items)
     }
 
     func registerIOSVoIPToken(deviceToken: String, apnsEnvironment: String, bundleId: String) async throws {
@@ -284,6 +378,7 @@ final class APIClient: @unchecked Sendable {
         imageUrl: String? = nil,
         lemma: String? = nil,
         forms: String? = nil,
+        surfaceForm: String? = nil,
         imageTerm: String? = nil
     ) async throws -> SavedWord {
         var body: [String: Any] = [
@@ -292,6 +387,7 @@ final class APIClient: @unchecked Sendable {
             "definition": definition,
             "target_language": targetLanguage as Any,
             "sentence_context": sentenceContext as Any,
+            "timeZone": TimeZone.current.identifier,
         ]
         if let frequency { body["frequency"] = frequency }
         if let frequencyCount { body["frequency_count"] = frequencyCount }
@@ -301,10 +397,51 @@ final class APIClient: @unchecked Sendable {
         if let imageUrl { body["image_url"] = imageUrl }
         if let lemma { body["lemma"] = lemma }
         if let forms { body["forms"] = forms }
+        if let surfaceForm { body["surface_form"] = surfaceForm }
         if let imageTerm { body["image_term"] = imageTerm }
 
         let response: SavedWordResponse = try await request("/dictionary/words", method: "POST", body: body)
         return response.value
+    }
+
+    /// Append a surface form to an already-saved word's inflection list so the
+    /// exact form a learner encountered highlights everywhere afterward.
+    func addWordForm(id: String, form: String) async throws -> SavedWord {
+        try await request("/dictionary/words/\(id)/forms", method: "POST", body: ["form": form])
+    }
+
+    func explainWord(word: String, sentence: String, nativeLang: String, targetLang: String?, context: String? = nil) async throws -> ExplainResponse {
+        var items = [
+            URLQueryItem(name: "word", value: word),
+            URLQueryItem(name: "sentence", value: sentence),
+            URLQueryItem(name: "nativeLang", value: nativeLang),
+        ]
+        if let targetLang { items.append(.init(name: "targetLang", value: targetLang)) }
+        // Wider rolling-window passage for "Explain in context".
+        if let context, !context.isEmpty, context != sentence {
+            items.append(.init(name: "context", value: context))
+        }
+        return try await request("/dictionary/explain", queryItems: items)
+    }
+
+    func translatePhrase(phrase: String, nativeLang: String, targetLang: String) async throws -> String {
+        let response: TranslateResponse = try await request("/translate/phrase", method: "POST", body: [
+            "phrase": phrase,
+            "nativeLang": nativeLang,
+            "targetLang": targetLang,
+        ])
+        return response.translation
+    }
+
+    func explainSelection(selection: String, context: String, nativeLang: String, targetLang: String?) async throws -> String {
+        var body: [String: Any] = [
+            "selection": selection,
+            "context": context,
+            "nativeLang": nativeLang,
+        ]
+        if let targetLang { body["targetLang"] = targetLang }
+        let response: SelectionExplainResponse = try await request("/dictionary/explain-selection", method: "POST", body: body)
+        return response.explanation
     }
 
     func searchImages(query: String) async throws -> [String] {
@@ -323,6 +460,7 @@ final class APIClient: @unchecked Sendable {
 
     func updateWord(
         id: String,
+        word: String? = nil,
         translation: String? = nil,
         definition: String? = nil,
         exampleSentence: String? = nil,
@@ -332,6 +470,7 @@ final class APIClient: @unchecked Sendable {
         imageTerm: String? = nil
     ) async throws -> SavedWord {
         var body: [String: Any] = [:]
+        if let word { body["word"] = word }
         if let translation { body["translation"] = translation }
         if let definition { body["definition"] = definition }
         if let exampleSentence { body["example_sentence"] = exampleSentence }
@@ -371,48 +510,8 @@ final class APIClient: @unchecked Sendable {
     func reviewWord(id: String, answer: String) async throws -> SavedWord {
         try await request("/dictionary/words/\(id)/review", method: "PATCH", body: [
             "answer": answer,
+            "timeZone": TimeZone.current.identifier,
         ])
-    }
-
-    func generateQuiz(videoId: String? = nil, count: Int? = nil) async throws -> [QuizQuestion] {
-        struct Envelope: Codable { let questions: [QuizQuestion] }
-        var body: [String: Any] = [:]
-        if let videoId { body["videoId"] = videoId }
-        if let count { body["count"] = count }
-        let envelope: Envelope = try await request("/practice/generate", method: "POST", body: body)
-        return envelope.questions
-    }
-
-    func createQuizSession(mode: String, questions: [QuizQuestion], videoId: String? = nil) async throws -> String {
-        let questionsPayload = questions.map { question in
-            [
-                "type": question.type,
-                "prompt": question.prompt,
-                "expected": question.expected,
-                "input_mode": question.inputMode,
-                "distractors": question.distractors,
-                "hint": question.hint,
-                "saved_word_id": question.savedWordId as Any,
-            ] as [String: Any]
-        }
-
-        let response: QuizSessionEnvelope = try await request("/practice/sessions", method: "POST", body: [
-            "mode": mode,
-            "videoId": videoId as Any,
-            "questions": questionsPayload,
-        ])
-        return response.sessionId
-    }
-
-    func submitQuizAnswer(sessionId: String, questionIndex: Int, userAnswer: String) async throws -> QuizAnswerResult {
-        try await request("/practice/sessions/\(sessionId)/answer", method: "POST", body: [
-            "questionIndex": questionIndex,
-            "userAnswer": userAnswer,
-        ])
-    }
-
-    func completeQuizSession(sessionId: String) async throws -> QuizSessionResult {
-        try await request("/practice/sessions/\(sessionId)/complete", method: "POST")
     }
 
     func drillSessions() async throws -> [DrillSession] {
@@ -615,13 +714,55 @@ final class APIClient: @unchecked Sendable {
 
     // MARK: - Image Proxy
 
+    func authorizedRequest(for url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        guard Self.isSameOrigin(url, AppConfig.baseURL), let token else {
+            return request
+        }
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        return request
+    }
+
     static func proxyImageURL(_ urlString: String?) -> URL? {
-        guard let urlString, !urlString.isEmpty else { return nil }
-        if urlString.contains("pixabay.com") {
+        guard let urlString else { return nil }
+        let normalizedURLString = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedURLString.isEmpty else { return nil }
+
+        // Proxy Pixabay images to avoid hotlinking and rate-limiting issues.
+        // We match both pixabay.com/get/... and cdn.pixabay.com/...
+        // Support both http and https prefixes to be safe against older data.
+        let isPixabay = normalizedURLString.hasPrefix("https://pixabay.com/") ||
+                        normalizedURLString.hasPrefix("http://pixabay.com/") ||
+                        normalizedURLString.hasPrefix("https://cdn.pixabay.com/") ||
+                        normalizedURLString.hasPrefix("http://cdn.pixabay.com/")
+
+        if isPixabay {
             var components = URLComponents(url: AppConfig.baseURL.appendingPathComponent("api/dictionary/image-proxy"), resolvingAgainstBaseURL: false)
-            components?.queryItems = [URLQueryItem(name: "url", value: urlString)]
+            components?.queryItems = [URLQueryItem(name: "url", value: normalizedURLString)]
             return components?.url
         }
-        return URL(string: urlString)
+
+        // Server-relative paths (e.g. /api/dictionary/image/<id>) resolve
+        // against the API host.
+        if normalizedURLString.hasPrefix("/") {
+            return URL(string: normalizedURLString, relativeTo: AppConfig.baseURL)?.absoluteURL
+        }
+
+        return URL(string: normalizedURLString)
+    }
+
+    private static func isSameOrigin(_ lhs: URL, _ rhs: URL) -> Bool {
+        lhs.scheme?.lowercased() == rhs.scheme?.lowercased()
+            && lhs.host?.lowercased() == rhs.host?.lowercased()
+            && effectivePort(lhs) == effectivePort(rhs)
+    }
+
+    private static func effectivePort(_ url: URL) -> Int? {
+        if let port = url.port { return port }
+        switch url.scheme?.lowercased() {
+        case "http": return 80
+        case "https": return 443
+        default: return nil
+        }
     }
 }

@@ -77,6 +77,14 @@ function isStandaloneCue(text: string): boolean {
   return /^\[[^\]]+\]$/.test(normalized);
 }
 
+/** Strip YouTube's bracketed annotation cues ([Music], [música], [risadas], …).
+ *  Only brackets containing a letter/number are removed; the profanity-censor
+ *  marker "[ __ ]" (underscores only) is kept so swears stay visible. */
+export function stripAnnotationBrackets(text: string): string {
+  const stripped = text.replace(/\[[^\]]*[\p{L}\p{N}][^\]]*\]/gu, '');
+  return /^(?:\s*(?:>>|&gt;&gt;|-)\s*)+$/.test(stripped) ? '' : stripped;
+}
+
 function shouldTightJoin(left: string, right: string): boolean {
   const leftTrimmed = left.trimEnd();
   const rightTrimmed = right.trimStart();
@@ -133,7 +141,7 @@ export function mergeTranscriptSegmentsForDisplay(
 ): TranscriptSegment[] {
   const cleaned = segments
     .map((segment) => ({
-      text: normalizeText(segment.text),
+      text: normalizeText(stripAnnotationBrackets(segment.text)),
       offset: segment.offset,
       duration: segment.duration,
     }))

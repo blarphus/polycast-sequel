@@ -8,14 +8,21 @@ export interface EnrichedWord {
   frequency: number | null;
   frequency_count: number | null;
   example_sentence: string | null;
+  sentence_translation: string | null;
   image_url: string | null;
   lemma: string | null;
   forms: string | null;
   image_term: string | null;
+  fallback_notices?: Array<{
+    title?: string;
+    message?: string;
+    detail?: string;
+  }>;
 }
 
 export function getNewToday() {
-  return request<SavedWord[]>('/dictionary/new-today', { cacheTtlMs: 15_000 });
+  const params = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  return request<SavedWord[]>(`/dictionary/new-today?${params}`, { cacheTtlMs: 15_000 });
 }
 
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string, isNative?: boolean) {
@@ -28,15 +35,23 @@ export function lookupWord(word: string, sentence: string, nativeLang: string, t
     valid: boolean;
     translation: string;
     definition: string;
+    gemini_definition: string | null;
     part_of_speech: string | null;
     sense_index: number | null;
     matched_gloss: string | null;
     lemma: string | null;
     is_native: boolean;
+    is_existing?: boolean;
+    saved_word_id?: string | null;
     definition_source: string | null;
     example: string | null;
     example_translation: string | null;
     sentence_translation: string | null;
+    // Set when the clicked word is part of a fixed phrase/idiom/slang.
+    is_phrase?: boolean;
+    phrase?: string | null;
+    phrase_translation?: string | null;
+    phrase_definition?: string | null;
   }>(`/dictionary/lookup?${params}`);
 }
 
@@ -58,9 +73,11 @@ export function wiktLookup(word: string, targetLang: string, nativeLang: string)
 }
 
 // Gemini explains what the word means specifically in its sentence context.
-export function explainWord(word: string, sentence: string, nativeLang: string, targetLang?: string) {
+export function explainWord(word: string, sentence: string, nativeLang: string, targetLang?: string, context?: string) {
   const params = new URLSearchParams({ word, sentence, nativeLang });
   if (targetLang) params.set('targetLang', targetLang);
+  // Wider rolling-window passage so the explanation reads usage beyond the line.
+  if (context && context.trim() && context.trim() !== sentence) params.set('context', context.trim());
   return request<{ word: string; explanation: string }>(`/dictionary/explain?${params}`);
 }
 
@@ -183,12 +200,19 @@ export function getDictionaryWordGroups(page: number, limit: number, search: str
     limit: String(limit),
     search,
     sort,
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
   return request<DictionaryWordGroupPage>(`/dictionary/word-groups?${params}`, { cacheTtlMs: 30_000 });
 }
 
 export function saveWord(data: SaveWordData) {
-  return request<SavedWord & { _created: boolean }>('/dictionary/words', { method: 'POST', body: data });
+  return request<SavedWord & { _created: boolean }>('/dictionary/words', {
+    method: 'POST',
+    body: {
+      ...data,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    },
+  });
 }
 
 export function deleteSavedWord(id: string) {
@@ -238,9 +262,15 @@ export interface CalendarCounts {
 }
 
 export function getCalendarCounts(year: number, month: number) {
-  return request<CalendarCounts>(`/dictionary/calendar?year=${year}&month=${month}`);
+  const params = new URLSearchParams({
+    year: String(year),
+    month: String(month),
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+  return request<CalendarCounts>(`/dictionary/calendar?${params}`);
 }
 
 export function getCalendarDayWords(date: string) {
-  return request<SavedWord[]>(`/dictionary/calendar/${date}`);
+  const params = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  return request<SavedWord[]>(`/dictionary/calendar/${date}?${params}`);
 }

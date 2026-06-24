@@ -76,6 +76,21 @@ input {
   transition: border-color 0.2s;
 }
 
+select {
+  width: 100%;
+  padding: 9px 10px;
+  background: #111123;
+  border: 1px solid rgba(108, 99, 255, 0.3);
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 14px;
+  outline: none;
+}
+
+select:focus {
+  border-color: #6c63ff;
+}
+
 input:focus {
   border-color: #6c63ff;
 }
@@ -180,7 +195,78 @@ button:disabled {
   color: #666;
   text-align: center;
   line-height: 1.4;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+}
+
+.target-control {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: #888;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.api-control {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: #888;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.api-control input {
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.api-actions {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.btn-small {
+  flex: 1;
+  padding: 7px 8px;
+  background: rgba(108, 99, 255, 0.12);
+  color: #c4b5fd;
+  border: 1px solid rgba(108, 99, 255, 0.3);
+  font-size: 12px;
+}
+
+.settings-message {
+  min-height: 16px;
+  margin-bottom: 8px;
+  color: #a78bfa;
+  font-size: 12px;
+  text-align: center;
+}
+
+.settings-message.error-message {
+  color: #f87171;
+}
+
+.btn-open-app {
+  width: 100%;
+  background: rgba(108, 99, 255, 0.15);
+  color: #c4b5fd;
+  border: 1px solid rgba(108, 99, 255, 0.35);
+  margin-bottom: 10px;
+}
+
+.btn-open-app:hover {
+  background: rgba(108, 99, 255, 0.25);
 }
 
 .btn-logout {

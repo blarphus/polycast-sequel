@@ -12,7 +12,7 @@ import { generateStageSentence } from '../lib/stageSentence.js';
 import logger from '../logger.js';
 import { audioContentType, synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext, explainSelectionInContext } from '../services/wordSemanticsService.js';
-import { listDictionaryGroupPage, listDueWords, listNewTodayWords, listNewWordPreview, listStudyOverview, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
+import { ensureCardsScheduled, listDictionaryGroupPage, listDueWords, listNewTodayWords, listNewWordPreview, listStudyOverview, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
 import { mergeForm } from '../lib/normalizeWordFields.js';
 
 const router = Router();
@@ -73,6 +73,7 @@ const imageSearchQuery = z.object({
 const calendarQuery = z.object({
   year: z.coerce.number().int().min(2020).max(2100),
   month: z.coerce.number().int().min(1).max(12),
+  timeZone: z.string().max(100).optional(),
 });
 
 const calendarDayParam = z.object({
@@ -84,6 +85,7 @@ const wordsPageQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
   search: z.string().optional(),
   sort: z.enum(['queue', 'date', 'az', 'freq-high', 'freq-low', 'due']).optional(),
+  timeZone: z.string().max(100).optional(),
 });
 
 const wordImageBody = z.object({
@@ -114,9 +116,11 @@ const dueQuery = z.object({
 
 const newWordPreviewQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional(),
+  timeZone: z.string().max(100).optional(),
 });
 
-const savedWordsQuery = z.object({
+const timeZoneQuery = z.object({
+  timeZone: z.string().max(100).optional(),
   targetLanguage: z.string().max(20).optional(),
 });
 
@@ -145,6 +149,7 @@ const saveWordBody = z.object({
   // that conjugation highlights even when the inflection table omitted it.
   surface_form: z.string().nullable().optional(),
   image_term: z.string().nullable().optional(),
+  timeZone: z.string().max(100).optional(),
 });
 
 const addFormBody = z.object({
@@ -441,8 +446,8 @@ router.patch('/api/dictionary/queue-reorder', authMiddleware, validate({ body: q
  */
 router.get('/api/dictionary/calendar', authMiddleware, validate({ query: calendarQuery }), async (req, res) => {
   try {
-    const { year, month } = req.query;
-    const result = await listCalendarCounts(pool, req.userId, year, month);
+    const { year, month, timeZone } = req.query;
+    const result = await listCalendarCounts(pool, req.userId, year, month, validTimeZone(timeZone));
     return res.json(result);
   } catch (err) {
     req.log.error({ err }, 'Error fetching calendar counts');
@@ -453,9 +458,9 @@ router.get('/api/dictionary/calendar', authMiddleware, validate({ query: calenda
 /**
  * GET /api/dictionary/calendar/:date -- Words due on a specific day
  */
-router.get('/api/dictionary/calendar/:date', authMiddleware, validate({ params: calendarDayParam }), async (req, res) => {
+router.get('/api/dictionary/calendar/:date', authMiddleware, validate({ params: calendarDayParam, query: timeZoneQuery }), async (req, res) => {
   try {
-    const words = await listCalendarDayWords(pool, req.userId, req.params.date);
+    const words = await listCalendarDayWords(pool, req.userId, req.params.date, validTimeZone(req.query.timeZone));
     return res.json(words);
   } catch (err) {
     req.log.error({ err }, 'Error fetching calendar day words');
@@ -470,9 +475,9 @@ router.get('/api/dictionary/calendar/:date', authMiddleware, validate({ params: 
 /**
  * GET /api/dictionary/new-today -- New (never-reviewed) cards for today
  */
-router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
+router.get('/api/dictionary/new-today', authMiddleware, validate({ query: timeZoneQuery }), async (req, res) => {
   try {
-    const { rows } = await listNewTodayWords(pool, req.userId);
+    const { rows } = await listNewTodayWords(pool, req.userId, validTimeZone(req.query.timeZone));
     return res.json(rows);
   } catch (err) {
     req.log.error({ err }, 'Error fetching new-today words');
@@ -485,7 +490,7 @@ router.get('/api/dictionary/new-today', authMiddleware, async (req, res) => {
  */
 router.get('/api/dictionary/new-preview', authMiddleware, validate({ query: newWordPreviewQuery }), async (req, res) => {
   try {
-    const { rows } = await listNewWordPreview(pool, req.userId, req.query.limit ?? 10);
+    const { rows } = await listNewWordPreview(pool, req.userId, req.query.limit ?? 10, validTimeZone(req.query.timeZone));
     return res.json(rows);
   } catch (err) {
     req.log.error({ err }, 'Error fetching new-word preview');
@@ -501,9 +506,9 @@ router.get('/api/dictionary/new-preview', authMiddleware, validate({ query: newW
  * GET /api/dictionary/study-overview -- Counts for the practice start screen:
  * reviews due now, never-seen cards available, and the daily-new limit.
  */
-router.get('/api/dictionary/study-overview', authMiddleware, async (req, res) => {
+router.get('/api/dictionary/study-overview', authMiddleware, validate({ query: timeZoneQuery }), async (req, res) => {
   try {
-    const overview = await listStudyOverview(pool, req.userId);
+    const overview = await listStudyOverview(pool, req.userId, validTimeZone(req.query.timeZone));
     return res.json(overview);
   } catch (err) {
     req.log.error({ err }, 'Error fetching study overview');
@@ -615,8 +620,9 @@ async function scheduleStageSentence({ db, card, newStage }) {
 /**
  * GET /api/dictionary/words -- List all saved words for the authenticated user
  */
-router.get('/api/dictionary/words', authMiddleware, validate({ query: savedWordsQuery }), async (req, res) => {
+router.get('/api/dictionary/words', authMiddleware, validate({ query: timeZoneQuery }), async (req, res) => {
   try {
+    await ensureCardsScheduled(pool, req.userId, validTimeZone(req.query.timeZone));
     const requestedLanguage = req.query.targetLanguage || null;
     const { rows } = await pool.query(
       `SELECT * FROM saved_words WHERE user_id = $1
@@ -636,7 +642,10 @@ router.get('/api/dictionary/words', authMiddleware, validate({ query: savedWords
  */
 router.get('/api/dictionary/word-groups', authMiddleware, validate({ query: wordsPageQuery }), async (req, res) => {
   try {
-    const payload = await listDictionaryGroupPage(pool, req.userId, req.query);
+    const payload = await listDictionaryGroupPage(pool, req.userId, {
+      ...req.query,
+      timeZone: validTimeZone(req.query.timeZone),
+    });
     return res.json(payload);
   } catch (err) {
     req.log.error({ err }, 'Error fetching dictionary word groups');
@@ -649,9 +658,18 @@ router.get('/api/dictionary/word-groups', authMiddleware, validate({ query: word
  */
 router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBody }), async (req, res) => {
   const { word, translation, definition, target_language, sentence_context, frequency, frequency_count, example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, surface_form, image_term } = req.body;
+  const timeZone = validTimeZone(req.body.timeZone);
 
   // Guarantee the tapped surface form is among the stored inflections.
   const mergedForms = surface_form ? mergeForm(forms, surface_form) : (forms || null);
+  const refreshScheduledWord = async (id) => {
+    await ensureCardsScheduled(pool, req.userId, timeZone);
+    const { rows } = await pool.query(
+      'SELECT * FROM saved_words WHERE id = $1 AND user_id = $2',
+      [id, req.userId],
+    );
+    return rows[0];
+  };
 
   try {
     // Check if this exact definition already exists
@@ -672,11 +690,14 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
             'UPDATE saved_words SET forms = $3 WHERE id = $1 AND user_id = $2 RETURNING *',
             [row.id, req.userId, withForm],
           );
+          const scheduled = await refreshScheduledWord(updatedRows[0].id);
           invalidateDictionaryCache(req.userId);
-          return res.status(200).json({ ...updatedRows[0], _created: false });
+          return res.status(200).json({ ...scheduled, _created: false });
         }
       }
-      return res.status(200).json({ ...row, _created: false });
+      const scheduled = await refreshScheduledWord(row.id);
+      invalidateDictionaryCache(req.userId);
+      return res.status(200).json({ ...scheduled, _created: false });
     }
 
     // Insert new definition
@@ -686,8 +707,9 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
        RETURNING *`,
       [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, sentence_translation || null, part_of_speech || null, image_url || null, lemma || null, mergedForms, frequency_count ?? null, image_term || null],
     );
+    const scheduled = await refreshScheduledWord(rows[0].id);
     invalidateDictionaryCache(req.userId);
-    return res.status(201).json({ ...rows[0], _created: true });
+    return res.status(201).json({ ...scheduled, _created: true });
   } catch (err) {
     req.log.error({ err }, 'Error saving word');
     return res.status(500).json({ error: 'Failed to save word' });

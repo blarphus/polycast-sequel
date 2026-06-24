@@ -21,6 +21,7 @@ interface WordPopupHandlers {
   explain?: () => Promise<{ explanation: string }>;
   speak?: () => void | Promise<void>;
   save?: (arg: { word: string; sentence: string; lookupResult: LookupResult | null }) => void | Promise<void>;
+  remove?: (arg: { word: string; sentence: string; lookupResult: LookupResult | null }) => void | Promise<void>;
   resolveSavedState?: (res: LookupResult) => SavedState;
 }
 
@@ -53,14 +54,17 @@ interface WordPopupProps {
   isWordSaved?: (word: string) => boolean;
   isDefinitionSaved?: (word: string, definition: string) => boolean;
   onSaveWord?: (data: SaveWordData) => Promise<{ _created: boolean }>;
+  onRemoveWord?: (id: string) => Promise<void>;
   onOptimisticSave?: (word: string) => void;
   isNative?: boolean;
+  // Wider passage (rolling ~50-word transcript window) for "Explain in context".
+  context?: string;
 }
 
 export default function WordPopup(props: WordPopupProps) {
   const {
     word, sentence, nativeLang, targetLang, anchorRect, onClose,
-    isWordSaved, isDefinitionSaved, onSaveWord, onOptimisticSave, isNative,
+    isWordSaved, isDefinitionSaved, onSaveWord, onRemoveWord, onOptimisticSave, isNative, context,
   } = props;
   const { queueSave } = useDictionaryToast();
   const elRef = useRef<HTMLElement | null>(null);
@@ -76,7 +80,7 @@ export default function WordPopup(props: WordPopupProps) {
 
     const handlers: WordPopupHandlers = {
       lookup: () => lookupWord(word, sentence, nativeLang, targetLang, isNative),
-      explain: () => explainWord(word, sentence, nativeLang, targetLang),
+      explain: () => explainWord(word, sentence, nativeLang, targetLang, context),
       resolveSavedState: (res) => {
         // Use the matched Wiktionary gloss for dedup when available — it matches
         // saved definitions reliably; key on the lemma/target word.
@@ -125,6 +129,7 @@ export default function WordPopup(props: WordPopupProps) {
             frequency: enriched.frequency,
             frequency_count: enriched.frequency_count,
             example_sentence: enriched.example_sentence,
+            sentence_translation: enriched.sentence_translation,
             part_of_speech: enriched.part_of_speech,
             image_url: enriched.image_url,
             lemma: enriched.lemma || lemma || null,
@@ -132,6 +137,14 @@ export default function WordPopup(props: WordPopupProps) {
             image_term: enriched.image_term,
           });
         });
+      };
+    }
+
+    if (onRemoveWord) {
+      handlers.remove = async ({ lookupResult }) => {
+        const savedWordId = lookupResult?.saved_word_id;
+        if (!savedWordId) throw new Error('This word is not linked to a saved dictionary entry yet.');
+        await onRemoveWord(savedWordId);
       };
     }
 
@@ -153,7 +166,7 @@ export default function WordPopup(props: WordPopupProps) {
     };
     // Re-mount the popup only when the looked-up word/context changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [word, sentence, nativeLang, targetLang]);
+  }, [word, sentence, nativeLang, targetLang, context]);
 
   return null;
 }
