@@ -472,6 +472,10 @@ function compareFrequencyGroups(a, b, direction) {
   const bFrequency = b.maxFrequency ?? 0;
   if (aFrequency !== bFrequency) return (aFrequency - bFrequency) * multiplier;
 
+  const aQueue = a.bestQueuePosition ?? Number.POSITIVE_INFINITY;
+  const bQueue = b.bestQueuePosition ?? Number.POSITIVE_INFINITY;
+  if (aQueue !== bQueue) return aQueue - bQueue;
+
   if (a.nextNewEntry && b.nextNewEntry) return compareNewEntries(a.nextNewEntry, b.nextNewEntry);
   if (a.nextReviewEntry && b.nextReviewEntry) return compareReviewEntries(a.nextReviewEntry, b.nextReviewEntry);
   return a.word.localeCompare(b.word);
@@ -503,6 +507,7 @@ function buildDictionaryGroups(words, sort, dailyNewLimit) {
     const createdTimes = entries.map(getCreatedTime);
     const maxFrequency = Math.max(...entries.map((entry) => entry.frequency ?? 0));
     const maxFrequencyCount = Math.max(...entries.map((entry) => entry.frequency_count ?? 0));
+    const queuePositions = entries.map((entry) => entry.queue_position).filter(Number.isFinite);
 
     return {
       key,
@@ -513,6 +518,7 @@ function buildDictionaryGroups(words, sort, dailyNewLimit) {
       hasPriority: entries.some((entry) => entry.priority),
       maxFrequency: maxFrequency > 0 ? maxFrequency : null,
       maxFrequencyCount: maxFrequencyCount > 0 ? maxFrequencyCount : null,
+      bestQueuePosition: queuePositions.length > 0 ? Math.min(...queuePositions) : null,
       earliestDueTime: dueTimes.length > 0 ? Math.min(...dueTimes) : Number.POSITIVE_INFINITY,
       earliestCreatedTime: Math.min(...createdTimes),
       mostRecentCreatedTime: Math.max(...createdTimes),

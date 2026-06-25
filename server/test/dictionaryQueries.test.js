@@ -182,6 +182,7 @@ test('listDictionaryGroupPage frequency sort uses raw corpus count before rounde
     { ...newRow('middle', 1), word: 'middle', target_language: 'es', frequency: 3, frequency_count: 600 },
     { ...newRow('high', 0), word: 'high', target_language: 'es', frequency: 3, frequency_count: 900 },
     { ...newRow('unknown', 2), word: 'unknown', target_language: 'es', frequency: 3, frequency_count: null },
+    { ...newRow('unknown-later', 4), word: 'unknown-later', target_language: 'es', frequency: 3, frequency_count: null },
     { ...newRow('low-badge', 3), word: 'low-badge', target_language: 'es', frequency: 2, frequency_count: null },
   ];
   const db = {
@@ -212,8 +213,8 @@ test('listDictionaryGroupPage frequency sort uses raw corpus count before rounde
     timeZone: 'UTC',
   });
 
-  assert.deepEqual(high.groups.map((group) => group.word), ['high', 'middle', 'unknown', 'low-badge']);
-  assert.deepEqual(low.groups.map((group) => group.word), ['low-badge', 'unknown', 'middle', 'high']);
+  assert.deepEqual(high.groups.map((group) => group.word), ['high', 'middle', 'unknown', 'unknown-later', 'low-badge']);
+  assert.deepEqual(low.groups.map((group) => group.word), ['low-badge', 'unknown', 'unknown-later', 'middle', 'high']);
 });
 
 test('scheduler rolls every day-level review card forward by missed days', async () => {

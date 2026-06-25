@@ -82,6 +82,7 @@ describe('dictionaryGroups', () => {
       makeWord({ id: 'middle', word: 'middle', frequency: 3, frequency_count: 600, queue_position: 1 }),
       makeWord({ id: 'high', word: 'high', frequency: 3, frequency_count: 900, queue_position: 0 }),
       makeWord({ id: 'unknown', word: 'unknown', frequency: 3, frequency_count: null, queue_position: 2 }),
+      makeWord({ id: 'unknown-later', word: 'unknown-later', frequency: 3, frequency_count: null, queue_position: 4 }),
       makeWord({ id: 'low-badge', word: 'low-badge', frequency: 2, frequency_count: null, queue_position: 3 }),
     ];
 
@@ -89,11 +90,13 @@ describe('dictionaryGroups', () => {
       'high',
       'middle',
       'unknown',
+      'unknown-later',
       'low-badge',
     ]);
     expect(buildDictionaryGroups(words, '', 'freq-low').map((group) => group.word)).toEqual([
       'low-badge',
       'unknown',
+      'unknown-later',
       'middle',
       'high',
     ]);
