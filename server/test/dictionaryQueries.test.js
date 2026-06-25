@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { listDueWords, listNewWordPreview, listStudyOverview } from '../lib/dictionaryQueries.js';
+import { listDictionaryGroupPage, listDueWords, listNewWordPreview, listStudyOverview } from '../lib/dictionaryQueries.js';
 
 function recordingDatabase(rows = []) {
   const calls = [];
@@ -126,6 +126,55 @@ test('listStudyOverview subtracts introduced cards from available new cards', as
   assert.match(db.calls[4].text, /introduced_today/);
   assert.match(db.calls[4].text, /GREATEST\(COALESCE\(\(SELECT daily_new_limit FROM prefs\), 0\) - \(SELECT cnt FROM introduced_today\), 0\)/);
   assert.deepEqual(db.calls[4].values, ['user-1', 'America/Chicago']);
+});
+
+test('listDictionaryGroupPage projects queued new-card dates without setting due_at', async () => {
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const tomorrowDate = new Date(`${today}T00:00:00Z`);
+  tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
+  const tomorrow = tomorrowDate.toISOString().slice(0, 10);
+
+  const rows = [
+    { ...newRow('new-1', 0), word: 'alpha', target_language: 'es' },
+    { ...newRow('new-2', 1), word: 'beta', target_language: 'es' },
+    { ...newRow('new-3', 2), word: 'gamma', target_language: 'es' },
+  ];
+  const db = {
+    async query(text, values) {
+      if (/SELECT target_language, daily_new_limit FROM users/.test(text)) {
+        return { rows: [{ target_language: 'es', daily_new_limit: 5 }] };
+      }
+      if (/SELECT COUNT\(\*\)::int AS cnt FROM saved_words/.test(text)) {
+        return { rows: [{ cnt: 3 }] };
+      }
+      if (/SELECT \* FROM saved_words/.test(text)) {
+        return { rows };
+      }
+      return { rows: [], rowCount: 0 };
+    },
+  };
+
+  const result = await listDictionaryGroupPage(db, 'user-1', {
+    page: 0,
+    limit: 10,
+    sort: 'queue',
+    timeZone: 'UTC',
+  });
+
+  const projected = Object.fromEntries(
+    result.groups.map((group) => [group.word, group.primaryEntry.projected_due_at]),
+  );
+  assert.deepEqual(projected, {
+    alpha: `${today}T00:00:00`,
+    beta: `${today}T00:00:00`,
+    gamma: `${tomorrow}T00:00:00`,
+  });
+  assert.equal(result.groups[0].primaryEntry.due_at, null);
 });
 
 test('scheduler rolls every day-level review card forward by missed days', async () => {

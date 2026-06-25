@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SavedWord } from '../api/dictionary';
 import {
   applyAnswerLocally,
   computeNextReviewState,
+  getDueStatus,
   getStudyQueueBucket,
   getStudyQueueCounts,
 } from '../utils/srs';
@@ -167,5 +168,33 @@ describe('Anki-style study queues', () => {
     const failed = applyAnswerLocally(card(), 'again', now);
 
     expect(new Date(failed.due_at!).getTime() - now.getTime()).toBe(60_000);
+  });
+});
+
+describe('dictionary due status labels', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('uses projected queue dates for never-reviewed new cards', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 5, 11, 12, 0, 0));
+
+    expect(getDueStatus(card({ projected_due_at: '2026-06-11T00:00:00' }))).toEqual({
+      label: 'New today',
+      urgency: 'new',
+    });
+    expect(getDueStatus(card({ projected_due_at: '2026-06-12T00:00:00' }))).toEqual({
+      label: 'New tomorrow',
+      urgency: 'new',
+    });
+    expect(getDueStatus(card({ projected_due_at: '2026-06-14T00:00:00' }))).toEqual({
+      label: 'New in 3 d',
+      urgency: 'new',
+    });
+  });
+
+  it('keeps unscheduled as a fallback when no projected date is available', () => {
+    expect(getDueStatus(card())).toEqual({ label: 'Unscheduled', urgency: 'upcoming' });
   });
 });

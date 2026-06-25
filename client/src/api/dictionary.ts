@@ -148,6 +148,7 @@ export interface SavedWord {
   part_of_speech: string | null;
   srs_interval: number;
   due_at: string | null;
+  projected_due_at?: string | null;
   last_reviewed_at: string | null;
   correct_count: number;
   incorrect_count: number;

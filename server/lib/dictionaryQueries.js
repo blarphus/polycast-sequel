@@ -4,8 +4,8 @@
 const _groupCache = new Map();
 const CACHE_TTL_MS = 60_000;
 
-function _cacheKey(userId, targetLanguage, search, sort) {
-  return `${userId}:${targetLanguage}:${search}:${sort}`;
+function _cacheKey(userId, targetLanguage, search, sort, timeZone) {
+  return `${userId}:${targetLanguage}:${search}:${sort}:${timeZone}`;
 }
 
 export function invalidateDictionaryCache(userId) {
@@ -334,6 +334,44 @@ function isDictionaryEntryNew(word) {
   return word.srs_interval === 0 && word.learning_step === null && !word.last_reviewed_at;
 }
 
+function localDateKeyForTimeZone(timeZone, date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${byType.year}-${byType.month}-${byType.day}`;
+}
+
+function addDaysToDateKey(dateKey, days) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+  const nextYear = date.getUTCFullYear();
+  const nextMonth = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const nextDay = String(date.getUTCDate()).padStart(2, '0');
+  return `${nextYear}-${nextMonth}-${nextDay}T00:00:00`;
+}
+
+function withProjectedNewDueDates(words, dailyNewLimit, introducedToday, timeZone) {
+  const limit = Math.max(0, Number(dailyNewLimit) || 0);
+  if (limit <= 0) {
+    return words.map((word) => (
+      isDictionaryEntryNew(word) ? { ...word, projected_due_at: null } : word
+    ));
+  }
+
+  const today = localDateKeyForTimeZone(timeZone);
+  return words.map((word) => {
+    if (!isDictionaryEntryNew(word)) return word;
+    if (word.queue_position == null) return { ...word, projected_due_at: null };
+    const queuePosition = word.queue_position;
+    const dayOffset = Math.floor((queuePosition + introducedToday) / limit);
+    return { ...word, projected_due_at: addDaysToDateKey(today, dayOffset) };
+  });
+}
+
 function getCreatedTime(word) {
   return new Date(word.created_at).getTime();
 }
@@ -550,7 +588,7 @@ export async function listDictionaryGroupPage(db, userId, { page = 0, limit = 20
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 
-  const key = _cacheKey(userId, targetLanguage, trimmedSearch, sort);
+  const key = _cacheKey(userId, targetLanguage, trimmedSearch, sort, timeZone);
   const cached = _groupCache.get(key);
 
   let groups, dueNextGroupKeys;
@@ -594,7 +632,8 @@ export async function listDictionaryGroupPage(db, userId, { page = 0, limit = 20
     const introducedToday = introRows[0]?.cnt ?? 0;
     const adjustedNewLimit = Math.max(0, dailyNewLimit - introducedToday);
 
-    ({ groups, dueNextGroupKeys } = buildDictionaryGroups(rows, sort, adjustedNewLimit));
+    const projectedRows = withProjectedNewDueDates(rows, dailyNewLimit, introducedToday, timeZone);
+    ({ groups, dueNextGroupKeys } = buildDictionaryGroups(projectedRows, sort, adjustedNewLimit));
     _groupCache.set(key, { groups, dueNextGroupKeys, ts: Date.now() });
   }
 

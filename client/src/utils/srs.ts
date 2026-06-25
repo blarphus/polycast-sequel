@@ -182,13 +182,15 @@ export interface DueStatus {
 
 /** Compute due-status info for Dictionary badges. */
 export function getDueStatus(card: SavedWord): DueStatus {
+  const isNew = card.srs_interval === 0 && card.learning_step === null && !card.last_reviewed_at;
+  const statusDate = card.due_at || (isNew ? card.projected_due_at : null);
+
   // Has a due date — cards become due at midnight of their due date
-  if (card.due_at) {
+  if (statusDate) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(card.due_at);
+    const dueDate = new Date(statusDate);
     dueDate.setHours(0, 0, 0, 0);
-    const isNew = card.srs_interval === 0 && card.learning_step === null && !card.last_reviewed_at;
 
     if (dueDate <= today) {
       return { label: isNew ? 'New today' : 'Due now', urgency: isNew ? 'new' : 'due' };

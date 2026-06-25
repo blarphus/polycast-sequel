@@ -110,6 +110,10 @@ function localDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function localDateTimeAtStartOfDay(date: Date) {
+  return `${localDateKey(date)}T00:00:00`;
+}
+
 function compareNewEntries(a: SavedWord, b: SavedWord): number {
   const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
   const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
@@ -133,10 +137,40 @@ function compareNewEntries(a: SavedWord, b: SavedWord): number {
   return a.id.localeCompare(b.id);
 }
 
+function compareNewQueuePosition(a: SavedWord, b: SavedWord): number {
+  const aPriority = a.priority ? 0 : 1;
+  const bPriority = b.priority ? 0 : 1;
+  if (aPriority !== bPriority) return aPriority - bPriority;
+
+  const aFrequencyCount = a.frequency_count ?? 0;
+  const bFrequencyCount = b.frequency_count ?? 0;
+  if (aFrequencyCount !== bFrequencyCount) return bFrequencyCount - aFrequencyCount;
+
+  const aFrequency = a.frequency ?? 0;
+  const bFrequency = b.frequency ?? 0;
+  if (aFrequency !== bFrequency) return bFrequency - aFrequency;
+
+  const createdDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+  if (createdDiff !== 0) return createdDiff;
+
+  return a.id.localeCompare(b.id);
+}
+
 function normalizeOfflineNewCards(words: SavedWord[]): SavedWord[] {
-  return words.map((word) => (
-    isDictionaryEntryNew(word) && word.due_at ? { ...word, due_at: null } : word
-  ));
+  const newQueuePositions = new Map(
+    words
+      .filter(isDictionaryEntryNew)
+      .sort(compareNewQueuePosition)
+      .map((word, index) => [word.id, index]),
+  );
+  return words.map((word) => {
+    if (!isDictionaryEntryNew(word)) return word;
+    return {
+      ...word,
+      due_at: null,
+      queue_position: newQueuePositions.get(word.id) ?? word.queue_position,
+    };
+  });
 }
 
 function readScheduledWords(): SavedWord[] {
@@ -155,6 +189,32 @@ function dailyNewLimitRemaining(words: SavedWord[]): number {
   const todayKey = localDateKey(startOfToday());
   const introducedToday = words.filter((word) => word.introduced_date === todayKey).length;
   return Math.max(dailyLimit - introducedToday, 0);
+}
+
+function introducedTodayCount(words: SavedWord[]): number {
+  const todayKey = localDateKey(startOfToday());
+  return words.filter((word) => word.introduced_date === todayKey).length;
+}
+
+function withProjectedNewDueDates(words: SavedWord[]): SavedWord[] {
+  const dailyLimit = Math.max(getOfflineUser().daily_new_limit || 0, 0);
+  if (dailyLimit <= 0) {
+    return words.map((word) => (
+      isDictionaryEntryNew(word) ? { ...word, projected_due_at: null } : word
+    ));
+  }
+
+  const introducedToday = introducedTodayCount(words);
+  const today = startOfToday();
+  return words.map((word) => {
+    if (!isDictionaryEntryNew(word)) return word;
+    if (word.queue_position == null) return { ...word, projected_due_at: null };
+    const queuePosition = word.queue_position;
+    const dayOffset = Math.floor((queuePosition + introducedToday) / dailyLimit);
+    const projectedDate = new Date(today);
+    projectedDate.setDate(today.getDate() + dayOffset);
+    return { ...word, projected_due_at: localDateTimeAtStartOfDay(projectedDate) };
+  });
 }
 
 function availableNewWords(words: SavedWord[], limit = dailyNewLimitRemaining(words)): SavedWord[] {
@@ -245,7 +305,7 @@ function dictionaryGroups(searchParams: URLSearchParams) {
   const limit = Math.max(1, Number(searchParams.get('limit') || 20));
   const search = searchParams.get('search') || '';
   const sort = (searchParams.get('sort') || 'queue') as DictionarySortMode;
-  const words = readScheduledWords();
+  const words = withProjectedNewDueDates(readScheduledWords());
   const groups = buildDictionaryGroups(words, search, sort);
   const availableNewIds = new Set(availableNewWords(words).map((word) => word.id));
   const dueNextGroupKeys = groups

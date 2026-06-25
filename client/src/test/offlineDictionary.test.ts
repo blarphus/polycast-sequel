@@ -93,6 +93,8 @@ describe('offlineDictionary', () => {
   });
 
   it('supports save, grouping, and review for local dictionary words', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 15, 12));
     const syncListener = vi.fn();
     window.addEventListener(OFFLINE_DICTIONARY_SYNC_EVENT, syncListener);
 
@@ -125,6 +127,7 @@ describe('offlineDictionary', () => {
     expect(groups.handled).toBe(true);
     if (!groups.handled) throw new Error('groups should be handled');
     expect((groups.data as DictionaryWordGroupPage).groups[0].word).toBe('hola');
+    expect((groups.data as DictionaryWordGroupPage).groups[0].primaryEntry.projected_due_at).toBe('2026-01-15T00:00:00');
 
     const review = await handleOfflineRequest(`/dictionary/words/${saved.id}/review`, 'PATCH', { answer: 'good' });
     expect(review.handled).toBe(true);
