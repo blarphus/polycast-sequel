@@ -481,6 +481,52 @@
   line-height: 1.4;
 }
 
+.dict-forms-field {
+  gap: 0.35rem;
+}
+
+.dict-forms-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font);
+  cursor: pointer;
+}
+
+.dict-forms-toggle:hover .dict-field-label {
+  color: var(--text-secondary);
+}
+
+.dict-forms-count {
+  min-width: 1.35rem;
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.dict-forms-chevron {
+  color: var(--text-muted);
+  transition: transform var(--transition);
+}
+
+.dict-forms-field.open .dict-forms-chevron {
+  transform: rotate(180deg);
+}
+
+.dict-forms-list {
+  max-width: 48rem;
+}
+
 .dict-example {
   font-style: italic;
   color: var(--text-secondary);

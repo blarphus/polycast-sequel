@@ -96,6 +96,21 @@ function ReviewField({ word }: { word: SavedWord }) {
   );
 }
 
+function parseWordForms(forms: string | null | undefined): string[] {
+  if (!forms) return [];
+  if (forms.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(forms);
+      return Array.isArray(parsed)
+        ? parsed.map((form) => String(form).trim()).filter(Boolean)
+        : [];
+    } catch {
+      return [];
+    }
+  }
+  return forms.split(',').map((form) => form.trim()).filter(Boolean);
+}
+
 function buildQueueTintStyles(
   hue: number,
   intensity: number,
@@ -146,6 +161,7 @@ export default function Dictionary() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<DictionarySortMode>('queue');
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [expandedFormIds, setExpandedFormIds] = useState<Set<string>>(new Set());
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupInitialQuery, setLookupInitialQuery] = useState('');
@@ -171,6 +187,15 @@ export default function Dictionary() {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleForms = (id: string) => {
+    setExpandedFormIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -446,16 +471,26 @@ export default function Dictionary() {
                                     </div>
                                   )}
                                   {w.forms && (() => {
-                                    let fl: string[];
-                                    if (w.forms.startsWith('[')) {
-                                      try { fl = JSON.parse(w.forms); } catch { return null; }
-                                    } else {
-                                      fl = w.forms.split(',').map(s => s.trim()).filter(Boolean);
-                                    }
+                                    const fl = parseWordForms(w.forms);
+                                    if (fl.length === 0) return null;
+                                    const formsOpen = expandedFormIds.has(w.id);
                                     return (
-                                      <div className="dict-field">
-                                        <span className="dict-field-label">Forms</span>
-                                        <span className="dict-field-value text-muted">{fl.join(', ')}</span>
+                                      <div className={`dict-field dict-forms-field${formsOpen ? ' open' : ''}`}>
+                                        <button
+                                          type="button"
+                                          className="dict-forms-toggle"
+                                          onClick={() => toggleForms(w.id)}
+                                          aria-expanded={formsOpen}
+                                        >
+                                          <span className="dict-field-label">Forms</span>
+                                          <span className="dict-forms-count">{fl.length}</span>
+                                          <ChevronDownIcon size={15} className="dict-forms-chevron" />
+                                        </button>
+                                        {formsOpen && (
+                                          <span className="dict-field-value text-muted dict-forms-list">
+                                            {fl.join(', ')}
+                                          </span>
+                                        )}
                                       </div>
                                     );
                                   })()}
