@@ -33,13 +33,20 @@ function getDueTime(word: SavedWord): number {
   return isFiniteNumber(time) ? time : Number.POSITIVE_INFINITY;
 }
 
+function getProjectedNewTime(word: SavedWord): number {
+  const statusDate = word.projected_due_at || word.due_at;
+  if (!statusDate) return Number.POSITIVE_INFINITY;
+  const time = new Date(statusDate).getTime();
+  return isFiniteNumber(time) ? time : Number.POSITIVE_INFINITY;
+}
+
 export function isDictionaryEntryNew(word: SavedWord): boolean {
   return word.srs_interval === 0 && word.learning_step === null && !word.last_reviewed_at;
 }
 
 function compareNewEntries(a: SavedWord, b: SavedWord): number {
-  const aDue = getDueTime(a);
-  const bDue = getDueTime(b);
+  const aDue = getProjectedNewTime(a);
+  const bDue = getProjectedNewTime(b);
   if (isFiniteNumber(aDue) || isFiniteNumber(bDue)) {
     const dueDiff = aDue - bDue;
     if (dueDiff !== 0) return dueDiff;
@@ -91,7 +98,9 @@ function compareQueueGroups(a: DictionaryWordGroup, b: DictionaryWordGroup): num
   }
   if (a.nextNewEntry) return -1;
   if (b.nextNewEntry) return 1;
-  return a.earliestDueTime - b.earliestDueTime;
+  const dueDiff = a.earliestDueTime - b.earliestDueTime;
+  if (dueDiff !== 0) return dueDiff;
+  return a.word.localeCompare(b.word);
 }
 
 function compareFrequencyGroups(a: DictionaryWordGroup, b: DictionaryWordGroup, direction: 'high' | 'low'): number {

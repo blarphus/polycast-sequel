@@ -382,8 +382,15 @@ function getDueTime(word) {
   return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
 }
 
+function getProjectedNewTime(word) {
+  const statusDate = word.projected_due_at || word.due_at;
+  if (!statusDate) return Number.POSITIVE_INFINITY;
+  const time = new Date(statusDate).getTime();
+  return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
+}
+
 function compareNewEntries(a, b) {
-  const dueDiff = getDueTime(a) - getDueTime(b);
+  const dueDiff = getProjectedNewTime(a) - getProjectedNewTime(b);
   if (dueDiff !== 0) return dueDiff;
 
   const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
@@ -538,22 +545,16 @@ function buildDictionaryGroups(words, sort, dailyNewLimit) {
 
   if (sort === 'queue') {
     groups.sort((a, b) => {
-      const aTodayNew = todayNewKeys.has(a.key) ? 0 : 1;
-      const bTodayNew = todayNewKeys.has(b.key) ? 0 : 1;
-      if (aTodayNew !== bTodayNew) return aTodayNew - bTodayNew;
-      if (aTodayNew === 0 && a.nextNewEntry && b.nextNewEntry) {
-        return compareNewEntries(a.nextNewEntry, b.nextNewEntry);
-      }
-
-      const aHasReview = a.nextReviewEntry ? 0 : 1;
-      const bHasReview = b.nextReviewEntry ? 0 : 1;
-      if (aHasReview !== bHasReview) return aHasReview - bHasReview;
-      if (a.nextReviewEntry && b.nextReviewEntry) {
-        return compareReviewEntries(a.nextReviewEntry, b.nextReviewEntry);
-      }
       if (a.nextNewEntry && b.nextNewEntry) {
         return compareNewEntries(a.nextNewEntry, b.nextNewEntry);
       }
+      if (a.nextNewEntry) return -1;
+      if (b.nextNewEntry) return 1;
+      if (a.nextReviewEntry && b.nextReviewEntry) {
+        return compareReviewEntries(a.nextReviewEntry, b.nextReviewEntry);
+      }
+      if (a.nextReviewEntry) return -1;
+      if (b.nextReviewEntry) return 1;
       return a.word.localeCompare(b.word);
     });
   } else if (sort === 'az') {

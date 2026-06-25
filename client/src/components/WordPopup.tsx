@@ -118,6 +118,12 @@ export default function WordPopup(props: WordPopupProps) {
             nativeLang,
             targetLang,
             lemma && lemma.toLowerCase() !== targetWord.toLowerCase() ? null : senseIndex,
+            {
+              definition: res?.definition || res?.matched_gloss || null,
+              part_of_speech: res?.part_of_speech || null,
+              definition_source: res?.definition_source || null,
+              matched_gloss: res?.matched_gloss || null,
+            },
           );
           const savedWord = enriched.lemma || lemma || targetWord;
           await onSaveWord({
@@ -135,6 +141,7 @@ export default function WordPopup(props: WordPopupProps) {
             lemma: enriched.lemma || lemma || null,
             forms: enriched.forms || null,
             image_term: enriched.image_term,
+            shared_entry_id: enriched.shared_entry_id || null,
           });
         });
       };

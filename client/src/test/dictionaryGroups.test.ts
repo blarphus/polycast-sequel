@@ -77,6 +77,24 @@ describe('dictionaryGroups', () => {
     expect(Array.from(getDueNextGroupKeys(groups, 2))).toEqual(['louvado|es', 'cargo|es']);
   });
 
+  it('keeps all new queue groups ahead of review groups in projected order', () => {
+    const groups = buildDictionaryGroups([
+      makeWord({ id: 'late', word: 'late', queue_position: 10, projected_due_at: '2026-06-28T00:00:00' }),
+      makeWord({
+        id: 'review',
+        word: 'review',
+        srs_interval: 86400,
+        last_reviewed_at: '2026-06-01T10:00:00.000Z',
+        due_at: '2026-06-25T10:00:00.000Z',
+        queue_position: 1,
+      }),
+      makeWord({ id: 'early', word: 'early', queue_position: 2, projected_due_at: '2026-06-26T00:00:00' }),
+      makeWord({ id: 'middle', word: 'middle', queue_position: 5, projected_due_at: '2026-06-27T00:00:00' }),
+    ], '', 'queue');
+
+    expect(groups.map((group) => group.word)).toEqual(['early', 'middle', 'late', 'review']);
+  });
+
   it('sorts frequency views by raw corpus count before the rounded badge', () => {
     const words = [
       makeWord({ id: 'middle', word: 'middle', frequency: 3, frequency_count: 600, queue_position: 1 }),

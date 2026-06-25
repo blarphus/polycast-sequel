@@ -11,6 +11,7 @@ import { searchAllImages } from './lib/imageSearch.js';
 import { pickBestImage } from './lib/imagePick.js';
 import { generateWordImage } from './lib/imageGenerate.js';
 import { storeImageBytes } from './lib/imageCache.js';
+import { findSharedEntry, sharedEntryToEnrichment, storeSharedEntry } from './lib/sharedDictionaryEntries.js';
 import logger from './logger.js';
 import pool from './db.js';
 
@@ -441,9 +442,31 @@ ${FIELD_LEMMA}`;
  * @param {number|null} senseIndex - Pre-identified Wiktionary sense index (optional)
  * @returns {Promise<{word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, image_url, lemma, forms}>}
  */
-export async function enrichWord(word, sentence, nativeLang, targetLang, senseIndex = null) {
+export async function enrichWord(word, sentence, nativeLang, targetLang, senseIndex = null, options = {}) {
   const _t0 = Date.now();
   const fallback_notices = [];
+  const definitionHint = options.matched_gloss || options.definition || null;
+  const partOfSpeechHint = options.part_of_speech || null;
+  let definitionSource = options.definition_source || null;
+  let matchedGloss = options.matched_gloss || null;
+  let resolvedSenseIndex = typeof senseIndex === 'number' ? senseIndex : null;
+
+  async function getCached(definitionValue, posValue, cacheWord = word) {
+    const shared = await findSharedEntry({
+      word: cacheWord,
+      target_language: targetLang,
+      definition: definitionValue,
+      part_of_speech: posValue,
+    });
+    if (!shared) return null;
+    logger.info('[enrich-cache] %s/%s — shared entry hit %s', targetLang, cacheWord, shared.id);
+    return sharedEntryToEnrichment(shared);
+  }
+
+  if (definitionHint) {
+    const cached = await getCached(definitionHint, partOfSpeechHint);
+    if (cached) return cached;
+  }
 
   // Query Wiktionary DB directly — gives access to both senses AND forms
   let wiktRows = targetLang
@@ -480,11 +503,45 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
   let translation, definition, part_of_speech, frequency, example_sentence, sentence_translation, geminiImageTerm, lemma;
 
+  if (definitionHint) {
+    definition = definitionHint;
+    part_of_speech = partOfSpeechHint;
+    if (!definitionSource) definitionSource = matchedGloss ? 'wiktionary' : 'user';
+
+    const prompt = buildEnrichPrompt({
+      word, sentence, nativeLang, targetLang,
+      fieldNames: 'TRANSLATION // FREQUENCY // EXAMPLE // SENTENCE_TRANSLATION // IMAGE_TERM // LEMMA',
+      extraFieldDescs: '',
+      contextLine: `The word means: "${definition}" (${part_of_speech || 'unknown POS'}).`,
+      senseListBlock: '',
+    });
+
+    const raw = await callGemini(prompt);
+    const _t2 = Date.now();
+    logger.info('[enrich-timing] %s — Gemini (definition hint): %dms', word, _t2 - _t1);
+    const parts = raw.split('//').map((s) => s.trim());
+    if (parts.length < 6) {
+      throw new Error(`Gemini enrich returned ${parts.length} parts instead of 6 for the definition-hint path`);
+    }
+
+    translation = parts[0] || '';
+    frequency = parseFrequency(parts[1]);
+    example_sentence = parts[2] || null;
+    sentence_translation = parts[3] || null;
+    geminiImageTerm = parts[4]?.trim() || null;
+    lemma = parts[5]?.trim() || null;
+  }
+
   // Path C: senseIndex pre-identified by /lookup — use directly, skip sense-picking
   const hasSenseIndex = typeof senseIndex === 'number' && senseIndex >= 0;
-  if (hasSenseIndex && wiktSenses.length > 0 && senseIndex < wiktSenses.length) {
+  if (translation === undefined && hasSenseIndex && wiktSenses.length > 0 && senseIndex < wiktSenses.length) {
     definition = wiktSenses[senseIndex].gloss;
     part_of_speech = wiktSenses[senseIndex].pos || null;
+    definitionSource = definitionSource || 'wiktionary';
+    matchedGloss = matchedGloss || definition;
+
+    const cached = await getCached(definition, part_of_speech);
+    if (cached) return cached;
 
     const prompt = buildEnrichPrompt({
       word, sentence, nativeLang, targetLang,
@@ -508,7 +565,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     sentence_translation = parts[3] || null;
     geminiImageTerm = parts[4]?.trim() || null;
     lemma = parts[5]?.trim() || null;
-  } else if (hasSenseIndex && (wiktSenses.length === 0 || senseIndex >= wiktSenses.length)) {
+  } else if (translation === undefined && hasSenseIndex && (wiktSenses.length === 0 || senseIndex >= wiktSenses.length)) {
     throw new Error(`Sense index ${senseIndex} is invalid for ${wiktSenses.length} available senses`);
   }
 
@@ -538,14 +595,21 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       translation = parts[0] || '';
 
       // Resolve definition + POS from sense index
-      const resolvedSenseIndex = parseInt(parts[1], 10);
+      resolvedSenseIndex = parseInt(parts[1], 10);
       if (!isNaN(resolvedSenseIndex) && resolvedSenseIndex >= 0 && resolvedSenseIndex < wiktSenses.length) {
         definition = wiktSenses[resolvedSenseIndex].gloss;
         part_of_speech = wiktSenses[resolvedSenseIndex].pos || null;
+        definitionSource = 'wiktionary';
+        matchedGloss = definition;
       } else {
         // No matching sense — use Gemini's fallback definition
         definition = parts[6]?.trim() || '';
+        definitionSource = 'gemini';
         logger.info('[enrich] %s — no Wiktionary sense matched (index=%s), using Gemini fallback: "%s"', word, parts[1], definition);
+        fallback_notices.push({
+          title: 'Gemini fallback used',
+          message: `No Wiktionary sense matched "${word}" in context, so Polycast used Gemini's definition.`,
+        });
         if (definition && targetLang) {
           persistGeminiFallbackSense({ word, lang: targetLang, pos: wiktSenses[0]?.pos || 'unknown', definition });
         }
@@ -577,6 +641,11 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       translation = parts[0] || '';
       definition = parts[1] || '';
       part_of_speech = parts[2] || null;
+      definitionSource = 'gemini';
+      fallback_notices.push({
+        title: 'Gemini fallback used',
+        message: `No Wiktionary definition was available for "${word}", so Polycast used Gemini.`,
+      });
       frequency = parseFrequency(parts[3]);
       example_sentence = parts[4] || null;
       sentence_translation = parts[5] || null;
@@ -619,6 +688,10 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
   const corpusFreq = applyCorpusFrequency(word, targetLang, frequency, { lemma, forms });
   frequency = corpusFreq.frequency;
   const frequency_count = corpusFreq.frequency_count;
+
+  const cacheWord = lemma || word;
+  const cachedBeforeImage = await getCached(definition, part_of_speech, cacheWord);
+  if (cachedBeforeImage) return cachedBeforeImage;
 
   // Image: search several candidates and let Gemini vision pick the best fit —
   // the picker is the single arbiter of whether anything fits. If nothing does,
@@ -711,5 +784,38 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
   logger.info('[enrich-timing] %s — Image %s ("%s"): %dms', word, imageSource, imageSearchTerm, _tImg1 - _tImg0);
   logger.info('[enrich-timing] %s — TOTAL: %dms', word, _tImg1 - _t0);
 
-  return { word, translation, definition, part_of_speech, frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term: geminiImageTerm || translation || word, fallback_notices };
+  const image_term = geminiImageTerm || translation || word;
+  const result = {
+    word,
+    translation,
+    definition,
+    part_of_speech,
+    frequency,
+    frequency_count,
+    example_sentence,
+    sentence_translation,
+    image_url,
+    lemma,
+    forms,
+    image_term,
+    fallback_notices,
+    shared_entry_id: null,
+    compendium_hit: false,
+  };
+
+  try {
+    const sharedEntry = await storeSharedEntry({
+      ...result,
+      word: cacheWord,
+      target_language: targetLang,
+      definition_source: definitionSource,
+      matched_gloss: matchedGloss,
+      sense_index: resolvedSenseIndex,
+    });
+    if (sharedEntry) result.shared_entry_id = sharedEntry.id;
+  } catch (err) {
+    logger.error({ err }, '[enrich-cache] failed to store shared entry for %s/%s', targetLang, cacheWord);
+  }
+
+  return result;
 }

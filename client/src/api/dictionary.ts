@@ -13,6 +13,8 @@ export interface EnrichedWord {
   lemma: string | null;
   forms: string | null;
   image_term: string | null;
+  shared_entry_id?: string | null;
+  compendium_hit?: boolean;
   fallback_notices?: Array<{
     title?: string;
     message?: string;
@@ -52,6 +54,7 @@ export function lookupWord(word: string, sentence: string, nativeLang: string, t
     phrase?: string | null;
     phrase_translation?: string | null;
     phrase_definition?: string | null;
+    fallback_notices?: EnrichedWord['fallback_notices'];
   }>(`/dictionary/lookup?${params}`);
 }
 
@@ -94,8 +97,14 @@ export function enrichWord(
   nativeLang: string,
   targetLang?: string,
   senseIndex?: number | null,
+  options: {
+    definition?: string | null;
+    part_of_speech?: string | null;
+    definition_source?: string | null;
+    matched_gloss?: string | null;
+  } = {},
 ) {
-  const body: Record<string, unknown> = { word, sentence, nativeLang, targetLang };
+  const body: Record<string, unknown> = { word, sentence, nativeLang, targetLang, ...options };
   if (senseIndex != null) body.senseIndex = senseIndex;
   return request<EnrichedWord>('/dictionary/enrich', {
     method: 'POST',
@@ -131,6 +140,7 @@ export interface SaveWordData {
   lemma?: string | null;
   forms?: string | null;
   image_term?: string | null;
+  shared_entry_id?: string | null;
 }
 
 export interface SavedWord {
@@ -163,6 +173,7 @@ export interface SavedWord {
   queue_position: number | null;
   introduced_date: string | null;
   relearning_date: string | null;
+  shared_entry_id?: string | null;
 }
 
 export function getSavedWords(targetLanguage?: string | null) {

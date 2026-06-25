@@ -133,12 +133,12 @@ router.get('/api/stream/posts/:id/enrich', authMiddleware, validate({ params: id
         `UPDATE stream_post_words
          SET translation=$1, definition=$2, part_of_speech=$3, frequency=$4,
              frequency_count=$5, example_sentence=$6, sentence_translation=$7,
-             image_url=$8, lemma=$9, forms=$10, image_term=$11
-         WHERE id=$12`,
+             image_url=$8, lemma=$9, forms=$10, image_term=$11, shared_entry_id=$12
+         WHERE id=$13`,
         [result.translation, result.definition, result.part_of_speech,
          result.frequency, result.frequency_count, result.example_sentence,
          result.sentence_translation, result.image_url, result.lemma, result.forms,
-         result.image_term, w.id],
+         result.image_term, result.shared_entry_id ?? null, w.id],
       );
       res.write(`data: ${JSON.stringify({ word_id: w.id, ...result })}\n\n`);
     } catch (err) {
@@ -240,14 +240,14 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, valid
       const { rowCount } = await pool.query(
         `INSERT INTO saved_words
            (user_id, word, translation, definition, target_language, part_of_speech,
-            frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term, priority)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,true)
+            frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term, shared_entry_id, priority)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,true)
          ON CONFLICT DO NOTHING`,
         [
           req.userId, w.word, w.translation, w.definition, targetLanguage, w.part_of_speech,
           w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
           w.sentence_translation ?? null, imageUrl, w.lemma ?? null, w.forms ?? null,
-          w.image_term ?? null,
+          w.image_term ?? null, w.shared_entry_id ?? null,
         ],
       );
       if (rowCount > 0) {

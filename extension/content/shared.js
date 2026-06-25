@@ -61,6 +61,17 @@ function captionContext() {
   return recentCaptions.join(' ').trim();
 }
 
+function showFallbackToast(title, message) {
+  const existing = document.querySelector('.pc-fallback-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'pc-fallback-toast';
+  toast.setAttribute('role', 'status');
+  toast.innerHTML = `<strong>${title}</strong><span>${message}</span>`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 7000);
+}
+
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'WORDS_UPDATED') {
     savedWordsSet = new Set(msg.savedWords || []);
@@ -281,6 +292,11 @@ function selfHealHighlight(word, res) {
     if (el.textContent.toLowerCase() === lower) el.classList.add('pc-saved');
   });
   sendMessageAsync({ type: 'ADD_WORD_FORM', savedWordId: res.saved_word_id, form: word })
+    .then((result) => {
+      if (result?.warning) {
+        showFallbackToast('Local form fallback', 'This form is highlighted locally, but server persistence failed.');
+      }
+    })
     .catch((err) => console.debug('[Polycast] could not persist form:', err.message));
 }
 
@@ -332,7 +348,18 @@ function openWordPopup({
             el.classList.add('pc-saved');
           }
         });
-        await sendMessageAsync({ type: 'SAVE_WORD', word, sentence, lemma });
+        return await sendMessageAsync({
+          type: 'SAVE_WORD',
+          word,
+          sentence,
+          lemma,
+          targetWord: lookupResult?.target_word || null,
+          definition: lookupResult?.definition || lookupResult?.matched_gloss || null,
+          part_of_speech: lookupResult?.part_of_speech || null,
+          definition_source: lookupResult?.definition_source || null,
+          matched_gloss: lookupResult?.matched_gloss || null,
+          senseIndex: lookupResult?.sense_index ?? null,
+        });
       },
       remove: async ({ word, lookupResult }) => {
         await sendMessageAsync({

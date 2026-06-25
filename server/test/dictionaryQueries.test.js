@@ -177,6 +177,43 @@ test('listDictionaryGroupPage projects queued new-card dates without setting due
   assert.equal(result.groups[0].primaryEntry.due_at, null);
 });
 
+test('listDictionaryGroupPage queue sort keeps new cards in projected order before reviews', async () => {
+  const rows = [
+    { ...newRow('late', 10), word: 'late', target_language: 'es' },
+    { ...reviewRow('review'), word: 'review', target_language: 'es', queue_position: 1 },
+    { ...newRow('early', 2), word: 'early', target_language: 'es' },
+    { ...newRow('middle', 5), word: 'middle', target_language: 'es' },
+  ];
+  const db = {
+    async query(text, values) {
+      if (/SELECT target_language, daily_new_limit FROM users/.test(text)) {
+        return { rows: [{ target_language: 'es', daily_new_limit: 2 }] };
+      }
+      if (/SELECT COUNT\(\*\)::int AS cnt FROM saved_words/.test(text)) {
+        return { rows: [{ cnt: 0 }] };
+      }
+      if (/SELECT \* FROM saved_words/.test(text)) {
+        return { rows };
+      }
+      return { rows: [], rowCount: 0 };
+    },
+  };
+
+  const result = await listDictionaryGroupPage(db, 'user-queue-order', {
+    page: 0,
+    limit: 10,
+    sort: 'queue',
+    timeZone: 'UTC',
+  });
+
+  assert.deepEqual(result.groups.map((group) => group.word), ['early', 'middle', 'late', 'review']);
+  assert.deepEqual(result.groups.slice(0, 3).map((group) => group.primaryEntry.projected_due_at), [
+    result.groups[0].primaryEntry.projected_due_at,
+    result.groups[1].primaryEntry.projected_due_at,
+    result.groups[2].primaryEntry.projected_due_at,
+  ].sort());
+});
+
 test('listDictionaryGroupPage frequency sort uses raw corpus count before rounded frequency', async () => {
   const rows = [
     { ...newRow('middle', 1), word: 'middle', target_language: 'es', frequency: 3, frequency_count: 600 },

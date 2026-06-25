@@ -60,6 +60,10 @@ const enrichBody = z.object({
   nativeLang: z.string().min(1, 'nativeLang is required'),
   targetLang: z.string().optional(),
   senseIndex: z.number().optional(),
+  definition: z.string().nullable().optional(),
+  part_of_speech: z.string().nullable().optional(),
+  definition_source: z.string().nullable().optional(),
+  matched_gloss: z.string().nullable().optional(),
 });
 
 const imageProxyQuery = z.object({
@@ -149,6 +153,7 @@ const saveWordBody = z.object({
   // that conjugation highlights even when the inflection table omitted it.
   surface_form: z.string().nullable().optional(),
   image_term: z.string().nullable().optional(),
+  shared_entry_id: z.string().uuid().nullable().optional(),
   timeZone: z.string().max(100).optional(),
 });
 
@@ -178,6 +183,15 @@ router.get('/api/dictionary/lookup', authMiddleware, validate({ query: lookupQue
       targetLang,
       isNative: isNative === 'true',
     });
+    if (isNative !== 'true' && result.definition_source === 'gemini') {
+      result.fallback_notices = [
+        ...(Array.isArray(result.fallback_notices) ? result.fallback_notices : []),
+        {
+          title: 'Gemini fallback used',
+          message: `No matching Wiktionary definition was available for "${word}", so Polycast used Gemini.`,
+        },
+      ];
+    }
     return res.json(result);
   } catch (err) {
     req.log.error({ err }, 'Dictionary lookup error');
@@ -255,10 +269,15 @@ router.post('/api/dictionary/translate', authMiddleware, validate({ body: transl
  * Called when the user saves a word — quality over speed.
  */
 router.post('/api/dictionary/enrich', authMiddleware, validate({ body: enrichBody }), async (req, res) => {
-  const { word, sentence, nativeLang, targetLang, senseIndex } = req.body;
+  const { word, sentence, nativeLang, targetLang, senseIndex, definition, part_of_speech, definition_source, matched_gloss } = req.body;
 
   try {
-    const result = await enrichWordHelper(word, sentence, nativeLang, targetLang, senseIndex ?? null);
+    const result = await enrichWordHelper(word, sentence, nativeLang, targetLang, senseIndex ?? null, {
+      definition,
+      part_of_speech,
+      definition_source,
+      matched_gloss,
+    });
     return res.json(result);
   } catch (err) {
     req.log.error({ err }, 'Dictionary enrich error');
@@ -657,7 +676,7 @@ router.get('/api/dictionary/word-groups', authMiddleware, validate({ query: word
  * POST /api/dictionary/words -- Save a word to the personal dictionary
  */
 router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBody }), async (req, res) => {
-  const { word, translation, definition, target_language, sentence_context, frequency, frequency_count, example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, surface_form, image_term } = req.body;
+  const { word, translation, definition, target_language, sentence_context, frequency, frequency_count, example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, surface_form, image_term, shared_entry_id } = req.body;
   const timeZone = validTimeZone(req.body.timeZone);
 
   // Guarantee the tapped surface form is among the stored inflections.
@@ -683,12 +702,16 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
     if (existing.length > 0) {
       // Already saved — still ensure the tapped surface form is a stored form.
       const row = existing[0];
-      if (surface_form) {
+      if (surface_form || (shared_entry_id && !row.shared_entry_id)) {
         const withForm = mergeForm(row.forms, surface_form);
-        if (withForm !== row.forms) {
+        if (withForm !== row.forms || (shared_entry_id && !row.shared_entry_id)) {
           const { rows: updatedRows } = await pool.query(
-            'UPDATE saved_words SET forms = $3 WHERE id = $1 AND user_id = $2 RETURNING *',
-            [row.id, req.userId, withForm],
+            `UPDATE saved_words
+             SET forms = $3,
+                 shared_entry_id = COALESCE(shared_entry_id, $4)
+             WHERE id = $1 AND user_id = $2
+             RETURNING *`,
+            [row.id, req.userId, withForm, shared_entry_id || null],
           );
           const scheduled = await refreshScheduledWord(updatedRows[0].id);
           invalidateDictionaryCache(req.userId);
@@ -702,10 +725,10 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
 
     // Insert new definition
     const { rows } = await pool.query(
-      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, frequency_count, image_term)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, frequency_count, image_term, shared_entry_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
        RETURNING *`,
-      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, sentence_translation || null, part_of_speech || null, image_url || null, lemma || null, mergedForms, frequency_count ?? null, image_term || null],
+      [req.userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, sentence_translation || null, part_of_speech || null, image_url || null, lemma || null, mergedForms, frequency_count ?? null, image_term || null, shared_entry_id || null],
     );
     const scheduled = await refreshScheduledWord(rows[0].id);
     invalidateDictionaryCache(req.userId);

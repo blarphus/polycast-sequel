@@ -424,10 +424,15 @@ async function handleMessage(msg) {
         const enriched = await apiFetch('/api/dictionary/enrich', {
           method: 'POST',
           body: {
-            word: msg.lemma || msg.word,
+            word: msg.lemma || msg.targetWord || msg.word,
             sentence: msg.sentence,
             nativeLang: user.native_language || 'en',
             targetLang: user.target_language || undefined,
+            senseIndex: msg.senseIndex ?? undefined,
+            definition: msg.definition || undefined,
+            part_of_speech: msg.part_of_speech || undefined,
+            definition_source: msg.definition_source || undefined,
+            matched_gloss: msg.matched_gloss || undefined,
           },
         });
 
@@ -452,6 +457,7 @@ async function handleMessage(msg) {
             // inflection table omitted it — the server merges it into `forms`.
             surface_form: msg.word,
             image_term: enriched.image_term,
+            shared_entry_id: enriched.shared_entry_id || null,
           },
         });
 
@@ -462,7 +468,7 @@ async function handleMessage(msg) {
         await chrome.storage.local.set({ savedWords: updated });
         await broadcastWordsUpdated(updated);
 
-        return { success: true, saved };
+        return { success: true, saved, fallback_notices: enriched.fallback_notices || [] };
       } catch (err) {
         if (String(err.message || '').includes('Session expired')) throw err;
         const saved = await saveOfflineWord(msg.word, msg.sentence);

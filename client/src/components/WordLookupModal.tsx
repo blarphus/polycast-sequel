@@ -96,6 +96,13 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
         `${word}: ${sense.gloss}`,
         nativeLang,
         targetLang,
+        null,
+        {
+          definition: sense.gloss,
+          part_of_speech: sense.pos || null,
+          definition_source: 'wiktionary',
+          matched_gloss: sense.gloss,
+        },
       );
 
       const savedWord = enriched.lemma || word;
@@ -112,6 +119,7 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
         target_language: targetLang,
         lemma: enriched.lemma || null,
         forms: enriched.forms || null,
+        shared_entry_id: enriched.shared_entry_id || null,
       });
     });
   };

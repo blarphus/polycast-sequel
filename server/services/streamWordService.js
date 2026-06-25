@@ -54,6 +54,7 @@ export async function enrichAndInsertWords(client, postId, words, nativeLang, ta
           lemma: word.lemma ?? null,
           forms: word.forms ?? null,
           image_term: word.image_term ?? null,
+          shared_entry_id: word.shared_entry_id ?? null,
         };
       }
 
@@ -76,7 +77,7 @@ export async function enrichAndInsertWords(client, postId, words, nativeLang, ta
   let paramIndex = 1;
   for (const word of enriched) {
     values.push(
-      `($${paramIndex},$${paramIndex + 1},$${paramIndex + 2},$${paramIndex + 3},$${paramIndex + 4},$${paramIndex + 5},$${paramIndex + 6},$${paramIndex + 7},$${paramIndex + 8},$${paramIndex + 9},$${paramIndex + 10},$${paramIndex + 11},$${paramIndex + 12})`,
+      `($${paramIndex},$${paramIndex + 1},$${paramIndex + 2},$${paramIndex + 3},$${paramIndex + 4},$${paramIndex + 5},$${paramIndex + 6},$${paramIndex + 7},$${paramIndex + 8},$${paramIndex + 9},$${paramIndex + 10},$${paramIndex + 11},$${paramIndex + 12},$${paramIndex + 13})`,
     );
     params.push(
       postId,
@@ -92,14 +93,15 @@ export async function enrichAndInsertWords(client, postId, words, nativeLang, ta
       word.lemma ?? null,
       word.forms ?? null,
       word.image_term ?? null,
+      word.shared_entry_id ?? null,
     );
-    paramIndex += 13;
+    paramIndex += 14;
   }
 
   await client.query(
     `INSERT INTO stream_post_words
        (post_id, word, translation, definition, part_of_speech, position,
-        frequency, frequency_count, example_sentence, image_url, lemma, forms, image_term)
+        frequency, frequency_count, example_sentence, image_url, lemma, forms, image_term, shared_entry_id)
      VALUES ${values.join(', ')}`,
     params,
   );

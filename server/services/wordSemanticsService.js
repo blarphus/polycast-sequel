@@ -29,11 +29,11 @@ async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   const translated = await translateText(markedSentence, sourceLang, targetLang);
   const tildeMatch = translated.match(/~([^~]+)~/);
   if (tildeMatch) {
-    return tildeMatch[1].trim();
+    return { translation: tildeMatch[1].trim(), usedFallback: false };
   }
 
   const fallback = await translateText(word, sourceLang, targetLang);
-  return fallback.trim();
+  return { translation: fallback.trim(), usedFallback: true };
 }
 
 // pickBestSense — Gemini reads the sentence and candidate senses and, in ONE call, returns both
@@ -276,7 +276,7 @@ export async function resolveDictionaryLookup({
     if (!targetLang) {
       throw new Error('targetLang is required for native-word lookup');
     }
-    const targetWord = await translateWordInSentence(word, sentence, nativeLang, targetLang);
+    const { translation: targetWord, usedFallback } = await translateWordInSentence(word, sentence, nativeLang, targetLang);
     if (!targetWord) {
       throw makeContextError('Google Translate returned no translation for the selected native word', {
         word,
@@ -300,6 +300,10 @@ export async function resolveDictionaryLookup({
       phrase: null,
       phrase_translation: null,
       phrase_definition: null,
+      fallback_notices: usedFallback ? [{
+        title: 'Translation fallback used',
+        message: `Sentence translation markers were lost for "${word}", so Polycast translated the selected word by itself.`,
+      }] : [],
     };
   }
 
@@ -413,6 +417,8 @@ export async function lookupWordPreview(word, nativeLang, targetLang) {
     lemma: result.lemma,
     forms: result.forms,
     image_term: result.image_term,
+    shared_entry_id: result.shared_entry_id ?? null,
+    compendium_hit: result.compendium_hit === true,
   };
 }
 

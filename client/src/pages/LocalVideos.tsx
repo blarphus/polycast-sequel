@@ -99,6 +99,13 @@ export default function LocalVideos() {
       } catch (err: any) {
         if (err.name === 'AbortError') return;
         console.error('showDirectoryPicker failed, falling back to input:', err);
+        window.dispatchEvent(new CustomEvent('polycast:fallback', {
+          detail: {
+            title: 'File picker fallback used',
+            message: 'The browser directory picker failed, so Polycast opened the standard folder input.',
+            detail: err.message,
+          },
+        }));
       }
     }
     // Fallback to webkitdirectory input

@@ -21,6 +21,45 @@
     return div.innerHTML;
   }
 
+  function fallbackPill(label, title) {
+    const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+    return `<span class="pc-popup-source-pill"${titleAttr}>${escapeHtml(label)}</span>`;
+  }
+
+  function fallbackNoticePills(result) {
+    const pills = [];
+    const seen = new Set();
+    const addPill = (label, title) => {
+      const key = `${label}\n${title || ''}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      pills.push(fallbackPill(label, title));
+    };
+    const notices = Array.isArray(result?.fallback_notices) ? result.fallback_notices : [];
+    const hasGeminiNotice = notices.some((notice) => /gemini/i.test(notice?.title || ''));
+    const hasOfflineNotice = notices.some((notice) => /offline/i.test(notice?.title || ''));
+    if (result && result.definition_source === 'gemini') {
+      if (!hasGeminiNotice) {
+        addPill('Gemini fallback', 'Gemini supplied the definition because the dictionary path could not.');
+      }
+    } else if (result && result.definition_source === 'offline') {
+      if (!hasOfflineNotice) {
+        addPill('Offline fallback', 'This result came from local offline data.');
+      }
+    }
+    for (const notice of notices) {
+      const label = notice?.title || 'Fallback used';
+      const detail = [notice?.message, notice?.detail].filter(Boolean).join(' ');
+      addPill(label, detail);
+    }
+    if (result?.offline) {
+      addPill('Offline fallback', result.warning || 'Saved locally because the online path was unavailable.');
+    } else if (result?.warning) {
+      addPill('Fallback warning', result.warning);
+    }
+    return pills.join('');
+  }
+
   function renderTildeMarkup(container, text, highlightClass) {
     container.textContent = '';
     const parts = String(text || '').split(/~([^~]+)~/g);
@@ -212,6 +251,13 @@
       renderSaveButton();
       if (handlers.save) {
         Promise.resolve(handlers.save(getSaveTarget()))
+          .then((res) => {
+            if (destroyed) return;
+            const pills = fallbackNoticePills(res);
+            if (!pills) return;
+            bodyEl.insertAdjacentHTML('beforeend', `<div class="pc-popup-fallback-row">${pills}</div>`);
+            position();
+          })
           .catch((err) => console.error('[word-popup] save failed:', err));
       }
     });
@@ -274,9 +320,7 @@
         const translation = res.translation || res.definition || '';
         const dictionaryDefinition = res.matched_gloss || res.definition || '';
         const definitionLabel = 'Dictionary';
-        const definitionSourcePill = res.definition_source === 'gemini'
-          ? '<span class="pc-popup-source-pill">Gemini fallback</span>'
-          : '';
+        const definitionSourcePill = fallbackNoticePills(res);
         if (!translation && !dictionaryDefinition && !res.part_of_speech) {
           bodyEl.innerHTML = `<div class="pc-popup-error">No definition found</div>`;
           return;
