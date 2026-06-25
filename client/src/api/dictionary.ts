@@ -182,6 +182,7 @@ export interface DictionaryWordGroup {
   hasNew: boolean;
   hasPriority: boolean;
   maxFrequency: number | null;
+  maxFrequencyCount?: number | null;
   earliestDueTime: number;
   earliestCreatedTime: number;
   mostRecentCreatedTime: number;

@@ -177,6 +177,45 @@ test('listDictionaryGroupPage projects queued new-card dates without setting due
   assert.equal(result.groups[0].primaryEntry.due_at, null);
 });
 
+test('listDictionaryGroupPage frequency sort uses raw corpus count before rounded frequency', async () => {
+  const rows = [
+    { ...newRow('middle', 1), word: 'middle', target_language: 'es', frequency: 3, frequency_count: 600 },
+    { ...newRow('high', 0), word: 'high', target_language: 'es', frequency: 3, frequency_count: 900 },
+    { ...newRow('unknown', 2), word: 'unknown', target_language: 'es', frequency: 3, frequency_count: null },
+    { ...newRow('low-badge', 3), word: 'low-badge', target_language: 'es', frequency: 2, frequency_count: null },
+  ];
+  const db = {
+    async query(text) {
+      if (/SELECT target_language, daily_new_limit FROM users/.test(text)) {
+        return { rows: [{ target_language: 'es', daily_new_limit: 5 }] };
+      }
+      if (/SELECT COUNT\(\*\)::int AS cnt FROM saved_words/.test(text)) {
+        return { rows: [{ cnt: 0 }] };
+      }
+      if (/SELECT \* FROM saved_words/.test(text)) {
+        return { rows };
+      }
+      return { rows: [], rowCount: 0 };
+    },
+  };
+
+  const high = await listDictionaryGroupPage(db, 'user-1', {
+    page: 0,
+    limit: 10,
+    sort: 'freq-high',
+    timeZone: 'UTC',
+  });
+  const low = await listDictionaryGroupPage(db, 'user-1', {
+    page: 0,
+    limit: 10,
+    sort: 'freq-low',
+    timeZone: 'UTC',
+  });
+
+  assert.deepEqual(high.groups.map((group) => group.word), ['high', 'middle', 'unknown', 'low-badge']);
+  assert.deepEqual(low.groups.map((group) => group.word), ['low-badge', 'unknown', 'middle', 'high']);
+});
+
 test('scheduler rolls every day-level review card forward by missed days', async () => {
   const db = recordingDatabase();
 

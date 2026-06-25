@@ -76,4 +76,26 @@ describe('dictionaryGroups', () => {
     expect(groups.map((group) => group.word)).toEqual(['louvado', 'cargo', 'prefeito']);
     expect(Array.from(getDueNextGroupKeys(groups, 2))).toEqual(['louvado|es', 'cargo|es']);
   });
+
+  it('sorts frequency views by raw corpus count before the rounded badge', () => {
+    const words = [
+      makeWord({ id: 'middle', word: 'middle', frequency: 3, frequency_count: 600, queue_position: 1 }),
+      makeWord({ id: 'high', word: 'high', frequency: 3, frequency_count: 900, queue_position: 0 }),
+      makeWord({ id: 'unknown', word: 'unknown', frequency: 3, frequency_count: null, queue_position: 2 }),
+      makeWord({ id: 'low-badge', word: 'low-badge', frequency: 2, frequency_count: null, queue_position: 3 }),
+    ];
+
+    expect(buildDictionaryGroups(words, '', 'freq-high').map((group) => group.word)).toEqual([
+      'high',
+      'middle',
+      'unknown',
+      'low-badge',
+    ]);
+    expect(buildDictionaryGroups(words, '', 'freq-low').map((group) => group.word)).toEqual([
+      'low-badge',
+      'unknown',
+      'middle',
+      'high',
+    ]);
+  });
 });

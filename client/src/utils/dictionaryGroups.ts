@@ -11,6 +11,7 @@ export interface DictionaryWordGroup {
   hasNew: boolean;
   hasPriority: boolean;
   maxFrequency: number | null;
+  maxFrequencyCount: number | null;
   earliestDueTime: number;
   earliestCreatedTime: number;
   mostRecentCreatedTime: number;
@@ -92,6 +93,20 @@ function compareQueueGroups(a: DictionaryWordGroup, b: DictionaryWordGroup): num
   return a.earliestDueTime - b.earliestDueTime;
 }
 
+function compareFrequencyGroups(a: DictionaryWordGroup, b: DictionaryWordGroup, direction: 'high' | 'low'): number {
+  const multiplier = direction === 'low' ? 1 : -1;
+  const aFrequencyCount = a.maxFrequencyCount ?? 0;
+  const bFrequencyCount = b.maxFrequencyCount ?? 0;
+  if (aFrequencyCount !== bFrequencyCount) return (aFrequencyCount - bFrequencyCount) * multiplier;
+
+  const aFrequency = a.maxFrequency ?? 0;
+  const bFrequency = b.maxFrequency ?? 0;
+  if (aFrequency !== bFrequency) return (aFrequency - bFrequency) * multiplier;
+
+  if (a.nextNewEntry && b.nextNewEntry) return compareNewEntries(a.nextNewEntry, b.nextNewEntry);
+  return a.word.localeCompare(b.word);
+}
+
 export function buildDictionaryGroups(words: SavedWord[], search: string, sort: DictionarySortMode): DictionaryWordGroup[] {
   const query = search.trim().toLowerCase();
   const filtered = query
@@ -115,6 +130,7 @@ export function buildDictionaryGroups(words: SavedWord[], search: string, sort: 
     const dueTimes = entries.map(getDueTime).filter(isFiniteNumber);
     const createdTimes = entries.map(getCreatedTime);
     const maxFrequency = Math.max(...entries.map((entry) => entry.frequency ?? 0));
+    const maxFrequencyCount = Math.max(...entries.map((entry) => entry.frequency_count ?? 0));
 
     return {
       key,
@@ -125,6 +141,7 @@ export function buildDictionaryGroups(words: SavedWord[], search: string, sort: 
       hasNew: newEntries.length > 0,
       hasPriority: entries.some((entry) => entry.priority),
       maxFrequency: maxFrequency > 0 ? maxFrequency : null,
+      maxFrequencyCount: maxFrequencyCount > 0 ? maxFrequencyCount : null,
       earliestDueTime: dueTimes.length > 0 ? Math.min(...dueTimes) : Number.POSITIVE_INFINITY,
       earliestCreatedTime: Math.min(...createdTimes),
       mostRecentCreatedTime: Math.max(...createdTimes),
@@ -140,10 +157,10 @@ export function buildDictionaryGroups(words: SavedWord[], search: string, sort: 
       groups.sort((a, b) => a.word.localeCompare(b.word));
       break;
     case 'freq-high':
-      groups.sort((a, b) => (b.maxFrequency ?? 0) - (a.maxFrequency ?? 0));
+      groups.sort((a, b) => compareFrequencyGroups(a, b, 'high'));
       break;
     case 'freq-low':
-      groups.sort((a, b) => (a.maxFrequency ?? 0) - (b.maxFrequency ?? 0));
+      groups.sort((a, b) => compareFrequencyGroups(a, b, 'low'));
       break;
     case 'due':
       groups.sort((a, b) => {

@@ -462,6 +462,21 @@ function compareReviewEntries(a, b) {
   return getCreatedTime(a) - getCreatedTime(b);
 }
 
+function compareFrequencyGroups(a, b, direction) {
+  const multiplier = direction === 'low' ? 1 : -1;
+  const aFreqCount = a.maxFrequencyCount ?? 0;
+  const bFreqCount = b.maxFrequencyCount ?? 0;
+  if (aFreqCount !== bFreqCount) return (aFreqCount - bFreqCount) * multiplier;
+
+  const aFrequency = a.maxFrequency ?? 0;
+  const bFrequency = b.maxFrequency ?? 0;
+  if (aFrequency !== bFrequency) return (aFrequency - bFrequency) * multiplier;
+
+  if (a.nextNewEntry && b.nextNewEntry) return compareNewEntries(a.nextNewEntry, b.nextNewEntry);
+  if (a.nextReviewEntry && b.nextReviewEntry) return compareReviewEntries(a.nextReviewEntry, b.nextReviewEntry);
+  return a.word.localeCompare(b.word);
+}
+
 function compareDisplayEntries(a, b) {
   const aIsNew = isDictionaryEntryNew(a);
   const bIsNew = isDictionaryEntryNew(b);
@@ -487,6 +502,7 @@ function buildDictionaryGroups(words, sort, dailyNewLimit) {
     const dueTimes = reviewEntries.map(getDueTime).filter(Number.isFinite);
     const createdTimes = entries.map(getCreatedTime);
     const maxFrequency = Math.max(...entries.map((entry) => entry.frequency ?? 0));
+    const maxFrequencyCount = Math.max(...entries.map((entry) => entry.frequency_count ?? 0));
 
     return {
       key,
@@ -496,6 +512,7 @@ function buildDictionaryGroups(words, sort, dailyNewLimit) {
       hasNew: newEntries.length > 0,
       hasPriority: entries.some((entry) => entry.priority),
       maxFrequency: maxFrequency > 0 ? maxFrequency : null,
+      maxFrequencyCount: maxFrequencyCount > 0 ? maxFrequencyCount : null,
       earliestDueTime: dueTimes.length > 0 ? Math.min(...dueTimes) : Number.POSITIVE_INFINITY,
       earliestCreatedTime: Math.min(...createdTimes),
       mostRecentCreatedTime: Math.max(...createdTimes),
@@ -536,9 +553,9 @@ function buildDictionaryGroups(words, sort, dailyNewLimit) {
   } else if (sort === 'az') {
     groups.sort((a, b) => a.word.localeCompare(b.word));
   } else if (sort === 'freq-high') {
-    groups.sort((a, b) => (b.maxFrequency ?? 0) - (a.maxFrequency ?? 0));
+    groups.sort((a, b) => compareFrequencyGroups(a, b, 'high'));
   } else if (sort === 'freq-low') {
-    groups.sort((a, b) => (a.maxFrequency ?? 0) - (b.maxFrequency ?? 0));
+    groups.sort((a, b) => compareFrequencyGroups(a, b, 'low'));
   } else if (sort === 'due') {
     groups.sort((a, b) => {
       if (a.nextReviewEntry && b.nextReviewEntry) return compareReviewEntries(a.nextReviewEntry, b.nextReviewEntry);
