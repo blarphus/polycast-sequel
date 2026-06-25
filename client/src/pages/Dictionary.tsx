@@ -156,7 +156,7 @@ export default function Dictionary() {
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [totalGroups, setTotalGroups] = useState(0);
-  const WORDS_PER_PAGE = 20;
+  const WORDS_PER_PAGE = 60;
 
   // DnD state
   const [dragItem, setDragItem] = useState<string | null>(null);

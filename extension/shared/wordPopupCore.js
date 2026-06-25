@@ -273,13 +273,11 @@
 
         const translation = res.translation || res.definition || '';
         const dictionaryDefinition = res.matched_gloss || res.definition || '';
-        const definitionLabel = res.matched_gloss ? 'Dictionary' : 'Meaning';
-        const geminiDefinition = res.gemini_definition || '';
-        const showGeminiDefinition = geminiDefinition
-          && geminiDefinition.toLowerCase() !== dictionaryDefinition.toLowerCase()
-          && geminiDefinition.toLowerCase() !== translation.toLowerCase();
-
-        if (!translation && !dictionaryDefinition && !geminiDefinition && !res.part_of_speech) {
+        const definitionLabel = 'Dictionary';
+        const definitionSourcePill = res.definition_source === 'gemini'
+          ? '<span class="pc-popup-source-pill">Gemini fallback</span>'
+          : '';
+        if (!translation && !dictionaryDefinition && !res.part_of_speech) {
           bodyEl.innerHTML = `<div class="pc-popup-error">No definition found</div>`;
           return;
         }
@@ -366,8 +364,8 @@
             bodyEl.innerHTML = `${toggle}
               ${translation ? `<div class="pc-popup-translation">${escapeHtml(translation)}${saveState === 'new-sense' ? '<span class="pc-popup-new-def-pill">New definition!</span>' : ''}</div>` : ''}
               ${res.part_of_speech ? `<div class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</div>` : ''}
-              ${dictionaryDefinition ? `<div class="pc-popup-definition"><span class="pc-popup-definition-label">${definitionLabel}</span>${escapeHtml(dictionaryDefinition)}</div>` : ''}
-              ${showGeminiDefinition ? `<div class="pc-popup-definition"><span class="pc-popup-definition-label">Meaning</span>${escapeHtml(geminiDefinition)}</div>` : autoExplanationHtml()}`;
+              ${dictionaryDefinition ? `<div class="pc-popup-definition"><span class="pc-popup-definition-label">${definitionLabel}${definitionSourcePill}</span>${escapeHtml(dictionaryDefinition)}</div>` : ''}
+              ${autoExplanationHtml()}`;
           }
 
           if (hasPhrase) {
