@@ -396,8 +396,9 @@ export default function Dictionary() {
               )}
             </div>
           ) : (
-            <div className="dict-container">
-              <div className={`dict-list${isQueueMode ? ' dict-list--queue-view' : ''}`}>
+            <>
+              <div className="dict-container">
+                <div className={`dict-list${isQueueMode ? ' dict-list--queue-view' : ''}`}>
                 {/* Bracket rail */}
                 {isQueueMode && page === 0 && dueNextPageKeys.length > 0 && bracketHeight > 0 && (
                   <div className="dict-queue-bracket" style={{ height: bracketHeight }}>
@@ -551,6 +552,7 @@ export default function Dictionary() {
                     </div>
                   );
                 })}
+                </div>
               </div>
               {totalPages > 1 && (
                 <div className="dict-pagination">
@@ -573,7 +575,7 @@ export default function Dictionary() {
                   </button>
                 </div>
               )}
-            </div>
+            </>
           )}
         </section>
       </main>
