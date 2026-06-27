@@ -2,7 +2,7 @@
 // socket/groupCall.js — Socket.IO group call signaling (mesh WebRTC)
 // ---------------------------------------------------------------------------
 
-import { userToSocket } from './presence.js';
+import { getUserSocketIds } from './presence.js';
 import pool from '../db.js';
 import { markParticipantLeft } from '../lib/groupCallDb.js';
 import logger from '../logger.js';
@@ -84,9 +84,9 @@ export function handleGroupCall(io, socket) {
 
   // ---- group:offer — relay SDP offer to specific peer ----
   socket.on('group:offer', ({ roomId, targetUserId, offer }) => {
-    const targetSocketId = userToSocket.get(targetUserId);
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('group:offer', {
+    const targetSocketIds = getUserSocketIds(targetUserId);
+    if (targetSocketIds.length > 0) {
+      io.to(targetSocketIds).emit('group:offer', {
         roomId,
         fromUserId: socket.userId,
         offer,
@@ -96,9 +96,9 @@ export function handleGroupCall(io, socket) {
 
   // ---- group:answer — relay SDP answer to specific peer ----
   socket.on('group:answer', ({ roomId, targetUserId, answer }) => {
-    const targetSocketId = userToSocket.get(targetUserId);
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('group:answer', {
+    const targetSocketIds = getUserSocketIds(targetUserId);
+    if (targetSocketIds.length > 0) {
+      io.to(targetSocketIds).emit('group:answer', {
         roomId,
         fromUserId: socket.userId,
         answer,
@@ -108,9 +108,9 @@ export function handleGroupCall(io, socket) {
 
   // ---- group:ice — relay ICE candidate to specific peer ----
   socket.on('group:ice', ({ roomId, targetUserId, candidate }) => {
-    const targetSocketId = userToSocket.get(targetUserId);
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('group:ice', {
+    const targetSocketIds = getUserSocketIds(targetUserId);
+    if (targetSocketIds.length > 0) {
+      io.to(targetSocketIds).emit('group:ice', {
         roomId,
         fromUserId: socket.userId,
         candidate,

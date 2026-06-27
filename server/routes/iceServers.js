@@ -53,7 +53,7 @@ router.get('/api/ice-servers', authMiddleware, async (req, res) => {
       username: turnUsername,
       credential: turnCredential,
     });
-    return res.json({ iceServers });
+    return res.json({ iceServers, turnAvailable: true });
   }
 
   try {
@@ -62,10 +62,10 @@ router.get('/api/ice-servers', authMiddleware, async (req, res) => {
       throw new Error('Metered TURN returned no servers');
     }
     iceServers.push(...metered);
-    return res.json({ iceServers });
+    return res.json({ iceServers, turnAvailable: true });
   } catch (err) {
     req.log.warn('[ice-servers] TURN unavailable, falling back to STUN only: %s', err.message);
-    return res.json({ iceServers });
+    return res.json({ iceServers, turnAvailable: false });
   }
 });
 

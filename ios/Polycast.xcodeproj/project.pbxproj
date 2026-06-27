@@ -27,6 +27,7 @@
 		4CEE0C5104289E139FC09B94 /* AudiobookPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0351A81CC69816F15B8B5A7 /* AudiobookPlayer.swift */; };
 		4EE5FC11B8B1B4AF2D175F92 /* ReaderPopupUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E133F583D530A10B611CB3 /* ReaderPopupUITests.swift */; };
 		5D7BC7DB29B996705F2FDEA8 /* VoIPPushManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 592164E1CAE013368C4797D8 /* VoIPPushManager.swift */; };
+		64A2E4757F57D2DC1CFDB802 /* TodayWordsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5189256AF449795DA3D1BA6D /* TodayWordsWidget.swift */; };
 		64E7A76B415CB9638CFC3DD7 /* AudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6830E0AA348B42CB7989D10 /* AudioPlayer.swift */; };
 		66F00ED19D3938CEB81797E2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B3AFB60DED4E6BCE411A26B2 /* Assets.xcassets */; };
 		69CC61158CF1CD098FA23284 /* FullscreenPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A35F10172AA77BE9043260E /* FullscreenPlayerView.swift */; };
@@ -37,8 +38,11 @@
 		82F8D5E903BD7B13085798D9 /* DictionaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C75342F6AE5D89EEC202127A /* DictionaryView.swift */; };
 		868E9BABEA0F361E4CC93940 /* SRTParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762B3E1817A97F487CD09899 /* SRTParser.swift */; };
 		88334256220F95210730888D /* WordLookupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F3C007192E64D2A289B8B25 /* WordLookupView.swift */; };
+		8BD3E09529130C3BE2F4DB03 /* TodayWordsWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B5560AD60641C72C95A53D9 /* TodayWordsWidgetSnapshot.swift */; };
 		8CE57E4035829354D11595D1 /* LocalMediaStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38CEA33AE2761A4F213372C9 /* LocalMediaStore.swift */; };
+		8F98823507C0CB4EB6305BFE /* PolycastWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8C0733C38D651FF8037F6445 /* PolycastWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9148E4F82E329742A579BE53 /* NavigationTargets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A575BFBC26040EE7D1EBF61 /* NavigationTargets.swift */; };
+		925E1EC5AFCD868E7D927745 /* TodayWordsWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B5560AD60641C72C95A53D9 /* TodayWordsWidgetSnapshot.swift */; };
 		94825E4E17EED058478AEB05 /* PolycastUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD4009045A0C59C3906AC09 /* PolycastUITests.swift */; };
 		9633DF9E76299FEE2241348D /* WordStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A654B06AB7938E6F97C10DED /* WordStore.swift */; };
 		9A8D6BADEFFFBD6F930414A1 /* FriendRequestsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BB285C48EAB7A205A2554FF /* FriendRequestsSheet.swift */; };
@@ -89,7 +93,28 @@
 			remoteGlobalIDString = B2AFB531F9D173C07D9646EE;
 			remoteInfo = Polycast;
 		};
+		E622BB021C927F2F6DB8E7B7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BFC3560A4617EDA98CEEDA9A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CEB9F3B8A9F844441A7DEAC9;
+			remoteInfo = PolycastWidget;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		9A0F03E2A406A5C23D8F7163 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				8F98823507C0CB4EB6305BFE /* PolycastWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		010B6134E33FD8B31A7B91EB /* PhrasePopupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhrasePopupView.swift; sourceTree = "<group>"; };
@@ -98,11 +123,14 @@
 		189B31DD998B951FA1DCFF61 /* KeychainTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainTokenStore.swift; sourceTree = "<group>"; };
 		228D66EF6CF17CACA4CA1E29 /* ReaderText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderText.swift; sourceTree = "<group>"; };
 		25D2D5484B1B558182EF4504 /* IncomingCallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomingCallView.swift; sourceTree = "<group>"; };
+		276965CC90183E1DBE13EC2D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		2EB759414EDDBA41B766B50E /* VideosView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideosView.swift; sourceTree = "<group>"; };
 		3626F60662436B9B606B290C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		38CEA33AE2761A4F213372C9 /* LocalMediaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalMediaStore.swift; sourceTree = "<group>"; };
 		3A575BFBC26040EE7D1EBF61 /* NavigationTargets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationTargets.swift; sourceTree = "<group>"; };
 		3A609EB14B44120E58E9F4FD /* Polycast.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Polycast.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3AED3D965068B873097964D8 /* PolycastWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PolycastWidget.entitlements; sourceTree = "<group>"; };
+		3B5560AD60641C72C95A53D9 /* TodayWordsWidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWordsWidgetSnapshot.swift; sourceTree = "<group>"; };
 		3C31E3D91AFB078DDAAEA551 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		3E32DEE2625D5FC1FBF9E59B /* ReaderSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderSettings.swift; sourceTree = "<group>"; };
 		3E80E1B38E7B225928321060 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
@@ -112,6 +140,7 @@
 		49CD6CDB2A4F273885B42032 /* AuthorizedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthorizedAsyncImage.swift; sourceTree = "<group>"; };
 		50E16A4370AC65FE91AFE957 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		5143A7C7C6E8FBDC3442283B /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		5189256AF449795DA3D1BA6D /* TodayWordsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWordsWidget.swift; sourceTree = "<group>"; };
 		592164E1CAE013368C4797D8 /* VoIPPushManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoIPPushManager.swift; sourceTree = "<group>"; };
 		5FC938E37EBB31FC8B9D5FFD /* SoundEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundEffects.swift; sourceTree = "<group>"; };
 		6BB285C48EAB7A205A2554FF /* FriendRequestsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendRequestsSheet.swift; sourceTree = "<group>"; };
@@ -127,6 +156,7 @@
 		872DE2BA9E72A6D7E74C8B42 /* HandsFreeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandsFreeController.swift; sourceTree = "<group>"; };
 		892F1FFAEB210600A295513B /* MiniZip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniZip.swift; sourceTree = "<group>"; };
 		8ABE0E1AE00EF9A78348126C /* LanguageOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageOptions.swift; sourceTree = "<group>"; };
+		8C0733C38D651FF8037F6445 /* PolycastWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PolycastWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		93A53077286F5B8795494A0A /* WatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchView.swift; sourceTree = "<group>"; };
 		9AADC69F9224253500F9139A /* WebRTCClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebRTCClient.swift; sourceTree = "<group>"; };
 		A33CDB13C4DC7CF522AD9FD6 /* LocalWatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWatchView.swift; sourceTree = "<group>"; };
@@ -276,6 +306,7 @@
 				E9CD52E1F98B39B92B1AB30F /* SRS.swift */,
 				762B3E1817A97F487CD09899 /* SRTParser.swift */,
 				08B4C5C697BC77D87370A498 /* TildeMarkup.swift */,
+				3B5560AD60641C72C95A53D9 /* TodayWordsWidgetSnapshot.swift */,
 				45D474334679C85536A46C81 /* TranscriptWorkerClient.swift */,
 				592164E1CAE013368C4797D8 /* VoIPPushManager.swift */,
 				9AADC69F9224253500F9139A /* WebRTCClient.swift */,
@@ -288,6 +319,7 @@
 			isa = PBXGroup;
 			children = (
 				0D4A87D2A1AF394C35A93D9D /* Polycast */,
+				9B7B61F51534C2F7696E0FA6 /* PolycastWidget */,
 				7965361D060D0FFC1D82A771 /* Sources */,
 				C4A76BFBCC1F27DED52C559E /* Tests */,
 				2BCE75FD8FAC1DF2BCDBF391 /* UITests */,
@@ -312,6 +344,7 @@
 				3A609EB14B44120E58E9F4FD /* Polycast.app */,
 				FC3F57FA37ABEB9D2FEE4F3F /* PolycastTests.xctest */,
 				7CEAA04695D80E567042C945 /* PolycastUITests.xctest */,
+				8C0733C38D651FF8037F6445 /* PolycastWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -355,6 +388,16 @@
 				3F3C007192E64D2A289B8B25 /* WordLookupView.swift */,
 			);
 			path = Dictionary;
+			sourceTree = "<group>";
+		};
+		9B7B61F51534C2F7696E0FA6 /* PolycastWidget */ = {
+			isa = PBXGroup;
+			children = (
+				276965CC90183E1DBE13EC2D /* Info.plist */,
+				3AED3D965068B873097964D8 /* PolycastWidget.entitlements */,
+				5189256AF449795DA3D1BA6D /* TodayWordsWidget.swift */,
+			);
+			path = PolycastWidget;
 			sourceTree = "<group>";
 		};
 		C4A76BFBCC1F27DED52C559E /* Tests */ = {
@@ -446,10 +489,12 @@
 				DA4349FC58A226D8DD8EE490 /* Sources */,
 				AB8E07592C08EF1522D3A2BA /* Resources */,
 				399D75AE1FEA953E2A28F13A /* Frameworks */,
+				9A0F03E2A406A5C23D8F7163 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C420B75A8A5DA421A3E66C1F /* PBXTargetDependency */,
 			);
 			name = Polycast;
 			packageProductDependencies = (
@@ -459,6 +504,23 @@
 			productName = Polycast;
 			productReference = 3A609EB14B44120E58E9F4FD /* Polycast.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CEB9F3B8A9F844441A7DEAC9 /* PolycastWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1D772F59286A4EE56EAC5F0 /* Build configuration list for PBXNativeTarget "PolycastWidget" */;
+			buildPhases = (
+				EA2CF6F937EDDC6A9E0C655F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PolycastWidget;
+			packageProductDependencies = (
+			);
+			productName = PolycastWidget;
+			productReference = 8C0733C38D651FF8037F6445 /* PolycastWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -479,6 +541,10 @@
 						TestTargetID = B2AFB531F9D173C07D9646EE;
 					};
 					B2AFB531F9D173C07D9646EE = {
+						DevelopmentTeam = DQNRTU7888;
+						ProvisioningStyle = Automatic;
+					};
+					CEB9F3B8A9F844441A7DEAC9 = {
 						DevelopmentTeam = DQNRTU7888;
 						ProvisioningStyle = Automatic;
 					};
@@ -505,6 +571,7 @@
 				B2AFB531F9D173C07D9646EE /* Polycast */,
 				0BFA1814D711B9A5CC07B58A /* PolycastTests */,
 				42C60502CE7BAA70C88DAE36 /* PolycastUITests */,
+				CEB9F3B8A9F844441A7DEAC9 /* PolycastWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -582,6 +649,7 @@
 				3AEEC298A33D2CE5772E5984 /* StudentDetailView.swift in Sources */,
 				F8B285A0EE3AB2E154F4EFFE /* StudentsView.swift in Sources */,
 				290A39E13513CEC6388A7F94 /* TildeMarkup.swift in Sources */,
+				925E1EC5AFCD868E7D927745 /* TodayWordsWidgetSnapshot.swift in Sources */,
 				3DC3A93246D342112AE682A4 /* TranscriptComponents.swift in Sources */,
 				1555AA7B9FE12F99A21C69A0 /* TranscriptWorkerClient.swift in Sources */,
 				FBD6D4CE7C8CD5D8B8FC3A11 /* UserSearchSheet.swift in Sources */,
@@ -604,6 +672,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		EA2CF6F937EDDC6A9E0C655F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				64A2E4757F57D2DC1CFDB802 /* TodayWordsWidget.swift in Sources */,
+				8BD3E09529130C3BE2F4DB03 /* TodayWordsWidgetSnapshot.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -616,6 +693,11 @@
 			isa = PBXTargetDependency;
 			target = B2AFB531F9D173C07D9646EE /* Polycast */;
 			targetProxy = 7845804C95D133564925FBF6 /* PBXContainerItemProxy */;
+		};
+		C420B75A8A5DA421A3E66C1F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CEB9F3B8A9F844441A7DEAC9 /* PolycastWidget */;
+			targetProxy = E622BB021C927F2F6DB8E7B7 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -660,26 +742,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Polycast/Polycast.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Polycast;
-				INFOPLIST_KEY_CFBundleName = Polycast;
-				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Polycast needs camera access for video calls.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Polycast needs microphone access for audio and video calls.";
-				INFOPLIST_KEY_UIBackgroundModes = (
-					voip,
-					"remote-notification",
-					audio,
-				);
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = (
-					UIInterfaceOrientationPortrait,
-					UIInterfaceOrientationLandscapeLeft,
-					UIInterfaceOrientationLandscapeRight,
-				);
-				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
+				INFOPLIST_FILE = Polycast/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -750,30 +816,35 @@
 			};
 			name = Release;
 		};
+		8922B6ECDBBE4F2C9AE4B4C4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = PolycastWidget/PolycastWidget.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = PolycastWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.patron.polycast.widget;
+				PRODUCT_NAME = PolycastWidget;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		B36EE25355DAA989433CED05 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Polycast/Polycast.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Polycast;
-				INFOPLIST_KEY_CFBundleName = Polycast;
-				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Polycast needs camera access for video calls.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Polycast needs microphone access for audio and video calls.";
-				INFOPLIST_KEY_UIBackgroundModes = (
-					voip,
-					"remote-notification",
-					audio,
-				);
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = (
-					UIInterfaceOrientationPortrait,
-					UIInterfaceOrientationLandscapeLeft,
-					UIInterfaceOrientationLandscapeRight,
-				);
-				INFOPLIST_KEY_UIUserInterfaceStyle = Dark;
+				INFOPLIST_FILE = Polycast/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -782,6 +853,27 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.patron.polycast;
 				PRODUCT_NAME = Polycast;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B642A8F716AE3B5AE5B422E7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = PolycastWidget/PolycastWidget.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = PolycastWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.patron.polycast.widget;
+				PRODUCT_NAME = PolycastWidget;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -904,6 +996,15 @@
 			buildConfigurations = (
 				C154D07EFEDCC48F0CF9BD18 /* Debug */,
 				3D6A8BF5209A40BF48C422AB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A1D772F59286A4EE56EAC5F0 /* Build configuration list for PBXNativeTarget "PolycastWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8922B6ECDBBE4F2C9AE4B4C4 /* Debug */,
+				B642A8F716AE3B5AE5B422E7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

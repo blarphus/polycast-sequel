@@ -20,11 +20,17 @@ export interface UseTranscriptionResult {
   streamReady: boolean;
 }
 
-export function useTranscription(peerId: string): UseTranscriptionResult {
+export function useTranscription(
+  peerId: string,
+  externalStreamRef?: React.MutableRefObject<MediaStream | null>,
+  externalStreamReady?: boolean,
+): UseTranscriptionResult {
   const { user } = useAuth();
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const ownedStreamRef = useRef<MediaStream | null>(null);
+  const streamRef = externalStreamRef ?? ownedStreamRef;
+  const ownsStream = !externalStreamRef;
   const transcriptionRef = useRef<TranscriptionService | null>(null);
 
   const [localText, setLocalText] = useState('');
@@ -39,11 +45,11 @@ export function useTranscription(peerId: string): UseTranscriptionResult {
       transcriptionRef.current.stop();
       transcriptionRef.current = null;
     }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
+    if (ownsStream && ownedStreamRef.current) {
+      ownedStreamRef.current.getTracks().forEach((t) => t.stop());
+      ownedStreamRef.current = null;
     }
-  }, []);
+  }, [ownsStream]);
 
   useEffect(() => {
     let cleaned = false;
@@ -62,15 +68,21 @@ export function useTranscription(peerId: string): UseTranscriptionResult {
 
     async function setup() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
+        let stream = streamRef.current;
+        if (!stream && ownsStream) {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true,
+          });
+          ownedStreamRef.current = stream;
+        }
+
+        if (!stream) return;
+
         if (cleaned) {
-          stream.getTracks().forEach((t) => t.stop());
+          if (ownsStream) stream.getTracks().forEach((t) => t.stop());
           return;
         }
-        streamRef.current = stream;
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -95,7 +107,7 @@ export function useTranscription(peerId: string): UseTranscriptionResult {
       cleanupTranscription();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [peerId]);
+  }, [peerId, externalStreamReady]);
 
   return {
     streamRef,
@@ -105,6 +117,6 @@ export function useTranscription(peerId: string): UseTranscriptionResult {
     remoteLang,
     transcriptEntries,
     cleanupTranscription,
-    streamReady,
+    streamReady: externalStreamRef ? !!externalStreamReady : streamReady,
   };
 }

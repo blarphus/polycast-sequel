@@ -49,13 +49,25 @@ export function createPeerConnection(
 /**
  * Add local media tracks and create an SDP offer.
  */
+function addLocalTracksOnce(pc: RTCPeerConnection, localStream: MediaStream): void {
+  const existingTrackIds = new Set(
+    pc.getSenders()
+      .map((sender) => sender.track?.id)
+      .filter(Boolean),
+  );
+
+  localStream.getTracks().forEach((track) => {
+    if (!existingTrackIds.has(track.id)) {
+      pc.addTrack(track, localStream);
+    }
+  });
+}
+
 export async function createOffer(
   pc: RTCPeerConnection,
   localStream: MediaStream,
 ): Promise<RTCSessionDescriptionInit> {
-  localStream.getTracks().forEach((track) => {
-    pc.addTrack(track, localStream);
-  });
+  addLocalTracksOnce(pc, localStream);
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
@@ -72,9 +84,7 @@ export async function createAnswer(
 ): Promise<RTCSessionDescriptionInit> {
   await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
-  localStream.getTracks().forEach((track) => {
-    pc.addTrack(track, localStream);
-  });
+  addLocalTracksOnce(pc, localStream);
 
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
@@ -86,8 +96,9 @@ export async function createAnswer(
  */
 export async function addIceCandidate(
   pc: RTCPeerConnection,
-  candidate: RTCIceCandidateInit,
+  candidate: RTCIceCandidateInit | null,
 ): Promise<void> {
+  if (!candidate) return;
   try {
     await pc.addIceCandidate(new RTCIceCandidate(candidate));
   } catch (err) {

@@ -51,8 +51,8 @@ struct VideosView: View {
     @State private var shortsPresented = false
 
     private let grid = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12, alignment: .top),
+        GridItem(.flexible(), spacing: 12, alignment: .top),
     ]
 
     private var rankedSearchItems: [VideoSearchResultItem] {
@@ -1063,34 +1063,40 @@ private struct CompactVideoCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            ZStack(alignment: .bottomTrailing) {
-                AsyncImage(url: URL(string: video.thumbnail)) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Rectangle().fill(.white.opacity(0.08))
-                }
-                .frame(maxWidth: .infinity)
-                .aspectRatio(16 / 9, contentMode: .fill)
-                .clipped()
+            GeometryReader { proxy in
+                ZStack(alignment: .bottomTrailing) {
+                    AsyncImage(url: URL(string: video.thumbnail)) { image in
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    } placeholder: {
+                        Rectangle().fill(.white.opacity(0.08))
+                    }
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .clipped()
 
-                PlaybackProgressBar(
-                    fraction: VideoProgressStore.progressFraction(
-                        forYoutubeID: video.youtubeId,
-                        durationSeconds: video.durationSeconds
+                    PlaybackProgressBar(
+                        fraction: VideoProgressStore.progressFraction(
+                            forYoutubeID: video.youtubeId,
+                            durationSeconds: video.durationSeconds
+                        )
                     )
-                )
 
-                if let duration = video.durationSeconds {
-                    Text(formatDuration(duration))
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 3)
-                        .background(.black.opacity(0.82), in: RoundedRectangle(cornerRadius: 4))
-                        .padding(5)
+                    if let duration = video.durationSeconds {
+                        Text(formatDuration(duration))
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 3)
+                            .background(.black.opacity(0.82), in: RoundedRectangle(cornerRadius: 4))
+                            .padding(5)
+                    }
                 }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
             }
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .aspectRatio(16 / 9, contentMode: .fit)
+            .clipped()
 
             Text(video.title)
                 .font(.subheadline.weight(.semibold))

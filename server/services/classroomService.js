@@ -1,5 +1,5 @@
 import pool from '../db.js';
-import { userToSocket } from '../socket/presence.js';
+import { isUserOnline } from '../socket/presence.js';
 import { generateUniqueClassIdentity } from '../lib/classroomIdentity.js';
 import { getUserAccountType } from '../lib/userQueries.js';
 import { httpError } from '../lib/httpError.js';
@@ -259,7 +259,7 @@ export async function listClassroomStudents(classroomId) {
     id: row.id,
     username: row.username,
     display_name: row.display_name,
-    online: userToSocket.has(row.id),
+    online: isUserOnline(row.id),
     added_at: row.added_at,
   }));
 }

@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import WidgetKit
 
 struct PracticeHubView: View {
     @State private var drillSessions: [DrillSession] = []
@@ -488,6 +490,20 @@ struct LearnView: View {
             previewWords = upcomingNewWords(from: words)
             wordStore.upsert(contentsOf: words)
             newWordsCount = min(ov.dailyNewLimit, min(ov.newAvailable, 50))
+            let widgetFeed: [SavedWord]
+            do {
+                let dueWords = try await APIClient.shared.dueWords(newLimitOverride: newWordsCount)
+                wordStore.upsert(contentsOf: dueWords)
+                widgetFeed = todayWordsWidgetFeed(from: dueWords, fallbackNewWords: previewWords)
+            } catch {
+                print("[Polycast] Failed to load widget due feed: \(error)")
+                widgetFeed = Array(previewWords.prefix(20))
+            }
+            await publishTodayWordsWidgetSnapshot(
+                overview: ov,
+                words: widgetFeed,
+                newWordsCount: newWordsCount
+            )
             // Warm the carousel images so swiping to upcoming slides never flashes.
             prefetchWordImages(previewWords.prefix(newWordsCount).compactMap { APIClient.proxyImageURL($0.imageUrl) })
         } catch {
@@ -1564,6 +1580,8 @@ struct LearnView: View {
                 let unseen = more.filter { !knownIDs.contains($0.id) }
                 if !unseen.isEmpty {
                     cards.append(contentsOf: unseen)
+                } else {
+                    await publishUpcomingQueueWidgetSnapshot()
                 }
             } catch {
                 print("[Polycast] Failed to check for more cards: \(error)")
@@ -1612,6 +1630,337 @@ private func upcomingNewWords(from words: [SavedWord]) -> [SavedWord] {
             if lhs.createdAt != rhs.createdAt { return lhs.createdAt < rhs.createdAt }
             return lhs.id < rhs.id
         }
+}
+
+private func todayWordsWidgetFeed(from dueWords: [SavedWord], fallbackNewWords: [SavedWord]) -> [SavedWord] {
+    let dueNewWords = dueWords.filter(isNewCard)
+    let dueReviewWords = dueWords.filter { !isNewCard($0) }
+    let feed = dueNewWords + dueReviewWords
+    if !feed.isEmpty {
+        return Array(feed.prefix(20))
+    }
+    return Array(fallbackNewWords.prefix(20))
+}
+
+private func publishTodayWordsWidgetSnapshot(
+    overview: StudyOverview?,
+    words: [SavedWord],
+    newWordsCount: Int
+) async {
+    let reviewCount = overview?.due ?? 0
+    let activeCount = max(newWordsCount, words.filter(isNewCard).count)
+    let dueCount = reviewCount + activeCount
+    let dueCountLabel = "\(dueCount) \(dueCount == 1 ? "card" : "cards") due today"
+    let selectedWords = Array(words.prefix(20))
+    var widgetWords: [TodayWordsWidgetWord] = []
+
+    for word in selectedWords {
+        let localImageFilename = await cacheTodayWordsWidgetImage(for: word)
+        let localCardFilename = renderTodayWordsWidgetMediumCard(
+            for: word,
+            localImageFilename: localImageFilename,
+            dueCountLabel: dueCountLabel
+        )
+        widgetWords.append(
+            TodayWordsWidgetWord(
+                id: word.id,
+                word: word.word,
+                translation: word.translation,
+                definition: word.definition,
+                partOfSpeech: word.partOfSpeech,
+                exampleSentence: word.exampleSentence,
+                sentenceTranslation: word.sentenceTranslation,
+                imageUrl: word.imageUrl,
+                localImageFilename: localImageFilename,
+                localCardFilename: localCardFilename
+            )
+        )
+    }
+
+    TodayWordsWidgetImageStore.removeUnusedImages(
+        keeping: Set(widgetWords.flatMap { [$0.localImageFilename, $0.localCardFilename].compactMap { $0 } })
+    )
+
+    let snapshot = TodayWordsWidgetSnapshot(
+        generatedAt: .now,
+        dueCount: dueCount,
+        reviewCount: reviewCount,
+        newCount: activeCount,
+        dailyNewLimit: overview?.dailyNewLimit ?? activeCount,
+        feedTitle: activeCount > 0 ? "Today" : "Queue",
+        words: widgetWords
+    )
+
+    TodayWordsWidgetStore.saveSnapshot(snapshot)
+    WidgetCenter.shared.reloadTimelines(ofKind: todayWordsWidgetKind)
+}
+
+private func publishUpcomingQueueWidgetSnapshot() async {
+    do {
+        async let overviewRequest = APIClient.shared.studyOverview()
+        async let previewRequest = APIClient.shared.newWordPreview(limit: 12)
+        let (overview, previewWords) = try await (overviewRequest, previewRequest)
+        await publishTodayWordsWidgetSnapshot(overview: overview, words: upcomingNewWords(from: previewWords), newWordsCount: 0)
+    } catch {
+        print("[Polycast] Failed to publish widget queue fallback: \(error)")
+        await publishTodayWordsWidgetSnapshot(overview: nil, words: [], newWordsCount: 0)
+    }
+}
+
+private func renderTodayWordsWidgetMediumCard(
+    for word: SavedWord,
+    localImageFilename: String?,
+    dueCountLabel: String
+) -> String? {
+    guard let directory = try? TodayWordsWidgetImageStore.ensureDirectory() else { return nil }
+    let filename = TodayWordsWidgetImageStore.cardFilename(for: word.id)
+    let destinationURL = directory.appendingPathComponent(filename)
+    let sourceImage = TodayWordsWidgetImageStore.imageURL(for: localImageFilename)
+        .flatMap { UIImage(contentsOfFile: $0.path) }
+
+    let image = TodayWordsWidgetMediumCardRenderer.render(
+        word: word.word,
+        definition: word.definition,
+        partOfSpeech: word.partOfSpeech,
+        dueCountLabel: dueCountLabel,
+        sourceImage: sourceImage
+    )
+
+    guard let data = image.pngData() else { return nil }
+    do {
+        try data.write(to: destinationURL, options: .atomic)
+        return filename
+    } catch {
+        print("[Polycast] Failed to render widget card for \(word.word): \(error)")
+        return nil
+    }
+}
+
+private func cacheTodayWordsWidgetImage(for word: SavedWord) async -> String? {
+    guard let remoteURL = APIClient.proxyImageURL(word.imageUrl) else { return nil }
+    let filename = TodayWordsWidgetImageStore.filename(for: word.id, imageURL: remoteURL.absoluteString)
+    guard let directory = try? TodayWordsWidgetImageStore.ensureDirectory() else { return nil }
+    let destinationURL = directory.appendingPathComponent(filename)
+
+    if FileManager.default.fileExists(atPath: destinationURL.path) {
+        if let cachedImage = UIImage(contentsOfFile: destinationURL.path) {
+            if cachedImage.longestSide <= 560 {
+                return filename
+            }
+            if let widgetData = cachedImage.widgetThumbnailJPEGData(maxDimension: 560) {
+                do {
+                    try widgetData.write(to: destinationURL, options: .atomic)
+                    return filename
+                } catch {
+                    print("[Polycast] Failed to resize existing widget image for \(word.word): \(error)")
+                }
+            }
+        } else {
+            try? FileManager.default.removeItem(at: destinationURL)
+        }
+    }
+
+    do {
+        let request = APIClient.shared.authorizedRequest(for: remoteURL)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+              let image = UIImage(data: data)
+        else { return nil }
+
+        let widgetData = image.widgetThumbnailJPEGData(maxDimension: 560) ?? data
+        try widgetData.write(to: destinationURL, options: .atomic)
+        return filename
+    } catch {
+        print("[Polycast] Failed to cache widget image for \(word.word): \(error)")
+        return nil
+    }
+}
+
+private enum TodayWordsWidgetMediumCardRenderer {
+    private static let size = CGSize(width: 700, height: 329)
+    private static let cornerRadius: CGFloat = 42
+    private static let imageWidth = size.width * 0.43
+    private static let panelColor = UIColor(red: 0.07, green: 0.06, blue: 0.16, alpha: 1)
+    private static let purple = UIColor(red: 0.77, green: 0.14, blue: 0.84, alpha: 1)
+
+    static func render(
+        word: String,
+        definition: String,
+        partOfSpeech: String?,
+        dueCountLabel: String,
+        sourceImage: UIImage?
+    ) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 2
+        format.opaque = false
+
+        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+            let cgContext = context.cgContext
+            let bounds = CGRect(origin: .zero, size: size)
+            UIBezierPath(roundedRect: bounds, cornerRadius: cornerRadius).addClip()
+
+            drawImage(sourceImage, in: CGRect(x: 0, y: 0, width: imageWidth, height: size.height), context: cgContext)
+            panelColor.setFill()
+            UIBezierPath(rect: CGRect(x: imageWidth, y: 0, width: size.width - imageWidth, height: size.height)).fill()
+
+            let contentX = imageWidth + 32
+            let contentWidth = size.width - imageWidth - 64
+            drawPill(
+                text: dueCountLabel,
+                font: .systemFont(ofSize: 22, weight: .heavy),
+                foreground: UIColor.white.withAlphaComponent(0.82),
+                background: UIColor.white.withAlphaComponent(0.10),
+                origin: CGPoint(x: contentX, y: 32),
+                maxWidth: contentWidth
+            )
+
+            let wordY: CGFloat = 91
+            drawFittingText(
+                word,
+                in: CGRect(x: contentX, y: wordY, width: contentWidth, height: 54),
+                fontSize: 43,
+                weight: .bold,
+                maxLines: 1,
+                color: .white,
+                minimumScaleFactor: 0.58
+            )
+
+            let partText = (partOfSpeech ?? "").uppercased()
+            let pillBottom = drawPill(
+                text: partText,
+                font: .systemFont(ofSize: 25, weight: .heavy),
+                foreground: .white,
+                background: purple,
+                origin: CGPoint(x: contentX, y: 157),
+                maxWidth: contentWidth
+            )
+
+            drawFittingText(
+                definition,
+                in: CGRect(x: contentX, y: pillBottom + 18, width: contentWidth, height: size.height - pillBottom - 42),
+                fontSize: 31,
+                weight: .bold,
+                maxLines: 2,
+                color: .white,
+                minimumScaleFactor: 0.54
+            )
+        }
+    }
+
+    private static func drawImage(_ image: UIImage?, in rect: CGRect, context: CGContext) {
+        guard let image else {
+            let colors = [
+                UIColor(red: 0.34, green: 0.30, blue: 0.92, alpha: 1).cgColor,
+                UIColor(red: 0.09, green: 0.08, blue: 0.20, alpha: 1).cgColor,
+            ] as CFArray
+            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1])!
+            context.drawLinearGradient(gradient, start: rect.origin, end: CGPoint(x: rect.maxX, y: rect.maxY), options: [])
+            return
+        }
+
+        let imageSize = image.size
+        let scale = max(rect.width / imageSize.width, rect.height / imageSize.height)
+        let drawSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        let drawRect = CGRect(
+            x: rect.midX - drawSize.width / 2,
+            y: rect.midY - drawSize.height / 2,
+            width: drawSize.width,
+            height: drawSize.height
+        )
+        image.draw(in: drawRect)
+    }
+
+    @discardableResult
+    private static func drawPill(
+        text: String,
+        font: UIFont,
+        foreground: UIColor,
+        background: UIColor,
+        origin: CGPoint,
+        maxWidth: CGFloat
+    ) -> CGFloat {
+        guard !text.isEmpty else { return origin.y }
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: foreground,
+        ]
+        let measured = (text as NSString).size(withAttributes: attributes)
+        let width = min(measured.width + 28, maxWidth)
+        let height = measured.height + 13
+        let rect = CGRect(x: origin.x, y: origin.y, width: width, height: height)
+        background.setFill()
+        UIBezierPath(roundedRect: rect, cornerRadius: height / 2).fill()
+        (text as NSString).draw(
+            in: rect.insetBy(dx: 14, dy: 6),
+            withAttributes: attributes
+        )
+        return rect.maxY
+    }
+
+    private static func drawFittingText(
+        _ text: String,
+        in rect: CGRect,
+        fontSize: CGFloat,
+        weight: UIFont.Weight,
+        maxLines: Int,
+        color: UIColor,
+        minimumScaleFactor: CGFloat
+    ) {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineBreakMode = .byTruncatingTail
+        let minimumSize = fontSize * minimumScaleFactor
+        var currentSize = fontSize
+        while currentSize >= minimumSize {
+            let font = UIFont.systemFont(ofSize: currentSize, weight: weight)
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: color,
+                .paragraphStyle: paragraph,
+            ]
+            let maxHeight = font.lineHeight * CGFloat(maxLines)
+            let measured = (text as NSString).boundingRect(
+                with: CGSize(width: rect.width, height: maxHeight),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: attributes,
+                context: nil
+            )
+            if measured.height <= rect.height {
+                (text as NSString).draw(
+                    with: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: min(rect.height, maxHeight)),
+                    options: [.usesLineFragmentOrigin, .usesFontLeading, .truncatesLastVisibleLine],
+                    attributes: attributes,
+                    context: nil
+                )
+                return
+            }
+            currentSize -= 1
+        }
+    }
+}
+
+private extension UIImage {
+    var longestSide: CGFloat {
+        max(size.width, size.height) * scale
+    }
+
+    func widgetThumbnailJPEGData(maxDimension: CGFloat) -> Data? {
+        let longestSide = max(size.width, size.height)
+        guard longestSide > 0 else { return nil }
+
+        let scale = min(1, maxDimension / longestSide)
+        let outputImage: UIImage
+        if scale < 1 {
+            let outputSize = CGSize(width: size.width * scale, height: size.height * scale)
+            let renderer = UIGraphicsImageRenderer(size: outputSize)
+            outputImage = renderer.image { _ in
+                draw(in: CGRect(origin: .zero, size: outputSize))
+            }
+        } else {
+            outputImage = self
+        }
+
+        return outputImage.jpegData(compressionQuality: 0.84)
+    }
 }
 
 struct CardInfoSheet: View {

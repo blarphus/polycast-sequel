@@ -633,4 +633,5 @@ struct IceServer: Codable {
 
 struct IceServerResponse: Codable {
     let iceServers: [IceServer]
+    let turnAvailable: Bool?
 }

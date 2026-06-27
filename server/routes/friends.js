@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
-import { userToSocket } from '../socket/presence.js';
+import { isUserOnline } from '../socket/presence.js';
 import { emitToUser } from '../socket/emitToUser.js';
 import { getUserDisplayInfo } from '../lib/getUserDisplayInfo.js';
 import { validate } from '../lib/validate.js';
@@ -113,7 +113,7 @@ router.get('/api/friends', authMiddleware, async (req, res) => {
       id: row.id,
       username: row.username,
       display_name: row.display_name,
-      online: userToSocket.has(row.id),
+      online: isUserOnline(row.id),
     }));
 
     return res.json(friends);

@@ -1,4 +1,4 @@
-import { userToSocket } from './presence.js';
+import { getUserSocketIds } from './presence.js';
 
 /**
  * Handle messaging-related socket events (typing indicator relay).
@@ -8,9 +8,9 @@ export function handleMessaging(io, socket) {
   socket.on('message:typing', ({ friendId }) => {
     if (!friendId) return;
 
-    const friendSocketId = userToSocket.get(friendId);
-    if (friendSocketId) {
-      io.to(friendSocketId).emit('message:typing', { userId: socket.userId });
+    const friendSocketIds = getUserSocketIds(friendId);
+    if (friendSocketIds.length > 0) {
+      io.to(friendSocketIds).emit('message:typing', { userId: socket.userId });
     }
   });
 }

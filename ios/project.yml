@@ -25,36 +25,36 @@ targets:
       - package: WebRTC
       - package: socket.io-client-swift
         product: SocketIO
-    infoPlist:
-      NSAppTransportSecurity:
-        NSAllowsArbitraryLoads: YES
-        NSAllowsLocalNetworking: YES
+      - target: PolycastWidget
+        embed: true
     settings:
       base:
         PRODUCT_NAME: Polycast
         PRODUCT_BUNDLE_IDENTIFIER: com.patron.polycast
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleName: Polycast
-        INFOPLIST_KEY_CFBundleDisplayName: Polycast
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UIUserInterfaceStyle: Dark
-        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
-        INFOPLIST_KEY_NSCameraUsageDescription: Polycast needs camera access for video calls.
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: Polycast needs microphone access for audio and video calls.
-        INFOPLIST_KEY_UIBackgroundModes:
-          - voip
-          - remote-notification
-          - audio
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone:
-          - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
+        CODE_SIGN_ENTITLEMENTS: Polycast/Polycast.entitlements
+        INFOPLIST_FILE: Polycast/Info.plist
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 0.1.0
     scheme:
       testTargets:
         - PolycastTests
         - PolycastUITests
+  PolycastWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: PolycastWidget
+      - path: Polycast/Sources/Core/TodayWordsWidgetSnapshot.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.patron.polycast.widget
+        PRODUCT_NAME: PolycastWidget
+        CODE_SIGN_ENTITLEMENTS: PolycastWidget/PolycastWidget.entitlements
+        INFOPLIST_FILE: PolycastWidget/Info.plist
+        APPLICATION_EXTENSION_API_ONLY: YES
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 0.1.0
   PolycastTests:
     type: bundle.unit-test
     platform: iOS

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
-import { userToSocket } from '../socket/presence.js';
+import { isUserOnline } from '../socket/presence.js';
 import { emitToUser } from '../socket/emitToUser.js';
 import { validate } from '../lib/validate.js';
 
@@ -57,7 +57,7 @@ router.get('/api/conversations', authMiddleware, async (req, res) => {
 
     const conversations = result.rows.map((row) => ({
       ...row,
-      online: userToSocket.has(row.friend_id),
+      online: isUserOnline(row.friend_id),
     }));
 
     return res.json(conversations);

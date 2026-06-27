@@ -84,7 +84,7 @@ export function setupSocket(server) {
     setupHeartbeat(io, socket, redisClient);
 
     // Register signaling handlers
-    handleSignaling(io, socket);
+    handleSignaling(io, socket, pool);
 
     // Register call handlers
     handleCalls(io, socket, pool, redisClient);

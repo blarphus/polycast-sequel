@@ -39,6 +39,8 @@ final class CallManager: ObservableObject {
     private var activeCallId: String?
     private var isCaller = false
     private var pendingOffer: [String: Any]?
+    private var pendingOfferCallId: String?
+    private var pendingIceCandidates: [[String: Any]] = []
     private var timeoutTask: Task<Void, Never>?
     private var isNegotiating = false
 
@@ -71,11 +73,21 @@ final class CallManager: ObservableObject {
             }
         }
 
-        let acceptedId = socket.on("call:accepted") { [weak self] _ in
+        let acceptedId = socket.on("call:accepted") { [weak self] data in
+            let callId = (data.first as? [String: Any])?["callId"] as? String
             Task { @MainActor [weak self] in
                 guard let self, self.isCaller else { return }
+                if let callId { self.activeCallId = callId }
                 self.callStatus = .connecting
                 await self.createAndSendOffer()
+            }
+        }
+
+        let ringingId = socket.on("call:ringing") { [weak self] data in
+            guard let dict = data.first as? [String: Any],
+                  let callId = dict["callId"] as? String else { return }
+            Task { @MainActor [weak self] in
+                self?.activeCallId = callId
             }
         }
 
@@ -91,6 +103,20 @@ final class CallManager: ObservableObject {
             }
         }
 
+        let cancelledId = socket.on("call:cancelled") { [weak self] data in
+            let reason = (data.first as? [String: Any])?["reason"] as? String ?? "Call cancelled"
+            Task { @MainActor [weak self] in
+                self?.endCallLocally(reason: reason)
+            }
+        }
+
+        let busyId = socket.on("call:busy") { [weak self] data in
+            let message = (data.first as? [String: Any])?["message"] as? String ?? "User is already in a call"
+            Task { @MainActor [weak self] in
+                self?.endCallLocally(reason: message)
+            }
+        }
+
         let errorId = socket.on("call:error") { [weak self] data in
             let message = (data.first as? [String: Any])?["message"] as? String ?? "Call error"
             Task { @MainActor [weak self] in
@@ -101,12 +127,18 @@ final class CallManager: ObservableObject {
         let offerId = socket.on("signal:offer") { [weak self] data in
             guard let dict = data.first as? [String: Any],
                   let offer = dict["offer"] as? [String: Any] else { return }
+            let callId = dict["callId"] as? String
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                if let callId {
+                    if let activeCallId = self.activeCallId, activeCallId != callId { return }
+                    self.activeCallId = callId
+                }
                 if self.webRTCClient != nil {
-                    await self.handleRemoteOffer(offer)
+                    await self.handleRemoteOffer(offer, callId: callId)
                 } else {
                     self.pendingOffer = offer
+                    self.pendingOfferCallId = callId
                 }
             }
         }
@@ -114,20 +146,27 @@ final class CallManager: ObservableObject {
         let answerId = socket.on("signal:answer") { [weak self] data in
             guard let dict = data.first as? [String: Any],
                   let answer = dict["answer"] as? [String: Any] else { return }
+            let callId = dict["callId"] as? String
             Task { @MainActor [weak self] in
-                await self?.handleRemoteAnswer(answer)
+                guard let self else { return }
+                if let callId, let activeCallId = self.activeCallId, activeCallId != callId { return }
+                if let callId { self.activeCallId = callId }
+                await self.handleRemoteAnswer(answer)
             }
         }
 
         let iceId = socket.on("signal:ice-candidate") { [weak self] data in
             guard let dict = data.first as? [String: Any],
                   let candidateDict = dict["candidate"] as? [String: Any] else { return }
+            let callId = dict["callId"] as? String
             Task { @MainActor [weak self] in
-                self?.handleRemoteIceCandidate(candidateDict)
+                guard let self else { return }
+                if let callId, let activeCallId = self.activeCallId, activeCallId != callId { return }
+                self.handleRemoteIceCandidate(candidateDict)
             }
         }
 
-        listenerIds = [incomingId, acceptedId, rejectedId, endedId, errorId, offerId, answerId, iceId].compactMap { $0 }
+        listenerIds = [incomingId, ringingId, acceptedId, rejectedId, endedId, cancelledId, busyId, errorId, offerId, answerId, iceId].compactMap { $0 }
     }
 
     func stopListening() {
@@ -141,6 +180,7 @@ final class CallManager: ObservableObject {
 
     func initiateCall(peerId: String, displayName: String, mode: CallMode = .video) async {
         isCaller = true
+        activeCallId = nil
         activeCallPeerId = peerId
         activeCallDisplayName = displayName
         callMode = mode
@@ -165,13 +205,15 @@ final class CallManager: ObservableObject {
         isCallViewPresented = true
         incomingCall = nil
 
-        socket.emit("call:accept", ["callerId": incoming.callerId])
+        socket.emit("call:accept", ["callId": incoming.callId, "callerId": incoming.callerId])
 
         await setupWebRTC(mode: mode)
 
         if let offer = pendingOffer {
+            let offerCallId = pendingOfferCallId
             pendingOffer = nil
-            await handleRemoteOffer(offer)
+            pendingOfferCallId = nil
+            await handleRemoteOffer(offer, callId: offerCallId)
         }
 
         startTimeout()
@@ -181,7 +223,7 @@ final class CallManager: ObservableObject {
 
     func rejectCall() {
         guard let incoming = incomingCall else { return }
-        socket.emit("call:reject", ["callerId": incoming.callerId])
+        socket.emit("call:reject", ["callId": incoming.callId, "callerId": incoming.callerId])
         incomingCall = nil
         if let uuid = UUID(uuidString: incoming.callId) {
             VoIPPushManager.shared.reportCallEnded(uuid: uuid, reason: .declinedElsewhere)
@@ -193,7 +235,11 @@ final class CallManager: ObservableObject {
 
     func endCall() {
         guard let peerId = activeCallPeerId else { return }
-        socket.emit("call:end", ["peerId": peerId])
+        if let activeCallId {
+            socket.emit("call:end", ["callId": activeCallId, "peerId": peerId])
+        } else {
+            socket.emit("call:end", ["peerId": peerId])
+        }
         endCallLocally(reason: "Call ended")
     }
 
@@ -317,27 +363,33 @@ final class CallManager: ObservableObject {
         guard let client = webRTCClient, let peerId = activeCallPeerId else { return }
         do {
             let sdp = try await client.createOffer()
-            socket.emit("signal:offer", [
+            var payload: [String: Any] = [
                 "peerId": peerId,
                 "offer": ["type": "offer", "sdp": sdp.sdp],
-            ])
+            ]
+            if let activeCallId { payload["callId"] = activeCallId }
+            socket.emit("signal:offer", payload)
         } catch {
             print("[Polycast] CallManager: failed to create offer: \(error)")
             endCallLocally(reason: "Connection failed")
         }
     }
 
-    private func handleRemoteOffer(_ offer: [String: Any]) async {
+    private func handleRemoteOffer(_ offer: [String: Any], callId: String? = nil) async {
         guard let client = webRTCClient, let peerId = activeCallPeerId,
               let sdpString = offer["sdp"] as? String else { return }
 
+        if let callId { activeCallId = callId }
         let remoteSDP = RTCSessionDescription(type: .offer, sdp: sdpString)
         do {
             let answer = try await client.createAnswer(remoteSDP: remoteSDP)
-            socket.emit("signal:answer", [
+            flushPendingIceCandidates()
+            var payload: [String: Any] = [
                 "peerId": peerId,
                 "answer": ["type": "answer", "sdp": answer.sdp],
-            ])
+            ]
+            if let activeCallId { payload["callId"] = activeCallId }
+            socket.emit("signal:answer", payload)
         } catch {
             print("[Polycast] CallManager: failed to create answer: \(error)")
             endCallLocally(reason: "Connection failed")
@@ -352,6 +404,7 @@ final class CallManager: ObservableObject {
         do {
             try await client.setRemoteDescription(remoteSDP)
             isNegotiating = false
+            flushPendingIceCandidates()
         } catch {
             print("[Polycast] CallManager: failed to set remote answer: \(error)")
             endCallLocally(reason: "Connection failed")
@@ -361,11 +414,33 @@ final class CallManager: ObservableObject {
     private func handleRemoteIceCandidate(_ candidateDict: [String: Any]) {
         guard let client = webRTCClient,
               let sdp = candidateDict["candidate"] as? String,
-              let sdpMLineIndex = candidateDict["sdpMLineIndex"] as? Int32 else { return }
+              let sdpMLineIndexValue = candidateDict["sdpMLineIndex"] else { return }
+
+        let sdpMLineIndex: Int32
+        if let int32Value = sdpMLineIndexValue as? Int32 {
+            sdpMLineIndex = int32Value
+        } else if let intValue = sdpMLineIndexValue as? Int {
+            sdpMLineIndex = Int32(intValue)
+        } else {
+            return
+        }
+
+        if !client.hasRemoteDescription {
+            pendingIceCandidates.append(candidateDict)
+            return
+        }
 
         let sdpMid = candidateDict["sdpMid"] as? String
         let candidate = RTCIceCandidate(sdp: sdp, sdpMLineIndex: sdpMLineIndex, sdpMid: sdpMid)
         client.addIceCandidate(candidate)
+    }
+
+    private func flushPendingIceCandidates() {
+        let candidates = pendingIceCandidates
+        pendingIceCandidates.removeAll()
+        for candidate in candidates {
+            handleRemoteIceCandidate(candidate)
+        }
     }
 
     private func endCallLocally(reason: String) {
@@ -381,6 +456,8 @@ final class CallManager: ObservableObject {
         activeCallDisplayName = ""
         remoteVideoTrack = nil
         pendingOffer = nil
+        pendingOfferCallId = nil
+        pendingIceCandidates.removeAll()
         isMuted = false
         isCameraOff = false
         callMode = .video
@@ -436,14 +513,18 @@ extension CallManager: WebRTCClientDelegate {
     nonisolated func webRTCClient(_ client: WebRTCClient, didGenerateIceCandidate candidate: RTCIceCandidate) {
         Task { @MainActor in
             guard let peerId = self.activeCallPeerId else { return }
-            self.socket.emit("signal:ice-candidate", [
+            var payload: [String: Any] = [
                 "peerId": peerId,
                 "candidate": [
                     "candidate": candidate.sdp,
                     "sdpMLineIndex": candidate.sdpMLineIndex,
                     "sdpMid": candidate.sdpMid ?? "",
                 ],
-            ])
+            ]
+            if let activeCallId = self.activeCallId {
+                payload["callId"] = activeCallId
+            }
+            self.socket.emit("signal:ice-candidate", payload)
         }
     }
 

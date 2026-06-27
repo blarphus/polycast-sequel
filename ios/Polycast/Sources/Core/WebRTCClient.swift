@@ -243,6 +243,10 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
         localVideoTrack
     }
 
+    var hasRemoteDescription: Bool {
+        peerConnection?.remoteDescription != nil
+    }
+
     // MARK: - PCM Audio Capture (for transcription)
 
     func startAudioCapture(onChunk: @escaping (Data) -> Void) {

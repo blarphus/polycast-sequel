@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { userToSocket } from './presence.js';
+import { getUserSocketIds } from './presence.js';
 import { getUserDisplayInfo } from '../lib/getUserDisplayInfo.js';
 import logger from '../logger.js';
 
@@ -46,9 +46,9 @@ export function handleTranscription(io, socket) {
     } else {
       // 1-on-1: send to self and peer
       socket.emit('transcript', transcriptData);
-      const peerSocketId = userToSocket.get(peerId);
-      if (peerSocketId) {
-        io.to(peerSocketId).emit('transcript', transcriptData);
+      const peerSocketIds = getUserSocketIds(peerId);
+      if (peerSocketIds.length > 0) {
+        io.to(peerSocketIds).emit('transcript', transcriptData);
       }
     }
 
@@ -82,9 +82,9 @@ export function handleTranscription(io, socket) {
     } else {
       // 1-on-1: emit to speaker and peer
       socket.emit('transcript:entry', entry);
-      const peerSocketId = userToSocket.get(peerId);
-      if (peerSocketId) {
-        io.to(peerSocketId).emit('transcript:entry', entry);
+      const peerSocketIds = getUserSocketIds(peerId);
+      if (peerSocketIds.length > 0) {
+        io.to(peerSocketIds).emit('transcript:entry', entry);
       }
     }
   }

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import pool from '../db.js';
 import { authMiddleware } from '../auth.js';
-import { userToSocket } from '../socket/presence.js';
+import { isUserOnline } from '../socket/presence.js';
 import { validate } from '../lib/validate.js';
 
 const router = Router();
@@ -49,7 +49,7 @@ router.get('/api/users/search', authMiddleware, validate({ query: searchQuery })
     // Attach online status from in-memory presence map
     const rows = result.rows.map((u) => ({
       ...u,
-      online: userToSocket.has(u.id),
+      online: isUserOnline(u.id),
     }));
 
     return res.json(rows);

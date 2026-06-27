@@ -64,7 +64,7 @@ export default function ChatView() {
         friendName={friendName}
         friendOnline={friendOnline}
         onBack={() => navigate('/chats')}
-        onCall={() => navigate(`/call/${friendId}?role=caller`)}
+        onCall={() => navigate(`/call/${friendId}?role=caller&name=${encodeURIComponent(friendName)}`)}
       />
       <ChatMessageList
         currentUserId={user?.id}

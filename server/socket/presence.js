@@ -3,7 +3,7 @@ import logger from '../logger.js';
 /** Maps socket.id -> userId */
 const socketToUser = new Map();
 
-/** Maps userId -> socket.id */
+/** Maps userId -> Set<socket.id> */
 const userToSocket = new Map();
 
 const PRESENCE_TTL = 60; // seconds
@@ -16,7 +16,9 @@ export async function handleConnect(io, socket, redisClient) {
   const { userId } = socket;
 
   socketToUser.set(socket.id, userId);
-  userToSocket.set(userId, socket.id);
+  const sockets = userToSocket.get(userId) ?? new Set();
+  sockets.add(socket.id);
+  userToSocket.set(userId, sockets);
 
   try {
     await redisClient.set(`online:${userId}`, socket.id, { EX: PRESENCE_TTL });
@@ -38,11 +40,12 @@ export async function handleDisconnect(io, socket, redisClient) {
 
   socketToUser.delete(socket.id);
 
-  // Only remove from userToSocket if THIS socket is still the active one.
-  // When a client reconnects, the new socket's handleConnect runs first and
-  // overwrites userToSocket with the new socket ID.  If we blindly delete
-  // here, we wipe the *new* socket's entry and the user becomes unreachable.
-  if (userToSocket.get(userId) === socket.id) {
+  const sockets = userToSocket.get(userId);
+  if (!sockets) return;
+
+  sockets.delete(socket.id);
+
+  if (sockets.size === 0) {
     userToSocket.delete(userId);
 
     try {
@@ -52,6 +55,8 @@ export async function handleDisconnect(io, socket, redisClient) {
     }
 
     io.emit('user:offline', { userId });
+  } else {
+    userToSocket.set(userId, sockets);
   }
 }
 
@@ -71,6 +76,14 @@ export function setupHeartbeat(io, socket, redisClient) {
       logger.error({ err }, 'Redis EXPIRE error in heartbeat');
     }
   });
+}
+
+export function getUserSocketIds(userId) {
+  return Array.from(userToSocket.get(userId) ?? []);
+}
+
+export function isUserOnline(userId) {
+  return getUserSocketIds(userId).length > 0;
 }
 
 export { userToSocket };

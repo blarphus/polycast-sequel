@@ -9,9 +9,11 @@ import { PhoneIcon } from './icons';
 import { startRinging, stopRinging } from '../utils/sounds';
 
 interface IncomingCallData {
+  callId: string;
   callerId: string;
   callerUsername: string;
   callerDisplayName: string;
+  mode?: 'audio' | 'video';
 }
 
 export default function IncomingCall() {
@@ -34,16 +36,18 @@ export default function IncomingCall() {
     };
 
     // Dismiss modal if the caller hangs up before we accept
-    const onCallEnded = ({ userId }: { userId: string }) => {
-      setIncoming((prev) => (prev && prev.callerId === userId ? null : prev));
+    const onCallEnded = ({ userId, callId }: { userId?: string; callId?: string }) => {
+      setIncoming((prev) => (prev && (prev.callId === callId || prev.callerId === userId) ? null : prev));
     };
 
     socket.on('call:incoming', onCallIncoming);
     socket.on('call:ended', onCallEnded);
+    socket.on('call:cancelled', onCallEnded);
 
     return () => {
       socket.off('call:incoming', onCallIncoming);
       socket.off('call:ended', onCallEnded);
+      socket.off('call:cancelled', onCallEnded);
     };
   }, []);
 
@@ -52,14 +56,19 @@ export default function IncomingCall() {
     // Emit call:accept immediately so the caller knows we accepted
     // (don't wait for getUserMedia/PC setup on the Call page).
     // The Call page will buffer the incoming offer until its PC is ready.
-    socket.emit('call:accept', { callerId: incoming.callerId });
-    navigate(`/call/${incoming.callerId}?role=callee`);
+    socket.emit('call:accept', { callId: incoming.callId, callerId: incoming.callerId });
+    const params = new URLSearchParams({
+      role: 'callee',
+      callId: incoming.callId,
+      name: incoming.callerDisplayName || incoming.callerUsername,
+    });
+    navigate(`/call/${incoming.callerId}?${params.toString()}`);
     setIncoming(null);
   }, [incoming, navigate]);
 
   const handleReject = useCallback(() => {
     if (!incoming) return;
-    socket.emit('call:reject', { callerId: incoming.callerId });
+    socket.emit('call:reject', { callId: incoming.callId, callerId: incoming.callerId });
     setIncoming(null);
   }, [incoming]);
 
@@ -71,7 +80,7 @@ export default function IncomingCall() {
         <div className="incoming-call-icon">
           <PhoneIcon size={48} />
         </div>
-        <h2 className="incoming-call-title">Incoming Call</h2>
+        <h2 className="incoming-call-title">Incoming {incoming.mode === 'audio' ? 'Audio' : 'Video'} Call</h2>
         <p className="incoming-call-caller">
           {incoming.callerDisplayName || incoming.callerUsername}
         </p>
