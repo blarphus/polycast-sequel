@@ -14,6 +14,13 @@ function decodePrivateKey(value) {
   return value.replace(/\\n/g, '\n');
 }
 
+export function getApnsHost(environment) {
+  const normalized = String(environment || '').toLowerCase();
+  return normalized === 'development' || normalized === 'sandbox'
+    ? 'https://api.sandbox.push.apple.com'
+    : 'https://api.push.apple.com';
+}
+
 function getApnsConfig(environment) {
   const keyId = process.env.APNS_KEY_ID;
   const teamId = process.env.APNS_TEAM_ID;
@@ -28,7 +35,7 @@ function getApnsConfig(environment) {
     teamId,
     privateKey: decodePrivateKey(privateKey),
     bundleId,
-    host: environment === 'sandbox' ? 'https://api.sandbox.push.apple.com' : 'https://api.push.apple.com',
+    host: getApnsHost(environment),
   };
 }
 
