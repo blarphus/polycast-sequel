@@ -35,7 +35,8 @@
 .call-remote-video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* Show the peer's whole frame on any screen shape (letterbox, don't crop). */
+  object-fit: contain;
 }
 
 .call-local-tile {
@@ -55,7 +56,7 @@
 .call-local-video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   transform: scaleX(-1);
 }
 
