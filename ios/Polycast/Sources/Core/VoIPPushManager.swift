@@ -104,13 +104,14 @@ final class VoIPPushManager: NSObject, @unchecked Sendable {
         let callerDisplayName = dict["callerDisplayName"] as? String ?? callerUsername
         let modeString = dict["mode"] as? String ?? "video"
         let mode: CallMode = modeString == "audio" ? .audio : .video
-        let callUUID = UUID(uuidString: callId) ?? UUID()
+        let normalizedCallId = callId.lowercased()
+        let callUUID = UUID(uuidString: normalizedCallId) ?? UUID()
         currentCallUUID = callUUID
 
         ensureRealtimeReady()
 
         let incoming = IncomingCallInfo(
-            callId: callUUID.uuidString,
+            callId: normalizedCallId,
             callerId: callerId,
             callerUsername: callerUsername,
             callerDisplayName: callerDisplayName,
