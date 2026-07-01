@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 enum APIError: LocalizedError {
     case invalidResponse
@@ -306,6 +307,77 @@ final class APIClient: @unchecked Sendable {
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "timeZone", value: TimeZone.current.identifier),
         ])
+    }
+
+    func todayWordsWidgetSnapshot(limit: Int = 20) async throws -> TodayWordsWidgetSnapshot {
+        let payload: TodayWordsWidgetPreviewPayload = try await request("/dictionary/widget-preview", queryItems: [
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "timeZone", value: TimeZone.current.identifier),
+        ])
+        let newCount = min(payload.overview.newAvailable, payload.overview.dailyNewLimit)
+        return TodayWordsWidgetSnapshot(
+            generatedAt: .now,
+            dueCount: payload.overview.due + newCount,
+            reviewCount: payload.overview.due,
+            newCount: newCount,
+            dailyNewLimit: payload.overview.dailyNewLimit,
+            feedTitle: newCount > 0 ? "Today" : "Queue",
+            words: payload.words.prefix(limit).map { $0.widgetWord }
+        )
+    }
+
+    func cacheTodayWordsWidgetImages(for snapshot: TodayWordsWidgetSnapshot, limit: Int = 20) async {
+        let words = Array(snapshot.words.prefix(limit))
+        guard !words.isEmpty else { return }
+
+        await withTaskGroup(of: Void.self) { group in
+            var nextIndex = 0
+            let concurrentDownloads = min(4, words.count)
+
+            for _ in 0..<concurrentDownloads {
+                let word = words[nextIndex]
+                nextIndex += 1
+                group.addTask { await self.cacheTodayWordsWidgetImage(for: word) }
+            }
+
+            while await group.next() != nil {
+                guard nextIndex < words.count else { continue }
+                let word = words[nextIndex]
+                nextIndex += 1
+                group.addTask { await self.cacheTodayWordsWidgetImage(for: word) }
+            }
+        }
+
+        postTodayWordsWidgetDebugSignal("shared-image-batch-complete")
+        postTodayWordsWidgetDebugSignal("shared-image-batch-\(words.count)")
+    }
+
+    private func cacheTodayWordsWidgetImage(for word: TodayWordsWidgetWord) async {
+        guard let remoteURL = Self.proxyImageURL(word.imageUrl) else { return }
+        let filename = TodayWordsWidgetImageStore.filename(for: word.id, imageURL: remoteURL.absoluteString)
+        if TodayWordsWidgetImageStore.sharedImageData(forFilename: filename) != nil {
+            postTodayWordsWidgetDebugSignal("shared-image-cache-hit")
+            return
+        }
+
+        do {
+            postTodayWordsWidgetDebugSignal("shared-image-start")
+            var request = authorizedRequest(for: remoteURL)
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            request.timeoutInterval = 12
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+                  let image = UIImage(data: data),
+                  let thumbnailData = image.todayWordsWidgetThumbnailJPEGData(maxDimension: 560)
+            else {
+                postTodayWordsWidgetDebugSignal("shared-image-failed")
+                return
+            }
+            TodayWordsWidgetImageStore.saveSharedImageData(thumbnailData, filename: filename)
+        } catch {
+            print("[Polycast] Failed to cache shared widget image for \(word.word): \(error)")
+            postTodayWordsWidgetDebugSignal("shared-image-failed")
+        }
     }
 
     func dueWords(newLimitOverride: Int? = nil) async throws -> [SavedWord] {
@@ -764,5 +836,47 @@ final class APIClient: @unchecked Sendable {
         case "https": return 443
         default: return nil
         }
+    }
+}
+
+private func postTodayWordsWidgetDebugSignal(_ event: String) {
+    let name = "com.patron.polycast.widget.\(event)" as CFString
+    CFNotificationCenterPostNotification(
+        CFNotificationCenterGetDarwinNotifyCenter(),
+        CFNotificationName(name),
+        nil,
+        nil,
+        true
+    )
+}
+
+private struct TodayWordsWidgetPreviewPayload: Decodable {
+    let overview: StudyOverview
+    let words: [TodayWordsWidgetPreviewWord]
+}
+
+private struct TodayWordsWidgetPreviewWord: Decodable {
+    let id: String
+    let word: String
+    let translation: String
+    let definition: String
+    let exampleSentence: String?
+    let sentenceTranslation: String?
+    let partOfSpeech: String?
+    let imageUrl: String?
+
+    var widgetWord: TodayWordsWidgetWord {
+        TodayWordsWidgetWord(
+            id: id,
+            word: word,
+            translation: translation,
+            definition: definition,
+            partOfSpeech: partOfSpeech,
+            exampleSentence: exampleSentence,
+            sentenceTranslation: sentenceTranslation,
+            imageUrl: imageUrl,
+            localImageFilename: nil,
+            localCardFilename: nil
+        )
     }
 }

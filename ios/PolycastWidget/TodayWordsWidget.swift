@@ -1,4 +1,5 @@
 import AppIntents
+import Foundation
 import Security
 import SwiftUI
 import UIKit
@@ -8,9 +9,15 @@ struct PreviousTodayWordIntent: AppIntent {
     static let title: LocalizedStringResource = "Previous Word"
 
     func perform() async throws -> some IntentResult {
-        let snapshot = TodayWordsWidgetStore.loadSnapshot()
-        TodayWordsWidgetStore.retreatWord(totalWords: snapshot.words.count)
+        let start = TodayWordsWidgetTiming.now()
+        let startedAt = Date()
+        TodayWordsWidgetDebugSignal.post("page-previous-start")
+        let totalWords = TodayWordsWidgetStore.snapshotWordCount()
+        TodayWordsWidgetStore.notePagingStarted(action: "previous", startedAt: startedAt)
+        TodayWordsWidgetStore.retreatWord(totalWords: totalWords)
         WidgetCenter.shared.reloadTimelines(ofKind: todayWordsWidgetKind)
+        TodayWordsWidgetTiming.logPageIntent(action: "previous", start: start, totalWords: totalWords)
+        TodayWordsWidgetDebugSignal.post("page-previous-intent-complete")
         return .result()
     }
 }
@@ -19,9 +26,15 @@ struct NextTodayWordIntent: AppIntent {
     static let title: LocalizedStringResource = "Next Word"
 
     func perform() async throws -> some IntentResult {
-        let snapshot = TodayWordsWidgetStore.loadSnapshot()
-        TodayWordsWidgetStore.advanceWord(totalWords: snapshot.words.count)
+        let start = TodayWordsWidgetTiming.now()
+        let startedAt = Date()
+        TodayWordsWidgetDebugSignal.post("page-next-start")
+        let totalWords = TodayWordsWidgetStore.snapshotWordCount()
+        TodayWordsWidgetStore.notePagingStarted(action: "next", startedAt: startedAt)
+        TodayWordsWidgetStore.advanceWord(totalWords: totalWords)
         WidgetCenter.shared.reloadTimelines(ofKind: todayWordsWidgetKind)
+        TodayWordsWidgetTiming.logPageIntent(action: "next", start: start, totalWords: totalWords)
+        TodayWordsWidgetDebugSignal.post("page-next-intent-complete")
         return .result()
     }
 }
@@ -50,7 +63,17 @@ struct TodayWordsProvider: TimelineProvider {
         let isPreview = context.isPreview
         let completion = WidgetCompletion(completion)
         Task {
-            let snapshot = await loadSnapshot(isPreview: isPreview, refreshInBackground: true)
+            let isPagingReload = TodayWordsWidgetStore.pendingPagingAge().map { $0 >= 0 && $0 < 5 } ?? false
+            let snapshot: TodayWordsWidgetSnapshot
+            if isPagingReload {
+                TodayWordsWidgetDebugSignal.post("timeline-start")
+                snapshot = TodayWordsWidgetStore.loadSnapshot()
+                if snapshot.hasPracticeData {
+                    TodayWordsWidgetDebugSignal.post("timeline-returned-cached")
+                }
+            } else {
+                snapshot = await loadSnapshot(isPreview: isPreview, refreshInBackground: true)
+            }
             let cadence: TimeInterval = 1_800
             var state = TodayWordsWidgetStore.loadState()
             if snapshot.words.count > 1, snapshot.hasPracticeData {
@@ -60,6 +83,16 @@ struct TodayWordsProvider: TimelineProvider {
             }
             let entry = TodayWordsEntry(date: .now, snapshot: snapshot, state: state)
             let refreshDelay: TimeInterval = snapshot.hasPracticeData ? cadence : 60
+            if let paging = TodayWordsWidgetStore.completePendingPagingIfNeeded() {
+                TodayWordsWidgetTiming.logPageTimeline(action: paging.action, milliseconds: paging.milliseconds)
+                TodayWordsWidgetDebugSignal.post("page-\(paging.action)-timeline-complete")
+            }
+            if !isPagingReload, snapshot.hasPracticeData, snapshot.words.contains(where: { $0.imageUrl != nil && $0.localImageFilename == nil }) {
+                Task {
+                    guard let token = TodayWordsWidgetKeychainTokenStore.load() else { return }
+                    await TodayWordsWidgetAPIClient.cacheImages(for: snapshot, token: token)
+                }
+            }
             completion.call(Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(refreshDelay))))
         }
     }
@@ -127,6 +160,31 @@ private final class WidgetCompletion<Value>: @unchecked Sendable {
     }
 }
 
+private enum TodayWordsWidgetTiming {
+    static func now() -> UInt64 {
+        DispatchTime.now().uptimeNanoseconds
+    }
+
+    static func milliseconds(since start: UInt64) -> Double {
+        Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
+    }
+
+    static func logPageIntent(action: String, start: UInt64, totalWords: Int) {
+        let milliseconds = milliseconds(since: start)
+        print("[PolycastWidget] Widget page \(action) intent-handler-ms=\(format(milliseconds)) totalWords=\(totalWords)")
+        TodayWordsWidgetDebugSignal.postMilliseconds("page-\(action)-intent", milliseconds: milliseconds)
+    }
+
+    static func logPageTimeline(action: String, milliseconds: Double) {
+        print("[PolycastWidget] Widget page \(action) timeline-ready-ms=\(format(milliseconds))")
+        TodayWordsWidgetDebugSignal.postMilliseconds("page-\(action)-timeline", milliseconds: milliseconds)
+    }
+
+    private static func format(_ milliseconds: Double) -> String {
+        String(format: "%.2f", milliseconds)
+    }
+}
+
 private enum TodayWordsWidgetKeychainTokenStore {
     private static let service = "com.patron.polycast"
     private static let account = "auth-token"
@@ -161,10 +219,10 @@ private enum TodayWordsWidgetAPIClient {
     private static let baseURL = URL(string: "https://polycast-sequel.onrender.com/api")!
     private static let appBaseURL = URL(string: "https://polycast-sequel.onrender.com")!
     private static let session: URLSession = {
-        let config = URLSessionConfiguration.ephemeral
-        config.waitsForConnectivity = false
-        config.timeoutIntervalForRequest = 8
-        config.timeoutIntervalForResource = 12
+        let config = URLSessionConfiguration.default
+        config.waitsForConnectivity = true
+        config.timeoutIntervalForRequest = 20
+        config.timeoutIntervalForResource = 25
         return URLSession(configuration: config)
     }()
 
@@ -236,7 +294,7 @@ private enum TodayWordsWidgetAPIClient {
 
         var request = URLRequest(url: url)
         request.cachePolicy = .reloadIgnoringLocalCacheData
-        request.timeoutInterval = 8
+        request.timeoutInterval = 20
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         let (data, response): (Data, URLResponse)
@@ -245,9 +303,18 @@ private enum TodayWordsWidgetAPIClient {
         } catch {
             print("[PolycastWidget] Widget request transport failed for \(path): \(error)")
             TodayWordsWidgetDebugSignal.post("\(signalName)-failed")
+            TodayWordsWidgetDebugSignal.post("\(signalName)-transport-failed")
+            if let urlError = error as? URLError {
+                TodayWordsWidgetDebugSignal.post("\(signalName)-transport-code-\(urlError.errorCode)")
+            }
             throw error
         }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            if let http = response as? HTTPURLResponse {
+                TodayWordsWidgetDebugSignal.post("\(signalName)-status-\(http.statusCode)")
+            } else {
+                TodayWordsWidgetDebugSignal.post("\(signalName)-non-http-response")
+            }
             TodayWordsWidgetDebugSignal.post("\(signalName)-failed")
             throw URLError(.badServerResponse)
         }
@@ -257,10 +324,13 @@ private enum TodayWordsWidgetAPIClient {
         do {
             let decoded = try decoder.decode(T.self, from: data)
             TodayWordsWidgetDebugSignal.post("\(signalName)-success")
+            TodayWordsWidgetDebugSignal.post("\(signalName)-bytes-\(data.count)")
             return decoded
         } catch {
             print("[PolycastWidget] Widget request decode failed for \(path): \(error)")
             TodayWordsWidgetDebugSignal.post("\(signalName)-failed")
+            TodayWordsWidgetDebugSignal.post("\(signalName)-decode-failed")
+            TodayWordsWidgetDebugSignal.post("\(signalName)-decode-bytes-\(data.count)")
             throw error
         }
     }
@@ -284,9 +354,17 @@ private enum TodayWordsWidgetAPIClient {
         )
     }
 
+    static func renderableImageURLString(_ urlString: String?) -> String? {
+        imageURL(urlString)?.absoluteString
+    }
+
     private static func cacheWidgetImage(wordID: String, imageUrl: String?, wordLabel: String, token: String) async -> String? {
         guard let remoteURL = imageURL(imageUrl) else { return nil }
         let filename = TodayWordsWidgetImageStore.filename(for: wordID, imageURL: remoteURL.absoluteString)
+        if TodayWordsWidgetImageStore.sharedImageData(forFilename: filename) != nil {
+            TodayWordsWidgetDebugSignal.post("image-ready")
+            return filename
+        }
         guard let directory = try? TodayWordsWidgetImageStore.ensureDirectory() else {
             print("[PolycastWidget] No writable image cache directory")
             TodayWordsWidgetDebugSignal.post("image-cache-missing")
@@ -320,6 +398,7 @@ private enum TodayWordsWidgetAPIClient {
                 return nil
             }
             try thumbnailData.write(to: destinationURL, options: .atomic)
+            TodayWordsWidgetImageStore.saveSharedImageData(thumbnailData, filename: filename)
             print("[PolycastWidget] Cached widget image for \(wordLabel)")
             TodayWordsWidgetDebugSignal.post("image-ready")
             return filename
@@ -454,6 +533,12 @@ private enum TodayWordsWidgetDebugSignal {
             nil,
             true
         )
+    }
+
+    static func postMilliseconds(_ event: String, milliseconds: Double) {
+        let rounded = min(max(Int(milliseconds.rounded()), 0), 9_999)
+        post("\(event)-ms-\(rounded)")
+        post(milliseconds <= 50 ? "\(event)-fast" : "\(event)-slow")
     }
 }
 
@@ -853,7 +938,16 @@ struct TodayWordsWidgetView: View {
     }
 
     private func localImage(for word: TodayWordsWidgetWord) -> UIImage? {
-        localImage(filename: word.localImageFilename)
+        if let image = localImage(filename: word.localImageFilename) {
+            return image
+        }
+        guard let imageUrl = APIImageURLString(word.imageUrl),
+              let data = TodayWordsWidgetImageStore.sharedImageData(for: word.id, imageURL: imageUrl)
+        else {
+            return nil
+        }
+        TodayWordsWidgetDebugSignal.post("shared-image-rendered")
+        return UIImage(data: data)
     }
 
     private func localImage(filename: String?) -> UIImage? {
@@ -861,6 +955,10 @@ struct TodayWordsWidgetView: View {
             return nil
         }
         return UIImage(contentsOfFile: url.path)
+    }
+
+    private func APIImageURLString(_ urlString: String?) -> String? {
+        TodayWordsWidgetAPIClient.renderableImageURLString(urlString)
     }
 
     private var allDoneView: some View {

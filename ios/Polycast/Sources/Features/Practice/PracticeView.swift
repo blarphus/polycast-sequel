@@ -548,11 +548,25 @@ struct LearnView: View {
                 newWordsCount: newWordsCount,
                 savedAt: .now
             )
+            refreshTodayWordsWidgetPreview()
             // The start-screen preview warms images only. Audio preloading starts
             // after the learner begins an actual flashcard session.
             prefetchWordImages(upcomingWords.prefix(newWordsCount).compactMap { APIClient.proxyImageURL($0.imageUrl) })
         } catch {
             print("[Polycast] Failed to load practice preview images: \(error)")
+        }
+    }
+
+    private func refreshTodayWordsWidgetPreview() {
+        Task {
+            do {
+                let snapshot = try await APIClient.shared.todayWordsWidgetSnapshot()
+                TodayWordsWidgetStore.saveSnapshot(snapshot)
+                await APIClient.shared.cacheTodayWordsWidgetImages(for: snapshot)
+                WidgetCenter.shared.reloadAllTimelines()
+            } catch {
+                print("[Polycast] Failed to refresh practice widget preview: \(error)")
+            }
         }
     }
 

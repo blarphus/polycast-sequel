@@ -9,6 +9,7 @@ final class SessionStore: ObservableObject {
 
     private let tokenStore = KeychainTokenStore()
     private let api = APIClient.shared
+    private var lastWidgetSnapshotRefresh: Date?
 
     var needsOnboarding: Bool {
         user?.nativeLanguage == nil || user?.targetLanguage == nil
@@ -136,5 +137,31 @@ final class SessionStore: ObservableObject {
 
     private func reloadTodayWordsWidget() {
         WidgetCenter.shared.reloadAllTimelines()
+        refreshTodayWordsWidgetSnapshot()
+    }
+
+    private func refreshTodayWordsWidgetSnapshot() {
+        guard api.token != nil else {
+            TodayWordsWidgetStore.clearSnapshot()
+            WidgetCenter.shared.reloadAllTimelines()
+            return
+        }
+
+        let now = Date()
+        if let lastWidgetSnapshotRefresh, now.timeIntervalSince(lastWidgetSnapshotRefresh) < 30 {
+            return
+        }
+        lastWidgetSnapshotRefresh = now
+
+        Task {
+            do {
+                let snapshot = try await api.todayWordsWidgetSnapshot()
+                TodayWordsWidgetStore.saveSnapshot(snapshot)
+                await api.cacheTodayWordsWidgetImages(for: snapshot)
+                WidgetCenter.shared.reloadAllTimelines()
+            } catch {
+                print("[Polycast] Failed to refresh shared widget snapshot: \(error)")
+            }
+        }
     }
 }

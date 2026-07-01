@@ -1,4 +1,6 @@
 import Foundation
+import Security
+import UIKit
 
 let todayWordsWidgetKind = "TodayWordsWidget"
 let polycastAppGroupIdentifier = "group.com.patron.polycast"
@@ -114,24 +116,41 @@ struct TodayWordsWidgetState: Codable, Hashable {
 
 enum TodayWordsWidgetStore {
     private static let snapshotKey = "todayWordsWidget.snapshot"
+    private static let snapshotWordCountKey = "todayWordsWidget.snapshotWordCount"
     private static let stateKey = "todayWordsWidget.state"
+    private static let pagingActionKey = "todayWordsWidget.pagingAction"
+    private static let pagingStartedAtKey = "todayWordsWidget.pagingStartedAt"
+    private static let keychainService = "com.patron.polycast.today-words-widget"
+    private static let keychainSnapshotAccount = "snapshot"
 
     private static var defaults: UserDefaults {
         UserDefaults(suiteName: polycastAppGroupIdentifier) ?? .standard
     }
 
     static func loadSnapshot() -> TodayWordsWidgetSnapshot {
-        guard let data = defaults.data(forKey: snapshotKey),
-              let snapshot = try? JSONDecoder().decode(TodayWordsWidgetSnapshot.self, from: data)
-        else {
+        let local = defaults.data(forKey: snapshotKey)
+            .flatMap { try? JSONDecoder().decode(TodayWordsWidgetSnapshot.self, from: $0) }
+        let shared = loadSharedSnapshot()
+
+        switch (local, shared) {
+        case let (local?, shared?):
+            return shared.generatedAt > local.generatedAt ? shared : local
+        case let (local?, nil):
+            return local
+        case let (nil, shared?):
+            return shared
+        case (nil, nil):
             return .empty
         }
-        return snapshot
     }
 
     static func saveSnapshot(_ snapshot: TodayWordsWidgetSnapshot) {
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         defaults.set(data, forKey: snapshotKey)
+        defaults.set(snapshot.words.count, forKey: snapshotWordCountKey)
+        saveSharedSnapshotData(data)
+        postDebugSignal("shared-snapshot-saved")
+        postDebugSignal("shared-snapshot-words-\(snapshot.words.count)")
 
         let wordCount = max(snapshot.words.count, 1)
         var state = loadState()
@@ -141,6 +160,20 @@ enum TodayWordsWidgetStore {
             state.navigationDirection = 1
             saveState(state)
         }
+    }
+
+    static func clearSnapshot() {
+        defaults.removeObject(forKey: snapshotKey)
+        defaults.removeObject(forKey: snapshotWordCountKey)
+        deleteSharedSnapshotData()
+        saveState(.empty)
+    }
+
+    static func snapshotWordCount() -> Int {
+        if defaults.object(forKey: snapshotWordCountKey) != nil {
+            return defaults.integer(forKey: snapshotWordCountKey)
+        }
+        return loadSnapshot().words.count
     }
 
     static func loadState() -> TodayWordsWidgetState {
@@ -188,10 +221,107 @@ enum TodayWordsWidgetStore {
         state.navigationDirection = -1
         saveState(state)
     }
+
+    static func notePagingStarted(action: String, startedAt: Date = .now) {
+        defaults.set(action, forKey: pagingActionKey)
+        defaults.set(startedAt, forKey: pagingStartedAtKey)
+    }
+
+    static func pendingPagingAge(now: Date = .now) -> TimeInterval? {
+        guard let startedAt = defaults.object(forKey: pagingStartedAtKey) as? Date else { return nil }
+        return now.timeIntervalSince(startedAt)
+    }
+
+    static func completePendingPagingIfNeeded(now: Date = .now, maxAge: TimeInterval = 5) -> (action: String, milliseconds: Double)? {
+        guard
+            let startedAt = defaults.object(forKey: pagingStartedAtKey) as? Date,
+            let action = defaults.string(forKey: pagingActionKey)
+        else { return nil }
+
+        let age = now.timeIntervalSince(startedAt)
+        defaults.removeObject(forKey: pagingActionKey)
+        defaults.removeObject(forKey: pagingStartedAtKey)
+        guard age >= 0, age <= maxAge else { return nil }
+        return (action, age * 1_000)
+    }
+
+    private static func loadSharedSnapshot() -> TodayWordsWidgetSnapshot? {
+        guard let data = loadSharedSnapshotData() else { return nil }
+        return try? JSONDecoder().decode(TodayWordsWidgetSnapshot.self, from: data)
+    }
+
+    private static func loadSharedSnapshotData() -> Data? {
+        guard let accessGroup = sharedAccessGroup else { return nil }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainSnapshotAccount,
+            kSecAttrAccessGroup as String: accessGroup,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess, let data = result as? Data else { return nil }
+        return data
+    }
+
+    private static func saveSharedSnapshotData(_ data: Data) {
+        guard let accessGroup = sharedAccessGroup else { return }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainSnapshotAccount,
+            kSecAttrAccessGroup as String: accessGroup,
+        ]
+        let attributes: [String: Any] = [kSecValueData as String: data]
+        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if status == errSecSuccess { return }
+
+        var addQuery = query
+        addQuery[kSecValueData as String] = data
+        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        if addStatus != errSecSuccess && addStatus != errSecDuplicateItem {
+            print("[PolycastWidget] Failed to save shared widget snapshot: \(addStatus)")
+        }
+    }
+
+    private static func deleteSharedSnapshotData() {
+        guard let accessGroup = sharedAccessGroup else { return }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: keychainSnapshotAccount,
+            kSecAttrAccessGroup as String: accessGroup,
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+
+    private static var sharedAccessGroup: String? {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: "PolycastSharedKeychainAccessGroup") as? String,
+              !value.isEmpty,
+              !value.contains("$")
+        else { return nil }
+        return value
+    }
+
+    private static func postDebugSignal(_ event: String) {
+        let name = "com.patron.polycast.widget.\(event)" as CFString
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(name),
+            nil,
+            nil,
+            true
+        )
+    }
 }
 
 enum TodayWordsWidgetImageStore {
     private static let directoryName = "TodayWordsWidgetImages"
+    private static let keychainService = "com.patron.polycast.today-words-widget-images"
 
     static func filename(for wordID: String) -> String {
         filename(for: wordID, imageURL: nil)
@@ -236,6 +366,55 @@ enum TodayWordsWidgetImageStore {
         return directory.appendingPathComponent(filename)
     }
 
+    static func sharedImageData(for wordID: String, imageURL: String?) -> Data? {
+        guard let imageURL else { return nil }
+        return sharedImageData(forFilename: filename(for: wordID, imageURL: imageURL))
+    }
+
+    static func sharedImageData(forFilename filename: String?) -> Data? {
+        guard let filename, !filename.isEmpty, let accessGroup = sharedAccessGroup else { return nil }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: filename,
+            kSecAttrAccessGroup as String: accessGroup,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess, let data = result as? Data else { return nil }
+        return data
+    }
+
+    static func saveSharedImageData(_ data: Data, filename: String) {
+        guard !filename.isEmpty, let accessGroup = sharedAccessGroup else { return }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: keychainService,
+            kSecAttrAccount as String: filename,
+            kSecAttrAccessGroup as String: accessGroup,
+        ]
+        let attributes: [String: Any] = [kSecValueData as String: data]
+        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if status == errSecSuccess {
+            postDebugSignal("shared-image-ready")
+            return
+        }
+
+        var addQuery = query
+        addQuery[kSecValueData as String] = data
+        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        if addStatus == errSecSuccess || addStatus == errSecDuplicateItem {
+            postDebugSignal("shared-image-ready")
+        } else {
+            print("[PolycastWidget] Failed to save shared widget image: \(addStatus)")
+            postDebugSignal("shared-image-failed")
+        }
+    }
+
     static func removeUnusedImages(keeping filenames: Set<String>) {
         guard let directory = directoryURL(),
               let contents = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
@@ -253,5 +432,45 @@ enum TodayWordsWidgetImageStore {
             hash &*= 1_099_511_628_211
         }
         return String(hash, radix: 16)
+    }
+
+    private static var sharedAccessGroup: String? {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: "PolycastSharedKeychainAccessGroup") as? String,
+              !value.isEmpty,
+              !value.contains("$")
+        else { return nil }
+        return value
+    }
+
+    private static func postDebugSignal(_ event: String) {
+        let name = "com.patron.polycast.widget.\(event)" as CFString
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(name),
+            nil,
+            nil,
+            true
+        )
+    }
+}
+
+extension UIImage {
+    func todayWordsWidgetThumbnailJPEGData(maxDimension: CGFloat) -> Data? {
+        let longestSide = max(size.width, size.height)
+        guard longestSide > 0 else { return nil }
+
+        let scale = min(1, maxDimension / longestSide)
+        let outputImage: UIImage
+        if scale < 1 {
+            let outputSize = CGSize(width: size.width * scale, height: size.height * scale)
+            let renderer = UIGraphicsImageRenderer(size: outputSize)
+            outputImage = renderer.image { _ in
+                draw(in: CGRect(origin: .zero, size: outputSize))
+            }
+        } else {
+            outputImage = self
+        }
+
+        return outputImage.jpegData(compressionQuality: 0.84)
     }
 }
