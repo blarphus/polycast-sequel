@@ -215,10 +215,12 @@ enum TodayWordsWidgetImageStore {
     }
 
     static func directoryURL() -> URL? {
-        guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: polycastAppGroupIdentifier) else {
+        let baseURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: polycastAppGroupIdentifier)
+            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        guard let baseURL else {
             return nil
         }
-        return container.appendingPathComponent(directoryName, isDirectory: true)
+        return baseURL.appendingPathComponent(directoryName, isDirectory: true)
     }
 
     static func ensureDirectory() throws -> URL? {

@@ -188,8 +188,7 @@ export async function listNewTodayWords(db, userId, timeZone = 'UTC') {
   );
 }
 
-export async function listNewWordPreview(db, userId, limit = 10, timeZone = 'UTC') {
-  await ensureCardsScheduled(db, userId, timeZone);
+async function queryNewWordPreview(db, userId, limit = 10) {
   return db.query(
     `WITH prefs AS (
        SELECT target_language
@@ -208,6 +207,11 @@ export async function listNewWordPreview(db, userId, limit = 10, timeZone = 'UTC
      LIMIT $2`,
     [userId, limit],
   );
+}
+
+export async function listNewWordPreview(db, userId, limit = 10, timeZone = 'UTC') {
+  await ensureCardsScheduled(db, userId, timeZone);
+  return queryNewWordPreview(db, userId, limit);
 }
 
 export async function listDueWords(db, userId, timeZone = 'UTC', newLimitOverride = null) {
@@ -271,8 +275,7 @@ export async function listDueWords(db, userId, timeZone = 'UTC', newLimitOverrid
  * never-introduced cards available, and the user's current daily-new limit.
  * The `due` predicate mirrors listDueWords so the count matches the session.
  */
-export async function listStudyOverview(db, userId, timeZone = 'UTC') {
-  await ensureCardsScheduled(db, userId, timeZone);
+async function queryStudyOverview(db, userId, timeZone = 'UTC') {
   const { rows } = await db.query(
     `WITH prefs AS (
        SELECT target_language, daily_new_limit FROM users WHERE id = $1
@@ -315,6 +318,20 @@ export async function listStudyOverview(db, userId, timeZone = 'UTC') {
     [userId, timeZone],
   );
   return rows[0] || { due: 0, new_available: 0, daily_new_limit: 0 };
+}
+
+export async function listStudyOverview(db, userId, timeZone = 'UTC') {
+  await ensureCardsScheduled(db, userId, timeZone);
+  return queryStudyOverview(db, userId, timeZone);
+}
+
+export async function listWidgetPreview(db, userId, limit = 20, timeZone = 'UTC') {
+  await ensureCardsScheduled(db, userId, timeZone);
+  const [overview, previewResult] = await Promise.all([
+    queryStudyOverview(db, userId, timeZone),
+    queryNewWordPreview(db, userId, limit),
+  ]);
+  return { overview, words: previewResult.rows };
 }
 
 function isDictionaryEntryNew(word) {

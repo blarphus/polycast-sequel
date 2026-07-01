@@ -12,7 +12,7 @@ import { generateStageSentence } from '../lib/stageSentence.js';
 import logger from '../logger.js';
 import { audioContentType, synthesizeVoiceFeedback } from '../services/ttsService.js';
 import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext, explainSelectionInContext } from '../services/wordSemanticsService.js';
-import { ensureCardsScheduled, listDictionaryGroupPage, listDueWords, listNewTodayWords, listNewWordPreview, listStudyOverview, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
+import { ensureCardsScheduled, listDictionaryGroupPage, listDueWords, listNewTodayWords, listNewWordPreview, listStudyOverview, listWidgetPreview, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
 import { mergeForm } from '../lib/normalizeWordFields.js';
 
 const router = Router();
@@ -120,6 +120,11 @@ const dueQuery = z.object({
 
 const newWordPreviewQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional(),
+  timeZone: z.string().max(100).optional(),
+});
+
+const widgetPreviewQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(20).optional(),
   timeZone: z.string().max(100).optional(),
 });
 
@@ -514,6 +519,20 @@ router.get('/api/dictionary/new-preview', authMiddleware, validate({ query: newW
   } catch (err) {
     req.log.error({ err }, 'Error fetching new-word preview');
     return res.status(500).json({ error: 'Failed to fetch new-word preview' });
+  }
+});
+
+/**
+ * GET /api/dictionary/widget-preview -- Compact widget payload:
+ * counts plus preview cards in one request.
+ */
+router.get('/api/dictionary/widget-preview', authMiddleware, validate({ query: widgetPreviewQuery }), async (req, res) => {
+  try {
+    const payload = await listWidgetPreview(pool, req.userId, req.query.limit ?? 20, validTimeZone(req.query.timeZone));
+    return res.json(payload);
+  } catch (err) {
+    req.log.error({ err }, 'Error fetching widget preview');
+    return res.status(500).json({ error: 'Failed to fetch widget preview' });
   }
 });
 

@@ -46,6 +46,8 @@
 	<string>Polycast needs camera access for video calls.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Polycast needs microphone access for audio and video calls.</string>
+	<key>PolycastSharedKeychainAccessGroup</key>
+	<string>$(DEVELOPMENT_TEAM).com.patron.polycast.shared</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>voip</string>

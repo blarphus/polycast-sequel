@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { listDictionaryGroupPage, listDueWords, listNewWordPreview, listStudyOverview } from '../lib/dictionaryQueries.js';
+import { listDictionaryGroupPage, listDueWords, listNewWordPreview, listStudyOverview, listWidgetPreview } from '../lib/dictionaryQueries.js';
 
 function recordingDatabase(rows = []) {
   const calls = [];
@@ -130,6 +130,34 @@ test('listStudyOverview subtracts introduced cards from available new cards', as
   assert.match(db.calls[4].text, /introduced_today/);
   assert.match(db.calls[4].text, /GREATEST\(COALESCE\(\(SELECT daily_new_limit FROM prefs\), 0\) - \(SELECT cnt FROM introduced_today\), 0\)/);
   assert.deepEqual(db.calls[4].values, ['user-1', 'America/Chicago']);
+});
+
+test('listWidgetPreview returns overview and preview words after one scheduling pass', async () => {
+  const db = {
+    calls: [],
+    async query(text, values) {
+      this.calls.push({ text, values });
+      if (/SELECT\s+\(SELECT COUNT\(\*\)::int FROM saved_words/.test(text)) {
+        return { rows: [{ due: 12, new_available: 5, daily_new_limit: 5 }] };
+      }
+      if (/SELECT sw\.\*/.test(text) && /LIMIT \$2/.test(text)) {
+        return { rows: [{ id: 'preview-1' }, { id: 'preview-2' }] };
+      }
+      return { rows: [], rowCount: 0 };
+    },
+  };
+
+  const result = await listWidgetPreview(db, 'user-1', 8, 'America/Chicago');
+
+  assert.deepEqual(result, {
+    overview: { due: 12, new_available: 5, daily_new_limit: 5 },
+    words: [{ id: 'preview-1' }, { id: 'preview-2' }],
+  });
+  assert.equal(db.calls.length, 6);
+  assert.match(db.calls[0].text, /queue_position/);
+  assert.match(db.calls[3].text, /overdue_review_cards/);
+  assert.deepEqual(db.calls[4].values, ['user-1', 'America/Chicago']);
+  assert.deepEqual(db.calls[5].values, ['user-1', 8]);
 });
 
 test('listDictionaryGroupPage projects queued new-card dates without setting due_at', async () => {

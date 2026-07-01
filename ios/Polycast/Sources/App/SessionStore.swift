@@ -1,4 +1,5 @@
 import Foundation
+import WidgetKit
 
 @MainActor
 final class SessionStore: ObservableObject {
@@ -15,6 +16,9 @@ final class SessionStore: ObservableObject {
 
     init() {
         api.token = tokenStore.load()
+        if api.token != nil {
+            reloadTodayWordsWidget()
+        }
         Task {
             await restoreSession()
         }
@@ -33,6 +37,7 @@ final class SessionStore: ObservableObject {
         do {
             user = try await api.getMe()
             await renewSessionToken()
+            reloadTodayWordsWidget()
             SocketClient.shared.connect()
             VoIPPushManager.shared.refreshRegistration()
         } catch {
@@ -57,6 +62,7 @@ final class SessionStore: ObservableObject {
             tokenStore.save(token: response.token)
             user = response.user
             authError = nil
+            reloadTodayWordsWidget()
             SocketClient.shared.connect()
             VoIPPushManager.shared.refreshRegistration()
             return true
@@ -80,6 +86,7 @@ final class SessionStore: ObservableObject {
             tokenStore.save(token: response.token)
             user = response.user
             authError = nil
+            reloadTodayWordsWidget()
             SocketClient.shared.connect()
             VoIPPushManager.shared.refreshRegistration()
             return true
@@ -113,6 +120,7 @@ final class SessionStore: ObservableObject {
         api.token = nil
         user = nil
         authError = nil
+        reloadTodayWordsWidget()
     }
 
     private func renewSessionToken() async {
@@ -120,8 +128,13 @@ final class SessionStore: ObservableObject {
             let token = try await api.exportSessionToken()
             api.token = token
             tokenStore.save(token: token)
+            reloadTodayWordsWidget()
         } catch {
             print("[Polycast] Session token refresh failed: \(error)")
         }
+    }
+
+    private func reloadTodayWordsWidget() {
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
