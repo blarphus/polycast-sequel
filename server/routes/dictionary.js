@@ -116,6 +116,8 @@ const reviewBody = z.object({
 const dueQuery = z.object({
   timeZone: z.string().max(100).optional(),
   newLimitOverride: z.coerce.number().int().min(0).max(50).optional(),
+  limit: z.coerce.number().int().min(1).max(250).optional(),
+  offset: z.coerce.number().int().min(0).max(5000).optional(),
 });
 
 const newWordPreviewQuery = z.object({
@@ -564,6 +566,8 @@ router.get('/api/dictionary/due', authMiddleware, validate({ query: dueQuery }),
       req.userId,
       validTimeZone(req.query.timeZone),
       req.query.newLimitOverride ?? null,
+      req.query.limit ?? null,
+      req.query.offset ?? 0,
     );
     return res.json(rows);
   } catch (err) {

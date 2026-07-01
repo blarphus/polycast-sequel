@@ -110,6 +110,7 @@ struct LearnView: View {
     @State private var showingCardInfo = false
     @State private var editingCard: SavedWord?
     @State private var checkingForMore = false
+    @State private var loadingRemainingSession = false
 
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var wordStore: WordStore
@@ -132,6 +133,7 @@ struct LearnView: View {
     // Volume buttons are pinned in hands-free; this slider sets the pin level so
     // the learner can still change the actual loudness.
     @AppStorage("handsFreeVolume") private var handsFreeVolume: Double = 0.5
+    private let initialSessionCardLimit = 5
 
     var body: some View {
         ZStack {
@@ -142,10 +144,10 @@ struct LearnView: View {
             } else if cards.isEmpty {
                 sessionCompleteView
             } else if currentIndex >= cards.count {
-                if checkingForMore {
+                if checkingForMore || loadingRemainingSession {
                     VStack(spacing: 12) {
                         ProgressView()
-                        Text("Checking for more cards...")
+                        Text(loadingRemainingSession ? "Loading more cards..." : "Checking for more cards...")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -585,13 +587,14 @@ struct LearnView: View {
         }
         sessionNewWordLimit = newWordsCount
         sessionStart = .now
-        await load()
+        await loadInitialSession()
         started = true
         startingSession = false
         if !cards.isEmpty {
             preloadUpcomingAudio(from: currentIndex)
             prefetchUpcomingImages(from: 0)
             autoPlayIfNeeded()
+            Task { await loadRemainingSession(startingAfter: cards.count) }
         }
     }
 
@@ -1563,12 +1566,51 @@ struct LearnView: View {
     private func load() async {
         loading = true
         do {
-            cards = interleavedStudyQueue(try await APIClient.shared.dueWords())
+            cards = try await APIClient.shared.dueWords()
             wordStore.upsert(contentsOf: cards)
         } catch {
             self.error = error.localizedDescription
         }
         loading = false
+    }
+
+    private func loadInitialSession() async {
+        loading = true
+        loadingRemainingSession = false
+        checkingForMore = false
+        currentIndex = 0
+        do {
+            cards = try await APIClient.shared.dueWords(limit: initialSessionCardLimit, offset: 0)
+            wordStore.upsert(contentsOf: cards)
+        } catch {
+            self.error = error.localizedDescription
+            cards = []
+        }
+        loading = false
+    }
+
+    private func loadRemainingSession(startingAfter offset: Int) async {
+        guard offset > 0, !loadingRemainingSession else { return }
+        loadingRemainingSession = true
+        do {
+            let more = try await APIClient.shared.dueWords(offset: offset)
+            appendUnseenCards(more)
+        } catch {
+            print("[Polycast] Failed to load remaining practice cards: \(error)")
+        }
+        loadingRemainingSession = false
+
+        preloadUpcomingAudio(from: currentIndex)
+        prefetchUpcomingImages(from: currentIndex)
+    }
+
+    private func appendUnseenCards(_ more: [SavedWord]) {
+        guard !more.isEmpty else { return }
+        let knownIDs = Set(cards.map(\.id))
+        let unseen = more.filter { !knownIDs.contains($0.id) }
+        guard !unseen.isEmpty else { return }
+        cards.append(contentsOf: unseen)
+        wordStore.upsert(contentsOf: unseen)
     }
 
     private func handleAnswer(card: SavedWord, answer: String) async {
@@ -1634,12 +1676,10 @@ struct LearnView: View {
 
         if checkingForMore {
             do {
-                let more = interleavedStudyQueue(try await APIClient.shared.dueWords())
-                let knownIDs = Set(cards.map(\.id))
-                let unseen = more.filter { !knownIDs.contains($0.id) }
-                if !unseen.isEmpty {
-                    cards.append(contentsOf: unseen)
-                } else {
+                let more = try await APIClient.shared.dueWords()
+                let previousCount = cards.count
+                appendUnseenCards(more)
+                if cards.count == previousCount {
                     WidgetCenter.shared.reloadAllTimelines()
                 }
             } catch {

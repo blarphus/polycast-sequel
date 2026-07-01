@@ -109,6 +109,24 @@ test('listDueWords spaces new cards through the review queue', async () => {
   assert.equal(result.rows[119].id, 'new-20');
 });
 
+test('listDueWords paginates the interleaved study queue', async () => {
+  const rows = [
+    ...Array.from({ length: 10 }, (_, index) => reviewRow(`review-${index + 1}`)),
+    ...Array.from({ length: 2 }, (_, index) => newRow(`new-${index + 1}`, index)),
+  ];
+  const db = recordingDatabase(rows);
+
+  const result = await listDueWords(db, 'user-1', 'America/Chicago', 2, 5, 4);
+
+  assert.deepEqual(result.rows.map((row) => row.id), [
+    'review-5',
+    'new-1',
+    'review-6',
+    'review-7',
+    'review-8',
+  ]);
+});
+
 test('listDueWords keeps the saved daily limit when no override is supplied', async () => {
   const db = recordingDatabase();
 

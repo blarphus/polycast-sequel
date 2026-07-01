@@ -243,7 +243,7 @@ export async function listNewWordPreview(db, userId, limit = 10, timeZone = 'UTC
   return queryNewWordPreview(db, userId, limit);
 }
 
-export async function listDueWords(db, userId, timeZone = 'UTC', newLimitOverride = null) {
+export async function listDueWords(db, userId, timeZone = 'UTC', newLimitOverride = null, limit = null, offset = 0) {
   await ensureCardsScheduled(db, userId, timeZone);
   const result = await db.query(
     `WITH prefs AS (
@@ -296,6 +296,11 @@ export async function listDueWords(db, userId, timeZone = 'UTC', newLimitOverrid
     [userId, timeZone, newLimitOverride],
   );
   result.rows = interleaveStudyQueueRows(result.rows);
+  if (limit !== null || offset > 0) {
+    const start = Math.max(0, offset);
+    const end = limit === null ? undefined : start + Math.max(0, limit);
+    result.rows = result.rows.slice(start, end);
+  }
   return result;
 }
 

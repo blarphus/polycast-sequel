@@ -380,10 +380,16 @@ final class APIClient: @unchecked Sendable {
         }
     }
 
-    func dueWords(newLimitOverride: Int? = nil) async throws -> [SavedWord] {
+    func dueWords(newLimitOverride: Int? = nil, limit: Int? = nil, offset: Int? = nil) async throws -> [SavedWord] {
         var items = [URLQueryItem(name: "timeZone", value: TimeZone.current.identifier)]
         if let newLimitOverride {
             items.append(URLQueryItem(name: "newLimitOverride", value: String(newLimitOverride)))
+        }
+        if let limit {
+            items.append(URLQueryItem(name: "limit", value: String(limit)))
+        }
+        if let offset {
+            items.append(URLQueryItem(name: "offset", value: String(offset)))
         }
         return try await request("/dictionary/due", queryItems: items)
     }
