@@ -112,8 +112,8 @@ export async function ensureCardsScheduled(db, userId, timeZone = 'UTC') {
        FROM users
        WHERE id = $1
      ),
-     review_cards AS (
-       SELECT sw.id, (sw.due_at AT TIME ZONE $2)::date AS due_date
+     overdue_review_cards AS (
+       SELECT sw.id
        FROM saved_words sw
        CROSS JOIN prefs p
        WHERE sw.user_id = $1
@@ -122,25 +122,12 @@ export async function ensureCardsScheduled(db, userId, timeZone = 'UTC') {
          AND sw.learning_step IS NULL
          AND GREATEST(COALESCE(sw.srs_interval, 0), 0) >= 86400
          AND sw.due_at IS NOT NULL
-     ),
-     shift AS (
-       SELECT ((NOW() AT TIME ZONE $2)::date - MIN(due_date))::int AS days
-       FROM review_cards
-       HAVING MIN(due_date) < (NOW() AT TIME ZONE $2)::date
+         AND (sw.due_at AT TIME ZONE $2)::date < (NOW() AT TIME ZONE $2)::date
      )
      UPDATE saved_words sw
-     SET due_at = (
-       date_trunc('day', sw.due_at AT TIME ZONE $2)
-       + make_interval(days => shift.days)
-     ) AT TIME ZONE $2
-     FROM prefs p, shift
-     WHERE sw.user_id = $1
-       AND sw.target_language IS NOT DISTINCT FROM p.target_language
-       AND sw.last_reviewed_at IS NOT NULL
-       AND sw.learning_step IS NULL
-       AND GREATEST(COALESCE(sw.srs_interval, 0), 0) >= 86400
-       AND sw.due_at IS NOT NULL
-       AND shift.days > 0`,
+     SET due_at = date_trunc('day', NOW() AT TIME ZONE $2) AT TIME ZONE $2
+     FROM overdue_review_cards overdue
+     WHERE sw.id = overdue.id`,
     [userId, timeZone],
   );
   if ((rollover.rowCount ?? 0) > 0) invalidateDictionaryCache(userId);

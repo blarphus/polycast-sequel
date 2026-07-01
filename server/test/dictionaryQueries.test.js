@@ -53,7 +53,11 @@ test('listNewWordPreview returns ordered candidates without introducing cards', 
   assert.deepEqual(db.calls[1].values, ['user-1']);
   assert.match(db.calls[2].text, /last_reviewed_at IS NOT NULL/);
   assert.deepEqual(db.calls[2].values, ['user-1', 'UTC']);
-  assert.match(db.calls[3].text, /MIN\(due_date\)/);
+  assert.match(db.calls[3].text, /overdue_review_cards/);
+  assert.match(db.calls[3].text, /\(sw\.due_at AT TIME ZONE \$2\)::date < \(NOW\(\) AT TIME ZONE \$2\)::date/);
+  assert.match(db.calls[3].text, /SET due_at = date_trunc\('day', NOW\(\) AT TIME ZONE \$2\) AT TIME ZONE \$2/);
+  assert.doesNotMatch(db.calls[3].text, /MIN\(due_date\)/);
+  assert.doesNotMatch(db.calls[3].text, /make_interval\(days => shift\.days\)/);
   assert.deepEqual(db.calls[3].values, ['user-1', 'UTC']);
   assert.deepEqual(db.calls[4].values, ['user-1', 7]);
   assert.match(db.calls[4].text, /last_reviewed_at IS NULL/);
@@ -254,21 +258,21 @@ test('listDictionaryGroupPage frequency sort uses raw corpus count before rounde
   assert.deepEqual(low.groups.map((group) => group.word), ['low-badge', 'unknown', 'unknown-later', 'middle', 'high']);
 });
 
-test('scheduler rolls every day-level review card forward by missed days', async () => {
+test('scheduler rolls only overdue day-level review cards to today', async () => {
   const db = recordingDatabase();
 
   await listDueWords(db, 'user-1', 'America/Chicago');
 
   const rollover = db.calls[3];
   assert.deepEqual(rollover.values, ['user-1', 'America/Chicago']);
-  assert.match(rollover.text, /MIN\(due_date\) < \(NOW\(\) AT TIME ZONE \$2\)::date/);
-  assert.match(rollover.text, /SET due_at = \(/);
-  assert.match(rollover.text, /date_trunc\('day', sw\.due_at AT TIME ZONE \$2\)/);
-  assert.match(rollover.text, /make_interval\(days => shift\.days\)/);
+  assert.match(rollover.text, /overdue_review_cards/);
+  assert.match(rollover.text, /\(sw\.due_at AT TIME ZONE \$2\)::date < \(NOW\(\) AT TIME ZONE \$2\)::date/);
+  assert.match(rollover.text, /SET due_at = date_trunc\('day', NOW\(\) AT TIME ZONE \$2\) AT TIME ZONE \$2/);
   assert.match(rollover.text, /sw\.last_reviewed_at IS NOT NULL/);
   assert.match(rollover.text, /sw\.learning_step IS NULL/);
   assert.match(rollover.text, /GREATEST\(COALESCE\(sw\.srs_interval, 0\), 0\) >= 86400/);
   assert.match(rollover.text, /AND sw\.due_at IS NOT NULL/);
-  assert.doesNotMatch(rollover.text, /AND \(sw\.due_at AT TIME ZONE \$2\)::date <= \(NOW\(\) AT TIME ZONE \$2\)::date/);
-  assert.match(rollover.text, /shift\.days > 0/);
+  assert.doesNotMatch(rollover.text, /MIN\(due_date\)/);
+  assert.doesNotMatch(rollover.text, /make_interval\(days => shift\.days\)/);
+  assert.doesNotMatch(rollover.text, /shift\.days > 0/);
 });
