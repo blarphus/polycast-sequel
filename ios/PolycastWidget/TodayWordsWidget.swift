@@ -7,14 +7,14 @@ import WidgetKit
 
 struct PreviousTodayWordIntent: AppIntent {
     static let title: LocalizedStringResource = "Previous Word"
+    static let openAppWhenRun = false
 
     func perform() async throws -> some IntentResult {
         let start = TodayWordsWidgetTiming.now()
         let startedAt = Date()
         TodayWordsWidgetDebugSignal.post("page-previous-start")
         let totalWords = TodayWordsWidgetStore.snapshotWordCount()
-        TodayWordsWidgetStore.notePagingStarted(action: "previous", startedAt: startedAt)
-        TodayWordsWidgetStore.retreatWord(totalWords: totalWords)
+        TodayWordsWidgetStore.pageWord(action: "previous", totalWords: totalWords, startedAt: startedAt)
         WidgetCenter.shared.reloadTimelines(ofKind: todayWordsWidgetKind)
         TodayWordsWidgetTiming.logPageIntent(action: "previous", start: start, totalWords: totalWords)
         TodayWordsWidgetDebugSignal.post("page-previous-intent-complete")
@@ -24,14 +24,14 @@ struct PreviousTodayWordIntent: AppIntent {
 
 struct NextTodayWordIntent: AppIntent {
     static let title: LocalizedStringResource = "Next Word"
+    static let openAppWhenRun = false
 
     func perform() async throws -> some IntentResult {
         let start = TodayWordsWidgetTiming.now()
         let startedAt = Date()
         TodayWordsWidgetDebugSignal.post("page-next-start")
         let totalWords = TodayWordsWidgetStore.snapshotWordCount()
-        TodayWordsWidgetStore.notePagingStarted(action: "next", startedAt: startedAt)
-        TodayWordsWidgetStore.advanceWord(totalWords: totalWords)
+        TodayWordsWidgetStore.pageWord(action: "next", totalWords: totalWords, startedAt: startedAt)
         WidgetCenter.shared.reloadTimelines(ofKind: todayWordsWidgetKind)
         TodayWordsWidgetTiming.logPageIntent(action: "next", start: start, totalWords: totalWords)
         TodayWordsWidgetDebugSignal.post("page-next-intent-complete")
@@ -882,6 +882,7 @@ struct TodayWordsWidgetView: View {
         }
         .foregroundStyle(.white.opacity(0.88))
         .buttonStyle(.plain)
+        .buttonRepeatBehavior(.enabled)
         .disabled(words.count < 2)
     }
 
@@ -894,6 +895,7 @@ struct TodayWordsWidgetView: View {
         }
         .foregroundStyle(.white.opacity(0.88))
         .buttonStyle(.plain)
+        .buttonRepeatBehavior(.enabled)
         .disabled(words.count < 2)
     }
 

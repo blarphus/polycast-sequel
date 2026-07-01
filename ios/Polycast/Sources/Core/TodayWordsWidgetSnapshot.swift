@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Security
 import UIKit
@@ -120,6 +121,7 @@ enum TodayWordsWidgetStore {
     private static let stateKey = "todayWordsWidget.state"
     private static let pagingActionKey = "todayWordsWidget.pagingAction"
     private static let pagingStartedAtKey = "todayWordsWidget.pagingStartedAt"
+    private static let pagingLockFilename = "todayWordsWidget.paging.lock"
     private static let keychainService = "com.patron.polycast.today-words-widget"
     private static let keychainSnapshotAccount = "snapshot"
 
@@ -222,6 +224,29 @@ enum TodayWordsWidgetStore {
         saveState(state)
     }
 
+    static func pageWord(action: String, totalWords: Int, startedAt: Date = .now) {
+        withPagingLock {
+            notePagingStarted(action: action, startedAt: startedAt)
+
+            guard totalWords > 0 else {
+                saveState(.empty)
+                return
+            }
+
+            var state = loadState()
+            switch action {
+            case "previous":
+                state.selectedIndex = (state.selectedIndex - 1 + totalWords) % totalWords
+                state.navigationDirection = -1
+            default:
+                state.selectedIndex = (state.selectedIndex + 1) % totalWords
+                state.navigationDirection = 1
+            }
+            state.isRevealed = false
+            saveState(state)
+        }
+    }
+
     static func notePagingStarted(action: String, startedAt: Date = .now) {
         defaults.set(action, forKey: pagingActionKey)
         defaults.set(startedAt, forKey: pagingStartedAtKey)
@@ -299,6 +324,28 @@ enum TodayWordsWidgetStore {
         SecItemDelete(query as CFDictionary)
     }
 
+    private static func withPagingLock(_ work: () -> Void) {
+        guard let directory = TodayWordsWidgetImageStore.ensureDirectoryIfPossible() else {
+            work()
+            return
+        }
+
+        let lockURL = directory.appendingPathComponent(pagingLockFilename)
+        _ = FileManager.default.createFile(atPath: lockURL.path, contents: nil)
+        let handle: FileHandle
+        do {
+            handle = try FileHandle(forWritingTo: lockURL)
+        } catch {
+            work()
+            return
+        }
+
+        flock(handle.fileDescriptor, LOCK_EX)
+        work()
+        flock(handle.fileDescriptor, LOCK_UN)
+        try? handle.close()
+    }
+
     private static var sharedAccessGroup: String? {
         guard let value = Bundle.main.object(forInfoDictionaryKey: "PolycastSharedKeychainAccessGroup") as? String,
               !value.isEmpty,
@@ -357,6 +404,10 @@ enum TodayWordsWidgetImageStore {
         guard let directory = directoryURL() else { return nil }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
+    }
+
+    static func ensureDirectoryIfPossible() -> URL? {
+        try? ensureDirectory()
     }
 
     static func imageURL(for filename: String?) -> URL? {
