@@ -32,6 +32,17 @@ import {
 
 type CallRole = 'caller' | 'callee';
 
+/** Map a server ended_reason to a user-facing status message. */
+function endReasonMessage(reason: string | undefined, peerName: string): string {
+  switch (reason) {
+    case 'left': return `${peerName} left the call`;
+    case 'disconnected': return `${peerName} disconnected`;
+    case 'timeout': return 'Connection timed out';
+    case 'cancelled': return 'Call cancelled';
+    default: return reason || 'Call ended';
+  }
+}
+
 interface SignalOffer {
   callId?: string;
   offer: RTCSessionDescriptionInit;
@@ -61,6 +72,7 @@ export default function Call() {
   const pendingCallerOfferRef = useRef(false);
   const initiatedRef = useRef(false);
   const connectedSoundPlayedRef = useRef(false);
+  const callOverRef = useRef(false);
 
   const [activeCallId, setActiveCallId] = useState<string | null>(initialCallId);
   const [callStatus, setCallStatus] = useState<string>(
@@ -125,6 +137,7 @@ export default function Call() {
   }, []);
 
   const finishCallLocally = useCallback((status: string, sound: 'ended' | 'declined' = 'ended') => {
+    callOverRef.current = true;
     stopRinging();
     if (sound === 'declined') {
       playCallDeclinedSound();
@@ -247,9 +260,9 @@ export default function Call() {
       void addIceCandidate(pc, data.candidate);
     };
 
-    const onCallEnded = (data: { callId?: string }) => {
+    const onCallEnded = (data: { callId?: string; reason?: string }) => {
       if (!matchesCall(data.callId)) return;
-      finishCallLocally('Call ended');
+      finishCallLocally(endReasonMessage(data.reason, displayName));
     };
 
     const onCallRejected = (data: { callId?: string }) => {
@@ -259,7 +272,7 @@ export default function Call() {
 
     const onCallCancelled = (data: { callId?: string; reason?: string }) => {
       if (!matchesCall(data.callId)) return;
-      finishCallLocally(data.reason || 'Call cancelled');
+      finishCallLocally(endReasonMessage(data.reason, displayName));
     };
 
     const onCallBusy = (data: { message?: string }) => {
@@ -296,6 +309,51 @@ export default function Call() {
       socket.off('signal:ice-candidate', onIceCandidate);
     };
   }, [answerOffer, finishCallLocally, flushPendingIce, peerId, role, sendCallerOffer, setCallId]);
+
+  // Guard against accidentally leaving an active call: confirm in-app link
+  // navigation and tab close, and tell the server (so the peer is notified)
+  // when the user actually leaves.
+  useEffect(() => {
+    const callInProgress = () => !callOverRef.current && !!activeCallIdRef.current;
+
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!callInProgress()) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    const onPageHide = () => {
+      if (!callInProgress()) return;
+      socket.emit('call:end', { callId: activeCallIdRef.current, reason: 'left' });
+    };
+
+    // The only in-app navigation visible during a call is the sidebar links;
+    // BrowserRouter has no navigation blocker, so intercept anchor clicks.
+    const onClickCapture = (e: MouseEvent) => {
+      if (!callInProgress()) return;
+      const anchor = (e.target as HTMLElement).closest?.('a[href]');
+      if (!anchor) return;
+      if (!window.confirm('Leave the call?')) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('pagehide', onPageHide);
+    document.addEventListener('click', onClickCapture, true);
+
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('pagehide', onPageHide);
+      document.removeEventListener('click', onClickCapture, true);
+      // Unmounting while the call is live (navigated away) — end it so the
+      // peer sees "left the call" instead of a frozen stream.
+      if (callInProgress()) {
+        socket.emit('call:end', { callId: activeCallIdRef.current, reason: 'left' });
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!streamReady || !peerId || !role || pcRef.current) return;

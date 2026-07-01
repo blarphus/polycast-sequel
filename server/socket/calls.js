@@ -6,6 +6,11 @@ import logger from '../logger.js';
 
 const ACTIVE_STATUSES = ['ringing', 'active'];
 
+// Grace period before a full disconnect ends the user's calls, so a
+// transient network blip (socket reconnects within seconds) doesn't
+// kill an otherwise healthy P2P call.
+const DISCONNECT_GRACE_MS = 10_000;
+
 function normalizeMode(mode) {
   return mode === 'audio' ? 'audio' : 'video';
 }
@@ -69,6 +74,49 @@ function emitToUserSockets(io, userId, eventName, payload, exceptSocketId = null
   if (socketIds.length > 0) {
     io.to(socketIds).emit(eventName, payload);
   }
+}
+
+/**
+ * End any open calls for a user whose sockets have all disconnected,
+ * after a grace period, and tell the peer what happened.
+ */
+export function handleCallDisconnect(io, socket, pool) {
+  const { userId } = socket;
+  setTimeout(async () => {
+    try {
+      if (getUserSocketIds(userId).length > 0) return; // reconnected
+
+      const { rows } = await pool.query(
+        `UPDATE calls
+         SET ended_at = NOW(),
+             duration_seconds = CASE
+               WHEN accepted_at IS NULL THEN NULL
+               ELSE EXTRACT(EPOCH FROM (NOW() - accepted_at))::INTEGER
+             END,
+             status = CASE WHEN status = 'active' THEN 'completed' ELSE 'cancelled' END,
+             ended_reason = 'disconnected'
+         WHERE ended_at IS NULL
+           AND status = ANY($2)
+           AND (caller_id = $1 OR callee_id = $1)
+         RETURNING *`,
+        [userId, ACTIVE_STATUSES],
+      );
+
+      for (const call of rows) {
+        logger.info(`[call] ending call ${call.id}: ${userId} disconnected`);
+        const peer = call.caller_id === userId ? call.callee_id : call.caller_id;
+        const payload = { callId: call.id, userId, reason: 'disconnected' };
+        // `status` holds the post-update value: cancelled = was still ringing
+        if (call.status === 'cancelled') {
+          emitToUserSockets(io, peer, 'call:cancelled', payload);
+        } else {
+          emitToUserSockets(io, peer, 'call:ended', payload);
+        }
+      }
+    } catch (err) {
+      logger.error({ err }, 'call disconnect cleanup error');
+    }
+  }, DISCONNECT_GRACE_MS);
 }
 
 /**

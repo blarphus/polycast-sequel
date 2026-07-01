@@ -3,7 +3,7 @@ import cookie from 'cookie';
 import { verifyToken } from '../auth.js';
 import { handleConnect, handleDisconnect, setupHeartbeat } from './presence.js';
 import { handleSignaling } from './signaling.js';
-import { handleCalls } from './calls.js';
+import { handleCalls, handleCallDisconnect } from './calls.js';
 import { handleTranscription } from './transcription.js';
 import { handleMessaging } from './messaging.js';
 import { handleGroupCall, handleGroupCallDisconnect } from './groupCall.js';
@@ -102,6 +102,7 @@ export function setupSocket(server) {
     socket.on('disconnect', async () => {
       logger.info(`Socket disconnected: ${socket.id} (user: ${socket.userId})`);
       handleDisconnect(io, socket, redisClient);
+      handleCallDisconnect(io, socket, pool);
       await handleGroupCallDisconnect(io, socket);
     });
   });
