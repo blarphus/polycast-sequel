@@ -543,6 +543,11 @@
 					B2AFB531F9D173C07D9646EE = {
 						DevelopmentTeam = DQNRTU7888;
 						ProvisioningStyle = Automatic;
+						SystemCapabilities = {
+							com.apple.Push = {
+								enabled = 1;
+							};
+						};
 					};
 					CEB9F3B8A9F844441A7DEAC9 = {
 						DevelopmentTeam = DQNRTU7888;

@@ -7,6 +7,7 @@ final class VoIPPushManager: NSObject, @unchecked Sendable {
 
     private let registry = PKPushRegistry(queue: .main)
     private let provider: CXProvider
+    private let tokenStore = KeychainTokenStore()
     private var currentDeviceToken: String?
     private var currentCallUUID: UUID?
 
@@ -77,19 +78,26 @@ final class VoIPPushManager: NSObject, @unchecked Sendable {
     }
 
     private func ensureRealtimeReady() {
-        guard APIClient.shared.token != nil else { return }
+        if APIClient.shared.token == nil {
+            APIClient.shared.token = tokenStore.load()
+        }
+        guard APIClient.shared.token != nil else {
+            print("[Polycast] VoIP push received but no saved auth token was available")
+            return
+        }
         SocketClient.shared.connect()
         Task { @MainActor in
             CallManager.shared.startListening()
         }
     }
 
-    private func handleIncomingPush(_ payload: PKPushPayload) {
+    private func handleIncomingPush(_ payload: PKPushPayload, completion: @escaping () -> Void) {
         guard let dict = payload.dictionaryPayload as? [String: Any],
               let callId = dict["callId"] as? String,
               let callerId = dict["callerId"] as? String,
               let callerUsername = dict["callerUsername"] as? String else {
             print("[Polycast] Invalid incoming VoIP payload: \(payload.dictionaryPayload)")
+            completion()
             return
         }
 
@@ -122,6 +130,7 @@ final class VoIPPushManager: NSObject, @unchecked Sendable {
             if let error {
                 print("[Polycast] Failed to report incoming call: \(error)")
             }
+            completion()
         }
     }
 }
@@ -145,8 +154,7 @@ extension VoIPPushManager: PKPushRegistryDelegate {
             completion()
             return
         }
-        handleIncomingPush(payload)
-        completion()
+        handleIncomingPush(payload, completion: completion)
     }
 }
 
