@@ -140,7 +140,7 @@ test('listWidgetPreview returns overview and preview words after one scheduling 
       if (/SELECT\s+\(SELECT COUNT\(\*\)::int FROM saved_words/.test(text)) {
         return { rows: [{ due: 12, new_available: 5, daily_new_limit: 5 }] };
       }
-      if (/SELECT sw\.\*/.test(text) && /LIMIT \$2/.test(text)) {
+      if (/SELECT\s+sw\.id/.test(text) && /sw\.image_url/.test(text) && /LIMIT \$2/.test(text)) {
         return { rows: [{ id: 'preview-1' }, { id: 'preview-2' }] };
       }
       return { rows: [], rowCount: 0 };
@@ -158,6 +158,8 @@ test('listWidgetPreview returns overview and preview words after one scheduling 
   assert.match(db.calls[3].text, /overdue_review_cards/);
   assert.deepEqual(db.calls[4].values, ['user-1', 'America/Chicago']);
   assert.deepEqual(db.calls[5].values, ['user-1', 8]);
+  assert.doesNotMatch(db.calls[5].text, /SELECT sw\.\*/);
+  assert.match(db.calls[5].text, /sw\.image_url/);
 });
 
 test('listDictionaryGroupPage projects queued new-card dates without setting due_at', async () => {

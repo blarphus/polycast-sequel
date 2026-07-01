@@ -209,6 +209,35 @@ async function queryNewWordPreview(db, userId, limit = 10) {
   );
 }
 
+async function queryWidgetWordPreview(db, userId, limit = 20) {
+  return db.query(
+    `WITH prefs AS (
+       SELECT target_language
+       FROM users
+       WHERE id = $1
+     )
+     SELECT
+       sw.id,
+       COALESCE(sw.word, '') AS word,
+       COALESCE(sw.translation, '') AS translation,
+       COALESCE(sw.definition, '') AS definition,
+       sw.example_sentence,
+       sw.sentence_translation,
+       sw.part_of_speech,
+       sw.image_url
+     FROM saved_words sw
+     CROSS JOIN prefs p
+     WHERE sw.user_id = $1
+       AND sw.target_language IS NOT DISTINCT FROM p.target_language
+       AND sw.srs_interval = 0
+       AND sw.learning_step IS NULL
+       AND sw.last_reviewed_at IS NULL
+     ORDER BY ${NEW_TODAY_ORDER_BY}
+     LIMIT $2`,
+    [userId, limit],
+  );
+}
+
 export async function listNewWordPreview(db, userId, limit = 10, timeZone = 'UTC') {
   await ensureCardsScheduled(db, userId, timeZone);
   return queryNewWordPreview(db, userId, limit);
@@ -329,7 +358,7 @@ export async function listWidgetPreview(db, userId, limit = 20, timeZone = 'UTC'
   await ensureCardsScheduled(db, userId, timeZone);
   const [overview, previewResult] = await Promise.all([
     queryStudyOverview(db, userId, timeZone),
-    queryNewWordPreview(db, userId, limit),
+    queryWidgetWordPreview(db, userId, limit),
   ]);
   return { overview, words: previewResult.rows };
 }
