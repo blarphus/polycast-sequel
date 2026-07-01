@@ -33,6 +33,12 @@ export default function GroupCall() {
   const screenStreamRef = useRef<MediaStream | null>(null);
   const transcriptionRef = useRef<TranscriptionService | null>(null);
 
+  const handleToggleMute = useCallback(() => {
+    toggleMute();
+    const audioTrack = localStreamRef.current?.getAudioTracks()[0];
+    transcriptionRef.current?.setMuted(audioTrack ? !audioTrack.enabled : false);
+  }, [toggleMute, localStreamRef]);
+
   // Transcription state
   const [liveSubtitle, setLiveSubtitle] = useState<{ text: string; userId: string } | null>(null);
   const subtitleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -221,7 +227,7 @@ export default function GroupCall() {
         isMuted={isMuted}
         isCameraOff={isCameraOff}
         isScreenSharing={isScreenSharing}
-        onToggleMute={toggleMute}
+        onToggleMute={handleToggleMute}
         onToggleCamera={toggleCamera}
         onToggleScreenShare={toggleScreenShare}
         primaryAction={{

@@ -84,10 +84,17 @@ export default function Call() {
     remoteLang,
     transcriptEntries,
     cleanupTranscription,
+    setMicMuted,
   } = useTranscription(peerId || '', streamRef, streamReady);
 
   const { controlsHidden, showControls } = useAutoHideControls();
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(streamRef);
+
+  const handleToggleMute = useCallback(() => {
+    toggleMute();
+    const audioTrack = streamRef.current?.getAudioTracks()[0];
+    setMicMuted(audioTrack ? !audioTrack.enabled : false);
+  }, [toggleMute, setMicMuted, streamRef]);
   const { isScreenSharing, toggleScreenShare } = useScreenShare(streamRef, pcRef, localVideoRef);
   const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = useSavedWords();
 
@@ -483,7 +490,7 @@ export default function Call() {
           isMuted={isMuted}
           isCameraOff={isCameraOff}
           isScreenSharing={isScreenSharing}
-          onToggleMute={toggleMute}
+          onToggleMute={handleToggleMute}
           onToggleCamera={toggleCamera}
           onToggleScreenShare={toggleScreenShare}
           primaryAction={{

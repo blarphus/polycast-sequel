@@ -17,6 +17,7 @@ export interface UseTranscriptionResult {
   remoteLang: string;
   transcriptEntries: TranscriptEntry[];
   cleanupTranscription: () => void;
+  setMicMuted: (muted: boolean) => void;
   streamReady: boolean;
 }
 
@@ -109,6 +110,10 @@ export function useTranscription(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [peerId, externalStreamReady]);
 
+  const setMicMuted = useCallback((muted: boolean) => {
+    transcriptionRef.current?.setMuted(muted);
+  }, []);
+
   return {
     streamRef,
     videoRef,
@@ -117,6 +122,7 @@ export function useTranscription(
     remoteLang,
     transcriptEntries,
     cleanupTranscription,
+    setMicMuted,
     streamReady: externalStreamRef ? !!externalStreamReady : streamReady,
   };
 }

@@ -78,6 +78,20 @@ export class TranscriptionService {
     console.log('[transcription] Audio pipeline connected, streaming to server');
   }
 
+  /**
+   * Mute/unmute the mic feed into the transcription pipeline. Suspending the
+   * AudioContext halts capture at the graph level — a disabled MediaStreamTrack
+   * would still push (silent) samples through, i.e. still "receive" audio.
+   */
+  setMuted(muted: boolean): void {
+    if (!this.audioContext) return;
+    if (muted && this.audioContext.state === 'running') {
+      this.audioContext.suspend().catch((err) => console.error('[transcription] AudioContext.suspend() failed:', err));
+    } else if (!muted && this.audioContext.state === 'suspended') {
+      this.audioContext.resume().catch((err) => console.error('[transcription] AudioContext.resume() failed:', err));
+    }
+  }
+
   /** Stop transcription and release audio resources. */
   stop(): void {
     console.log('[transcription] Stopping transcription');
