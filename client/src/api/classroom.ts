@@ -75,9 +75,9 @@ export interface DailyActivity {
   day: string;
   reviews: number;
   wordsAdded: number;
-  quizzes: number;
-  quizCorrect: number;
-  quizTotal: number;
+  practiceSessions: number;
+  practiceCorrect: number;
+  practiceTotal: number;
   drills: number;
   voiceSessions: number;
   words: DailyWord[];
@@ -100,7 +100,7 @@ export interface StudentWordList {
 }
 
 export interface RecentSession {
-  type: 'quiz' | 'drill' | 'voice';
+  type: 'flashcards' | 'vocabulary' | 'drill' | 'voice';
   id: string;
   questionCount: number;
   correctCount: number;

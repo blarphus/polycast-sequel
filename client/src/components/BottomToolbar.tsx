@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentDashboard } from '../api';
-import { HomeIcon, BookIcon, BookOpenIcon, BoltIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, FolderIcon, SettingsIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, UserIcon, PlusIcon, CloseIcon } from './icons';
+import { HomeIcon, BookIcon, BookOpenIcon, BoltIcon, TargetIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, FolderIcon, SettingsIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, UserIcon, PlusIcon, CloseIcon } from './icons';
 import { toErrorMessage } from '../utils/errors';
 
 const COLLAPSED_KEY = 'sidebar-collapsed';
@@ -76,7 +76,8 @@ export default function BottomToolbar() {
 
   const isHome = location.pathname === '/home';
   const isDictionary = location.pathname === '/' || location.pathname === '/dictionary';
-  const isPractice = location.pathname === '/practice' || location.pathname.startsWith('/practice/') || location.pathname === '/learn';
+  const isFlashcards = location.pathname === '/learn' || location.pathname.startsWith('/learn/');
+  const isPractice = location.pathname === '/practice' || location.pathname.startsWith('/practice/');
   const isSocial = location.pathname === '/chats';
   const isClasswork = !isTeacher && (location.pathname === '/classwork' || location.pathname.startsWith('/classwork/') || location.pathname === '/classes' || location.pathname === '/students' || location.pathname.startsWith('/students/'));
   const isBrowse = location.pathname === '/browse' || location.pathname.startsWith('/channel/') || location.pathname.startsWith('/lesson/');
@@ -119,10 +120,17 @@ export default function BottomToolbar() {
         <span className="toolbar-label">Dictionary</span>
       </button>
       <button
-        className={`toolbar-tab toolbar-tab--yellow${isPractice ? ' active' : ''}`}
+        className={`toolbar-tab toolbar-tab--yellow${isFlashcards ? ' active' : ''}`}
         onClick={() => navigate('/learn')}
       >
         <BoltIcon size={22} />
+        <span className="toolbar-label">Flashcards</span>
+      </button>
+      <button
+        className={`toolbar-tab toolbar-tab--yellow${isPractice ? ' active' : ''}`}
+        onClick={() => navigate('/practice')}
+      >
+        <TargetIcon size={22} />
         <span className="toolbar-label">Practice</span>
       </button>
       <button

@@ -27,64 +27,77 @@ export function saveDrillSession(data: {
   });
 }
 
-export interface QuizQuestion {
-  type: 'conjugation' | 'grammar' | 'translation';
-  prompt: string;
-  expected: string;
-  input_mode: 'word_bank' | 'free_type';
-  distractors: string[];
-  hint: string;
-  saved_word_id: string | null;
+export type VocabularyExerciseKind =
+  | 'meaning_choice'
+  | 'word_choice'
+  | 'pair_match'
+  | 'context_choice'
+  | 'context_type'
+  | 'listen_meaning'
+  | 'listen_type';
+
+export interface ExerciseOption { id: string; text: string }
+export interface VocabularyExercise {
+  id: string;
+  position: number;
+  total: number;
+  kind: VocabularyExerciseKind;
+  prompt: {
+    instruction: string;
+    word?: string;
+    meaning?: string;
+    sentence?: string;
+    audioText?: string;
+    language?: string | null;
+    options?: ExerciseOption[];
+    left?: ExerciseOption[];
+    right?: ExerciseOption[];
+  };
+  retryOf: string | null;
 }
 
-export interface QuizAnswerResult {
-  isCorrect: boolean;
-  expectedAnswer: string;
-  aiFeedback: string;
+export interface LearningSession {
+  id: string;
+  kind: 'flashcards' | 'vocabulary';
+  total_items: number;
+  answered_count: number;
+  correct_count: number;
+  status: 'active' | 'completed' | 'abandoned';
+  awarded_xp: number;
 }
 
-export interface QuizSessionResult {
-  sessionId: string;
-  questionCount: number;
-  correctCount: number;
-  percentage: number;
-  answers: {
-    questionIndex: number;
-    questionType: string;
-    prompt: string;
-    expectedAnswer: string;
-    userAnswer: string;
-    isCorrect: boolean;
-    aiFeedback: string;
-  }[];
-}
+export interface Diagnostic { code: string; title: string; message: string }
+export type ExerciseResponse =
+  | { optionId: string }
+  | { text: string }
+  | { pairs: { leftId: string; rightId: string }[] };
 
-export function generateQuiz(videoId?: string, count?: number) {
-  const body: Record<string, unknown> = {};
-  if (videoId) body.videoId = videoId;
-  if (count) body.count = count;
-  return request<{ questions: QuizQuestion[] }>('/practice/generate', {
+export function createLearningSession(kind: 'flashcards' | 'vocabulary', sourceVideoId?: string) {
+  return request<{
+    session: LearningSession;
+    exercise: VocabularyExercise | null;
+    diagnostics: Diagnostic[];
+  }>('/learning-sessions', {
     method: 'POST',
-    body,
+    body: { kind, sourceVideoId, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
   });
 }
 
-export function createQuizSession(mode: 'video' | 'standalone', questions: QuizQuestion[], videoId?: string) {
-  return request<{ sessionId: string }>('/practice/sessions', {
+export function answerVocabularyExercise(sessionId: string, exerciseId: string, response: ExerciseResponse) {
+  return request<{
+    correct: boolean;
+    correctAnswer: string;
+    nextExercise: VocabularyExercise | null;
+    session: LearningSession;
+  }>(`/learning-sessions/${sessionId}/answers`, {
     method: 'POST',
-    body: { videoId, mode, questions },
+    body: { exerciseId, response },
   });
 }
 
-export function submitQuizAnswer(sessionId: string, questionIndex: number, userAnswer: string) {
-  return request<QuizAnswerResult>(`/practice/sessions/${sessionId}/answer`, {
+export function completeLearningSession(sessionId: string) {
+  return request<{ awardedXp: number }>(`/learning-sessions/${sessionId}/complete`, {
     method: 'POST',
-    body: { questionIndex, userAnswer },
-  });
-}
-
-export function completeQuizSession(sessionId: string) {
-  return request<QuizSessionResult>(`/practice/sessions/${sessionId}/complete`, {
-    method: 'POST',
+    body: { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
   });
 }

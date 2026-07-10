@@ -154,9 +154,9 @@ export default function Watch() {
       {videoEnded && video && video.transcript_status === 'ready' && (
         <div className="watch-practice-prompt">
           <TargetIcon size={20} />
-          <p>Ready to practice?</p>
+          <p>Practice saved words from this video</p>
           <button className="btn btn-primary btn-sm" onClick={() => navigate(`/practice/${video.id}`)}>
-            Start Quiz
+            Start practice
           </button>
         </div>
       )}

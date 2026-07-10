@@ -15,6 +15,7 @@ import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInCont
 import { ensureCardsScheduled, listDictionaryGroupPage, listDueWords, listNewTodayWords, listNewWordPreview, listStudyOverview, listWidgetPreview, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
 import { mergeForm } from '../lib/normalizeWordFields.js';
 import { awardWordSaveXp } from '../lib/progression.js';
+import { recordFlashcardReview } from '../services/learningSessionService.js';
 
 const router = Router();
 
@@ -112,6 +113,7 @@ const updateWordBody = z.object({
 const reviewBody = z.object({
   answer: z.enum(['again', 'good'], { message: 'answer must be again or good' }),
   timeZone: z.string().max(100).optional(),
+  learningSessionId: z.string().uuid().optional(),
 });
 
 const dueQuery = z.object({
@@ -582,7 +584,7 @@ router.get('/api/dictionary/due', authMiddleware, validate({ query: dueQuery }),
  * Body: { answer: 'again' | 'good' }  (incorrect | correct)
  */
 router.patch('/api/dictionary/words/:id/review', authMiddleware, validate({ params: uuidParam, body: reviewBody }), async (req, res) => {
-  const { answer, timeZone } = req.body;
+  const { answer, timeZone, learningSessionId } = req.body;
 
   try {
     const updated = await applySrsReview(pool, req.params.id, req.userId, answer, timeZone, {
@@ -592,6 +594,8 @@ router.patch('/api/dictionary/words/:id/review', authMiddleware, validate({ para
     if (!updated) {
       return res.status(404).json({ error: 'Word not found' });
     }
+
+    await recordFlashcardReview(pool, req.userId, learningSessionId, answer === 'good');
 
     invalidateDictionaryCache(req.userId);
     return res.json(updated);

@@ -3,8 +3,12 @@ import crypto from 'crypto';
 export const WORD_SAVE_XP = 10;
 export const WILD_RECALL_XP = 15;
 export const WILD_RECALL_DAILY_CAP = 3;
+export const SESSION_COMPLETION_XP = 25;
+export const SESSION_DAILY_CAP = 2;
+export const DAILY_ACTIVITY_XP_TARGET = 50;
+export const XP_PER_LEVEL = 250;
 
-function localDate(timeZone, date = new Date()) {
+export function localDate(timeZone, date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
   }).formatToParts(date);
@@ -31,17 +35,52 @@ async function lockedProgress(client, userId, date) {
 
 export async function progressionSnapshot(db, userId, timeZone) {
   const date = localDate(timeZone);
-  const [{ rows: users }, { rows: progressRows }] = await Promise.all([
-    db.query('SELECT daily_word_goal, total_xp FROM users WHERE id = $1', [userId]),
-    db.query('SELECT word_adds, wild_recall_answered FROM daily_learning_progress WHERE user_id = $1 AND local_date = $2', [userId, date]),
+  const start = new Date(`${date}T12:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - 6);
+  const startDate = start.toISOString().slice(0, 10);
+  const [{ rows: users }, { rows: progressRows }, { rows: xpRows }, { rows: weekRows }] = await Promise.all([
+    db.query('SELECT daily_word_goal, total_xp, progression_accent FROM users WHERE id = $1', [userId]),
+    db.query('SELECT word_adds, wild_recall_answered, rewarded_sessions FROM daily_learning_progress WHERE user_id = $1 AND local_date = $2', [userId, date]),
+    db.query('SELECT COALESCE(SUM(amount), 0)::int AS xp FROM xp_events WHERE user_id = $1 AND local_date = $2', [userId, date]),
+    db.query(
+      `SELECT local_date::text AS local_date, COALESCE(SUM(amount), 0)::int AS xp
+         FROM xp_events
+        WHERE user_id = $1 AND local_date BETWEEN $2 AND $3
+        GROUP BY local_date ORDER BY local_date`,
+      [userId, startDate, date],
+    ),
   ]);
-  const user = users[0] || { daily_word_goal: 5, total_xp: 0 };
-  const progress = progressRows[0] || { word_adds: 0, wild_recall_answered: 0 };
+  const user = users[0] || { daily_word_goal: 5, total_xp: 0, progression_accent: 'indigo' };
+  const progress = progressRows[0] || { word_adds: 0, wild_recall_answered: 0, rewarded_sessions: 0 };
   const goal = Math.max(1, Number(user.daily_word_goal) || 5);
   const added = Math.max(0, Number(progress.word_adds) || 0);
   const recalled = Math.max(0, Number(progress.wild_recall_answered) || 0);
+  const rewardedSessions = Math.max(0, Number(progress.rewarded_sessions) || 0);
+  const todayXp = Math.max(0, Number(xpRows[0]?.xp) || 0);
+  const totalXp = Math.max(0, Number(user.total_xp) || 0);
+  const level = Math.floor(totalXp / XP_PER_LEVEL) + 1;
+  const weekByDate = new Map(weekRows.map((row) => [row.local_date, Number(row.xp) || 0]));
+  const week = [];
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const day = new Date(`${date}T12:00:00Z`);
+    day.setUTCDate(day.getUTCDate() - offset);
+    const dayKey = day.toISOString().slice(0, 10);
+    const xp = weekByDate.get(dayKey) || 0;
+    week.push({ date: dayKey, xp, complete: xp >= DAILY_ACTIVITY_XP_TARGET });
+  }
+  const unlockedAccents = ['indigo'];
+  if (level >= 3) unlockedAccents.push('teal');
+  if (level >= 6) unlockedAccents.push('coral');
+  if (level >= 10) unlockedAccents.push('gold');
+  const selectedAccent = unlockedAccents.includes(user.progression_accent) ? user.progression_accent : 'indigo';
   return {
-    totalXp: Math.max(0, Number(user.total_xp) || 0),
+    totalXp,
+    dailyActivity: {
+      targetXp: DAILY_ACTIVITY_XP_TARGET,
+      earnedXp: todayXp,
+      remainingXp: Math.max(0, DAILY_ACTIVITY_XP_TARGET - todayXp),
+      complete: todayXp >= DAILY_ACTIVITY_XP_TARGET,
+    },
     dailyGoal: {
       goal,
       added,
@@ -50,7 +89,40 @@ export async function progressionSnapshot(db, userId, timeZone) {
       wordSaveXpRemaining: Math.max(0, goal - added),
     },
     wildRecall: { answered: recalled, remaining: Math.max(0, WILD_RECALL_DAILY_CAP - recalled) },
+    sessionRewards: { awarded: rewardedSessions, remaining: Math.max(0, SESSION_DAILY_CAP - rewardedSessions) },
+    week,
+    level: {
+      number: level,
+      currentXp: totalXp % XP_PER_LEVEL,
+      nextXp: XP_PER_LEVEL,
+      selectedAccent,
+      unlockedAccents,
+    },
   };
+}
+
+export async function awardLearningSessionXp(client, userId, sessionId, timeZone) {
+  const date = localDate(timeZone);
+  const progress = await lockedProgress(client, userId, date);
+  const dedupeKey = `session-complete:${sessionId}`;
+  const existing = await client.query('SELECT amount FROM xp_events WHERE dedupe_key = $1', [dedupeKey]);
+  if (existing.rowCount) return Number(existing.rows[0].amount) || 0;
+
+  const amount = progress.rewarded_sessions < SESSION_DAILY_CAP ? SESSION_COMPLETION_XP : 0;
+  await client.query(
+    `INSERT INTO xp_events (user_id, source, amount, local_date, dedupe_key, learning_session_id)
+     VALUES ($1, 'session_complete', $2, $3, $4, $5)`,
+    [userId, amount, date, dedupeKey, sessionId],
+  );
+  if (amount) {
+    await client.query(
+      `UPDATE daily_learning_progress SET rewarded_sessions = rewarded_sessions + 1
+        WHERE user_id = $1 AND local_date = $2`,
+      [userId, date],
+    );
+    await client.query('UPDATE users SET total_xp = total_xp + $2 WHERE id = $1', [userId, amount]);
+  }
+  return amount;
 }
 
 export async function awardWordSaveXp(pool, userId, savedWord, timeZone) {
@@ -198,14 +270,10 @@ export async function answerWildRecall(pool, userId, challengeId, optionId, time
   try {
     await client.query('BEGIN');
     const date = localDate(timeZone);
-    const progress = await lockedProgress(client, userId, date);
-    if (progress.wild_recall_answered >= WILD_RECALL_DAILY_CAP) {
-      await client.query('COMMIT');
-      return { capped: true, progression: await progressionSnapshot(pool, userId, timeZone) };
-    }
+    await lockedProgress(client, userId, date);
     const { rows } = await client.query(
       `SELECT * FROM wild_recall_challenges
-        WHERE id = $1 AND user_id = $2 AND status = 'pending' FOR UPDATE`, [challengeId, userId],
+        WHERE id = $1 AND user_id = $2 AND status = 'pending' AND clicked_at IS NOT NULL FOR UPDATE`, [challengeId, userId],
     );
     const challenge = rows[0];
     if (!challenge) throw new Error('Recall challenge is no longer available');
@@ -217,10 +285,6 @@ export async function answerWildRecall(pool, userId, challengeId, optionId, time
       `UPDATE wild_recall_challenges
           SET status = 'answered', answered_at = NOW(), correct = $2, retry_on = $3
         WHERE id = $1`, [challengeId, correct, nextRetry],
-    );
-    await client.query(
-      `UPDATE daily_learning_progress SET wild_recall_answered = wild_recall_answered + 1
-        WHERE user_id = $1 AND local_date = $2`, [userId, date],
     );
     let awardedXp = 0;
     if (correct) {
@@ -234,6 +298,41 @@ export async function answerWildRecall(pool, userId, challengeId, optionId, time
     }
     await client.query('COMMIT');
     return { correct, correctAnswer, awardedXp, progression: await progressionSnapshot(pool, userId, timeZone) };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function clickWildRecall(pool, userId, challengeId, timeZone) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const date = localDate(timeZone);
+    const progress = await lockedProgress(client, userId, date);
+    const { rows } = await client.query(
+      `SELECT * FROM wild_recall_challenges
+        WHERE id = $1 AND user_id = $2 AND status = 'pending' FOR UPDATE`,
+      [challengeId, userId],
+    );
+    const challenge = rows[0];
+    if (!challenge) throw new Error('Recall challenge is no longer available');
+    if (!challenge.clicked_at && progress.wild_recall_answered >= WILD_RECALL_DAILY_CAP) {
+      await client.query('COMMIT');
+      return { capped: true, progression: await progressionSnapshot(pool, userId, timeZone) };
+    }
+    if (!challenge.clicked_at) {
+      await client.query('UPDATE wild_recall_challenges SET clicked_at = NOW() WHERE id = $1', [challengeId]);
+      await client.query(
+        `UPDATE daily_learning_progress SET wild_recall_answered = wild_recall_answered + 1
+          WHERE user_id = $1 AND local_date = $2`,
+        [userId, date],
+      );
+    }
+    await client.query('COMMIT');
+    return { capped: false, progression: await progressionSnapshot(pool, userId, timeZone) };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

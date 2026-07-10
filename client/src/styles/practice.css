@@ -1,42 +1,136 @@
-@import './practiceQuiz.css';
 @import './practiceDrill.css';
 
-/* ==========================================================================
-   Practice / Quiz Page
-   ========================================================================== */
-
 .practice-page {
-  height: 100dvh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  padding-bottom: 100px;
-  background: linear-gradient(160deg, #fef9c3 0%, #f5f5f7 40%, #f0f0f5 100%);
-  position: relative;
-  overflow: hidden;
+  background: #f6f7fb;
+  color: var(--text-primary);
+  padding-bottom: 96px;
 }
 
-/* Close button */
-.practice-close {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
+.practice-status { margin-top: 14px; color: var(--text-secondary); }
+.practice-page > .loading-spinner { margin: auto auto 0; }
+
+.practice-session-header {
+  display: grid;
+  grid-template-columns: 40px minmax(120px, 620px) 54px;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 72px;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid #dde1ea;
+}
+
+.practice-session-header strong { color: #5c6475; font-size: .86rem; font-variant-numeric: tabular-nums; }
+.practice-close { position: static; border: 0; background: transparent; color: #596174; width: 40px; height: 40px; }
+.practice-progress { height: 10px; overflow: hidden; border-radius: 5px; background: #e5e8ef; }
+.practice-progress span { display: block; height: 100%; border-radius: inherit; background: #5a55e7; transition: width .24s ease; }
+
+.practice-diagnostic, .practice-error {
+  width: min(680px, calc(100% - 32px));
+  margin: 12px auto 0;
+  padding: 10px 12px;
+  border: 1px solid #e5a93c;
+  border-radius: 6px;
+  background: #fff8e8;
+  color: #6f4a08;
+  font-size: .82rem;
+}
+.practice-diagnostic strong, .practice-diagnostic span { display: block; }
+.practice-diagnostic span { margin-top: 2px; }
+.practice-error { border-color: #ef8d96; background: #fff0f1; color: #8e202b; }
+
+.practice-exercise {
+  width: min(680px, calc(100% - 32px));
+  margin: auto;
+  padding: 48px 0 36px;
+  text-align: center;
+}
+.practice-exercise h1 { margin: 0 0 28px; font-size: clamp(1.35rem, 3vw, 1.8rem); letter-spacing: 0; }
+.practice-retry-label { color: #756eea; font-size: .8rem; font-weight: 700; margin: -18px 0 22px; }
+.practice-term { font-size: 2.25rem; font-weight: 800; color: #252637; margin-bottom: 28px; }
+.practice-meaning { font-size: 1.5rem; font-weight: 700; margin-bottom: 28px; }
+.practice-sentence { font-size: 1.32rem; line-height: 1.65; margin: 0 auto 30px; max-width: 600px; }
+.practice-audio { display: grid; place-items: center; width: 68px; height: 68px; margin: 0 auto 28px; border: 0; border-radius: 50%; background: #e7f7f5; color: #087f74; }
+
+.practice-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.practice-options button, .practice-match button {
+  min-height: 58px;
+  padding: 12px 14px;
+  border: 1.5px solid #cfd4df;
+  border-bottom-width: 3px;
+  border-radius: 7px;
+  background: #fff;
+  color: #292b39;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.practice-options button:hover:not(:disabled), .practice-match button:hover:not(.matched) { border-color: #706be9; }
+.practice-options button.selected, .practice-match button.selected { border-color: #5752df; background: #efefff; color: #3430a8; }
+.practice-match { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.practice-match > div { display: grid; gap: 10px; }
+.practice-match button.matched { opacity: .42; cursor: default; }
+
+.practice-type-input {
+  width: min(480px, 100%);
+  height: 58px;
+  padding: 0 16px;
+  border: 2px solid #cfd4df;
+  border-radius: 7px;
+  background: #fff;
+  color: #252637;
+  font-size: 1.2rem;
+  text-align: center;
+  outline: none;
+}
+.practice-type-input:focus { border-color: #5752df; }
+
+.practice-action-bar {
+  position: fixed;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 88px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text-secondary);
-  transition: background 0.15s, color 0.15s;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px max(24px, calc((100vw - 680px) / 2));
+  border-top: 1px solid #d9dde7;
+  background: #fff;
+}
+.practice-action-bar.correct { background: #eaf9f0; border-color: #9dd8b5; }
+.practice-action-bar.incorrect { background: #fff0f1; border-color: #edafb5; }
+.practice-action-bar .btn { min-width: 142px; }
+.practice-feedback-copy strong, .practice-feedback-copy span { display: block; }
+.practice-feedback-copy span { margin-top: 3px; color: #555d6e; }
+
+.practice-complete, .practice-empty {
+  width: min(560px, calc(100% - 32px));
+  margin: auto;
+  text-align: center;
+}
+.practice-complete > svg { color: #20a864; }
+.practice-complete h1, .practice-empty h1 { font-size: 1.75rem; margin: 14px 0 22px; }
+.practice-complete-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 24px; }
+.practice-complete-stats span { padding: 14px 8px; border: 1px solid #dce0e8; border-radius: 7px; background: #fff; color: #656d7e; }
+.practice-complete-stats strong { display: block; color: #242633; font-size: 1.25rem; }
+.practice-complete .btn, .practice-empty .btn { min-width: 170px; margin: 5px; }
+
+@media (max-width: 600px) {
+  .practice-session-header { grid-template-columns: 38px minmax(80px, 1fr) 46px; padding: 10px 12px; gap: 10px; }
+  .practice-exercise { padding-top: 30px; }
+  .practice-options { grid-template-columns: 1fr; }
+  .practice-action-bar { padding: 12px 16px; }
+  .practice-complete-stats { grid-template-columns: 1fr; }
 }
 
-.practice-close:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+@media (prefers-reduced-motion: reduce) {
+  .practice-progress span { transition: none; }
 }

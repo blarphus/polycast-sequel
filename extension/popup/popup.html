@@ -47,12 +47,31 @@
       </div>
       <div class="word-count"><span id="total-xp-num">0</span> XP</div>
 
+      <div class="daily-activity-card">
+        <div class="daily-goal-heading"><span>Daily activity</span><strong id="daily-activity-count">0 / 50 XP</strong></div>
+        <div class="daily-goal-track"><i id="daily-activity-progress"></i></div>
+        <div class="activity-week" id="activity-week"></div>
+        <div class="daily-goal-footer"><span id="level-label">Level 1</span><span id="session-xp-label">2 session rewards left</span></div>
+      </div>
+
       <div class="daily-goal-card">
         <div class="daily-goal-heading"><span>Daily word goal</span><strong id="daily-goal-count">0 / 5</strong></div>
         <div class="daily-goal-track"><i id="daily-goal-progress"></i></div>
         <div class="daily-goal-footer">
           <span id="daily-goal-message">5 words left today</span>
           <label>Goal <input id="daily-goal-input" type="number" min="1" max="50" value="5"></label>
+        </div>
+      </div>
+
+      <div class="site-highlight-card" id="site-highlight-card">
+        <div class="site-highlight-copy">
+          <strong id="site-highlight-title">Page highlights</strong>
+          <span id="site-highlight-detail">Checking this page...</span>
+        </div>
+        <div class="site-highlight-options" role="group" aria-label="Page highlight behavior">
+          <button type="button" data-highlight-override="auto">Auto</button>
+          <button type="button" data-highlight-override="on">On</button>
+          <button type="button" data-highlight-override="off">Off</button>
         </div>
       </div>
 

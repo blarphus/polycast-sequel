@@ -19,6 +19,8 @@ import {
   UpcomingClass,
   Friend,
   PendingWordList,
+  ProgressionSnapshot,
+  setProgressionAccent,
 } from '../api';
 import { proxyImageUrl } from '../api/dictionary';
 import { LANGUAGES } from '../components/classwork/languages';
@@ -65,7 +67,7 @@ export default function Home() {
   const [clockTick, setClockTick] = useState(() => Date.now());
   const [pendingPosts, setPendingPosts] = useState<PendingWordList[]>([]);
   const [dailyGoal, setDailyGoal] = useState<DailyGoalSnapshot>(getDailyGoalSnapshot);
-  const [totalXp, setTotalXp] = useState(0);
+  const [progression, setProgression] = useState<ProgressionSnapshot | null>(null);
 
   const targetLang = user?.target_language;
   const langName = LANGUAGES.find((l) => l.code === targetLang)?.name || targetLang || '';
@@ -77,7 +79,7 @@ export default function Home() {
       .then(([dashboard, progression]) => {
         seedDailyWordProgress(progression.dailyGoal.added);
         setDailyGoal(progression.dailyGoal);
-        setTotalXp(progression.totalXp);
+        setProgression(progression);
         setNewWords(dashboard.newToday);
         setPendingPosts(dashboard.pendingClasswork.posts);
         let n = 0, l = 0, r = 0;
@@ -109,6 +111,17 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
+    getProgression()
+      .then((nextProgression) => {
+        if (cancelled) return;
+        seedDailyWordProgress(nextProgression.dailyGoal.added);
+        setDailyGoal(nextProgression.dailyGoal);
+        setProgression(nextProgression);
+      })
+      .catch((err) => {
+        console.error('Progression refresh failed:', err);
+        if (!cancelled) setError(`Progression fallback used: ${toErrorMessage(err)}`);
+      });
     getFriends()
       .then((f) => { if (!cancelled) setFriends(f); })
       .catch((err) => {
@@ -253,6 +266,40 @@ export default function Home() {
       <div className="home-dashboard-grid">
         {/* Card 1: New Words Today (7 cols) */}
         <div className="home-dashboard-card home-card--words">
+          {progression && (
+            <div className={`home-activity home-activity--${progression.level.selectedAccent}`}>
+              <div className="home-activity-header">
+                <div>
+                  <div className="home-dashboard-label">Daily activity</div>
+                  <div className="home-activity-count"><strong>{progression.dailyActivity.earnedXp}</strong><span> / {progression.dailyActivity.targetXp} XP</span></div>
+                </div>
+                <div className="home-level">Level {progression.level.number}</div>
+              </div>
+              <div className="home-activity-track"><span style={{ width: `${Math.min(100, (progression.dailyActivity.earnedXp / progression.dailyActivity.targetXp) * 100)}%` }} /></div>
+              <div className="home-week" aria-label="Seven day activity">
+                {progression.week.map((day) => (
+                  <div key={day.date} title={`${day.date}: ${day.xp} XP`}>
+                    <i className={day.complete ? 'complete' : day.xp > 0 ? 'active' : ''} />
+                    <span>{new Date(`${day.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'narrow' })}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="home-level-row">
+                <span>{progression.totalXp} XP total</span>
+                <div className="home-accent-swatches" aria-label="Progress color">
+                  {progression.level.unlockedAccents.map((accent) => (
+                    <button
+                      key={accent}
+                      className={`${accent}${accent === progression.level.selectedAccent ? ' selected' : ''}`}
+                      aria-label={`Use ${accent} accent`}
+                      onClick={() => void setProgressionAccent(accent).then(setProgression).catch((err) => setError(`Progression fallback used: ${toErrorMessage(err)}`))}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="home-words-divider" />
           <div className="home-goal-header">
             <div>
               <div className="home-dashboard-label">Daily word goal</div>
@@ -281,7 +328,6 @@ export default function Home() {
           <p className={`home-goal-message${dailyGoal.complete ? ' is-complete' : ''}`}>
             {dailyGoal.complete ? 'Goal met. More words are welcome, but XP is capped today.' : `${dailyGoal.remaining} ${dailyGoal.remaining === 1 ? 'word' : 'words'} left today`}
           </p>
-          <div className="home-dashboard-label">{totalXp} XP total</div>
           <div className="home-words-divider" />
           <div className="home-dashboard-label">Today&apos;s learning queue</div>
 

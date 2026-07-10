@@ -12,6 +12,8 @@ const RECALL_CHALLENGE_KEY = 'wildRecallChallenge';
 const OFFLINE_MODE_KEY = 'offlineMode';
 const OFFLINE_WORDS_KEY = 'offlineDictionaryWords';
 const SELECTION_CONTEXT_MENU_ID = 'polycast-lookup-selection';
+const SITE_HIGHLIGHT_OVERRIDES_KEY = 'siteHighlightOverrides';
+const PAGE_CUE_DATE_KEY = 'pageCueDate';
 const DEFAULT_OFFLINE_USER = {
   id: 'offline-local-user',
   username: 'offline',
@@ -25,6 +27,45 @@ const DEFAULT_OFFLINE_USER = {
 };
 
 let contextMenuInstallPromise = null;
+let savedTokenIndex = new Map();
+let savedTokenRevision = 0;
+
+function rebuildSavedTokenIndex(words) {
+  const next = new Map();
+  for (const word of words || []) {
+    const tokens = [word.word, word.lemma, ...parseWordForms(word.forms)]
+      .map((value) => String(value || '').trim().toLocaleLowerCase())
+      .filter(Boolean);
+    for (const token of tokens) {
+      if (!next.has(token)) {
+        next.set(token, { wordId: word.id || null, reviewed: !!word.last_reviewed_at });
+      }
+    }
+  }
+  savedTokenIndex = next;
+  savedTokenRevision += 1;
+}
+
+function indexSavedWord(word) {
+  const tokens = [word.word, word.lemma, ...parseWordForms(word.forms)]
+    .map((value) => String(value || '').trim().toLocaleLowerCase())
+    .filter(Boolean);
+  for (const token of tokens) {
+    savedTokenIndex.set(token, { wordId: word.id || null, reviewed: !!word.last_reviewed_at });
+  }
+  savedTokenRevision += 1;
+}
+
+async function ensureSavedTokenIndex() {
+  if (savedTokenIndex.size) return;
+  const stored = await chrome.storage.local.get([RECALL_CATALOG_KEY, OFFLINE_WORDS_KEY]);
+  const catalog = stored[RECALL_CATALOG_KEY];
+  if (Array.isArray(catalog) && catalog.length) {
+    rebuildSavedTokenIndex(catalog);
+    return;
+  }
+  if (Array.isArray(stored[OFFLINE_WORDS_KEY])) rebuildSavedTokenIndex(stored[OFFLINE_WORDS_KEY]);
+}
 
 function installContextMenus() {
   if (!chrome.contextMenus) return Promise.resolve();
@@ -111,7 +152,7 @@ function buildDailyGoalSnapshot(goal, added) {
     remaining: Math.max(0, goal - added),
     complete: added >= goal,
     overGoal,
-    bonusXp: overGoal * BONUS_XP_PER_WORD,
+    bonusXp: 0,
   };
 }
 
@@ -168,8 +209,9 @@ async function recordDailyGoalWord() {
   await chrome.storage.local.set({ [DAILY_PROGRESS_KEY]: { date: localDateKey(), count: before.added + 1 } });
   const after = await getDailyGoalSnapshot();
   const justCompleted = !before.complete && after.complete;
-  // Every word earns XP; words beyond the goal additionally count as bonus.
-  const bonusXpEarned = BONUS_XP_PER_WORD;
+  // Offline saves cannot earn account XP. The visible offline diagnostic names
+  // this fallback, and the optimistic UI must never imply that XP was synced.
+  const bonusXpEarned = 0;
   await broadcastDailyGoalUpdated(after, { justAdded: true, justCompleted, bonusXpEarned });
   return { ...after, justAdded: true, justCompleted, bonusXpEarned };
 }
@@ -237,6 +279,7 @@ async function fetchSavedWords() {
     last_reviewed_at: word.last_reviewed_at,
   }));
   await chrome.storage.local.set({ savedWords: wordList, [RECALL_CATALOG_KEY]: catalog });
+  rebuildSavedTokenIndex(catalog);
   return wordList;
 }
 
@@ -260,6 +303,7 @@ async function setOfflineWords(words) {
     [OFFLINE_WORDS_KEY]: words,
     savedWords: tokens,
   });
+  rebuildSavedTokenIndex(words);
   await broadcastWordsUpdated(tokens);
   await syncOfflineWordsToAppTabs(words);
 }
@@ -358,7 +402,7 @@ async function syncOfflineWordsToAppTabs(words) {
 async function broadcastWordsUpdated(savedWords) {
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, { type: 'WORDS_UPDATED', savedWords }).catch(() => {});
+    chrome.tabs.sendMessage(tab.id, { type: 'WORDS_UPDATED', revision: savedTokenRevision }).catch(() => {});
   }
 }
 
@@ -387,6 +431,9 @@ async function storeProgression(progression, { justAdded = false, awardedXp = 0 
     justCompleted: !!(justAdded && snapshot.complete),
     bonusXpEarned: awardedXp,
   });
+  const remaining = Number(progression.dailyGoal?.remaining) || 0;
+  await chrome.action.setBadgeBackgroundColor({ color: progression.dailyGoal?.complete ? '#15803d' : '#5752df' });
+  await chrome.action.setBadgeText({ text: progression.dailyGoal?.complete ? '✓' : String(Math.min(99, remaining)) });
   return snapshot;
 }
 
@@ -401,14 +448,14 @@ async function broadcastTargetLanguageUpdated(targetLanguage) {
 // Message handler
 // ---------------------------------------------------------------------------
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  handleMessage(msg).then(sendResponse).catch((err) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  handleMessage(msg, sender).then(sendResponse).catch((err) => {
     sendResponse({ error: err.message });
   });
   return true; // keep channel open for async response
 });
 
-async function handleMessage(msg) {
+async function handleMessage(msg, sender = {}) {
   switch (msg.type) {
     case 'LOGIN': {
       const apiBase = await getApiBase();
@@ -480,6 +527,8 @@ async function handleMessage(msg) {
     case 'LOGOUT': {
       await chrome.storage.local.remove(['authToken', 'user', 'savedWords', RECALL_CATALOG_KEY, RECALL_CHALLENGE_KEY, 'progression', OFFLINE_MODE_KEY]);
       await broadcastWordsUpdated([]);
+      savedTokenIndex = new Map();
+      savedTokenRevision += 1;
       return { success: true };
     }
 
@@ -499,10 +548,10 @@ async function handleMessage(msg) {
       try {
         const user = await apiFetch('/api/me');
         await chrome.storage.local.set({ user });
-        const { savedWords } = await chrome.storage.local.get('savedWords');
+        const { [RECALL_CATALOG_KEY]: catalog = [] } = await chrome.storage.local.get(RECALL_CATALOG_KEY);
         const dailyGoal = await syncDailyGoalFromServer();
         const { progression = null } = await chrome.storage.local.get('progression');
-        return { loggedIn: true, user, savedWordCount: (savedWords || []).length, dailyGoal, progression };
+        return { loggedIn: true, user, savedWordCount: catalog.length, dailyGoal, progression };
       } catch (err) {
         const { user = DEFAULT_OFFLINE_USER } = await chrome.storage.local.get('user');
         const words = await getOfflineWords();
@@ -616,6 +665,7 @@ async function handleMessage(msg) {
         const { savedWords: current } = await chrome.storage.local.get('savedWords');
         const updated = [...new Set([...(current || []), ...savedWordTokens([enriched]), String(msg.word).toLowerCase()])];
         await chrome.storage.local.set({ savedWords: updated });
+        indexSavedWord({ ...enriched, id: saved.id });
         await broadcastWordsUpdated(updated);
 
         const dailyGoal = saved._created
@@ -668,6 +718,8 @@ async function handleMessage(msg) {
       const { savedWords: current } = await chrome.storage.local.get('savedWords');
       const updated = [...new Set([...(current || []), form])];
       await chrome.storage.local.set({ savedWords: updated });
+      savedTokenIndex.set(form, { wordId: msg.savedWordId || null, reviewed: false });
+      savedTokenRevision += 1;
       await broadcastWordsUpdated(updated);
 
       // Persist server-side when signed in and the word is a real (non-offline) save.
@@ -707,6 +759,82 @@ async function handleMessage(msg) {
       if (next.length === words.length) throw new Error('No saved dictionary entry to remove');
       await setOfflineWords(next);
       return { success: true, offline: true };
+    }
+
+    case 'MATCH_PAGE_TOKENS': {
+      await ensureSavedTokenIndex();
+      const input = Array.isArray(msg.tokens) ? msg.tokens.slice(0, 1500) : [];
+      const matches = [];
+      for (const raw of input) {
+        const token = String(raw || '').toLocaleLowerCase();
+        const entry = savedTokenIndex.get(token);
+        if (entry) matches.push({ token, wordId: entry.wordId, reviewed: entry.reviewed });
+      }
+      return { matches, revision: savedTokenRevision };
+    }
+
+    case 'DETECT_PAGE_LANGUAGE': {
+      let tabLanguage = '';
+      if (sender.tab?.id) {
+        try { tabLanguage = await chrome.tabs.detectLanguage(sender.tab.id); } catch { /* use text detector */ }
+      }
+      let textDetection = null;
+      const sample = String(msg.sample || '').slice(0, 15000);
+      if (sample.length >= 80) {
+        try { textDetection = await chrome.i18n.detectLanguage(sample); } catch { /* declared language fallback */ }
+      }
+      const topText = textDetection?.languages?.[0] || null;
+      const textReliable = !!(textDetection?.isReliable && topText && topText.language !== 'und' && topText.percentage >= 55);
+      if (textReliable) {
+        return { language: topText.language, reliable: true, percentage: topText.percentage, source: 'chrome-text' };
+      }
+      if (tabLanguage && tabLanguage !== 'und') {
+        return { language: tabLanguage, reliable: true, percentage: null, source: 'chrome-tab' };
+      }
+      const declared = String(msg.declaredLanguage || '').split(/[-_]/)[0].toLocaleLowerCase();
+      if (declared) {
+        return {
+          language: declared,
+          reliable: false,
+          percentage: null,
+          source: 'declared-fallback',
+          diagnostic: `Language detection fallback used: Chrome could not reliably detect this page, so its declared language (${declared}) was used.`,
+        };
+      }
+      return {
+        language: '', reliable: false, percentage: null, source: 'unavailable',
+        diagnostic: 'Language detection fallback used: Chrome could not determine this page language, so automatic highlights are off.',
+      };
+    }
+
+    case 'GET_PAGE_HIGHLIGHT_CONFIG': {
+      const hostname = String(msg.hostname || '').toLocaleLowerCase();
+      const stored = await chrome.storage.local.get(['user', SITE_HIGHLIGHT_OVERRIDES_KEY]);
+      return {
+        targetLanguage: stored.user?.target_language || null,
+        override: stored[SITE_HIGHLIGHT_OVERRIDES_KEY]?.[hostname] || 'auto',
+      };
+    }
+
+    case 'SET_SITE_HIGHLIGHT_OVERRIDE': {
+      const hostname = String(msg.hostname || '').toLocaleLowerCase();
+      const override = ['auto', 'on', 'off'].includes(msg.override) ? msg.override : 'auto';
+      if (!hostname) throw new Error('No active site');
+      const stored = await chrome.storage.local.get(SITE_HIGHLIGHT_OVERRIDES_KEY);
+      const overrides = { ...(stored[SITE_HIGHLIGHT_OVERRIDES_KEY] || {}), [hostname]: override };
+      if (override === 'auto') delete overrides[hostname];
+      await chrome.storage.local.set({ [SITE_HIGHLIGHT_OVERRIDES_KEY]: overrides });
+      const tabId = Number(msg.tabId) || sender.tab?.id;
+      if (tabId) chrome.tabs.sendMessage(tabId, { type: 'SITE_HIGHLIGHT_OVERRIDE_UPDATED', override }).catch(() => {});
+      return { hostname, override };
+    }
+
+    case 'CLAIM_PAGE_CUE': {
+      const stored = await chrome.storage.local.get([PAGE_CUE_DATE_KEY, 'progression']);
+      const today = localDateKey();
+      if (stored[PAGE_CUE_DATE_KEY] === today) return { show: false };
+      await chrome.storage.local.set({ [PAGE_CUE_DATE_KEY]: today });
+      return { show: true, remaining: Number(stored.progression?.dailyGoal?.remaining) || 0 };
     }
 
     case 'GET_SAVED_WORDS': {
@@ -781,6 +909,18 @@ async function handleMessage(msg) {
       return result;
     }
 
+    case 'CLICK_WILD_RECALL': {
+      const result = await apiFetch('/api/progression/wild-recall/click', {
+        method: 'POST',
+        body: {
+          challengeId: msg.challengeId,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
+      });
+      if (result.progression) await chrome.storage.local.set({ progression: result.progression });
+      return result;
+    }
+
     case 'GET_OFFLINE_DICTIONARY_FULL': {
       return { words: await getOfflineWords() };
     }
@@ -828,7 +968,11 @@ async function handleMessage(msg) {
         });
       await broadcastWordsUpdated(savedWords);
       await broadcastTargetLanguageUpdated(targetLanguage);
-      return { success: true, user: updatedUser, savedWordCount: savedWords.length };
+      const storedCatalog = await chrome.storage.local.get(RECALL_CATALOG_KEY);
+      const savedWordCount = storeLocally
+        ? (await getOfflineWords()).length
+        : (storedCatalog[RECALL_CATALOG_KEY] || []).length;
+      return { success: true, user: updatedUser, savedWordCount };
     }
 
     case 'CAPTION_LANGUAGE_DETECTED': {

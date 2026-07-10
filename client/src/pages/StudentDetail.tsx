@@ -36,7 +36,8 @@ function relativeTime(dateStr: string) {
 }
 
 const SESSION_LABELS: Record<string, { label: string; color: string }> = {
-  quiz: { label: 'Quiz', color: '#6366f1' },
+  vocabulary: { label: 'Practice', color: '#6366f1' },
+  flashcards: { label: 'Flashcards', color: '#14b8a6' },
   drill: { label: 'Drill', color: '#f59e0b' },
   voice: { label: 'Voice', color: '#06b6d4' },
 };
@@ -46,7 +47,7 @@ const SESSION_LABELS: Record<string, { label: string; color: string }> = {
 // ---------------------------------------------------------------------------
 
 function totalActivity(d: DailyActivity): number {
-  return d.reviews + d.wordsAdded + d.quizzes + d.drills + d.voiceSessions;
+  return d.reviews + d.wordsAdded + d.practiceSessions + d.drills + d.voiceSessions;
 }
 
 type DayStatus = 'completed' | 'partial' | 'skipped' | 'inactive';
@@ -155,7 +156,7 @@ function DayOverlay({ day, activity, onClose }: { day: string; activity: DailyAc
             <div className="sd-overlay-stats">
               {data!.reviews > 0 && <div className="sd-overlay-stat"><span className="sd-overlay-stat-value">{data!.reviews}</span><span className="sd-overlay-stat-label">Reviews</span></div>}
               {data!.wordsAdded > 0 && <div className="sd-overlay-stat"><span className="sd-overlay-stat-value">{data!.wordsAdded}</span><span className="sd-overlay-stat-label">Words added</span></div>}
-              {data!.quizzes > 0 && <div className="sd-overlay-stat"><span className="sd-overlay-stat-value">{data!.quizCorrect}/{data!.quizTotal}</span><span className="sd-overlay-stat-label">Quiz{data!.quizzes > 1 ? 'zes' : ''}</span></div>}
+              {data!.practiceSessions > 0 && <div className="sd-overlay-stat"><span className="sd-overlay-stat-value">{data!.practiceCorrect}/{data!.practiceTotal}</span><span className="sd-overlay-stat-label">Practice</span></div>}
               {data!.drills > 0 && <div className="sd-overlay-stat"><span className="sd-overlay-stat-value">{data!.drills}</span><span className="sd-overlay-stat-label">Drill{data!.drills > 1 ? 's' : ''}</span></div>}
               {data!.voiceSessions > 0 && <div className="sd-overlay-stat"><span className="sd-overlay-stat-value">{data!.voiceSessions}</span><span className="sd-overlay-stat-label">Voice</span></div>}
             </div>
@@ -430,8 +431,8 @@ export default function StudentDetail() {
                 <span className="sd-summary-value">{activity.reduce((s, a) => s + a.wordsAdded, 0)}</span>
               </div>
               <div className="sd-summary-row">
-                <span className="sd-summary-label">Quizzes</span>
-                <span className="sd-summary-value">{activity.reduce((s, a) => s + a.quizzes, 0)}</span>
+                <span className="sd-summary-label">Practice sessions</span>
+                <span className="sd-summary-value">{activity.reduce((s, a) => s + a.practiceSessions, 0)}</span>
               </div>
               <div className="sd-summary-row">
                 <span className="sd-summary-label">Drills</span>

@@ -80,6 +80,7 @@
 
   document.addEventListener('pc-caption-lang', (e) => {
     captionLang = (e.detail || '').toLowerCase();
+    document.dispatchEvent(new CustomEvent('pc-polycast-page-language', { detail: captionLang }));
     maybeSwitchTargetLanguage(captionLang);
     scheduleSubtitleProcessing();
   });

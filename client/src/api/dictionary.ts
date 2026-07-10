@@ -260,10 +260,10 @@ export function getDueWords() {
   return request<SavedWord[]>(`/dictionary/due?${params}`, { cacheTtlMs: 10_000 });
 }
 
-export function reviewWord(id: string, answer: SrsAnswer) {
+export function reviewWord(id: string, answer: SrsAnswer, learningSessionId?: string) {
   return request<SavedWord>(`/dictionary/words/${id}/review`, {
     method: 'PATCH',
-    body: { answer, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    body: { answer, learningSessionId, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
   });
 }
 

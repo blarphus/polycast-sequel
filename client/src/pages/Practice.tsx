@@ -1,486 +1,249 @@
-// ---------------------------------------------------------------------------
-// pages/Practice.tsx -- Practice quiz page (conjugation, grammar, translation)
-// ---------------------------------------------------------------------------
-
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
-  generateQuiz,
-  createQuizSession,
-  submitQuizAnswer,
-  completeQuizSession,
-  type QuizQuestion,
-  type QuizAnswerResult,
-  type QuizSessionResult,
+  answerVocabularyExercise,
+  completeLearningSession,
+  createLearningSession,
+  type Diagnostic,
+  type ExerciseResponse,
+  type LearningSession,
+  type VocabularyExercise,
 } from '../api';
-import { playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
-import { TargetIcon, BoltIcon, CheckCircleIcon, CloseIcon, MicIcon, CalendarIcon } from '../components/icons';
+import { CheckCircleIcon, CloseIcon, SpeakerIcon } from '../components/icons';
+import { playAiSpeech } from '../utils/aiSpeech';
+import { playCompleteSound, playCorrectSound, playIncorrectSound } from '../utils/sounds';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type Phase = 'config' | 'generating' | 'active' | 'feedback' | 'results';
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+type Feedback = { correct: boolean; correctAnswer: string; next: VocabularyExercise | null };
 
 export default function Practice() {
   const { videoId } = useParams<{ videoId: string }>();
   const navigate = useNavigate();
-
-  // Phase state machine
-  const [phase, setPhase] = useState<Phase>(videoId ? 'generating' : 'config');
-  const [error, setError] = useState('');
-
-  // Quiz data
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [sessionId, setSessionId] = useState('');
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  // Answer state
-  const [userInput, setUserInput] = useState('');
-  const [wordBankSelected, setWordBankSelected] = useState<string[]>([]);
-  const [wordBankPool, setWordBankPool] = useState<string[]>([]);
-  const [currentFeedback, setCurrentFeedback] = useState<QuizAnswerResult | null>(null);
+  const [session, setSession] = useState<LearningSession | null>(null);
+  const [exercise, setExercise] = useState<VocabularyExercise | null>(null);
+  const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [selectedOption, setSelectedOption] = useState('');
+  const [typedAnswer, setTypedAnswer] = useState('');
+  const [selectedLeft, setSelectedLeft] = useState('');
+  const [pairs, setPairs] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<{ awardedXp: number; correct: number; total: number } | null>(null);
 
-  // Results
-  const [results, setResults] = useState<QuizSessionResult | null>(null);
-  const sessionStartRef = useRef(Date.now());
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // ---------------------------------------------------------------------------
-  // Generate quiz on mount (video mode) or after config
-  // ---------------------------------------------------------------------------
-
-  const startQuiz = useCallback(async (vid?: string) => {
-    setPhase('generating');
-    setError('');
-    try {
-      const { questions: qs } = await generateQuiz(vid);
-      setQuestions(qs);
-
-      const mode = vid ? 'video' : 'standalone';
-      const { sessionId: sid } = await createQuizSession(mode, qs, vid);
-      setSessionId(sid);
-
-      // Set up first question
-      setCurrentIndex(0);
-      setupQuestion(qs[0]);
-      setPhase('active');
-    } catch (err: any) {
-      console.error('Failed to generate quiz:', err);
-      setError(err.message);
-      setPhase('config');
-    }
+  const resetAnswer = useCallback(() => {
+    setSelectedOption('');
+    setTypedAnswer('');
+    setSelectedLeft('');
+    setPairs({});
+    setFeedback(null);
   }, []);
 
-  useEffect(() => {
-    if (videoId) {
-      startQuiz(videoId);
-    }
-  }, [videoId, startQuiz]);
-
-  // ---------------------------------------------------------------------------
-  // Question setup
-  // ---------------------------------------------------------------------------
-
-  function setupQuestion(q: QuizQuestion) {
-    setUserInput('');
-    setWordBankSelected([]);
-    setCurrentFeedback(null);
-    if (q.input_mode === 'word_bank' && q.distractors.length > 0) {
-      setWordBankPool(shuffleArray([...q.distractors]));
-    } else {
-      setWordBankPool([]);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Submit answer
-  // ---------------------------------------------------------------------------
-
-  const handleSubmit = useCallback(async () => {
-    if (submitting) return;
-    const q = questions[currentIndex];
-    if (!q) return;
-
-    const answer = q.input_mode === 'word_bank'
-      ? wordBankSelected.join(' ')
-      : userInput.trim();
-
-    if (!answer) return;
-
-    setSubmitting(true);
+  const start = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    setResult(null);
     try {
-      const result = await submitQuizAnswer(sessionId, currentIndex, answer);
-      setCurrentFeedback(result);
+      const created = await createLearningSession('vocabulary', videoId);
+      setSession(created.session);
+      setExercise(created.exercise);
+      setDiagnostics(created.diagnostics || []);
+      resetAnswer();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Practice could not start');
+    } finally {
+      setLoading(false);
+    }
+  }, [resetAnswer, videoId]);
 
-      if (result.isCorrect) {
-        playCorrectSound();
-      } else {
-        playIncorrectSound();
-      }
+  useEffect(() => { void start(); }, [start]);
 
-      setPhase('feedback');
-    } catch (err: any) {
-      console.error('Failed to submit answer:', err);
-      setError(err.message);
+  useEffect(() => {
+    if (!exercise?.prompt.audioText) return;
+    void playAiSpeech(exercise.prompt.audioText, exercise.prompt.language || undefined);
+  }, [exercise?.id]);
+
+  const response = useMemo<ExerciseResponse | null>(() => {
+    if (!exercise) return null;
+    if (exercise.kind === 'pair_match') {
+      const mapped = Object.entries(pairs).map(([leftId, rightId]) => ({ leftId, rightId }));
+      return mapped.length === (exercise.prompt.left?.length || 0) ? { pairs: mapped } : null;
+    }
+    if (exercise.prompt.options) return selectedOption ? { optionId: selectedOption } : null;
+    return typedAnswer.trim() ? { text: typedAnswer.trim() } : null;
+  }, [exercise, pairs, selectedOption, typedAnswer]);
+
+  async function submit() {
+    if (!session || !exercise || !response || submitting || feedback) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const answered = await answerVocabularyExercise(session.id, exercise.id, response);
+      setSession(answered.session);
+      setFeedback({ correct: answered.correct, correctAnswer: answered.correctAnswer, next: answered.nextExercise });
+      if (answered.correct) playCorrectSound(); else playIncorrectSound();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Answer could not be saved');
     } finally {
       setSubmitting(false);
     }
-  }, [submitting, questions, currentIndex, wordBankSelected, userInput, sessionId]);
-
-  // ---------------------------------------------------------------------------
-  // Next question / Complete
-  // ---------------------------------------------------------------------------
-
-  const handleNext = useCallback(async () => {
-    const nextIndex = currentIndex + 1;
-    if (nextIndex >= questions.length) {
-      // Complete the session
-      try {
-        const sessionResult = await completeQuizSession(sessionId);
-        setResults(sessionResult);
-        setPhase('results');
-        playCompleteSound();
-      } catch (err: any) {
-        console.error('Failed to complete session:', err);
-        setError(err.message);
-      }
-    } else {
-      setCurrentIndex(nextIndex);
-      setupQuestion(questions[nextIndex]);
-      setPhase('active');
-    }
-  }, [currentIndex, questions, sessionId]);
-
-  // ---------------------------------------------------------------------------
-  // Word bank interaction
-  // ---------------------------------------------------------------------------
-
-  function handleWordBankTap(word: string, poolIndex: number) {
-    setWordBankSelected((prev) => [...prev, word]);
-    setWordBankPool((prev) => prev.filter((_, i) => i !== poolIndex));
   }
 
-  function handleWordBankRemove(selectedIndex: number) {
-    const word = wordBankSelected[selectedIndex];
-    setWordBankSelected((prev) => prev.filter((_, i) => i !== selectedIndex));
-    setWordBankPool((prev) => [...prev, word]);
+  async function next() {
+    if (!session || !feedback) return;
+    if (feedback.next) {
+      setExercise(feedback.next);
+      resetAnswer();
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const completed = await completeLearningSession(session.id);
+      setResult({ awardedXp: completed.awardedXp, correct: session.correct_count, total: session.total_items });
+      playCompleteSound();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Session could not be completed');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  // Focus input when entering active phase
-  useEffect(() => {
-    if (phase === 'active' && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [phase, currentIndex]);
-
-  // Keyboard submit
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && phase === 'active') {
-      handleSubmit();
-    } else if (e.key === 'Enter' && phase === 'feedback') {
-      handleNext();
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Render: Config (standalone mode)
-  // ---------------------------------------------------------------------------
-
-  if (phase === 'config') {
-    return (
-      <div className="practice-page" onKeyDown={handleKeyDown}>
-        <div className="practice-config">
-          <div className="practice-config-icon">
-            <TargetIcon size={48} strokeWidth={1.5} />
-          </div>
-          <h2>Practice</h2>
-          <p>Choose your practice mode</p>
-          {error && <p className="practice-error">{error}</p>}
-
-          <div className="practice-mode-cards">
-            <button
-              className="practice-mode-card"
-              onClick={() => navigate('/learn')}
-            >
-              <div className="practice-mode-card-icon">
-                <BoltIcon size={28} strokeWidth={1.5} />
-              </div>
-              <div className="practice-mode-card-title">Flashcards</div>
-              <div className="practice-mode-card-desc">
-                Review due words with spaced repetition.
-              </div>
-            </button>
-            <button
-              className="practice-mode-card"
-              onClick={() => startQuiz()}
-            >
-              <div className="practice-mode-card-icon">
-                <TargetIcon size={28} strokeWidth={1.5} />
-              </div>
-              <div className="practice-mode-card-title">Mixed Quiz</div>
-              <div className="practice-mode-card-desc">
-                10 questions: conjugation, grammar, translation.
-              </div>
-            </button>
-            <button
-              className="practice-mode-card"
-              onClick={() => navigate('/practice/drill')}
-            >
-              <div className="practice-mode-card-icon">
-                <BoltIcon size={28} strokeWidth={1.5} />
-              </div>
-              <div className="practice-mode-card-title">Conjugation Drill</div>
-              <div className="practice-mode-card-desc">
-                Fast-paced verb drill. Type conjugations, instant feedback.
-              </div>
-            </button>
-            <button
-              className="practice-mode-card"
-              onClick={() => navigate('/practice/voice')}
-            >
-              <div className="practice-mode-card-icon">
-                <MicIcon size={28} strokeWidth={1.5} />
-              </div>
-              <div className="practice-mode-card-title">Voice Translation</div>
-              <div className="practice-mode-card-desc">
-                See a sentence in your language, say it in your target language, get concise spoken feedback.
-              </div>
-            </button>
-            <button
-              className="practice-mode-card"
-              onClick={() => navigate('/calendar')}
-            >
-              <div className="practice-mode-card-icon">
-                <CalendarIcon size={28} strokeWidth={1.5} />
-              </div>
-              <div className="practice-mode-card-title">Review Calendar</div>
-              <div className="practice-mode-card-desc">
-                See upcoming reviews across the month and plan your study sessions.
-              </div>
-            </button>
-          </div>
-
-          <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-            Back
-          </button>
-        </div>
-      </div>
-    );
+  function pairLeft(leftId: string) {
+    if (feedback || Object.hasOwn(pairs, leftId)) return;
+    setSelectedLeft(leftId);
   }
 
-  // ---------------------------------------------------------------------------
-  // Render: Generating
-  // ---------------------------------------------------------------------------
+  function pairRight(rightId: string) {
+    if (!selectedLeft || feedback || Object.values(pairs).includes(rightId)) return;
+    setPairs((current) => ({ ...current, [selectedLeft]: rightId }));
+    setSelectedLeft('');
+  }
 
-  if (phase === 'generating') {
+  if (loading) {
+    return <div className="practice-page"><div className="loading-spinner" /><p className="practice-status">Preparing practice...</p></div>;
+  }
+
+  if (result) {
+    const percent = result.total ? Math.round((result.correct / result.total) * 100) : 0;
     return (
       <div className="practice-page">
-        <div className="practice-generating">
-          <div className="loading-spinner" />
-          <p>Generating your quiz...</p>
+        <div className="practice-complete">
+          <CheckCircleIcon size={52} />
+          <h1>Practice complete</h1>
+          <div className="practice-complete-stats">
+            <span><strong>{result.correct}/{result.total}</strong> correct</span>
+            <span><strong>{percent}%</strong> accuracy</span>
+            <span><strong>{result.awardedXp ? `+${result.awardedXp}` : 'Capped'}</strong> XP</span>
+          </div>
+          <button className="btn btn-primary" onClick={() => void start()}>Practice again</button>
+          <button className="btn btn-secondary" onClick={() => navigate('/learn')}>Flashcards</button>
         </div>
       </div>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Render: Results
-  // ---------------------------------------------------------------------------
-
-  if (phase === 'results' && results) {
-    const duration = Math.round((Date.now() - sessionStartRef.current) / 1000);
-    const mins = Math.floor(duration / 60);
-    const secs = duration % 60;
-
+  if (!exercise || !session) {
     return (
       <div className="practice-page">
-        <div className="practice-results">
-          <div className="practice-results-icon">
-            <CheckCircleIcon size={56} style={{ color: '#4ade80' }} />
-          </div>
-          <h2>Quiz Complete</h2>
-          <div className="practice-stats">
-            <div className="practice-stat">
-              <span className="practice-stat-value">{results.correctCount}/{results.questionCount}</span>
-              <span className="practice-stat-label">Correct</span>
-            </div>
-            <div className="practice-stat">
-              <span className="practice-stat-value">{results.percentage}%</span>
-              <span className="practice-stat-label">Score</span>
-            </div>
-            <div className="practice-stat">
-              <span className="practice-stat-value">{mins > 0 ? `${mins}m ${secs}s` : `${secs}s`}</span>
-              <span className="practice-stat-label">Time</span>
-            </div>
-          </div>
-
-          {/* Per-question review */}
-          <div className="practice-review-list">
-            {results.answers.map((a) => (
-              <div key={a.questionIndex} className={`practice-review-item ${a.isCorrect ? 'correct' : 'incorrect'}`}>
-                <div className="practice-review-header">
-                  <span className={`practice-review-badge ${a.isCorrect ? 'correct' : 'incorrect'}`}>
-                    {a.isCorrect ? 'Correct' : 'Incorrect'}
-                  </span>
-                  <span className="practice-review-type">{a.questionType}</span>
-                </div>
-                <p className="practice-review-prompt">{a.prompt}</p>
-                {!a.isCorrect && (
-                  <p className="practice-review-expected">Expected: {a.expectedAnswer}</p>
-                )}
-                <p className="practice-review-user">Your answer: {a.userAnswer}</p>
-                {a.aiFeedback && <p className="practice-review-feedback">{a.aiFeedback}</p>}
-              </div>
-            ))}
-          </div>
-
-          <div className="practice-results-actions">
-            <button className="btn btn-primary" onClick={() => {
-              setPhase(videoId ? 'generating' : 'config');
-              setResults(null);
-              sessionStartRef.current = Date.now();
-              if (videoId) startQuiz(videoId);
-            }}>
-              Try Again
-            </button>
-            <button className="btn btn-secondary" onClick={() => navigate(videoId ? `/watch/${videoId}` : '/')}>
-              Back
-            </button>
-          </div>
+        <div className="practice-empty">
+          <h1>Practice</h1>
+          <p>{error || 'No exercise is available.'}</p>
+          <button className="btn btn-primary" onClick={() => navigate('/dictionary')}>Open dictionary</button>
         </div>
       </div>
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Render: Active / Feedback
-  // ---------------------------------------------------------------------------
-
-  const question = questions[currentIndex];
-  if (!question) return null;
-
-  const progressPercent = ((currentIndex + (phase === 'feedback' ? 1 : 0)) / questions.length) * 100;
-  const isWordBank = question.input_mode === 'word_bank';
+  const progress = ((exercise.position + (feedback ? 1 : 0)) / exercise.total) * 100;
+  const usedRightIds = new Set(Object.values(pairs));
 
   return (
-    <div className="practice-page" onKeyDown={handleKeyDown}>
-      {/* Progress bar */}
-      <div className="practice-progress-bar">
-        <div className="practice-progress-fill" style={{ width: `${progressPercent}%` }} />
-      </div>
-      <div className="practice-progress-text">
-        {currentIndex + 1} / {questions.length}
-      </div>
+    <div className="practice-page">
+      <header className="practice-session-header">
+        <button className="practice-close" onClick={() => navigate(videoId ? `/watch/${videoId}` : '/learn')} aria-label="Close practice">
+          <CloseIcon size={20} />
+        </button>
+        <div className="practice-progress" aria-label={`${exercise.position + 1} of ${exercise.total}`}>
+          <span style={{ width: `${progress}%` }} />
+        </div>
+        <strong>{exercise.position + 1} / {exercise.total}</strong>
+      </header>
 
-      {/* Close button */}
-      <button className="practice-close" onClick={() => navigate(videoId ? `/watch/${videoId}` : '/')}>
-        <CloseIcon size={20} />
-      </button>
+      {diagnostics.map((diagnostic) => (
+        <div className="practice-diagnostic" role="status" key={diagnostic.code}>
+          <strong>{diagnostic.title}</strong><span>{diagnostic.message}</span>
+        </div>
+      ))}
+      {error && <div className="practice-error" role="alert">{error}</div>}
 
-      {/* Question card */}
-      <div className="practice-question-area">
-        <span className="practice-question-type">{question.type}</span>
-        <p className="practice-prompt">{question.prompt}</p>
-        {question.hint && phase === 'active' && (
-          <p className="practice-hint">Hint: {question.hint}</p>
+      <main className="practice-exercise">
+        <h1>{exercise.prompt.instruction}</h1>
+        {exercise.retryOf && <p className="practice-retry-label">Try this word again</p>}
+
+        {exercise.prompt.audioText && (
+          <button className="practice-audio" onClick={() => void playAiSpeech(exercise.prompt.audioText!, exercise.prompt.language || undefined)} aria-label="Play word">
+            <SpeakerIcon size={30} />
+          </button>
         )}
+        {exercise.prompt.word && <div className="practice-term">{exercise.prompt.word}</div>}
+        {exercise.prompt.meaning && <div className="practice-meaning">{exercise.prompt.meaning}</div>}
+        {exercise.prompt.sentence && <div className="practice-sentence">{exercise.prompt.sentence}</div>}
 
-        {/* Input area */}
-        {phase === 'active' && (
-          <>
-            {isWordBank ? (
-              <div className="practice-word-bank">
-                {/* Selected words (answer assembly) */}
-                <div className="practice-wb-answer">
-                  {wordBankSelected.length === 0 && (
-                    <span className="practice-wb-placeholder">Tap words to build your answer</span>
-                  )}
-                  {wordBankSelected.map((word, i) => (
-                    <button
-                      key={`sel-${i}`}
-                      className="practice-wb-tile selected"
-                      onClick={() => handleWordBankRemove(i)}
-                    >
-                      {word}
-                    </button>
-                  ))}
-                </div>
-                {/* Available words */}
-                <div className="practice-wb-pool">
-                  {wordBankPool.map((word, i) => (
-                    <button
-                      key={`pool-${i}`}
-                      className="practice-wb-tile"
-                      onClick={() => handleWordBankTap(word, i)}
-                    >
-                      {word}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <input
-                ref={inputRef}
-                type="text"
-                className="practice-input"
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                placeholder="Type your answer..."
-                autoComplete="off"
-                autoCapitalize="off"
-                spellCheck={false}
-              />
-            )}
-            <button
-              className="btn btn-primary practice-submit"
-              onClick={handleSubmit}
-              disabled={submitting || (isWordBank ? wordBankSelected.length === 0 : !userInput.trim())}
-            >
-              {submitting ? 'Checking...' : 'Check'}
-            </button>
-          </>
-        )}
-
-        {/* Feedback */}
-        {phase === 'feedback' && currentFeedback && (
-          <div className={`practice-feedback ${currentFeedback.isCorrect ? 'correct' : 'incorrect'}`}>
-            <div className="practice-feedback-header">
-              <span className={`practice-feedback-badge ${currentFeedback.isCorrect ? 'correct' : 'incorrect'}`}>
-                {currentFeedback.isCorrect ? 'Correct' : 'Incorrect'}
-              </span>
-            </div>
-            {!currentFeedback.isCorrect && (
-              <p className="practice-feedback-expected">
-                Correct answer: {currentFeedback.expectedAnswer}
-              </p>
-            )}
-            {currentFeedback.aiFeedback && (
-              <p className="practice-feedback-text">{currentFeedback.aiFeedback}</p>
-            )}
-            <button className="btn btn-primary practice-next" onClick={handleNext}>
-              {currentIndex + 1 >= questions.length ? 'See Results' : 'Next'}
-            </button>
+        {exercise.prompt.options && (
+          <div className="practice-options">
+            {exercise.prompt.options.map((option) => (
+              <button
+                key={option.id}
+                className={selectedOption === option.id ? 'selected' : ''}
+                disabled={!!feedback}
+                onClick={() => setSelectedOption(option.id)}
+              >
+                {option.text}
+              </button>
+            ))}
           </div>
         )}
-      </div>
+
+        {exercise.kind === 'pair_match' && (
+          <div className="practice-match">
+            <div>
+              {exercise.prompt.left?.map((item) => (
+                <button key={item.id} className={`${selectedLeft === item.id ? 'selected' : ''}${Object.hasOwn(pairs, item.id) ? ' matched' : ''}`} onClick={() => pairLeft(item.id)}>{item.text}</button>
+              ))}
+            </div>
+            <div>
+              {exercise.prompt.right?.map((item) => (
+                <button key={item.id} className={usedRightIds.has(item.id) ? 'matched' : ''} onClick={() => pairRight(item.id)}>{item.text}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!exercise.prompt.options && exercise.kind !== 'pair_match' && (
+          <input
+            className="practice-type-input"
+            value={typedAnswer}
+            disabled={!!feedback}
+            onChange={(event) => setTypedAnswer(event.target.value)}
+            onKeyDown={(event) => { if (event.key === 'Enter') void submit(); }}
+            autoFocus
+            autoComplete="off"
+            spellCheck={false}
+          />
+        )}
+      </main>
+
+      <footer className={`practice-action-bar${feedback ? feedback.correct ? ' correct' : ' incorrect' : ''}`}>
+        {feedback ? (
+          <div className="practice-feedback-copy" aria-live="polite">
+            <strong>{feedback.correct ? 'Correct' : 'Not quite'}</strong>
+            {!feedback.correct && <span>Answer: {feedback.correctAnswer}</span>}
+          </div>
+        ) : <span />}
+        <button className="btn btn-primary" disabled={feedback ? submitting : !response || submitting} onClick={() => void (feedback ? next() : submit())}>
+          {submitting ? 'Saving...' : feedback ? (feedback.next ? 'Next' : 'Finish') : 'Check'}
+        </button>
+      </footer>
     </div>
   );
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function shuffleArray<T>(arr: T[]): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
 }

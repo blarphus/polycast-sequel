@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDueWords, reviewWord, proxyImageUrl, type SavedWord, type SrsAnswer } from '../api';
+import { completeLearningSession, createLearningSession, getDueWords, reviewWord, proxyImageUrl, type SavedWord, type SrsAnswer } from '../api';
 import {
   applyAnswerLocally,
   getButtonTimeLabel,
@@ -96,6 +96,10 @@ export default function Learn() {
   const [isEntering, setIsEntering] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [checkingForMore, setCheckingForMore] = useState(false);
+  const [learningSessionId, setLearningSessionId] = useState<string | null>(null);
+  const [sessionAward, setSessionAward] = useState<number | null>(null);
+  const [sessionDiagnostic, setSessionDiagnostic] = useState('');
+  const completionStartedRef = useRef(false);
 
   // Feedback overlay
   const [feedback, setFeedback] = useState<{ answer: SrsAnswer; text: string } | null>(null);
@@ -116,8 +120,16 @@ export default function Learn() {
   // Fetch due words
   useEffect(() => {
     getDueWords()
-      .then((data) => {
+      .then(async (data) => {
         setCards(data);
+        if (data.length > 0) {
+          try {
+            const created = await createLearningSession('flashcards');
+            setLearningSessionId(created.session.id);
+          } catch (err) {
+            setSessionDiagnostic(`Flashcard XP fallback used: ${err instanceof Error ? err.message : 'session tracking unavailable'}`);
+          }
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -186,8 +198,14 @@ export default function Learn() {
   useEffect(() => {
     if (currentIndex >= cards.length && cards.length > 0 && !loading && !checkingForMore) {
       playCompleteSound();
+      if (learningSessionId && !completionStartedRef.current) {
+        completionStartedRef.current = true;
+        completeLearningSession(learningSessionId)
+          .then((completed) => setSessionAward(completed.awardedXp))
+          .catch((err) => setSessionDiagnostic(`Flashcard XP fallback used: ${err instanceof Error ? err.message : 'completion could not sync'}`));
+      }
     }
-  }, [currentIndex, cards.length, loading, checkingForMore]);
+  }, [currentIndex, cards.length, loading, checkingForMore, learningSessionId]);
 
   useEffect(() => () => {
     stopAiSpeech();
@@ -228,7 +246,7 @@ export default function Learn() {
     const nextDueSeconds = getNextDueSeconds(currentCard, answer);
     const requeue = nextDueSeconds <= 20 * 60;
     const localUpdate = applyAnswerLocally(currentCard, answer);
-    const reviewPromise = reviewWord(currentCard.id, answer).catch((err) => {
+    const reviewPromise = reviewWord(currentCard.id, answer, learningSessionId || undefined).catch((err) => {
       console.error('Review API error:', err);
       return localUpdate;
     });
@@ -278,7 +296,7 @@ export default function Learn() {
     }
 
     window.setTimeout(() => setIsEntering(false), 350);
-  }, [cards, currentCard, currentIndex, submitting, isFlipped]);
+  }, [cards, currentCard, currentIndex, submitting, isFlipped, learningSessionId]);
 
   // ---------------------------------------------------------------------------
   // Touch / swipe gestures
@@ -401,6 +419,7 @@ export default function Learn() {
             <CheckCircleIcon size={56} style={{ color: '#4ade80' }} />
           </div>
           <h2>Session Complete</h2>
+          {sessionDiagnostic && <div className="flashcard-session-diagnostic" role="status">{sessionDiagnostic}</div>}
           <div className="flashcard-complete-stats">
             <div className="flashcard-stat">
               <span className="flashcard-stat-value">{sessionStats.reviewed}</span>
@@ -415,6 +434,7 @@ export default function Learn() {
               <span className="flashcard-stat-label">Duration</span>
             </div>
           </div>
+          <p className="flashcard-session-xp">{sessionAward === null ? 'Saving session...' : sessionAward ? `+${sessionAward} XP` : 'Session XP capped today'}</p>
           <button className="btn btn-primary" onClick={() => navigate('/')}>
             Done
           </button>

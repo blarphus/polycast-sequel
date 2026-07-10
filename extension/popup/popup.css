@@ -193,6 +193,20 @@ button:disabled {
   border-radius: 8px;
   background: rgba(20, 184, 166, .07);
 }
+.daily-activity-card {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 11px;
+  border: 1px solid rgba(108, 99, 255, .3);
+  border-radius: 8px;
+  background: rgba(108, 99, 255, .08);
+}
+.activity-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 8px 0; }
+.activity-week span { display: grid; justify-items: center; gap: 3px; color: #8f9bb3; }
+.activity-week i { width: 10px; height: 10px; border: 1px solid #596174; border-radius: 50%; }
+.activity-week i.active { border-color: #8b80ff; background: rgba(139,128,255,.4); }
+.activity-week i.complete { border-color: #5eead4; background: #2dd4bf; }
+.activity-week small { font-size: 9px; }
 .daily-goal-heading, .daily-goal-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .daily-goal-heading { color: #dbeafe; font-size: 12px; font-weight: 700; }
 .daily-goal-heading strong { color: #5eead4; }
@@ -202,6 +216,21 @@ button:disabled {
 .daily-goal-footer { color: #8f9bb3; font-size: 10px; }
 .daily-goal-footer label { display: flex; align-items: center; gap: 4px; font-weight: 700; text-transform: uppercase; }
 .daily-goal-footer input { width: 45px; padding: 4px; border-radius: 5px; font-size: 11px; text-align: center; }
+
+.site-highlight-card {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  background: #17172a;
+}
+.site-highlight-copy strong, .site-highlight-copy span { display: block; }
+.site-highlight-copy strong { color: #e7e8ef; font-size: 12px; }
+.site-highlight-copy span { margin-top: 3px; color: #8f9bb3; font-size: 10px; }
+.site-highlight-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 9px; padding: 3px; border-radius: 7px; background: #0f0f1d; }
+.site-highlight-options button { padding: 6px 4px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #8f9bb3; font-size: 11px; }
+.site-highlight-options button.selected { border-color: rgba(108,99,255,.55); background: #292746; color: #fff; }
 
 #word-count-num {
   font-weight: 700;

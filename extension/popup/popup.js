@@ -19,12 +19,20 @@ const useLocalApiBtn = document.getElementById('use-local-api-btn');
 const settingsMessage = document.getElementById('settings-message');
 const wordCountEl = document.getElementById('word-count-num');
 const totalXpEl = document.getElementById('total-xp-num');
+const dailyActivityCountEl = document.getElementById('daily-activity-count');
+const dailyActivityProgressEl = document.getElementById('daily-activity-progress');
+const activityWeekEl = document.getElementById('activity-week');
+const levelLabelEl = document.getElementById('level-label');
+const sessionXpLabelEl = document.getElementById('session-xp-label');
 const dailyGoalCountEl = document.getElementById('daily-goal-count');
 const dailyGoalProgressEl = document.getElementById('daily-goal-progress');
 const dailyGoalMessageEl = document.getElementById('daily-goal-message');
 const dailyGoalInputEl = document.getElementById('daily-goal-input');
 const openAppBtn = document.getElementById('open-app-btn');
 const logoutBtn = document.getElementById('logout-btn');
+const siteHighlightDetailEl = document.getElementById('site-highlight-detail');
+const siteHighlightButtons = [...document.querySelectorAll('[data-highlight-override]')];
+let activePageStatus = null;
 
 function consumeRuntimeError() {
   return chrome.runtime.lastError?.message || '';
@@ -73,6 +81,8 @@ chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
   }
   if (res && res.loggedIn && res.user) {
     showStatus(res.user, res.savedWordCount || 0, res.dailyGoal, res.progression);
+    if (res.diagnostic || res.error) setSettingsMessage(res.diagnostic || `Status fallback used: ${res.error}`, true);
+    loadPageHighlightStatus();
   } else {
     showView(loginView);
   }
@@ -95,6 +105,26 @@ function renderDailyGoal(snapshot = { goal: 5, added: 0, remaining: 5, complete:
   dailyGoalInputEl.value = String(snapshot.goal);
 }
 
+function renderProgression(progression) {
+  const activity = progression?.dailyActivity || { earnedXp: 0, targetXp: 50 };
+  dailyActivityCountEl.textContent = `${activity.earnedXp} / ${activity.targetXp} XP`;
+  dailyActivityProgressEl.style.width = `${Math.min(100, (activity.earnedXp / Math.max(1, activity.targetXp)) * 100)}%`;
+  activityWeekEl.innerHTML = '';
+  for (const day of progression?.week || []) {
+    const item = document.createElement('span');
+    const dot = document.createElement('i');
+    dot.className = day.complete ? 'complete' : day.xp > 0 ? 'active' : '';
+    const label = document.createElement('small');
+    label.textContent = new Date(`${day.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'narrow' });
+    item.title = `${day.date}: ${day.xp} XP`;
+    item.append(dot, label);
+    activityWeekEl.append(item);
+  }
+  levelLabelEl.textContent = `Level ${progression?.level?.number || 1}`;
+  const rewards = progression?.sessionRewards?.remaining ?? 2;
+  sessionXpLabelEl.textContent = `${rewards} session reward${rewards === 1 ? '' : 's'} left`;
+}
+
 function showStatus(user, wordCount, dailyGoal, progression) {
   displayNameEl.textContent = user.display_name || user.username;
   usernameDisplayEl.textContent = `@${user.username}`;
@@ -105,9 +135,38 @@ function showStatus(user, wordCount, dailyGoal, progression) {
   wordCountEl.textContent = String(wordCount);
   totalXpEl.textContent = String(progression?.totalXp || user.total_xp || 0);
   renderDailyGoal(dailyGoal);
+  renderProgression(progression);
   setSettingsMessage('');
   logoutBtn.classList.remove('hidden');
   showView(statusView);
+}
+
+function renderPageHighlightStatus(status) {
+  activePageStatus = status;
+  siteHighlightButtons.forEach((button) => button.classList.toggle('selected', button.dataset.highlightOverride === status.override));
+  if (!status.detectedLanguage) {
+    siteHighlightDetailEl.textContent = 'Language unavailable · automatic highlights off';
+    return;
+  }
+  const source = status.detectionSource === 'captions' ? 'captions' : 'page';
+  siteHighlightDetailEl.textContent = `${langName(status.detectedLanguage)} ${source} · highlights ${status.enabled ? 'on' : 'off'}`;
+}
+
+function loadPageHighlightStatus() {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (consumeRuntimeError() || !tabs[0]?.id) {
+      siteHighlightDetailEl.textContent = 'Page status unavailable';
+      return;
+    }
+    chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_PAGE_HIGHLIGHT_STATUS' }, (status) => {
+      const error = consumeRuntimeError();
+      if (error || !status) {
+        siteHighlightDetailEl.textContent = 'Page status unavailable';
+        return;
+      }
+      renderPageHighlightStatus({ ...status, tabId: tabs[0].id });
+    });
+  });
 }
 
 // Login
@@ -157,6 +216,25 @@ dailyGoalInputEl.addEventListener('change', () => {
     if (res?.snapshot) renderDailyGoal(res.snapshot);
   });
 });
+
+siteHighlightButtons.forEach((button) => button.addEventListener('click', () => {
+  if (!activePageStatus?.hostname || !activePageStatus?.tabId) return;
+  siteHighlightButtons.forEach((item) => { item.disabled = true; });
+  chrome.runtime.sendMessage({
+    type: 'SET_SITE_HIGHLIGHT_OVERRIDE',
+    hostname: activePageStatus.hostname,
+    tabId: activePageStatus.tabId,
+    override: button.dataset.highlightOverride,
+  }, (result) => {
+    siteHighlightButtons.forEach((item) => { item.disabled = false; });
+    const error = consumeRuntimeError();
+    if (error || result?.error) {
+      setSettingsMessage(`Highlight setting fallback used: ${error || result.error}`, true);
+      return;
+    }
+    renderPageHighlightStatus({ ...activePageStatus, override: result.override, enabled: result.override === 'on' || (result.override === 'auto' && activePageStatus.detectedLanguage === activePageStatus.targetLanguage) });
+  });
+}));
 
 // Logout
 logoutBtn.addEventListener('click', () => {

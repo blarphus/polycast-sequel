@@ -525,3 +525,22 @@
 @keyframes pc-spin {
   to { transform: rotate(360deg); }
 }
+
+.pc-popup-recall-body > strong { display: block; margin-bottom: 12px; font-size: 16px; }
+.pc-popup-recall-options { display: grid; gap: 8px; }
+.pc-popup-recall-options button {
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1px solid rgba(139, 128, 255, .55);
+  border-radius: 7px;
+  background: #23213d;
+  color: #f8f7ff;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.pc-popup-recall-options button:hover:not(:disabled) { border-color: #74e7d7; background: #2b2949; }
+.pc-popup-recall-options button:disabled { opacity: .65; cursor: default; }
+.pc-popup-recall-feedback { min-height: 18px; margin-top: 10px; color: #c9c6df; font-size: 12px; }
+.pc-popup-recall-mode--correct { border-color: #4ade80; }
+.pc-popup-recall-mode--incorrect { border-color: #fb7185; }

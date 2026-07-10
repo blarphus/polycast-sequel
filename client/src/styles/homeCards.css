@@ -91,6 +91,29 @@
   margin-bottom: 0.75rem;
 }
 
+.home-activity { --activity-accent: #5752df; }
+.home-activity--teal { --activity-accent: #0f9f91; }
+.home-activity--coral { --activity-accent: #e45f64; }
+.home-activity--gold { --activity-accent: #d39113; }
+.home-activity-header, .home-level-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.home-activity-count { color: var(--text-muted); }
+.home-activity-count strong { color: var(--text-primary); font-size: 1.65rem; }
+.home-level { padding: 5px 8px; border: 1px solid color-mix(in srgb, var(--activity-accent) 38%, var(--border)); border-radius: 6px; color: var(--activity-accent); font-size: .75rem; font-weight: 800; }
+.home-activity-track { height: 8px; overflow: hidden; margin: 12px 0; border-radius: 4px; background: color-mix(in srgb, var(--border) 76%, transparent); }
+.home-activity-track span { display: block; height: 100%; border-radius: inherit; background: var(--activity-accent); transition: width .35s ease; }
+.home-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 12px; }
+.home-week div { display: grid; justify-items: center; gap: 4px; color: var(--text-muted); font-size: .65rem; }
+.home-week i { width: 12px; height: 12px; border: 1.5px solid var(--border); border-radius: 50%; background: transparent; }
+.home-week i.active { border-color: var(--activity-accent); background: color-mix(in srgb, var(--activity-accent) 36%, white); }
+.home-week i.complete { border-color: var(--activity-accent); background: var(--activity-accent); }
+.home-level-row { color: var(--text-muted); font-size: .74rem; font-weight: 700; }
+.home-accent-swatches { display: flex; gap: 6px; }
+.home-accent-swatches button { width: 18px; height: 18px; padding: 0; border: 2px solid transparent; border-radius: 50%; background: #5752df; }
+.home-accent-swatches button.teal { background: #0f9f91; }
+.home-accent-swatches button.coral { background: #e45f64; }
+.home-accent-swatches button.gold { background: #d39113; }
+.home-accent-swatches button.selected { border-color: #fff; outline: 1.5px solid currentColor; }
+
 .home-goal-header {
   display: flex;
   align-items: flex-start;

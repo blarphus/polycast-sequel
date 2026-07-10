@@ -373,7 +373,7 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
   }
   const daysActiveThisWeek = activeDates.size;
 
-  // Daily activity for the last 30 days (reviews, words added, quizzes, drills, voice practice)
+  // Daily activity for the last 30 days (reviews, words, learning sessions, drills, voice practice)
   const activityResult = await pool.query(
     `WITH review_days AS (
        SELECT last_reviewed_at::date AS day,
@@ -391,11 +391,12 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
        WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '30 days'
        GROUP BY created_at::date
      ),
-     quiz_days AS (
-       SELECT created_at::date AS day, COUNT(*) AS quizzes, SUM(correct_count) AS quiz_correct, SUM(question_count) AS quiz_total
-       FROM quiz_sessions
-       WHERE user_id = $1 AND completed_at IS NOT NULL AND created_at >= NOW() - INTERVAL '30 days'
-       GROUP BY created_at::date
+     practice_days AS (
+       SELECT completed_at::date AS day, COUNT(*) AS practice_sessions,
+              SUM(correct_count) AS practice_correct, SUM(total_items) AS practice_total
+       FROM learning_sessions
+       WHERE user_id = $1 AND status = 'completed' AND completed_at >= NOW() - INTERVAL '30 days'
+       GROUP BY completed_at::date
      ),
      drill_days AS (
        SELECT created_at::date AS day, COUNT(*) AS drills
@@ -412,22 +413,22 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
      all_days AS (
        SELECT day FROM review_days
        UNION SELECT day FROM added_days
-       UNION SELECT day FROM quiz_days
+       UNION SELECT day FROM practice_days
        UNION SELECT day FROM drill_days
        UNION SELECT day FROM voice_days
      )
      SELECT d.day,
             COALESCE(r.reviews, 0)::int AS reviews,
             COALESCE(a.words_added, 0)::int AS words_added,
-            COALESCE(q.quizzes, 0)::int AS quizzes,
-            COALESCE(q.quiz_correct, 0)::int AS quiz_correct,
-            COALESCE(q.quiz_total, 0)::int AS quiz_total,
+            COALESCE(p.practice_sessions, 0)::int AS practice_sessions,
+            COALESCE(p.practice_correct, 0)::int AS practice_correct,
+            COALESCE(p.practice_total, 0)::int AS practice_total,
             COALESCE(dr.drills, 0)::int AS drills,
             COALESCE(v.voice_sessions, 0)::int AS voice_sessions
      FROM all_days d
      LEFT JOIN review_days r ON r.day = d.day
      LEFT JOIN added_days a ON a.day = d.day
-     LEFT JOIN quiz_days q ON q.day = d.day
+     LEFT JOIN practice_days p ON p.day = d.day
      LEFT JOIN drill_days dr ON dr.day = d.day
      LEFT JOIN voice_days v ON v.day = d.day
      ORDER BY d.day ASC`,
@@ -488,12 +489,12 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
     [classroomId, studentId],
   );
 
-  // Recent completed sessions (quizzes, drills, voice practice) — last 20
+  // Recent completed sessions — last 20
   const recentSessionsResult = await pool.query(
-    `(SELECT 'quiz' AS type, id, question_count, correct_count,
-             NULL::int AS duration_seconds, mode AS detail, completed_at AS done_at
-      FROM quiz_sessions
-      WHERE user_id = $1 AND completed_at IS NOT NULL
+    `(SELECT kind AS type, id, total_items AS question_count, correct_count,
+             NULL::int AS duration_seconds, target_language AS detail, completed_at AS done_at
+      FROM learning_sessions
+      WHERE user_id = $1 AND status = 'completed'
       ORDER BY completed_at DESC LIMIT 10)
      UNION ALL
      (SELECT 'drill' AS type, id, question_count, correct_count,
@@ -541,9 +542,9 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
         day: dayStr,
         reviews: r.reviews,
         wordsAdded: r.words_added,
-        quizzes: r.quizzes,
-        quizCorrect: r.quiz_correct,
-        quizTotal: r.quiz_total,
+        practiceSessions: r.practice_sessions,
+        practiceCorrect: r.practice_correct,
+        practiceTotal: r.practice_total,
         drills: r.drills,
         voiceSessions: r.voice_sessions,
         words: dailyWordsMap[dayStr] || [],
