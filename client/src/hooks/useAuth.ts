@@ -26,7 +26,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   switchAccount: (userId: string) => Promise<void>;
   forgetSavedAccount: (userId: string) => void;
-  updateSettings: (native_language: string | null, target_language: string | null, daily_new_limit?: number, account_type?: 'student' | 'teacher', cefr_level?: string | null) => Promise<void>;
+  updateSettings: (native_language: string | null, target_language: string | null, daily_new_limit?: number, account_type?: 'student' | 'teacher', cefr_level?: string | null, daily_word_goal?: number) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -129,8 +129,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.id]);
 
-  const updateSettings = useCallback(async (native_language: string | null, target_language: string | null, daily_new_limit?: number, account_type?: 'student' | 'teacher', cefr_level?: string | null) => {
-    const u = await api.updateSettings(native_language, target_language, daily_new_limit, account_type, cefr_level);
+  const updateSettings = useCallback(async (native_language: string | null, target_language: string | null, daily_new_limit?: number, account_type?: 'student' | 'teacher', cefr_level?: string | null, daily_word_goal?: number) => {
+    const u = await api.updateSettings(native_language, target_language, daily_new_limit, account_type, cefr_level, daily_word_goal);
     setUser(u);
     setAuthError('');
     if (currentSessionToken) {

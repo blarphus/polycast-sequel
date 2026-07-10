@@ -56,6 +56,15 @@ export function seedDailyWordProgress(count: number) {
   emit(getDailyGoalSnapshot());
 }
 
+export function applyAccountDailyGoal(snapshot: DailyGoalSnapshot) {
+  if (typeof window === 'undefined' || !snapshot) return;
+  const before = getDailyGoalSnapshot();
+  const goal = Math.max(1, Math.round(Number(snapshot.goal) || DEFAULT_DAILY_WORD_GOAL));
+  window.localStorage.setItem(GOAL_KEY, String(goal));
+  writeProgress(Math.max(0, Math.round(Number(snapshot.added) || 0)));
+  emit({ ...snapshot, goal }, true, !before.complete && snapshot.complete);
+}
+
 export function recordDailyWordAdded() {
   if (typeof window === 'undefined') return;
   const before = getDailyGoalSnapshot();

@@ -39,12 +39,12 @@ import {
   DAILY_GOAL_EVENT,
   getDailyGoalSnapshot,
   seedDailyWordProgress,
-  setDailyWordGoal,
   type DailyGoalSnapshot,
 } from '../utils/dailyGoal';
+import { getProgression } from '../api';
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, updateSettings } = useAuth();
   const navigate = useNavigate();
 
   // Teachers land on classes page instead of the student home
@@ -65,6 +65,7 @@ export default function Home() {
   const [clockTick, setClockTick] = useState(() => Date.now());
   const [pendingPosts, setPendingPosts] = useState<PendingWordList[]>([]);
   const [dailyGoal, setDailyGoal] = useState<DailyGoalSnapshot>(getDailyGoalSnapshot);
+  const [totalXp, setTotalXp] = useState(0);
 
   const targetLang = user?.target_language;
   const langName = LANGUAGES.find((l) => l.code === targetLang)?.name || targetLang || '';
@@ -72,9 +73,11 @@ export default function Home() {
 
   // Shared dashboard refresh logic
   const refreshDashboard = useCallback(() => {
-    getStudentDashboard()
-      .then((dashboard) => {
-        seedDailyWordProgress(dashboard.wordsAddedToday);
+    Promise.all([getStudentDashboard(), getProgression()])
+      .then(([dashboard, progression]) => {
+        seedDailyWordProgress(progression.dailyGoal.added);
+        setDailyGoal(progression.dailyGoal);
+        setTotalXp(progression.totalXp);
         setNewWords(dashboard.newToday);
         setPendingPosts(dashboard.pendingClasswork.posts);
         let n = 0, l = 0, r = 0;
@@ -262,7 +265,12 @@ export default function Home() {
                 min="1"
                 max="50"
                 value={dailyGoal.goal}
-                onChange={(event) => setDailyWordGoal(Number(event.target.value) || 1)}
+                onChange={(event) => {
+                  const goal = Math.min(50, Math.max(1, Number(event.target.value) || 1));
+                  setDailyGoal((current) => ({ ...current, goal, remaining: Math.max(0, goal - current.added), complete: current.added >= goal }));
+                  void updateSettings(user?.native_language || null, user?.target_language || null, undefined, undefined, undefined, goal)
+                    .catch((err) => console.error('Daily goal save failed:', err));
+                }}
                 aria-label="Daily word goal"
               />
             </label>
@@ -271,8 +279,9 @@ export default function Home() {
             <span style={{ width: `${Math.min(100, (dailyGoal.added / dailyGoal.goal) * 100)}%` }} />
           </div>
           <p className={`home-goal-message${dailyGoal.complete ? ' is-complete' : ''}`}>
-            {dailyGoal.complete ? 'Goal met. Keep the streak going!' : `${dailyGoal.remaining} ${dailyGoal.remaining === 1 ? 'word' : 'words'} left today`}
+            {dailyGoal.complete ? 'Goal met. More words are welcome, but XP is capped today.' : `${dailyGoal.remaining} ${dailyGoal.remaining === 1 ? 'word' : 'words'} left today`}
           </p>
+          <div className="home-dashboard-label">{totalXp} XP total</div>
           <div className="home-words-divider" />
           <div className="home-dashboard-label">Today&apos;s learning queue</div>
 

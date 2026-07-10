@@ -34,6 +34,7 @@ import translateRoutes from './routes/translate.js';
 import voicePracticeRoutes from './routes/voicePractice.js';
 import homeRoutes from './routes/home.js';
 import friendkeeperRoutes from './routes/friendkeeper.js';
+import progressionRoutes from './routes/progression.js';
 import { startTranscriptWorker, backfillCefrLevels } from './services/videoTranscriptQueue.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -134,6 +135,7 @@ async function main() {
   app.use(placementRoutes);
   app.use(newsRoutes);
   app.use(homeRoutes);
+  app.use(progressionRoutes);
   app.use(practiceRoutes);
   app.use(voicePracticeRoutes);
   app.use(translateRoutes);

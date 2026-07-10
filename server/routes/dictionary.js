@@ -14,6 +14,7 @@ import { audioContentType, synthesizeVoiceFeedback } from '../services/ttsServic
 import { resolveDictionaryLookup, resolveDictionaryLookupFast, explainWordInContext, explainSelectionInContext } from '../services/wordSemanticsService.js';
 import { ensureCardsScheduled, listDictionaryGroupPage, listDueWords, listNewTodayWords, listNewWordPreview, listStudyOverview, listWidgetPreview, listCalendarCounts, listCalendarDayWords, invalidateDictionaryCache } from '../lib/dictionaryQueries.js';
 import { mergeForm } from '../lib/normalizeWordFields.js';
+import { awardWordSaveXp } from '../lib/progression.js';
 
 const router = Router();
 
@@ -755,7 +756,8 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
     );
     const scheduled = await refreshScheduledWord(rows[0].id);
     invalidateDictionaryCache(req.userId);
-    return res.status(201).json({ ...scheduled, created: true, _created: true });
+    const reward = await awardWordSaveXp(pool, req.userId, scheduled, timeZone);
+    return res.status(201).json({ ...scheduled, created: true, _created: true, ...reward });
   } catch (err) {
     req.log.error({ err }, 'Error saving word');
     return res.status(500).json({ error: 'Failed to save word' });

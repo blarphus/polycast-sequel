@@ -14,5 +14,6 @@ export * from './news';
 export * from './home';
 export * from './groupCall';
 export * from './practice';
+export * from './progression';
 export * from './voicePractice';
 export * from './translate';

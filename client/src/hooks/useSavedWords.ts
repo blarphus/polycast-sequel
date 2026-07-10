@@ -5,7 +5,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getSavedWords, saveWord, deleteSavedWord, updateWordImage, reorderQueue, SavedWord } from '../api';
 import { toErrorMessage } from '../utils/errors';
-import { recordDailyWordAdded } from '../utils/dailyGoal';
+import { applyAccountDailyGoal, recordDailyWordAdded } from '../utils/dailyGoal';
 
 function parseWordForms(rawForms: string | null | undefined) {
   if (!rawForms) return [];
@@ -130,7 +130,8 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
 
       const saved = await saveWord(data);
       if (saved._created) {
-        recordDailyWordAdded();
+        if (saved.progression?.dailyGoal) applyAccountDailyGoal(saved.progression.dailyGoal);
+        else recordDailyWordAdded();
         setWords((prev) => {
           if (prev.some((w) => w.id === saved.id)) return prev;
           return [saved, ...prev];

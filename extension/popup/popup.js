@@ -18,6 +18,7 @@ const saveApiBaseBtn = document.getElementById('save-api-base-btn');
 const useLocalApiBtn = document.getElementById('use-local-api-btn');
 const settingsMessage = document.getElementById('settings-message');
 const wordCountEl = document.getElementById('word-count-num');
+const totalXpEl = document.getElementById('total-xp-num');
 const dailyGoalCountEl = document.getElementById('daily-goal-count');
 const dailyGoalProgressEl = document.getElementById('daily-goal-progress');
 const dailyGoalMessageEl = document.getElementById('daily-goal-message');
@@ -71,7 +72,7 @@ chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
     return;
   }
   if (res && res.loggedIn && res.user) {
-    showStatus(res.user, res.savedWordCount || 0, res.dailyGoal);
+    showStatus(res.user, res.savedWordCount || 0, res.dailyGoal, res.progression);
   } else {
     showView(loginView);
   }
@@ -94,7 +95,7 @@ function renderDailyGoal(snapshot = { goal: 5, added: 0, remaining: 5, complete:
   dailyGoalInputEl.value = String(snapshot.goal);
 }
 
-function showStatus(user, wordCount, dailyGoal) {
+function showStatus(user, wordCount, dailyGoal, progression) {
   displayNameEl.textContent = user.display_name || user.username;
   usernameDisplayEl.textContent = `@${user.username}`;
   nativeLangEl.textContent = langName(user.native_language);
@@ -102,6 +103,7 @@ function showStatus(user, wordCount, dailyGoal) {
   ensureLanguageOption(user.target_language);
   targetLanguageSelect.value = user.target_language || '';
   wordCountEl.textContent = String(wordCount);
+  totalXpEl.textContent = String(progression?.totalXp || user.total_xp || 0);
   renderDailyGoal(dailyGoal);
   setSettingsMessage('');
   logoutBtn.classList.remove('hidden');
@@ -139,7 +141,7 @@ loginForm.addEventListener('submit', (e) => {
           return;
         }
         if (statusRes && statusRes.loggedIn) {
-          showStatus(statusRes.user, statusRes.savedWordCount || 0, statusRes.dailyGoal);
+          showStatus(statusRes.user, statusRes.savedWordCount || 0, statusRes.dailyGoal, statusRes.progression);
         } else {
           showStatus(res.user, 0);
         }

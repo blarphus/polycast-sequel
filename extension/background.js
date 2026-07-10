@@ -7,6 +7,8 @@ const DEFAULT_DAILY_WORD_GOAL = 5;
 const BONUS_XP_PER_WORD = 10;
 const DAILY_GOAL_KEY = 'dailyWordGoal';
 const DAILY_PROGRESS_KEY = 'dailyWordProgress';
+const RECALL_CATALOG_KEY = 'wildRecallCatalog';
+const RECALL_CHALLENGE_KEY = 'wildRecallChallenge';
 const OFFLINE_MODE_KEY = 'offlineMode';
 const OFFLINE_WORDS_KEY = 'offlineDictionaryWords';
 const SELECTION_CONTEXT_MENU_ID = 'polycast-lookup-selection';
@@ -128,9 +130,11 @@ async function broadcastDailyGoalUpdated(snapshot, extra = {}) {
   }
 }
 
-async function seedDailyGoalProgress(count) {
+async function seedDailyGoalProgress(count, serverGoal = null) {
   const normalized = Math.max(0, Math.round(Number(count) || 0));
-  await chrome.storage.local.set({ [DAILY_PROGRESS_KEY]: { date: localDateKey(), count: normalized } });
+  const next = { [DAILY_PROGRESS_KEY]: { date: localDateKey(), count: normalized } };
+  if (serverGoal) next[DAILY_GOAL_KEY] = Math.max(1, Math.round(Number(serverGoal) || DEFAULT_DAILY_WORD_GOAL));
+  await chrome.storage.local.set(next);
   const snapshot = await getDailyGoalSnapshot();
   await broadcastDailyGoalUpdated(snapshot);
   return snapshot;
@@ -150,9 +154,11 @@ async function syncDailyGoalFromServer() {
   }
   try {
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const dashboard = await apiFetch(`/api/home/student-dashboard?timeZone=${encodeURIComponent(zone)}`);
-    return seedDailyGoalProgress(dashboard.wordsAddedToday || 0);
-  } catch {
+    const progression = await apiFetch(`/api/progression?timeZone=${encodeURIComponent(zone)}`);
+    await chrome.storage.local.set({ progression });
+    return seedDailyGoalProgress(progression.dailyGoal?.added || 0, progression.dailyGoal?.goal);
+  } catch (err) {
+    await broadcastFallbackNotice('Daily goal fallback', `Using cached goal progress because the account sync failed: ${err.message}`);
     return getDailyGoalSnapshot();
   }
 }
@@ -225,7 +231,12 @@ function savedWordTokens(words) {
 async function fetchSavedWords() {
   const words = await apiFetch('/api/dictionary/words');
   const wordList = savedWordTokens(words);
-  await chrome.storage.local.set({ savedWords: wordList });
+  const catalog = words.map((word) => ({
+    id: word.id, word: word.word, lemma: word.lemma, forms: word.forms,
+    translation: word.translation, target_language: word.target_language,
+    last_reviewed_at: word.last_reviewed_at,
+  }));
+  await chrome.storage.local.set({ savedWords: wordList, [RECALL_CATALOG_KEY]: catalog });
   return wordList;
 }
 
@@ -351,6 +362,34 @@ async function broadcastWordsUpdated(savedWords) {
   }
 }
 
+async function broadcastFallbackNotice(title, message) {
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    chrome.tabs.sendMessage(tab.id, { type: 'POLYCAST_FALLBACK_NOTICE', title, message }).catch(() => {});
+  }
+}
+
+async function broadcastWildRecallUpdated(challenge, progression = null, diagnostic = null) {
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'WILD_RECALL_UPDATED', challenge, progression, diagnostic,
+    }).catch(() => {});
+  }
+}
+
+async function storeProgression(progression, { justAdded = false, awardedXp = 0 } = {}) {
+  if (!progression) return null;
+  await chrome.storage.local.set({ progression });
+  const snapshot = await seedDailyGoalProgress(progression.dailyGoal?.added || 0, progression.dailyGoal?.goal);
+  await broadcastDailyGoalUpdated(snapshot, {
+    justAdded,
+    justCompleted: !!(justAdded && snapshot.complete),
+    bonusXpEarned: awardedXp,
+  });
+  return snapshot;
+}
+
 async function broadcastTargetLanguageUpdated(targetLanguage) {
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
@@ -393,18 +432,18 @@ async function handleMessage(msg) {
       }
 
       const data = await res.json();
-      const { token, id, username, display_name, native_language, target_language } = data;
+      const { token, id, username, display_name, native_language, target_language, daily_word_goal, total_xp } = data;
 
       await chrome.storage.local.set({
         authToken: token,
-        user: { id, username, display_name, native_language, target_language },
+        user: { id, username, display_name, native_language, target_language, daily_word_goal, total_xp },
       });
       await chrome.storage.local.remove(OFFLINE_MODE_KEY);
 
       const savedWords = await fetchSavedWords();
       await broadcastWordsUpdated(savedWords);
 
-      return { success: true, user: { id, username, display_name, native_language, target_language } };
+      return { success: true, user: { id, username, display_name, native_language, target_language, daily_word_goal, total_xp } };
     }
 
     case 'REMOTE_LOGIN': {
@@ -424,22 +463,22 @@ async function handleMessage(msg) {
       }
 
       const data = await res.json();
-      const { token, id, username, display_name, native_language, target_language } = data;
+      const { token, id, username, display_name, native_language, target_language, daily_word_goal, total_xp } = data;
 
       await chrome.storage.local.set({
         authToken: token,
-        user: { id, username, display_name, native_language, target_language },
+        user: { id, username, display_name, native_language, target_language, daily_word_goal, total_xp },
       });
       await chrome.storage.local.remove(OFFLINE_MODE_KEY);
 
       const savedWords = await fetchSavedWords();
       await broadcastWordsUpdated(savedWords);
 
-      return { success: true, user: { id, username, display_name, native_language, target_language } };
+      return { success: true, user: { id, username, display_name, native_language, target_language, daily_word_goal, total_xp } };
     }
 
     case 'LOGOUT': {
-      await chrome.storage.local.remove(['authToken', 'user', 'savedWords', OFFLINE_MODE_KEY]);
+      await chrome.storage.local.remove(['authToken', 'user', 'savedWords', RECALL_CATALOG_KEY, RECALL_CHALLENGE_KEY, 'progression', OFFLINE_MODE_KEY]);
       await broadcastWordsUpdated([]);
       return { success: true };
     }
@@ -454,14 +493,16 @@ async function handleMessage(msg) {
         }
         const words = await getOfflineWords();
         await chrome.storage.local.set({ user, savedWords: savedWordTokens(words) });
-        return { loggedIn: true, user, savedWordCount: words.length, dailyGoal: await syncDailyGoalFromServer(), offline: true };
+        return { loggedIn: true, user, savedWordCount: words.length, dailyGoal: await syncDailyGoalFromServer(), offline: true, diagnostic: 'Offline fallback used: XP is not account-backed.' };
       }
 
       try {
         const user = await apiFetch('/api/me');
         await chrome.storage.local.set({ user });
         const { savedWords } = await chrome.storage.local.get('savedWords');
-        return { loggedIn: true, user, savedWordCount: (savedWords || []).length, dailyGoal: await syncDailyGoalFromServer() };
+        const dailyGoal = await syncDailyGoalFromServer();
+        const { progression = null } = await chrome.storage.local.get('progression');
+        return { loggedIn: true, user, savedWordCount: (savedWords || []).length, dailyGoal, progression };
       } catch (err) {
         const { user = DEFAULT_OFFLINE_USER } = await chrome.storage.local.get('user');
         const words = await getOfflineWords();
@@ -577,8 +618,14 @@ async function handleMessage(msg) {
         await chrome.storage.local.set({ savedWords: updated });
         await broadcastWordsUpdated(updated);
 
-        const dailyGoal = saved._created ? await recordDailyGoalWord() : await getDailyGoalSnapshot();
-        return { success: true, saved, dailyGoal, fallback_notices: enriched.fallback_notices || [] };
+        const dailyGoal = saved._created
+          ? await storeProgression(saved.progression, { justAdded: true, awardedXp: saved.awardedXp || 0 })
+          : await getDailyGoalSnapshot();
+        return {
+          success: true, saved, dailyGoal, awardedXp: saved.awardedXp || 0,
+          progression: saved.progression || null,
+          fallback_notices: enriched.fallback_notices || [],
+        };
       } catch (err) {
         if (String(err.message || '').includes('Session expired')) throw err;
         const saved = await saveOfflineWord(msg.word, msg.sentence);
@@ -593,10 +640,23 @@ async function handleMessage(msg) {
 
     case 'SET_DAILY_GOAL': {
       const goal = Math.min(50, Math.max(1, Math.round(Number(msg.goal) || DEFAULT_DAILY_WORD_GOAL)));
-      await chrome.storage.local.set({ [DAILY_GOAL_KEY]: goal });
-      const snapshot = await getDailyGoalSnapshot();
-      await broadcastDailyGoalUpdated(snapshot);
-      return { snapshot };
+      const { user = DEFAULT_OFFLINE_USER, [OFFLINE_MODE_KEY]: offlineMode } =
+        await chrome.storage.local.get(['user', OFFLINE_MODE_KEY]);
+      const token = await getAuthToken();
+      if (!token || offlineMode) {
+        await chrome.storage.local.set({ [DAILY_GOAL_KEY]: goal });
+        const snapshot = await getDailyGoalSnapshot();
+        await broadcastDailyGoalUpdated(snapshot);
+        return { snapshot, offline: true, diagnostic: 'Offline fallback used: daily goal is local and XP cannot sync.' };
+      }
+      const updatedUser = await apiFetch('/api/me/settings', {
+        method: 'PATCH',
+        body: { native_language: user.native_language || null, target_language: user.target_language || null, daily_word_goal: goal },
+      });
+      await chrome.storage.local.set({ user: updatedUser, [DAILY_GOAL_KEY]: goal });
+      const progression = await apiFetch(`/api/progression?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`);
+      const snapshot = await storeProgression(progression);
+      return { snapshot, progression };
     }
 
     // Self-heal highlighting: a tapped inflection of an already-saved word is
@@ -652,6 +712,73 @@ async function handleMessage(msg) {
     case 'GET_SAVED_WORDS': {
       const { savedWords } = await chrome.storage.local.get('savedWords');
       return { savedWords: savedWords || [] };
+    }
+
+    case 'GET_WILD_RECALL_STATE': {
+      const token = await getAuthToken();
+      const { [OFFLINE_MODE_KEY]: offlineMode, [RECALL_CHALLENGE_KEY]: cachedChallenge, progression } =
+        await chrome.storage.local.get([OFFLINE_MODE_KEY, RECALL_CHALLENGE_KEY, 'progression']);
+      if (!token || offlineMode) {
+        return {
+          challenge: null,
+          progression: progression || null,
+          diagnostic: 'Offline fallback used: Wild Recall requires the account-backed XP service.',
+        };
+      }
+      try {
+        await fetchSavedWords();
+        const remote = await apiFetch(`/api/progression?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`);
+        const challenge = remote.activeChallenge || null;
+        await chrome.storage.local.set({ [RECALL_CHALLENGE_KEY]: challenge, progression: remote });
+        const { [RECALL_CATALOG_KEY]: catalog = [] } = await chrome.storage.local.get(RECALL_CATALOG_KEY);
+        return { challenge, progression: remote, catalog };
+      } catch (err) {
+        return {
+          challenge: cachedChallenge || null,
+          progression: progression || null,
+          diagnostic: `Wild Recall catalog fallback used: ${err.message}`,
+        };
+      }
+    }
+
+    case 'MAYBE_ARM_WILD_RECALL': {
+      const token = await getAuthToken();
+      if (!token) return { challenge: null, diagnostic: 'Wild Recall is unavailable until you sign in.' };
+      const { [RECALL_CHALLENGE_KEY]: existing } = await chrome.storage.local.get(RECALL_CHALLENGE_KEY);
+      if (existing) return { challenge: existing };
+      const { [RECALL_CATALOG_KEY]: catalog = [] } = await chrome.storage.local.get(RECALL_CATALOG_KEY);
+      const candidateIds = new Set(Array.isArray(msg.wordIds) ? msg.wordIds : []);
+      const choices = catalog.filter((word) => word.last_reviewed_at && candidateIds.has(word.id));
+      if (!choices.length) return { challenge: null };
+      const choice = choices[Math.floor(Math.random() * choices.length)];
+      try {
+        const result = await apiFetch('/api/progression/wild-recall/arm', {
+          method: 'POST',
+          body: { wordId: choice.id, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+        });
+        await chrome.storage.local.set({ [RECALL_CHALLENGE_KEY]: result.challenge || null, progression: result.progression || null });
+        await broadcastWildRecallUpdated(result.challenge || null, result.progression || null, result.unavailable || null);
+        return result;
+      } catch (err) {
+        const diagnostic = `Wild Recall preparation fallback used: ${err.message}`;
+        await broadcastWildRecallUpdated(null, null, diagnostic);
+        return { challenge: null, diagnostic };
+      }
+    }
+
+    case 'ANSWER_WILD_RECALL': {
+      const result = await apiFetch('/api/progression/wild-recall/answer', {
+        method: 'POST',
+        body: {
+          challengeId: msg.challengeId,
+          optionId: msg.optionId,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
+      });
+      await chrome.storage.local.set({ [RECALL_CHALLENGE_KEY]: null, progression: result.progression || null });
+      await storeProgression(result.progression, { awardedXp: result.awardedXp || 0 });
+      await broadcastWildRecallUpdated(null, result.progression || null);
+      return result;
     }
 
     case 'GET_OFFLINE_DICTIONARY_FULL': {

@@ -98,6 +98,8 @@ chrome.runtime.onMessage.addListener((msg) => {
       celebrate: !!msg.justAdded,
       completed: !!msg.justCompleted,
     });
+  } else if (msg.type === 'POLYCAST_FALLBACK_NOTICE') {
+    showFallbackToast(msg.title || 'Fallback used', msg.message || 'A local fallback was used.');
   }
 });
 
@@ -117,9 +119,9 @@ function goalMarkup(snapshot) {
   const filledSteps = Math.round((Math.min(added, goal) / goal) * stepCount);
   const steps = Array.from({ length: stepCount }, (_, index) =>
     `<i class="${index < filledSteps ? 'pc-popup-goal-step--filled' : ''}"></i>`).join('');
-  const label = snapshot.overGoal > 0
-    ? `${snapshot.overGoal} extra · ${snapshot.bonusXp} XP`
-    : snapshot.complete ? 'Goal complete' : `${snapshot.remaining} more today`;
+  const label = snapshot.complete
+    ? 'Goal complete · XP capped'
+    : `${snapshot.remaining} more today`;
   const flameSvg = globalThis.PolycastWordPopup?.FLAME_SVG || '';
   return `<span class="pc-popup-goal-flame" aria-label="${added} of ${goal} daily words">${flameSvg}</span>` +
     `<div class="pc-popup-goal-steps">${steps}</div>` +
@@ -155,18 +157,17 @@ function applyDailyGoalSnapshot(snapshot, { celebrate = false, completed = false
 function showGoalCelebration(snapshot, completed) {
   document.querySelector('.pc-goal-celebration')?.remove();
   const toast = document.createElement('div');
-  const bonusXpEarned = Number(snapshot.bonusXpEarned) || BONUS_XP_PER_WORD;
-  const overGoal = Number(snapshot.overGoal) > 0;
-  const flame = completed || overGoal;
-  toast.className = `pc-goal-celebration${completed ? ' pc-goal-celebration--complete' : ''}${overGoal ? ' pc-goal-celebration--bonus' : ''}`;
+  const bonusXpEarned = Number(snapshot.bonusXpEarned) || 0;
+  const flame = completed;
+  toast.className = `pc-goal-celebration${completed ? ' pc-goal-celebration--complete' : ''}`;
   toast.setAttribute('role', 'status');
   const icon = flame
     ? '<b class="pc-celebration-flame" aria-hidden="true"><i></i><i></i></b>'
     : '<b aria-hidden="true">✓</b>';
-  const title = completed ? 'Daily goal complete!' : `+${bonusXpEarned} XP`;
-  const detail = overGoal
-    ? `${snapshot.added} words today · ${snapshot.bonusXp} bonus XP total`
-    : completed ? `${snapshot.added} words added today` : `${snapshot.remaining} more to reach today's goal`;
+  const title = completed ? 'Daily goal complete!' : (bonusXpEarned ? `+${bonusXpEarned} XP` : 'Word saved');
+  const detail = completed
+    ? `${snapshot.added} words added today · word-save XP capped`
+    : `${snapshot.remaining} more to reach today's goal`;
   toast.innerHTML = `${icon}<div><strong>${title}</strong><span>${detail}</span></div>`;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), flame ? 3200 : 2200);
@@ -470,9 +471,9 @@ function openWordPopup({
           added: optimisticAdded,
           remaining: Math.max(0, previousGoal.goal - optimisticAdded),
           complete: optimisticAdded >= previousGoal.goal,
-          overGoal: Math.max(0, optimisticAdded - previousGoal.goal),
-          bonusXp: Math.max(0, optimisticAdded - previousGoal.goal) * BONUS_XP_PER_WORD,
-          bonusXpEarned: BONUS_XP_PER_WORD,
+          overGoal: 0,
+          bonusXp: 0,
+          bonusXpEarned: optimisticAdded <= previousGoal.goal ? BONUS_XP_PER_WORD : 0,
         };
         applyDailyGoalSnapshot(optimisticGoal, {
           celebrate: true,

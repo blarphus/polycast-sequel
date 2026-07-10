@@ -176,6 +176,15 @@ export interface SavedWord {
   shared_entry_id?: string | null;
 }
 
+export interface SavedWordSaveResult extends SavedWord {
+  _created: boolean;
+  awardedXp?: number;
+  progression?: {
+    totalXp: number;
+    dailyGoal: { goal: number; added: number; remaining: number; complete: boolean };
+  };
+}
+
 export function getSavedWords(targetLanguage?: string | null) {
   const params = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
   if (targetLanguage) params.set('targetLanguage', targetLanguage);
@@ -220,7 +229,7 @@ export function getDictionaryWordGroups(page: number, limit: number, search: str
 }
 
 export function saveWord(data: SaveWordData) {
-  return request<SavedWord & { _created: boolean }>('/dictionary/words', {
+  return request<SavedWordSaveResult>('/dictionary/words', {
     method: 'POST',
     body: {
       ...data,

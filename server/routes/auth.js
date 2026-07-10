@@ -31,6 +31,7 @@ const settingsSchema = z.object({
   native_language: z.string().optional(),
   target_language: z.string().optional(),
   daily_new_limit: z.number().optional(),
+  daily_word_goal: z.number().int().min(1).max(50).optional(),
   account_type: z.enum(['student', 'teacher']).optional(),
   cefr_level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).nullable().optional(),
 });
@@ -66,7 +67,7 @@ router.post('/api/signup', signupLimiter, validate({ body: signupSchema }), asyn
     const result = await pool.query(
       `INSERT INTO users (username, password_hash, display_name)
        VALUES ($1, $2, $3)
-       RETURNING id, username, display_name, created_at, native_language, target_language, account_type, cefr_level`,
+       RETURNING id, username, display_name, created_at, native_language, target_language, daily_word_goal, total_xp, account_type, cefr_level`,
       [username, passwordHash, display_name || null],
     );
 
@@ -83,6 +84,8 @@ router.post('/api/signup', signupLimiter, validate({ body: signupSchema }), asyn
       created_at: user.created_at,
       native_language: user.native_language,
       target_language: user.target_language,
+      daily_word_goal: user.daily_word_goal,
+      total_xp: user.total_xp,
       account_type: user.account_type,
       cefr_level: user.cefr_level ?? null,
     });
@@ -106,7 +109,7 @@ router.post('/api/login', loginLimiter, validate({ body: loginSchema }), async (
     const { username, password } = req.body;
 
     const result = await pool.query(
-      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, account_type, cefr_level FROM users WHERE LOWER(username::text) = LOWER($1::text)',
+      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, daily_word_goal, total_xp, account_type, cefr_level FROM users WHERE LOWER(username::text) = LOWER($1::text)',
       [username],
     );
 
@@ -134,6 +137,8 @@ router.post('/api/login', loginLimiter, validate({ body: loginSchema }), async (
       created_at: user.created_at,
       native_language: user.native_language,
       target_language: user.target_language,
+      daily_word_goal: user.daily_word_goal,
+      total_xp: user.total_xp,
       account_type: user.account_type,
       cefr_level: user.cefr_level ?? null,
     });
@@ -155,7 +160,7 @@ router.post('/api/session/restore', validate({ body: restoreSessionSchema }), as
     }
 
     const result = await pool.query(
-      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_level FROM users WHERE id = $1',
+      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit, daily_word_goal, total_xp, account_type, cefr_level FROM users WHERE id = $1',
       [decoded.userId],
     );
     const user = result.rows[0];
@@ -175,6 +180,8 @@ router.post('/api/session/restore', validate({ body: restoreSessionSchema }), as
       native_language: user.native_language,
       target_language: user.target_language,
       daily_new_limit: user.daily_new_limit,
+      daily_word_goal: user.daily_word_goal,
+      total_xp: user.total_xp,
       account_type: user.account_type,
       cefr_level: user.cefr_level ?? null,
       token,
@@ -218,7 +225,7 @@ router.post('/api/logout', (_req, res) => {
 router.get('/api/me', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_level FROM users WHERE id = $1',
+      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit, daily_word_goal, total_xp, account_type, cefr_level FROM users WHERE id = $1',
       [req.userId],
     );
 
@@ -236,6 +243,8 @@ router.get('/api/me', authMiddleware, async (req, res) => {
       native_language: user.native_language,
       target_language: user.target_language,
       daily_new_limit: user.daily_new_limit,
+      daily_word_goal: user.daily_word_goal,
+      total_xp: user.total_xp,
       account_type: user.account_type,
       cefr_level: user.cefr_level ?? null,
     });
@@ -251,7 +260,7 @@ router.get('/api/me', authMiddleware, async (req, res) => {
  */
 router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema }), async (req, res) => {
   try {
-    const { native_language, target_language, daily_new_limit, account_type, cefr_level } = req.body;
+    const { native_language, target_language, daily_new_limit, daily_word_goal, account_type, cefr_level } = req.body;
 
     // Build SET clauses and params dynamically
     const sets = ['native_language = $1', 'target_language = $2'];
@@ -261,6 +270,11 @@ router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema
     if (daily_new_limit != null) {
       sets.push(`daily_new_limit = $${idx}`);
       params.push(daily_new_limit);
+      idx++;
+    }
+    if (daily_word_goal != null) {
+      sets.push(`daily_word_goal = $${idx}`);
+      params.push(daily_word_goal);
       idx++;
     }
     if (account_type) {
@@ -277,7 +291,7 @@ router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema
 
     const result = await pool.query(
       `UPDATE users SET ${sets.join(', ')} WHERE id = $3
-       RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit, account_type, cefr_level`,
+       RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit, daily_word_goal, total_xp, account_type, cefr_level`,
       params,
     );
 
@@ -295,6 +309,8 @@ router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema
       native_language: user.native_language,
       target_language: user.target_language,
       daily_new_limit: user.daily_new_limit,
+      daily_word_goal: user.daily_word_goal,
+      total_xp: user.total_xp,
       account_type: user.account_type,
       cefr_level: user.cefr_level ?? null,
     });

@@ -7,6 +7,8 @@ export interface AuthUser {
   native_language: string | null;
   target_language: string | null;
   daily_new_limit: number;
+  daily_word_goal: number;
+  total_xp: number;
   account_type: 'student' | 'teacher';
   cefr_level: string | null;
 }
@@ -56,11 +58,13 @@ export function updateSettings(
   daily_new_limit?: number,
   account_type?: 'student' | 'teacher',
   cefr_level?: string | null,
+  daily_word_goal?: number,
 ) {
   const body: Record<string, unknown> = { native_language, target_language };
   if (daily_new_limit !== undefined) body.daily_new_limit = daily_new_limit;
   if (account_type !== undefined) body.account_type = account_type;
   if (cefr_level !== undefined) body.cefr_level = cefr_level;
+  if (daily_word_goal !== undefined) body.daily_word_goal = daily_word_goal;
   return request<AuthUser>('/me/settings', {
     method: 'PATCH',
     body,
