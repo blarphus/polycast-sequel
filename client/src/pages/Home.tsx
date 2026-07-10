@@ -2,7 +2,7 @@
 // pages/Home.tsx -- Central learning hub (default landing page)
 // ---------------------------------------------------------------------------
 
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -31,6 +31,7 @@ import { FrequencyDots } from '../components/FrequencyDots';
 import { CalendarIcon, ChevronRightIcon } from '../components/icons';
 import { formatVideoDuration, CEFR_COLORS } from '../utils/videoFormat';
 import { formatUsTime } from '../utils/dateFormat';
+import { classStartDate, formatCountdown, JOIN_WINDOW_MS } from '../utils/classSchedule';
 import { useVideoClick } from '../hooks/useVideoClick';
 import { filterUnplayableVideos } from '../utils/playabilityFilter';
 import { toErrorMessage } from '../utils/errors';
@@ -61,6 +62,7 @@ export default function Home() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [srsCounts, setSrsCounts] = useState({ new: 0, learning: 0, review: 0 });
   const [classesToday, setClassesToday] = useState<UpcomingClass[]>([]);
+  const [clockTick, setClockTick] = useState(() => Date.now());
   const [pendingPosts, setPendingPosts] = useState<PendingWordList[]>([]);
   const [dailyGoal, setDailyGoal] = useState<DailyGoalSnapshot>(getDailyGoalSnapshot);
 
@@ -202,8 +204,28 @@ export default function Home() {
   // Friends online
   const onlineFriends = friends.filter((f) => f.online);
 
-  // Next class
-  const nextClass = classesToday[0];
+  // Tick once a second while there are classes today so the countdown is live.
+  useEffect(() => {
+    if (classesToday.length === 0) return;
+    const interval = setInterval(() => setClockTick(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [classesToday.length]);
+
+  // Next class: earliest session that hasn't ended yet, with a live countdown.
+  const nextClass = useMemo(() => {
+    const upcoming = classesToday
+      .map((c) => ({ ...c, startAt: classStartDate(c) }))
+      .filter((c): c is UpcomingClass & { startAt: Date } => {
+        if (!c.startAt) return false;
+        const endMs = c.startAt.getTime() + (c.duration_minutes || 60) * 60_000;
+        return endMs > clockTick;
+      })
+      .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+    return upcoming[0] || null;
+  }, [classesToday, clockTick]);
+
+  const classCountdown = nextClass ? formatCountdown(nextClass.startAt.getTime() - clockTick) : null;
+  const classJoinable = nextClass ? nextClass.startAt.getTime() - clockTick <= JOIN_WINDOW_MS : false;
 
   return (
     <div className="home-page">
@@ -386,7 +408,7 @@ export default function Home() {
 
         {/* Card 4: Next Class (3 cols) — hidden when no classes */}
         {nextClass && (
-          <div className="home-dashboard-card home-card--class">
+          <div className={`home-dashboard-card home-card--class${classJoinable ? ' home-card--class-live' : ''}`}>
             <div className="home-dashboard-label">Next class</div>
             <div className="home-class-row">
               <div className="home-class-icon">
@@ -394,13 +416,19 @@ export default function Home() {
               </div>
               <div className="home-class-info">
                 <span className="home-class-name">{nextClass.title || 'Class Session'}</span>
+                <span className="home-class-countdown">{classCountdown}</span>
                 <span className="home-class-meta">
                   {nextClass.time || (nextClass.scheduled_at ? formatUsTime(nextClass.scheduled_at) : '')}
                   {nextClass.duration_minutes ? ` \u00b7 ${nextClass.duration_minutes} min` : ''}
                   {nextClass.teacher_name ? ` \u00b7 ${nextClass.teacher_name}` : ''}
                 </span>
               </div>
-              <button className="home-class-join" onClick={() => navigate(`/group-call/${nextClass.id}`)}>
+              <button
+                className="home-class-join"
+                disabled={!classJoinable}
+                title={classJoinable ? undefined : 'Opens 15 minutes before class'}
+                onClick={() => navigate(`/group-call/${nextClass.id}`)}
+              >
                 Join
               </button>
             </div>

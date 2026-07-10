@@ -113,11 +113,16 @@ function languageName(code) {
 function goalMarkup(snapshot) {
   const goal = Math.max(1, Number(snapshot.goal) || 5);
   const added = Math.max(0, Number(snapshot.added) || 0);
+  const stepCount = Math.min(goal, 10);
+  const filledSteps = Math.round((Math.min(added, goal) / goal) * stepCount);
+  const steps = Array.from({ length: stepCount }, (_, index) =>
+    `<i class="${index < filledSteps ? 'pc-popup-goal-step--filled' : ''}"></i>`).join('');
   const label = snapshot.overGoal > 0
     ? `${snapshot.overGoal} extra · ${snapshot.bonusXp} XP`
     : snapshot.complete ? 'Goal complete' : `${snapshot.remaining} more today`;
   const flameSvg = globalThis.PolycastWordPopup?.FLAME_SVG || '';
   return `<span class="pc-popup-goal-flame" aria-label="${added} of ${goal} daily words">${flameSvg}</span>` +
+    `<div class="pc-popup-goal-steps">${steps}</div>` +
     `<strong>${added} of ${goal}</strong><span class="pc-popup-goal-divider"></span><span>${label}</span>`;
 }
 
@@ -132,9 +137,11 @@ function updateActivePopupGoal(animate = false) {
   if (!goal) return;
   goal.innerHTML = goalMarkup(dailyGoalSnapshot);
   goal.classList.toggle('pc-popup-goal--complete', dailyGoalSnapshot.complete);
-  goal.classList.toggle('pc-popup-goal--pulse', animate);
-  if (animate) setTimeout(() => goal.classList.remove('pc-popup-goal--pulse'), 700);
-  globalThis.PolycastWordPopup?.setFlameLevel(goal.querySelector('.pc-popup-goal-flame'), goalFlameRatio(dailyGoalSnapshot));
+  globalThis.PolycastWordPopup?.setFlameLevel(
+    goal.querySelector('.pc-popup-goal-flame'),
+    goalFlameRatio(dailyGoalSnapshot),
+    { burst: animate },
+  );
 }
 
 function applyDailyGoalSnapshot(snapshot, { celebrate = false, completed = false } = {}) {

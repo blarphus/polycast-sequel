@@ -229,7 +229,7 @@
 
 .pc-popup-goal > strong { flex: 0 0 auto; color: #5eead4; font-size: 11px; }
 .pc-popup-goal > span:last-child { min-width: 0; white-space: nowrap; }
-.pc-popup-goal-flame { display: flex; flex: 0 0 auto; align-items: center; transition: filter 0.5s ease; }
+.pc-popup-goal-flame { display: flex; flex: 0 0 auto; align-items: center; transform-origin: 50% 90%; transition: filter 0.5s ease, transform 0.5s ease; }
 .pc-popup-goal-flame svg { display: block; transform-origin: 50% 85%; }
 .pc-popup-goal-flame.pc-flame-lit svg { animation: pc-flame-flicker 1.4s ease-in-out infinite; }
 @keyframes pc-flame-flicker {
@@ -238,11 +238,24 @@
   50% { transform: scale(0.96, 1.05) rotate(1.5deg); }
   75% { transform: scale(1.04, 0.98) rotate(-1deg); }
 }
+/* Momentary flare when a word is added — brightness spike + quick stretch,
+   layered on top of the inline size/filter via animation precedence. */
+.pc-popup-goal-flame.pc-flame-burst svg {
+  animation: pc-flame-burst .85s cubic-bezier(.22,1,.36,1), pc-flame-flicker 1.4s ease-in-out .85s infinite;
+}
+@keyframes pc-flame-burst {
+  0% { transform: scale(1); filter: none; }
+  22% { transform: scale(1.55, 1.7); filter: brightness(1.6) drop-shadow(0 0 10px rgba(255,170,60,.9)); }
+  55% { transform: scale(1.15, 1.25); filter: brightness(1.25) drop-shadow(0 0 6px rgba(255,150,50,.6)); }
+  100% { transform: scale(1); filter: none; }
+}
+.pc-popup-goal-steps { display: flex; flex: 1 1 auto; gap: 5px; min-width: 54px; }
+.pc-popup-goal-steps i { width: 9px; height: 9px; border: 1px solid rgba(139,128,255,.42); border-radius: 50%; background: transparent; transition: background .35s ease, border-color .35s ease, transform .35s ease; }
+.pc-popup-goal-steps .pc-popup-goal-step--filled { border-color: #2dd4bf; background: #2dd4bf; box-shadow: 0 0 8px rgba(45,212,191,.35); transform: scale(1.08); }
+.pc-popup-goal--complete .pc-popup-goal-steps .pc-popup-goal-step--filled { border-color: #facc15; background: #facc15; box-shadow: 0 0 10px rgba(250,204,21,.38); }
 .pc-popup-goal-divider { width: 1px; height: 16px; background: rgba(255,255,255,.14); }
 .pc-popup-goal--complete { border-color: rgba(250,204,21,.28); background: rgba(250,204,21,.055); }
 .pc-popup-goal--complete > strong, .pc-popup-goal--complete > span:last-child { color: #fde047; }
-.pc-popup-goal--pulse { animation: pc-goal-pulse .65s cubic-bezier(.22,1,.36,1); }
-@keyframes pc-goal-pulse { 40% { transform: scale(1.035); box-shadow: 0 0 22px rgba(45,212,191,.24); } }
 
 .pc-popup-save--saved,
 .pc-popup-save:disabled {

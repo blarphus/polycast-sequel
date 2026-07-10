@@ -324,6 +324,28 @@
   color: var(--text-muted);
 }
 
+.home-class-countdown {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #5eead4;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-card--class-live {
+  border-color: rgba(94, 234, 212, 0.45);
+  box-shadow: 0 0 18px rgba(45, 212, 191, 0.12);
+}
+
+.home-card--class-live .home-class-countdown {
+  color: #fde047;
+}
+
+.home-class-join:disabled {
+  background: var(--bg-tertiary, rgba(255, 255, 255, 0.08));
+  color: var(--text-muted);
+  cursor: default;
+}
+
 .home-class-join {
   padding: 0.4rem 1rem;
   background: var(--accent);
@@ -340,7 +362,7 @@
   transition: background var(--transition);
 }
 
-.home-class-join:hover {
+.home-class-join:hover:not(:disabled) {
   background: var(--accent-hover);
 }
 

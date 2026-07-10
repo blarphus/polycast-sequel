@@ -540,15 +540,24 @@
   // flickering burn (goal reached) based on `ratio` (0-1, added/goal clamped to
   // a max of 1). Called from the host env whenever the goal snapshot changes,
   // since the core has no direct access to that state.
-  function setFlameLevel(flameEl, ratio) {
+  function setFlameLevel(flameEl, ratio, { burst = false } = {}) {
     if (!flameEl) return;
     const clamped = Math.max(0, Math.min(1, Number(ratio) || 0));
     flameEl.classList.toggle('pc-flame-lit', clamped > 0);
+    // The fire grows with progress: small ember at 0, full blaze at the goal.
+    flameEl.style.transform = `scale(${(0.75 + 0.55 * clamped).toFixed(2)})`;
     flameEl.style.filter = clamped === 0
       ? 'grayscale(1) opacity(.45)'
       : `grayscale(${((1 - clamped) * 0.8).toFixed(2)})` +
         ` brightness(${(0.75 + 0.35 * clamped).toFixed(2)})` +
         ` drop-shadow(0 0 ${(2 + 6 * clamped).toFixed(1)}px rgba(255,140,50,${(0.25 + 0.55 * clamped).toFixed(2)}))`;
+    if (burst) {
+      // Momentary flare-up when a word lands, like a log tossed on the fire.
+      flameEl.classList.remove('pc-flame-burst');
+      void flameEl.offsetWidth; // restart the animation if already bursting
+      flameEl.classList.add('pc-flame-burst');
+      setTimeout(() => flameEl.classList.remove('pc-flame-burst'), 900);
+    }
   }
 
   globalThis.PolycastWordPopup = { createWordPopup, setFlameLevel, FLAME_SVG };
