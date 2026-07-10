@@ -25,5 +25,9 @@ chrome.runtime.onMessage.addListener((msg) => {
 window.addEventListener('polycast-offline-dictionary-updated', (event) => {
   const words = event.detail?.words;
   if (!Array.isArray(words)) return;
-  chrome.runtime.sendMessage({ type: 'UPDATE_OFFLINE_DICTIONARY', words });
+  chrome.runtime.sendMessage({ type: 'UPDATE_OFFLINE_DICTIONARY', words }, () => {
+    // Reading lastError prevents Chrome from reporting expected reload/tab-close
+    // failures as uncaught extension errors.
+    void chrome.runtime.lastError;
+  });
 });

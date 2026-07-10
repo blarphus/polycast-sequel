@@ -21,15 +21,35 @@ const DEFAULT_OFFLINE_USER = {
   offline: true,
 };
 
+let contextMenuInstallPromise = null;
+
 function installContextMenus() {
-  if (!chrome.contextMenus) return;
-  chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({
-      id: SELECTION_CONTEXT_MENU_ID,
-      title: 'Look up "%s" with Polycast',
-      contexts: ['selection'],
+  if (!chrome.contextMenus) return Promise.resolve();
+  if (contextMenuInstallPromise) return contextMenuInstallPromise;
+
+  contextMenuInstallPromise = new Promise((resolve) => {
+    chrome.contextMenus.removeAll(() => {
+      const removeError = chrome.runtime.lastError;
+      if (removeError) {
+        console.warn('[Polycast] Could not clear context menus:', removeError.message);
+      }
+
+      chrome.contextMenus.create({
+        id: SELECTION_CONTEXT_MENU_ID,
+        title: 'Look up "%s" with Polycast',
+        contexts: ['selection'],
+      }, () => {
+        const createError = chrome.runtime.lastError;
+        if (createError) {
+          console.warn('[Polycast] Could not create context menu:', createError.message);
+        }
+        contextMenuInstallPromise = null;
+        resolve();
+      });
     });
   });
+
+  return contextMenuInstallPromise;
 }
 
 chrome.runtime.onInstalled.addListener(installContextMenus);

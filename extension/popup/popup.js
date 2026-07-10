@@ -25,6 +25,10 @@ const dailyGoalInputEl = document.getElementById('daily-goal-input');
 const openAppBtn = document.getElementById('open-app-btn');
 const logoutBtn = document.getElementById('logout-btn');
 
+function consumeRuntimeError() {
+  return chrome.runtime.lastError?.message || '';
+}
+
 function showView(view) {
   loadingEl.classList.add('hidden');
   loginView.classList.add('hidden');
@@ -59,6 +63,13 @@ function ensureLanguageOption(code) {
 
 // Check status on popup open
 chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
+  const runtimeError = consumeRuntimeError();
+  if (runtimeError) {
+    loginError.textContent = runtimeError;
+    showView(loginView);
+    loginError.classList.remove('hidden');
+    return;
+  }
   if (res && res.loggedIn && res.user) {
     showStatus(res.user, res.savedWordCount || 0, res.dailyGoal);
   } else {
@@ -67,6 +78,7 @@ chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
 });
 
 chrome.runtime.sendMessage({ type: 'GET_API_BASE' }, (res) => {
+  if (consumeRuntimeError()) return;
   if (res && res.apiBase) {
     apiBaseInput.value = res.apiBase;
   }
@@ -112,8 +124,9 @@ loginForm.addEventListener('submit', (e) => {
     loginBtn.disabled = false;
     loginBtn.textContent = 'Sign In';
 
-    if (res && res.error) {
-      loginError.textContent = res.error;
+    const runtimeError = consumeRuntimeError();
+    if (runtimeError || (res && res.error)) {
+      loginError.textContent = runtimeError || res.error;
       loginError.classList.remove('hidden');
       return;
     }
@@ -121,6 +134,10 @@ loginForm.addEventListener('submit', (e) => {
     if (res && res.success && res.user) {
       // Fetch full status to get word count
       chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (statusRes) => {
+        if (consumeRuntimeError()) {
+          showStatus(res.user, 0);
+          return;
+        }
         if (statusRes && statusRes.loggedIn) {
           showStatus(statusRes.user, statusRes.savedWordCount || 0, statusRes.dailyGoal);
         } else {
@@ -134,6 +151,7 @@ loginForm.addEventListener('submit', (e) => {
 dailyGoalInputEl.addEventListener('change', () => {
   const goal = Math.min(50, Math.max(1, Number(dailyGoalInputEl.value) || 5));
   chrome.runtime.sendMessage({ type: 'SET_DAILY_GOAL', goal }, (res) => {
+    if (consumeRuntimeError()) return;
     if (res?.snapshot) renderDailyGoal(res.snapshot);
   });
 });
@@ -141,6 +159,7 @@ dailyGoalInputEl.addEventListener('change', () => {
 // Logout
 logoutBtn.addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'LOGOUT' }, () => {
+    if (consumeRuntimeError()) return;
     showView(loginView);
   });
 });
@@ -155,7 +174,8 @@ targetLanguageSelect.addEventListener('change', () => {
   chrome.runtime.sendMessage({ type: 'SET_TARGET_LANGUAGE', targetLanguage }, (res) => {
     targetLanguageSelect.disabled = false;
 
-    if (chrome.runtime.lastError) {
+    const runtimeError = consumeRuntimeError();
+    if (runtimeError) {
       setSettingsMessage('Extension reloaded - reopen popup', true);
       return;
     }
@@ -190,8 +210,9 @@ function saveApiBase(apiBase) {
   chrome.runtime.sendMessage({ type: 'SET_API_BASE', apiBase: value }, (res) => {
     saveApiBaseBtn.disabled = false;
 
-    if (chrome.runtime.lastError) {
-      setSettingsMessage(chrome.runtime.lastError.message || 'Could not save API', true);
+    const runtimeError = consumeRuntimeError();
+    if (runtimeError) {
+      setSettingsMessage(runtimeError || 'Could not save API', true);
       return;
     }
     if (res && res.error) {
@@ -210,5 +231,7 @@ saveApiBaseBtn.addEventListener('click', () => saveApiBase(apiBaseInput.value));
 useLocalApiBtn.addEventListener('click', () => saveApiBase('http://localhost:3001'));
 
 openAppBtn.addEventListener('click', () => {
-  chrome.runtime.sendMessage({ type: 'OPEN_WEB_APP' });
+  chrome.runtime.sendMessage({ type: 'OPEN_WEB_APP' }, () => {
+    consumeRuntimeError();
+  });
 });
