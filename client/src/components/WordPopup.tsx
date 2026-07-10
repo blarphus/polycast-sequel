@@ -46,7 +46,8 @@ declare global {
   interface Window {
     PolycastWordPopup?: {
       createWordPopup(opts: CreateWordPopupOptions): { el: HTMLElement; destroy(): void };
-      setFlameLevel(popupEl: HTMLElement, ratio: number): void;
+      setFlameLevel(flameEl: Element | null, ratio: number): void;
+      FLAME_SVG: string;
     };
   }
 }
@@ -179,14 +180,12 @@ export default function WordPopup(props: WordPopupProps) {
     const renderGoal = (snapshot: DailyGoalSnapshot, animate = false) => {
       goalEl.classList.toggle('pc-popup-goal--complete', snapshot.complete);
       goalEl.classList.toggle('pc-popup-goal--pulse', animate);
+      const label = snapshot.complete ? 'Goal complete' : `${snapshot.remaining} more today`;
       goalEl.innerHTML = `
-        <div class="pc-popup-goal-copy">
-          <span>${snapshot.complete ? 'Daily goal complete' : `${snapshot.remaining} more ${snapshot.remaining === 1 ? 'word' : 'words'} today`}</span>
-          <strong>${snapshot.added}/${snapshot.goal}</strong>
-        </div>
-        <div class="pc-popup-goal-track"><i style="width:${Math.min(100, (snapshot.added / snapshot.goal) * 100)}%"></i></div>`;
+        <span class="pc-popup-goal-flame" aria-label="${snapshot.added} of ${snapshot.goal} daily words">${core.FLAME_SVG}</span>
+        <strong>${snapshot.added} of ${snapshot.goal}</strong><span class="pc-popup-goal-divider"></span><span>${label}</span>`;
       if (animate) window.setTimeout(() => goalEl.classList.remove('pc-popup-goal--pulse'), 700);
-      core.setFlameLevel(controls.el, Math.min(1, snapshot.added / snapshot.goal));
+      core.setFlameLevel(goalEl.querySelector('.pc-popup-goal-flame'), Math.min(1, snapshot.added / snapshot.goal));
     };
     renderGoal(getDailyGoalSnapshot());
     controls.el.querySelector('.pc-popup-explain')?.before(goalEl);

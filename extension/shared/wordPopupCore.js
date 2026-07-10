@@ -136,22 +136,23 @@
       'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M11 5 6 9H2v6h4l5 4z"/>' +
       '<path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
-    const FLAME_SVG =
-      '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">' +
-      '<path d="M12.5 2.3c.9 2.6-.4 3.9-1.6 5.2-1.2 1.3-2.4 2.7-2.4 5a3.5 3.5 0 0 0 7 0c0-.8-.2-1.5-.5-2.1 1.8 1.2 3 3.4 3 6a6 6 0 0 1-12 0c0-4.6 2.7-6.8 4.2-9.3.6.9.9 1.7 1 2.5.6-1.4 1-2.6 1.3-4.3z"/></svg>';
+    const EXPLAIN_SVG =
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 
     popup.innerHTML = `
       <div class="pc-popup-header">
         <span class="pc-popup-word">${escapeHtml(word)}</span>
         <div class="pc-popup-header-actions">
           <button class="pc-popup-speak" title="Play pronunciation" aria-label="Play pronunciation" hidden>${SPEAKER_SVG}</button>
-          <button class="pc-popup-close pc-popup-flame" title="Close">${FLAME_SVG}</button>
+          <button class="pc-popup-close" title="Close">&times;</button>
         </div>
       </div>
       <div class="pc-popup-lemma" hidden></div>
       <div class="pc-popup-body"><div class="pc-spinner"></div></div>
       <button class="pc-popup-save" hidden>+ Add to dictionary</button>
-      <button class="pc-popup-explain" hidden>Explain in context</button>
+      <button class="pc-popup-explain" hidden>${EXPLAIN_SVG}Explain in context</button>
       <div class="pc-popup-explanation" hidden></div>
     `;
 
@@ -509,22 +510,27 @@
     return { el: popup, destroy };
   }
 
-  // Colors the close button's flame icon based on daily-goal progress: gray
-  // (unstarted) burning up to a bright orange glow as `ratio` (0-1, added/goal
-  // clamped to a max of 1) rises. Called from the host env whenever the goal
-  // snapshot changes, since the core has no direct access to that state.
-  function setFlameLevel(popupEl, ratio) {
-    const btn = popupEl && popupEl.querySelector('.pc-popup-close');
-    if (!btn) return;
+  // Used by host environments (extension content scripts, the React wrapper) to
+  // render the daily-goal flame indicator in the goal row markup they build.
+  const FLAME_SVG =
+    '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">' +
+    '<path d="M12.5 2.3c.9 2.6-.4 3.9-1.6 5.2-1.2 1.3-2.4 2.7-2.4 5a3.5 3.5 0 0 0 7 0c0-.8-.2-1.5-.5-2.1 1.8 1.2 3 3.4 3 6a6 6 0 0 1-12 0c0-4.6 2.7-6.8 4.2-9.3.6.9.9 1.7 1 2.5.6-1.4 1-2.6 1.3-4.3z"/></svg>';
+
+  // Colors a flame icon element based on daily-goal progress: gray (unstarted)
+  // burning up to a bright orange glow as `ratio` (0-1, added/goal clamped to a
+  // max of 1) rises. Called from the host env whenever the goal snapshot
+  // changes, since the core has no direct access to that state.
+  function setFlameLevel(flameEl, ratio) {
+    if (!flameEl) return;
     const clamped = Math.max(0, Math.min(1, Number(ratio) || 0));
     const from = [85, 89, 107];
     const to = [251, 146, 60];
     const mix = from.map((c, i) => Math.round(c + (to[i] - c) * clamped));
-    btn.style.color = `rgb(${mix.join(',')})`;
-    btn.style.filter = clamped > 0.04
+    flameEl.style.color = `rgb(${mix.join(',')})`;
+    flameEl.style.filter = clamped > 0.04
       ? `drop-shadow(0 0 ${(4 + clamped * 6).toFixed(1)}px rgba(251,146,60,${(clamped * 0.75).toFixed(2)}))`
       : 'none';
   }
 
-  globalThis.PolycastWordPopup = { createWordPopup, setFlameLevel };
+  globalThis.PolycastWordPopup = { createWordPopup, setFlameLevel, FLAME_SVG };
 })();
