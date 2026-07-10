@@ -8,6 +8,7 @@ import {
 import pool from '../db.js';
 import { fetchUserSavedSensesForWord } from '../lib/dictionaryQueries.js';
 import { translateText } from '../lib/googleTranslate.js';
+import { strictValidityRule, strictSensePickRule } from '../lib/targetLanguageGuard.js';
 
 function makeContextError(message, context = {}) {
   const error = new Error(message);
@@ -58,6 +59,7 @@ Pick the sense that best matches how "${word}" is used here. IMPORTANT: if ANY s
 - If the wording states the meaning (e.g. "to rip", "a fortune teller"), the PICK is its index NUMBER — even if "${word}" is grammatically derived from another word. A "contraction of X + Y" gloss DOES state the meaning (it defines the contraction itself), so use its index even if it adds a cross-reference like "feminine singular of num".
 - If the wording only points to another word and gives no meaning of its own — e.g. "plural of X", "feminine of X", "past participle of X", "alternative form of X", "female/male equivalent of X", "gerund of X combined with se/me/te/lo/la", or just a grammatical label like "third-person singular present indicative" — the PICK is that other WORD X. Ignore any "combined with ..." clitic suffix and return only X. For example, "gerund of atenuar combined with se" means PICK must be "atenuar", not the sense index and not "atenuarse".
 - If NONE of the senses actually conveys the meaning of "${word}" as it is used in this sentence — e.g. it is used figuratively, idiomatically, or as part of a multi-word expression and no listed sense captures that meaning — the PICK is -1. Do NOT force a sense that doesn't fit.
+- ${strictSensePickRule({ word, targetLang })}
 
 Reply with exactly ONE line in the form:  PICK | TRANSLATION
 where PICK is the token chosen above (an index number, a single base word, or -1), and TRANSLATION is the best 1–3 word ${nativeLang} translation of "${word}" as used here, matching the sense you chose. Examples:  "3 | the region"  |  "mano | hands"  |  "-1 | stained".`,
@@ -328,7 +330,7 @@ export async function resolveDictionaryLookup({
 The learner is studying ${targetLang || 'the target language'} and speaks ${nativeLang}.
 
 If "${word}" is not a real word in ${targetLang || 'the target language'}, set valid to false and leave the other fields empty.
-Be strict: if "${word}" as spelled is a word of ${nativeLang} or another language rather than ${targetLang || 'the target language'} (e.g. an English word on an English page), set valid to false — do NOT rescue it by mapping it to a similar-looking ${targetLang || 'target-language'} word. Only accept it if this exact spelling is a real ${targetLang || 'target-language'} dictionary form or inflection.
+${strictValidityRule({ word, targetLang, nativeLang })}
 ${senseBlock}
 Return ONLY a JSON object with exactly these keys:
 ${jsonKeys}
