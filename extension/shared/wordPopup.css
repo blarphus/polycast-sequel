@@ -72,16 +72,16 @@
   transform: translateX(-50%);
   animation: pc-celebration-in .4s cubic-bezier(.22,1,.36,1), pc-celebration-out .3s ease 1.9s forwards;
 }
-.pc-goal-celebration--complete { border-color: #f472b6; animation: pc-celebration-in .4s cubic-bezier(.22,1,.36,1), pc-complete-glow 1.1s ease .2s, pc-celebration-out .3s ease 2.85s forwards; }
+.pc-goal-celebration--complete { border-color: #4ade80; animation: pc-celebration-in .4s cubic-bezier(.22,1,.36,1), pc-complete-glow 1.1s ease .2s, pc-celebration-out .3s ease 2.85s forwards; }
 .pc-goal-celebration--bonus { border-color: #a3e635; animation: pc-celebration-in .4s cubic-bezier(.22,1,.36,1), pc-bonus-glow 1.1s ease .15s, pc-celebration-out .3s ease 2.85s forwards; }
 .pc-goal-celebration > b { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #14b8a6; color: #fff; font-size: 18px; }
-.pc-goal-celebration--complete > b { background: linear-gradient(135deg, #a78bfa, #f472b6); color: #fff; }
+.pc-goal-celebration--complete > b { background: linear-gradient(135deg, #2dd4bf, #4ade80); color: #052e16; }
 .pc-goal-celebration strong, .pc-goal-celebration span { display: block; }
 .pc-goal-celebration strong { font-size: 13px; }
 .pc-goal-celebration span { margin-top: 2px; color: #aeb9cf; font-size: 11px; }
 @keyframes pc-celebration-in { from { opacity: 0; transform: translate(-50%, -16px) scale(.96); } }
 @keyframes pc-celebration-out { to { opacity: 0; transform: translate(-50%, -10px); } }
-@keyframes pc-complete-glow { 50% { box-shadow: 0 14px 60px rgba(244,114,182,.4); } }
+@keyframes pc-complete-glow { 50% { box-shadow: 0 14px 60px rgba(74,222,128,.38); } }
 
 /* ---- Confetti rain (daily goal complete) ---------------------------------- */
 .pc-confetti {
@@ -274,10 +274,10 @@
 .pc-popup-goal-steps { display: flex; flex: 1 1 auto; gap: 5px; min-width: 54px; }
 .pc-popup-goal-steps i { width: 9px; height: 9px; border: 1px solid rgba(139,128,255,.42); border-radius: 50%; background: transparent; transition: background .35s ease, border-color .35s ease, transform .35s ease; }
 .pc-popup-goal-steps .pc-popup-goal-step--filled { border-color: #2dd4bf; background: #2dd4bf; box-shadow: 0 0 8px rgba(45,212,191,.35); transform: scale(1.08); }
-.pc-popup-goal--complete .pc-popup-goal-steps .pc-popup-goal-step--filled { border-color: #f472b6; background: #f472b6; box-shadow: 0 0 10px rgba(244,114,182,.4); }
+.pc-popup-goal--complete .pc-popup-goal-steps .pc-popup-goal-step--filled { border-color: #4ade80; background: #4ade80; box-shadow: 0 0 10px rgba(74,222,128,.4); }
 .pc-popup-goal-divider { width: 1px; height: 16px; background: rgba(255,255,255,.14); }
-.pc-popup-goal--complete { border-color: rgba(244,114,182,.3); background: linear-gradient(90deg, rgba(167,139,250,.08), rgba(244,114,182,.08)); }
-.pc-popup-goal--complete > strong, .pc-popup-goal--complete > span:last-child { color: #f9a8d4; }
+.pc-popup-goal--complete { border-color: rgba(74,222,128,.32); background: linear-gradient(90deg, rgba(45,212,191,.07), rgba(74,222,128,.09)); }
+.pc-popup-goal--complete > strong, .pc-popup-goal--complete > span:last-child { color: #86efac; }
 
 .pc-popup-save--saved,
 .pc-popup-save:disabled {
