@@ -155,15 +155,16 @@ function applyDailyGoalSnapshot(snapshot, { celebrate = false, completed = false
 function showGoalCelebration(snapshot, completed) {
   document.querySelector('.pc-goal-celebration')?.remove();
   const toast = document.createElement('div');
-  const bonusXpEarned = Number(snapshot.bonusXpEarned) || 0;
-  const flame = completed || bonusXpEarned > 0;
-  toast.className = `pc-goal-celebration${completed ? ' pc-goal-celebration--complete' : ''}${bonusXpEarned ? ' pc-goal-celebration--bonus' : ''}`;
+  const bonusXpEarned = Number(snapshot.bonusXpEarned) || BONUS_XP_PER_WORD;
+  const overGoal = Number(snapshot.overGoal) > 0;
+  const flame = completed || overGoal;
+  toast.className = `pc-goal-celebration${completed ? ' pc-goal-celebration--complete' : ''}${overGoal ? ' pc-goal-celebration--bonus' : ''}`;
   toast.setAttribute('role', 'status');
   const icon = flame
     ? '<b class="pc-celebration-flame" aria-hidden="true"><i></i><i></i></b>'
     : '<b aria-hidden="true">✓</b>';
-  const title = bonusXpEarned ? `+${bonusXpEarned} XP` : completed ? 'Daily goal complete!' : 'Word added';
-  const detail = bonusXpEarned
+  const title = completed ? 'Daily goal complete!' : `+${bonusXpEarned} XP`;
+  const detail = overGoal
     ? `${snapshot.added} words today · ${snapshot.bonusXp} bonus XP total`
     : completed ? `${snapshot.added} words added today` : `${snapshot.remaining} more to reach today's goal`;
   toast.innerHTML = `${icon}<div><strong>${title}</strong><span>${detail}</span></div>`;
@@ -460,6 +461,8 @@ function openWordPopup({
             el.classList.add('pc-saved');
           }
         });
+        // Recolor plain page text right away too (not just caption spans).
+        globalThis.PolycastContent?.addPageHighlights?.([word.toLowerCase(), savedForm]);
         const previousGoal = dailyGoalSnapshot;
         const optimisticAdded = previousGoal.added + 1;
         const optimisticGoal = {
@@ -469,7 +472,7 @@ function openWordPopup({
           complete: optimisticAdded >= previousGoal.goal,
           overGoal: Math.max(0, optimisticAdded - previousGoal.goal),
           bonusXp: Math.max(0, optimisticAdded - previousGoal.goal) * BONUS_XP_PER_WORD,
-          bonusXpEarned: previousGoal.complete ? BONUS_XP_PER_WORD : 0,
+          bonusXpEarned: BONUS_XP_PER_WORD,
         };
         applyDailyGoalSnapshot(optimisticGoal, {
           celebrate: true,

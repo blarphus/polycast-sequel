@@ -162,7 +162,8 @@ async function recordDailyGoalWord() {
   await chrome.storage.local.set({ [DAILY_PROGRESS_KEY]: { date: localDateKey(), count: before.added + 1 } });
   const after = await getDailyGoalSnapshot();
   const justCompleted = !before.complete && after.complete;
-  const bonusXpEarned = before.complete ? BONUS_XP_PER_WORD : 0;
+  // Every word earns XP; words beyond the goal additionally count as bonus.
+  const bonusXpEarned = BONUS_XP_PER_WORD;
   await broadcastDailyGoalUpdated(after, { justAdded: true, justCompleted, bonusXpEarned });
   return { ...after, justAdded: true, justCompleted, bonusXpEarned };
 }

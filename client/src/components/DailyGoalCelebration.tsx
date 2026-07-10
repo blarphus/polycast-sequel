@@ -32,7 +32,7 @@ export default function DailyGoalCelebration() {
       </div>
       <div className="goal-celebration-icon"><CheckIcon size={22} /></div>
       <div>
-        <strong>{celebration.justCompleted ? 'Daily goal complete!' : 'Word added'}</strong>
+        <strong>{celebration.justCompleted ? 'Daily goal complete!' : '+10 XP'}</strong>
         <span>{celebration.complete ? `${celebration.added} words added today` : `${celebration.remaining} more to reach today's goal`}</span>
       </div>
     </div>

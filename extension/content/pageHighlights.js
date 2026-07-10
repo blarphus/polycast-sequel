@@ -100,6 +100,19 @@
     if (msg.type === 'WORDS_UPDATED') refreshHighlights(msg.savedWords);
   });
 
+  // Optimistic path: the popup save handler calls this the moment the user
+  // clicks "+ Add to dictionary", so page highlights appear immediately
+  // instead of waiting for the server-confirmed WORDS_UPDATED broadcast.
+  globalThis.PolycastContent = {
+    ...(globalThis.PolycastContent || {}),
+    addPageHighlights(words) {
+      for (const word of words || []) {
+        if (word) savedWords.add(String(word).toLocaleLowerCase());
+      }
+      enqueueSubtree(document.body);
+    },
+  };
+
   chrome.runtime.sendMessage({ type: 'GET_SAVED_WORDS' })
     .then((res) => refreshHighlights(res?.savedWords))
     .catch(() => {});
