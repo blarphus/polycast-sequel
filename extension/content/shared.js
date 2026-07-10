@@ -124,6 +124,12 @@ function goalMarkup(snapshot) {
     `<strong>${added} of ${goal}</strong><span class="pc-popup-goal-divider"></span><span>${label}</span>`;
 }
 
+function goalFlameRatio(snapshot) {
+  const goal = Math.max(1, Number(snapshot.goal) || 5);
+  const added = Math.max(0, Number(snapshot.added) || 0);
+  return Math.min(1, added / goal);
+}
+
 function updateActivePopupGoal(animate = false) {
   const goal = activePopup?.el?.querySelector('.pc-popup-goal');
   if (!goal) return;
@@ -131,6 +137,7 @@ function updateActivePopupGoal(animate = false) {
   goal.classList.toggle('pc-popup-goal--complete', dailyGoalSnapshot.complete);
   goal.classList.toggle('pc-popup-goal--pulse', animate);
   if (animate) setTimeout(() => goal.classList.remove('pc-popup-goal--pulse'), 700);
+  globalThis.PolycastWordPopup?.setFlameLevel(activePopup.el, goalFlameRatio(dailyGoalSnapshot));
 }
 
 function applyDailyGoalSnapshot(snapshot, { celebrate = false, completed = false } = {}) {
@@ -482,6 +489,7 @@ function openWordPopup({
   goal.className = `pc-popup-goal${dailyGoalSnapshot.complete ? ' pc-popup-goal--complete' : ''}`;
   goal.innerHTML = goalMarkup(dailyGoalSnapshot);
   activePopup.el.querySelector('.pc-popup-header')?.after(goal);
+  globalThis.PolycastWordPopup?.setFlameLevel(activePopup.el, goalFlameRatio(dailyGoalSnapshot));
 }
 
 function handleWordClick(word, sentence, anchorEl) {

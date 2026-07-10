@@ -136,13 +136,16 @@
       'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M11 5 6 9H2v6h4l5 4z"/>' +
       '<path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+    const FLAME_SVG =
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">' +
+      '<path d="M12.5 2.3c.9 2.6-.4 3.9-1.6 5.2-1.2 1.3-2.4 2.7-2.4 5a3.5 3.5 0 0 0 7 0c0-.8-.2-1.5-.5-2.1 1.8 1.2 3 3.4 3 6a6 6 0 0 1-12 0c0-4.6 2.7-6.8 4.2-9.3.6.9.9 1.7 1 2.5.6-1.4 1-2.6 1.3-4.3z"/></svg>';
 
     popup.innerHTML = `
       <div class="pc-popup-header">
         <span class="pc-popup-word">${escapeHtml(word)}</span>
         <div class="pc-popup-header-actions">
           <button class="pc-popup-speak" title="Play pronunciation" aria-label="Play pronunciation" hidden>${SPEAKER_SVG}</button>
-          <button class="pc-popup-close" title="Close">&times;</button>
+          <button class="pc-popup-close pc-popup-flame" title="Close">${FLAME_SVG}</button>
         </div>
       </div>
       <div class="pc-popup-lemma" hidden></div>
@@ -433,14 +436,19 @@
           } else {
             lemmaEl.hidden = true;
             const hasLemma = res.lemma && res.lemma.trim() && res.lemma.toLowerCase() !== word.toLowerCase();
-            const metadata = hasLemma || res.part_of_speech ? `<div class="pc-popup-meta">
-              ${hasLemma ? `<div><span class="pc-popup-meta-label">Saves as</span><strong>${escapeHtml(res.lemma)}</strong></div>` : '<div></div>'}
-              ${res.part_of_speech ? `<div><span class="pc-popup-meta-label">Part of speech</span><span class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</span></div>` : ''}
+            const lemmaBlock = hasLemma
+              ? `<div><span class="pc-popup-meta-label">Saves as</span><strong>${escapeHtml(res.lemma)}</strong></div>` : '';
+            const definitionBlock = dictionaryDefinition
+              ? `<div class="pc-popup-definition"><span class="pc-popup-definition-label">${definitionLabel}${definitionSourcePill}</span>${escapeHtml(dictionaryDefinition)}</div>` : '';
+            const posBlock = res.part_of_speech
+              ? `<div><span class="pc-popup-meta-label">Part of speech</span><span class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</span></div>` : '';
+            const metadata = lemmaBlock || definitionBlock || posBlock ? `<div class="pc-popup-meta">
+              <div>${lemmaBlock}${definitionBlock}</div>
+              <div>${posBlock}</div>
             </div>` : '';
             bodyEl.innerHTML = `${toggle}
               ${translation ? `<div class="pc-popup-translation">${escapeHtml(translation)}${saveState === 'new-sense' ? '<span class="pc-popup-new-def-pill">New definition!</span>' : ''}</div>` : ''}
               ${metadata}
-              ${dictionaryDefinition ? `<div class="pc-popup-definition"><span class="pc-popup-definition-label">${definitionLabel}${definitionSourcePill}</span>${escapeHtml(dictionaryDefinition)}</div>` : ''}
               ${autoExplanationHtml()}
               ${fallbackDetails}`;
           }
@@ -501,5 +509,22 @@
     return { el: popup, destroy };
   }
 
-  globalThis.PolycastWordPopup = { createWordPopup };
+  // Colors the close button's flame icon based on daily-goal progress: gray
+  // (unstarted) burning up to a bright orange glow as `ratio` (0-1, added/goal
+  // clamped to a max of 1) rises. Called from the host env whenever the goal
+  // snapshot changes, since the core has no direct access to that state.
+  function setFlameLevel(popupEl, ratio) {
+    const btn = popupEl && popupEl.querySelector('.pc-popup-close');
+    if (!btn) return;
+    const clamped = Math.max(0, Math.min(1, Number(ratio) || 0));
+    const from = [85, 89, 107];
+    const to = [251, 146, 60];
+    const mix = from.map((c, i) => Math.round(c + (to[i] - c) * clamped));
+    btn.style.color = `rgb(${mix.join(',')})`;
+    btn.style.filter = clamped > 0.04
+      ? `drop-shadow(0 0 ${(4 + clamped * 6).toFixed(1)}px rgba(251,146,60,${(clamped * 0.75).toFixed(2)}))`
+      : 'none';
+  }
+
+  globalThis.PolycastWordPopup = { createWordPopup, setFlameLevel };
 })();

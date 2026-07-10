@@ -46,6 +46,7 @@ declare global {
   interface Window {
     PolycastWordPopup?: {
       createWordPopup(opts: CreateWordPopupOptions): { el: HTMLElement; destroy(): void };
+      setFlameLevel(popupEl: HTMLElement, ratio: number): void;
     };
   }
 }
@@ -185,6 +186,7 @@ export default function WordPopup(props: WordPopupProps) {
         </div>
         <div class="pc-popup-goal-track"><i style="width:${Math.min(100, (snapshot.added / snapshot.goal) * 100)}%"></i></div>`;
       if (animate) window.setTimeout(() => goalEl.classList.remove('pc-popup-goal--pulse'), 700);
+      core.setFlameLevel(controls.el, Math.min(1, snapshot.added / snapshot.goal));
     };
     renderGoal(getDailyGoalSnapshot());
     controls.el.querySelector('.pc-popup-explain')?.before(goalEl);

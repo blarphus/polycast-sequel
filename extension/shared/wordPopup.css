@@ -170,19 +170,22 @@
   border-radius: 50%;
   border: none;
   background: transparent;
-  color: #808098;
-  font-size: 20px;
+  color: #55596b;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s ease;
+  transition: color 0.4s ease, filter 0.4s ease;
   line-height: 1;
   padding: 0;
 }
 
+.pc-popup-flame svg {
+  display: block;
+}
+
 .pc-popup-close:hover {
-  color: #e0e0e0;
+  filter: brightness(1.25);
 }
 
 .pc-popup-save {
