@@ -328,6 +328,7 @@ export async function resolveDictionaryLookup({
 The learner is studying ${targetLang || 'the target language'} and speaks ${nativeLang}.
 
 If "${word}" is not a real word in ${targetLang || 'the target language'}, set valid to false and leave the other fields empty.
+Be strict: if "${word}" as spelled is a word of ${nativeLang} or another language rather than ${targetLang || 'the target language'} (e.g. an English word on an English page), set valid to false — do NOT rescue it by mapping it to a similar-looking ${targetLang || 'target-language'} word. Only accept it if this exact spelling is a real ${targetLang || 'target-language'} dictionary form or inflection.
 ${senseBlock}
 Return ONLY a JSON object with exactly these keys:
 ${jsonKeys}
