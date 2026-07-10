@@ -402,6 +402,7 @@ function openWordPopup({
     initialSavedHint: savedWordsSet.has(lower),
     initialLookupResult,
     autoExplain,
+    languageName: targetLanguage ? languageName(targetLanguage) : null,
     onClose: () => {
       removePopup();
       resumeIfWePaused();

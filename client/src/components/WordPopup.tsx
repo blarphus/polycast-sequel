@@ -39,6 +39,7 @@ interface CreateWordPopupOptions {
   onClose?: () => void;
   initialSavedHint?: boolean;
   nativeMode?: boolean;
+  languageName?: string | null;
   handlers: WordPopupHandlers;
 }
 
@@ -171,6 +172,9 @@ export default function WordPopup(props: WordPopupProps) {
       onClose,
       nativeMode: !!isNative,
       initialSavedHint: isWordSaved?.(word) ?? false,
+      languageName: targetLang
+        ? new Intl.DisplayNames(['en'], { type: 'language' }).of(targetLang) || targetLang.toUpperCase()
+        : null,
       handlers,
     });
     elRef.current = controls.el;

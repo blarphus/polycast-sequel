@@ -122,6 +122,9 @@
       initialLookupResult = null,
       autoExplain = false,
       nativeMode = false,
+      // Display name of the learner's target language (e.g. "Spanish"), used
+      // to word the invalid-lookup message.
+      languageName = null,
       handlers = {},
     } = opts;
 
@@ -345,7 +348,10 @@
         lastLookup = res;
 
         if (!res || res.valid === false) {
-          bodyEl.innerHTML = `<div class="pc-popup-error">Not in dictionary</div>`;
+          const invalidMsg = languageName
+            ? `"${escapeHtml(word)}" isn't a ${escapeHtml(languageName)} word`
+            : 'Not in dictionary';
+          bodyEl.innerHTML = `<div class="pc-popup-error">${invalidMsg}</div>`;
           explainBtn.hidden = !handlers.explain;
           saveBtn.hidden = true;
           position();
