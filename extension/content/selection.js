@@ -146,14 +146,14 @@
     };
   }
 
-  async function lookupSelectedWord(selectionText = '') {
+  function lookupSelectedWord(selectionText = '') {
     const selection = window.getSelection();
     const hasDomSelection = selection && selection.rangeCount > 0 && !selection.isCollapsed;
 
     const word = hasDomSelection
       ? selectedSingleWord(selection)
       : selectedSingleWord({ toString: () => selectionText });
-    if (!word) return;
+    if (!word) return false;
 
     const range = hasDomSelection ? selection.getRangeAt(0).cloneRange() : null;
     const { sentence, context } = range
@@ -166,31 +166,31 @@
     const cleanSentence = cleanCaptionText(sentence) || word;
     const cleanContext = cleanCaptionText(context) || cleanSentence;
 
-    try {
-      const lookupResult = await helpers().sendMessageAsync({
-        type: 'LOOKUP_WORD',
-        word,
-        sentence: cleanSentence,
-      });
-      if (!lookupResult || lookupResult.valid === false) return;
+    if (typeof helpers().openWordPopup !== 'function') return false;
 
-      helpers().openWordPopup({
-        word,
-        sentence: cleanSentence,
-        context: cleanContext,
-        anchorRect,
-        initialLookupResult: lookupResult,
-      });
-    } catch (err) {
-      console.debug('[Polycast] selected word lookup skipped:', err && err.message ? err.message : err);
-    }
+    // Mount the shell before starting network-backed lookup. The shared popup
+    // renders its loading state immediately, then fills in the result or error.
+    helpers().openWordPopup({
+      word,
+      sentence: cleanSentence,
+      context: cleanContext,
+      anchorRect,
+    });
+    return true;
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type !== 'POLYCAST_LOOKUP_SELECTION') return false;
-    lookupSelectedWord(msg.selectionText)
-      .then(() => sendResponse({ success: true }))
-      .catch((err) => sendResponse({ error: err && err.message ? err.message : 'Selection lookup failed' }));
-    return true;
+    try {
+      const opened = lookupSelectedWord(msg.selectionText);
+      const requestedAt = Number(msg.requestedAt);
+      sendResponse({
+        success: opened,
+        shellLatencyMs: Number.isFinite(requestedAt) ? Math.max(0, Date.now() - requestedAt) : null,
+      });
+    } catch (err) {
+      sendResponse({ error: err && err.message ? err.message : 'Selection lookup failed' });
+    }
+    return false;
   });
 })();

@@ -61,15 +61,27 @@ chrome.contextMenus?.onClicked.addListener((info, tab) => {
   const message = {
     type: 'POLYCAST_LOOKUP_SELECTION',
     selectionText: info.selectionText || '',
+    requestedAt: Date.now(),
   };
   const options = Number.isInteger(info.frameId) ? { frameId: info.frameId } : undefined;
   chrome.tabs.sendMessage(tab.id, message, options)
+    .then((response) => {
+      if (Number.isFinite(response?.shellLatencyMs)) {
+        console.info(`[Polycast] Selection popup shell opened in ${response.shellLatencyMs}ms`);
+      }
+    })
     .catch(() => {
       if (!options) return;
       // Chrome's PDF viewer reports selections from its internal extension
       // frame, where our content script cannot run. Retry in the top page
       // with the selectionText supplied by contextMenus.
-      return chrome.tabs.sendMessage(tab.id, message).catch(() => {});
+      return chrome.tabs.sendMessage(tab.id, message)
+        .then((response) => {
+          if (Number.isFinite(response?.shellLatencyMs)) {
+            console.info(`[Polycast] Selection popup shell opened in ${response.shellLatencyMs}ms`);
+          }
+        })
+        .catch(() => {});
     });
 });
 
