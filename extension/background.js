@@ -4,6 +4,7 @@
 
 const DEFAULT_API_BASE = 'https://polycast-sequel.onrender.com';
 const DEFAULT_DAILY_WORD_GOAL = 5;
+const BONUS_XP_PER_WORD = 10;
 const DAILY_GOAL_KEY = 'dailyWordGoal';
 const DAILY_PROGRESS_KEY = 'dailyWordProgress';
 const OFFLINE_MODE_KEY = 'offlineMode';
@@ -100,12 +101,24 @@ function localDateKey() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
+function buildDailyGoalSnapshot(goal, added) {
+  const overGoal = Math.max(0, added - goal);
+  return {
+    goal,
+    added,
+    remaining: Math.max(0, goal - added),
+    complete: added >= goal,
+    overGoal,
+    bonusXp: overGoal * BONUS_XP_PER_WORD,
+  };
+}
+
 async function getDailyGoalSnapshot() {
   const stored = await chrome.storage.local.get([DAILY_GOAL_KEY, DAILY_PROGRESS_KEY]);
   const goal = Number(stored[DAILY_GOAL_KEY]) > 0 ? Math.round(Number(stored[DAILY_GOAL_KEY])) : DEFAULT_DAILY_WORD_GOAL;
   const progress = stored[DAILY_PROGRESS_KEY];
   const added = progress?.date === localDateKey() ? Math.max(0, Number(progress.count) || 0) : 0;
-  return { goal, added, remaining: Math.max(0, goal - added), complete: added >= goal };
+  return buildDailyGoalSnapshot(goal, added);
 }
 
 async function broadcastDailyGoalUpdated(snapshot, extra = {}) {
@@ -148,8 +161,10 @@ async function recordDailyGoalWord() {
   const before = await getDailyGoalSnapshot();
   await chrome.storage.local.set({ [DAILY_PROGRESS_KEY]: { date: localDateKey(), count: before.added + 1 } });
   const after = await getDailyGoalSnapshot();
-  await broadcastDailyGoalUpdated(after, { justAdded: true, justCompleted: !before.complete && after.complete });
-  return { ...after, justAdded: true, justCompleted: !before.complete && after.complete };
+  const justCompleted = !before.complete && after.complete;
+  const bonusXpEarned = before.complete ? BONUS_XP_PER_WORD : 0;
+  await broadcastDailyGoalUpdated(after, { justAdded: true, justCompleted, bonusXpEarned });
+  return { ...after, justAdded: true, justCompleted, bonusXpEarned };
 }
 
 async function apiFetch(path, opts = {}) {

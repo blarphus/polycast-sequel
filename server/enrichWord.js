@@ -242,10 +242,6 @@ const FIELD_FREQUENCY = `- FREQUENCY: An integer 1-10 rating how common this wor
   5-6: Moderately common words useful for intermediate learners
   7-8: Common everyday words important for conversation
   9-10: Essential high-frequency words (top 500 most used)`;
-const FIELD_EXAMPLE = (targetLang) =>
-  `- EXAMPLE: A short example sentence in ${targetLang || 'the target language'} using the word. Wrap the word with tildes like ~word~. Keep it under 15 words.`;
-const FIELD_SENTENCE_TRANSLATION = (nativeLang) =>
-  `- SENTENCE_TRANSLATION: A natural translation of the EXAMPLE sentence into ${nativeLang}. Wrap the translated equivalent of the target word with tildes like ~word~. Keep the same meaning and tone.`;
 export const FIELD_IMAGE_TERM = `- IMAGE_TERM: A short English stock-photo search term for a flashcard image of this word in the sense used. Always English. Guidelines:
   - Prefer the SIMPLEST term that works — usually just the plain English translation ("baile" → "dance", "perro" → "dog", "montañoso" → "mountain"). A broad term finds better, more varied photos, so do NOT add needless specificity (use "dance", not "couple dancing salsa").
   - Add detail ONLY when the sense needs pinning down ("banco" money → "bank building"; "bat" sport → "baseball bat").
@@ -298,7 +294,8 @@ function ensureMarkedExample(sentence, word) {
   if (sentence.includes('~')) return sentence;
   const escaped = String(word || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   if (!escaped) return sentence;
-  return sentence.replace(new RegExp(`\\b(${escaped})\\b`, 'iu'), '~$1~');
+  const marked = sentence.replace(new RegExp(`\\b(${escaped})\\b`, 'iu'), '~$1~');
+  return marked.includes('~') ? marked : null;
 }
 
 async function generateImageGroundedExample({
@@ -310,23 +307,21 @@ async function generateImageGroundedExample({
   partOfSpeech,
   imageContext,
 }) {
-  if (!imageContext) return { result: null, failure: null };
-
   const prompt = `A language learner is saving the ${targetLang || 'target-language'} word "${word}".
 Native language: ${nativeLang}
 Word translation: ${translation || ''}
 Definition: ${definition || ''}
 Part of speech: ${partOfSpeech || ''}
-Chosen flashcard image scene: ${imageContext}
+${imageContext ? `Chosen flashcard image scene: ${imageContext}` : 'No usable image scene description is available. Base the example on the definition.'}
 
-Create the INITIAL flashcard example sentence so it matches what is visibly happening in the chosen image.
+Create the INITIAL flashcard example sentence${imageContext ? ' so it matches what is visibly happening in the chosen image' : ' using the word in the stated sense'}.
 Return ONLY JSON with exactly these keys:
 {"example_sentence":"...","sentence_translation":"..."}
 
 Rules:
 - example_sentence must be a short, natural beginner-level sentence in ${targetLang || 'the target language'}.
 - It must use "${word}" in the same sense as the definition.
-- It must describe or fit the chosen image scene. Do not introduce unrelated objects or actions.
+${imageContext ? '- It must describe or fit the chosen image scene. Do not introduce unrelated objects or actions.' : '- Keep the situation concrete, ordinary, and easy to understand.'}
 - Wrap the target word, or the exact inflected form used, with tildes like ~word~.
 - Keep example_sentence under 15 words.
 - sentence_translation must be a natural ${nativeLang} translation of the example sentence.
@@ -345,7 +340,7 @@ Rules:
     const example = ensureMarkedExample(String(parsed.example_sentence || '').trim(), word);
     const sentenceTranslation = String(parsed.sentence_translation || '').trim() || null;
     if (!example) {
-      return { result: null, failure: 'Image-grounded example generation returned an empty sentence.' };
+      return { result: null, failure: 'Example generation returned an empty or invalid sentence.' };
     }
     return {
       result: { example_sentence: example, sentence_translation: sentenceTranslation },
@@ -355,7 +350,7 @@ Rules:
     logger.error('generateImageGroundedExample failed for "%s": %s', word, err.message);
     return {
       result: null,
-      failure: `Image-grounded example generation failed: ${err.message}`,
+      failure: `Example generation failed: ${err.message}`,
     };
   }
 }
@@ -425,8 +420,6 @@ ${fieldNames}
 
 ${FIELD_TRANSLATION(nativeLang)}
 ${extraFieldDescs}${FIELD_FREQUENCY}
-${FIELD_EXAMPLE(targetLang)}
-${FIELD_SENTENCE_TRANSLATION(nativeLang)}
 ${FIELD_IMAGE_TERM}
 ${FIELD_LEMMA}`;
 }
@@ -510,7 +503,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
     const prompt = buildEnrichPrompt({
       word, sentence, nativeLang, targetLang,
-      fieldNames: 'TRANSLATION // FREQUENCY // EXAMPLE // SENTENCE_TRANSLATION // IMAGE_TERM // LEMMA',
+      fieldNames: 'TRANSLATION // FREQUENCY // IMAGE_TERM // LEMMA',
       extraFieldDescs: '',
       contextLine: `The word means: "${definition}" (${part_of_speech || 'unknown POS'}).`,
       senseListBlock: '',
@@ -520,16 +513,14 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     const _t2 = Date.now();
     logger.info('[enrich-timing] %s — Gemini (definition hint): %dms', word, _t2 - _t1);
     const parts = raw.split('//').map((s) => s.trim());
-    if (parts.length < 6) {
-      throw new Error(`Gemini enrich returned ${parts.length} parts instead of 6 for the definition-hint path`);
+    if (parts.length < 4) {
+      throw new Error(`Gemini enrich returned ${parts.length} parts instead of 4 for the definition-hint path`);
     }
 
     translation = parts[0] || '';
     frequency = parseFrequency(parts[1]);
-    example_sentence = parts[2] || null;
-    sentence_translation = parts[3] || null;
-    geminiImageTerm = parts[4]?.trim() || null;
-    lemma = parts[5]?.trim() || null;
+    geminiImageTerm = parts[2]?.trim() || null;
+    lemma = parts[3]?.trim() || null;
   }
 
   // Path C: senseIndex pre-identified by /lookup — use directly, skip sense-picking
@@ -545,7 +536,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
     const prompt = buildEnrichPrompt({
       word, sentence, nativeLang, targetLang,
-      fieldNames: 'TRANSLATION // FREQUENCY // EXAMPLE // SENTENCE_TRANSLATION // IMAGE_TERM // LEMMA',
+      fieldNames: 'TRANSLATION // FREQUENCY // IMAGE_TERM // LEMMA',
       extraFieldDescs: '',
       contextLine: `The word means: "${definition}" (${part_of_speech || 'unknown POS'}).`,
       senseListBlock: '',
@@ -555,16 +546,14 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     const _t2 = Date.now();
     logger.info('[enrich-timing] %s — Gemini (Path C): %dms', word, _t2 - _t1);
     const parts = raw.split('//').map((s) => s.trim());
-    if (parts.length < 6) {
-      throw new Error(`Gemini enrich returned ${parts.length} parts instead of 6 for Path C`);
+    if (parts.length < 4) {
+      throw new Error(`Gemini enrich returned ${parts.length} parts instead of 4 for Path C`);
     }
 
     translation = parts[0] || '';
     frequency = parseFrequency(parts[1]);
-    example_sentence = parts[2] || null;
-    sentence_translation = parts[3] || null;
-    geminiImageTerm = parts[4]?.trim() || null;
-    lemma = parts[5]?.trim() || null;
+    geminiImageTerm = parts[2]?.trim() || null;
+    lemma = parts[3]?.trim() || null;
   } else if (translation === undefined && hasSenseIndex && (wiktSenses.length === 0 || senseIndex >= wiktSenses.length)) {
     throw new Error(`Sense index ${senseIndex} is invalid for ${wiktSenses.length} available senses`);
   }
@@ -577,7 +566,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
       const prompt = buildEnrichPrompt({
         word, sentence, nativeLang, targetLang,
-        fieldNames: 'TRANSLATION // SENSE_INDEX // FREQUENCY // EXAMPLE // SENTENCE_TRANSLATION // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA',
+        fieldNames: 'TRANSLATION // SENSE_INDEX // FREQUENCY // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA',
         extraFieldDescs: `- SENSE_INDEX: The integer index (0-${wiktSenses.length - 1}) of the sense that best matches how "${word}" is used in the sentence. If NONE of the senses match, return -1.\n- FALLBACK_DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown. Used when SENSE_INDEX is -1.\n`,
         contextLine: '',
         senseListBlock: `\nHere are the dictionary senses for "${word}":\n${senseList}\n`,
@@ -588,8 +577,8 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       logger.info('[enrich-timing] %s — Gemini (Path A): %dms', word, _t2 - _t1);
 
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 8) {
-        throw new Error(`Gemini enrich returned ${parts.length} parts instead of 8 for the Wiktionary path`);
+      if (parts.length < 6) {
+        throw new Error(`Gemini enrich returned ${parts.length} parts instead of 6 for the Wiktionary path`);
       }
 
       translation = parts[0] || '';
@@ -603,7 +592,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
         matchedGloss = definition;
       } else {
         // No matching sense — use Gemini's fallback definition
-        definition = parts[6]?.trim() || '';
+        definition = parts[4]?.trim() || '';
         definitionSource = 'gemini';
         logger.info('[enrich] %s — no Wiktionary sense matched (index=%s), using Gemini fallback: "%s"', word, parts[1], definition);
         fallback_notices.push({
@@ -616,15 +605,13 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       }
 
       frequency = parseFrequency(parts[2]);
-      example_sentence = parts[3] || null;
-      sentence_translation = parts[4] || null;
-      geminiImageTerm = parts[5]?.trim() || null;
-      lemma = parts[7]?.trim() || null;
+      geminiImageTerm = parts[3]?.trim() || null;
+      lemma = parts[5]?.trim() || null;
     } else {
       // Path B: No Wiktionary senses — full Gemini generation
       const prompt = buildEnrichPrompt({
         word, sentence, nativeLang, targetLang,
-        fieldNames: 'TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // EXAMPLE // SENTENCE_TRANSLATION // IMAGE_TERM // LEMMA',
+        fieldNames: 'TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // IMAGE_TERM // LEMMA',
         extraFieldDescs: `- DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.\n- PART_OF_SPEECH: One of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle. Lowercase English.\n`,
         contextLine: '',
         senseListBlock: '',
@@ -635,8 +622,8 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       logger.info('[enrich-timing] %s — Gemini (Path B): %dms', word, _t2 - _t1);
 
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 8) {
-        throw new Error(`Gemini enrich returned ${parts.length} parts instead of 8 for the direct generation path`);
+      if (parts.length < 6) {
+        throw new Error(`Gemini enrich returned ${parts.length} parts instead of 6 for the direct generation path`);
       }
       translation = parts[0] || '';
       definition = parts[1] || '';
@@ -647,10 +634,8 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
         message: `No Wiktionary definition was available for "${word}", so Polycast used Gemini.`,
       });
       frequency = parseFrequency(parts[3]);
-      example_sentence = parts[4] || null;
-      sentence_translation = parts[5] || null;
-      geminiImageTerm = parts[6]?.trim() || null;
-      lemma = parts[7]?.trim() || null;
+      geminiImageTerm = parts[4]?.trim() || null;
+      lemma = parts[5]?.trim() || null;
 
       if (definition && part_of_speech && targetLang) {
         persistGeminiFallbackSense({ word, lang: targetLang, pos: part_of_speech, definition });
@@ -720,36 +705,26 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     imageSource = 'generated';
   }
   let image_url = null;
+  let imageContext = chosen?.sceneDescription || null;
   if (chosen) {
     if (chosen.fallbackNotice) {
       fallback_notices.push(chosen.fallbackNotice);
     }
-    const imageDescription = await describeFlashcardImage({ word, definition, image: chosen });
-    if (imageDescription.failure) {
-      fallback_notices.push({
-        title: 'Example fallback used',
-        message: `${imageDescription.failure} Keeping the original example sentence.`,
-      });
-    }
-    const visualExample = await generateImageGroundedExample({
-      word,
-      targetLang,
-      nativeLang,
-      translation,
-      definition,
-      partOfSpeech: part_of_speech,
-      imageContext: imageDescription.description,
-    });
-    if (visualExample.failure) {
-      fallback_notices.push({
-        title: 'Example fallback used',
-        message: `${visualExample.failure} Keeping the original example sentence.`,
-      });
-    }
-    if (visualExample.result) {
-      example_sentence = visualExample.result.example_sentence;
-      sentence_translation = visualExample.result.sentence_translation;
-      logger.info('[enrich] %s — image-grounded example: "%s"', word, example_sentence);
+    if (!imageContext) {
+      if (imageSource === 'stock') {
+        fallback_notices.push({
+          title: 'Image description fallback used',
+          message: `The combined image picker did not return a scene description for "${word}", so Polycast ran a separate vision description.`,
+        });
+      }
+      const imageDescription = await describeFlashcardImage({ word, definition, image: chosen });
+      imageContext = imageDescription.description;
+      if (imageDescription.failure) {
+        fallback_notices.push({
+          title: 'Image description fallback failed',
+          message: `${imageDescription.failure} The example will be generated from the definition instead of the image.`,
+        });
+      }
     }
 
     const id = await storeImageBytes(chosen.buffer, chosen.contentType, chosen.url ?? null);
@@ -760,6 +735,38 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       message: `Polycast could not find or generate an image for "${word}". Keeping the text-only flashcard data.`,
     });
     logger.warn('enrichWord: no image found or generated for "%s" (term "%s")', word, imageSearchTerm);
+  }
+
+  if (!imageContext) {
+    fallback_notices.push({
+      title: 'Example fallback used',
+      message: `No usable image scene was available for "${word}", so Polycast generated the example from its definition.`,
+    });
+  }
+
+  const generatedExample = await generateImageGroundedExample({
+    word,
+    targetLang,
+    nativeLang,
+    translation,
+    definition,
+    partOfSpeech: part_of_speech,
+    imageContext,
+  });
+  if (generatedExample.result) {
+    example_sentence = generatedExample.result.example_sentence;
+    sentence_translation = generatedExample.result.sentence_translation;
+    logger.info('[enrich] %s — generated example: "%s"', word, example_sentence);
+  } else {
+    const sourceSentence = ensureMarkedExample(String(sentence || '').trim(), word);
+    example_sentence = sourceSentence;
+    sentence_translation = null;
+    fallback_notices.push({
+      title: 'Example fallback used',
+      message: sourceSentence
+        ? `${generatedExample.failure || 'Example generation returned no result.'} Using the learner's source sentence.`
+        : `${generatedExample.failure || 'Example generation returned no result.'} No valid source sentence was available, so the word was saved without an example.`,
+    });
   }
 
   if (example_sentence && !sentence_translation) {

@@ -1,5 +1,5 @@
 import { fetchImageBytes } from './imageSearch.js';
-import { callGeminiVision } from './gemini.js';
+import { callGeminiVision, parseGeminiJson } from './gemini.js';
 import logger from '../logger.js';
 
 /**
@@ -8,7 +8,7 @@ import logger from '../logger.js';
  * the "abstract word -> wrong stock photo" problem (e.g. "childishness" pulling
  * a photo of monkeys) that taking the first search result produced.
  *
- * Returns { url, buffer, contentType } for the winning image, or null if no
+ * Returns { url, buffer, contentType, sceneDescription } for the winning image, or null if no
  * candidate could be downloaded OR the model judges that none of them reasonably
  * depict the word (caller then falls back to generating an image).
  *
@@ -28,7 +28,6 @@ export async function pickBestImage({ word, definition, sentence, candidates }) 
   )).filter(Boolean);
 
   if (downloaded.length === 0) return null;
-  if (downloaded.length === 1) return downloaded[0];
 
   const parts = [{
     text: `A language learner saved the word "${word}" (meaning: ${definition})`
@@ -37,8 +36,10 @@ export async function pickBestImage({ word, definition, sentence, candidates }) 
       + `Pick the ONE image that most clearly and accurately illustrates the meaning of "${word}" `
       + `for a flashcard. Prefer a clean photograph of a single, literal, unambiguous subject. `
       + `Avoid images containing text, captions, watermarks, charts, diagrams, or collages. `
-      + `Reply with ONLY the index number, or -1 if NONE of the images reasonably depict the word `
-      + `(or all of them are cluttered with text/diagrams).`,
+      + `Return ONLY JSON in this exact shape: {"index":0,"scene_description":"..."}. `
+      + `Use index -1 and scene_description null if NONE reasonably depict the word. `
+      + `For the selected image, scene_description must be one short English sentence describing `
+      + `only the concrete subjects, actions, setting, and mood visibly present.`,
   }];
   downloaded.forEach((img, i) => {
     parts.push({ text: `Image ${i}:` });
@@ -49,7 +50,12 @@ export async function pickBestImage({ word, definition, sentence, candidates }) 
   try {
     // thinkingBudget: 0 — gemini-flash-latest is a thinking model and will spend
     // the whole token budget "thinking" and return no text otherwise.
-    text = await callGeminiVision(parts, { maxOutputTokens: 16, temperature: 0, thinkingConfig: { thinkingBudget: 0 } });
+    text = await callGeminiVision(parts, {
+      maxOutputTokens: 120,
+      temperature: 0,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+    });
   } catch (err) {
     // Vision pick failed — log it (visible, not swallowed) and use the first
     // candidate, which is the same result the old top-1 path would have given.
@@ -63,22 +69,38 @@ export async function pickBestImage({ word, definition, sentence, candidates }) 
     };
   }
 
-  const match = text.match(/-?\d+/);
-  const idx = match ? parseInt(match[0], 10) : 0;
+  let parsed;
+  try {
+    parsed = parseGeminiJson(text, 'Image selection');
+  } catch (err) {
+    logger.error('pickBestImage returned invalid JSON for "%s": %s', word, err.message);
+    return {
+      ...downloaded[0],
+      fallbackNotice: {
+        title: 'Image picker fallback used',
+        message: `Gemini returned an invalid image-selection response for "${word}". Using the first image candidate.`,
+      },
+    };
+  }
+
+  const idx = Number(parsed.index);
   if (idx === -1) {
     logger.info('pickBestImage "%s": none of %d candidates fit — falling back to generation', word, downloaded.length);
     return null;
   }
   if (!Number.isInteger(idx) || idx < 0 || idx >= downloaded.length) {
-    logger.info('pickBestImage "%s": unparseable pick "%s", using candidate 0', word, text.trim());
+    logger.info('pickBestImage "%s": invalid pick "%s", using candidate 0', word, parsed.index);
     return {
       ...downloaded[0],
       fallbackNotice: {
         title: 'Image picker fallback used',
-        message: `Gemini returned an invalid image choice for "${word}" ("${text.trim()}"). Using the first image candidate.`,
+        message: `Gemini returned an invalid image choice for "${word}" ("${parsed.index}"). Using the first image candidate.`,
       },
     };
   }
   logger.info('pickBestImage "%s": chose %d of %d candidates', word, idx, downloaded.length);
-  return downloaded[idx];
+  return {
+    ...downloaded[idx],
+    sceneDescription: String(parsed.scene_description || '').trim() || null,
+  };
 }

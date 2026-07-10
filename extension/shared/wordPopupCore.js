@@ -13,7 +13,7 @@
 // ---------------------------------------------------------------------------
 
 (function () {
-  const POPUP_WIDTH = 280;
+  const POPUP_WIDTH = 300;
 
   function escapeHtml(str) {
     const div = document.createElement('div');
@@ -58,6 +58,26 @@
       addPill('Fallback warning', result.warning);
     }
     return pills.join('');
+  }
+
+  function fallbackNoticeDetails(result) {
+    const notices = Array.isArray(result?.fallback_notices) ? [...result.fallback_notices] : [];
+    if (result?.definition_source === 'gemini' && !notices.some((notice) => /gemini/i.test(notice?.title || ''))) {
+      notices.push({ title: 'Gemini fallback', message: 'Gemini supplied the definition because the dictionary path could not.' });
+    }
+    if (result?.definition_source === 'offline' && !notices.some((notice) => /offline/i.test(notice?.title || ''))) {
+      notices.push({ title: 'Offline fallback', message: 'This result came from local offline data.' });
+    }
+    if (result?.offline && !notices.some((notice) => /offline/i.test(notice?.title || ''))) {
+      notices.push({ title: 'Offline fallback', message: result.warning || 'The online path was unavailable.' });
+    } else if (result?.warning) {
+      notices.push({ title: 'Fallback warning', message: result.warning });
+    }
+    if (!notices.length) return '';
+    return `<div class="pc-popup-fallback-details" role="status">${notices.map((notice) => {
+      const detail = [notice?.message, notice?.detail].filter(Boolean).join(' ') || 'No additional detail was provided.';
+      return `<div><strong>${escapeHtml(notice?.title || 'Fallback used')}</strong><span>${escapeHtml(detail)}</span></div>`;
+    }).join('')}</div>`;
   }
 
   function renderTildeMarkup(container, text, highlightClass) {
@@ -127,9 +147,9 @@
       </div>
       <div class="pc-popup-lemma" hidden></div>
       <div class="pc-popup-body"><div class="pc-spinner"></div></div>
+      <button class="pc-popup-save" hidden>+ Add to dictionary</button>
       <button class="pc-popup-explain" hidden>Explain in context</button>
       <div class="pc-popup-explanation" hidden></div>
-      <button class="pc-popup-save" hidden>+ Add to dictionary</button>
     `;
 
     container.appendChild(popup);
@@ -253,12 +273,23 @@
         Promise.resolve(handlers.save(getSaveTarget()))
           .then((res) => {
             if (destroyed) return;
-            const pills = fallbackNoticePills(res);
-            if (!pills) return;
-            bodyEl.insertAdjacentHTML('beforeend', `<div class="pc-popup-fallback-row">${pills}</div>`);
+            const details = fallbackNoticeDetails(res);
+            if (!details) return;
+            bodyEl.insertAdjacentHTML('beforeend', details);
             position();
           })
-          .catch((err) => console.error('[word-popup] save failed:', err));
+          .catch((err) => {
+            if (destroyed) return;
+            saveState = 'unsaved';
+            renderSaveButton();
+            bodyEl.querySelector('.pc-popup-save-error')?.remove();
+            bodyEl.insertAdjacentHTML(
+              'beforeend',
+              `<div class="pc-popup-error pc-popup-save-error">${escapeHtml(err?.message || 'Save failed. Try again.')}</div>`,
+            );
+            position();
+            console.warn('[word-popup] save failed:', err);
+          });
       }
     });
 
@@ -321,6 +352,7 @@
         const dictionaryDefinition = res.matched_gloss || res.definition || '';
         const definitionLabel = 'Dictionary';
         const definitionSourcePill = fallbackNoticePills(res);
+        const fallbackDetails = fallbackNoticeDetails(res);
         if (!translation && !dictionaryDefinition && !res.part_of_speech) {
           bodyEl.innerHTML = `<div class="pc-popup-error">No definition found</div>`;
           return;
@@ -396,20 +428,21 @@
               <div class="pc-popup-phrase">${escapeHtml(res.phrase)}</div>
               ${pt ? `<div class="pc-popup-translation">${escapeHtml(pt)}</div>` : ''}
               <div class="pc-popup-pos">phrase</div>
-              ${pd ? `<div class="pc-popup-definition">${escapeHtml(pd)}</div>` : ''}`;
+              ${pd ? `<div class="pc-popup-definition">${escapeHtml(pd)}</div>` : ''}
+              ${fallbackDetails}`;
           } else {
-            // Word mode: show the base form (lemma) — the form the card saves as.
-            if (res.lemma && res.lemma.trim() && res.lemma.toLowerCase() !== word.toLowerCase()) {
-              lemmaEl.innerHTML = `<span class="pc-popup-lemma-label">saves as</span>${escapeHtml(res.lemma)}`;
-              lemmaEl.hidden = false;
-            } else {
-              lemmaEl.hidden = true;
-            }
+            lemmaEl.hidden = true;
+            const hasLemma = res.lemma && res.lemma.trim() && res.lemma.toLowerCase() !== word.toLowerCase();
+            const metadata = hasLemma || res.part_of_speech ? `<div class="pc-popup-meta">
+              ${hasLemma ? `<div><span class="pc-popup-meta-label">Saves as</span><strong>${escapeHtml(res.lemma)}</strong></div>` : '<div></div>'}
+              ${res.part_of_speech ? `<div><span class="pc-popup-meta-label">Part of speech</span><span class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</span></div>` : ''}
+            </div>` : '';
             bodyEl.innerHTML = `${toggle}
               ${translation ? `<div class="pc-popup-translation">${escapeHtml(translation)}${saveState === 'new-sense' ? '<span class="pc-popup-new-def-pill">New definition!</span>' : ''}</div>` : ''}
-              ${res.part_of_speech ? `<div class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</div>` : ''}
+              ${metadata}
               ${dictionaryDefinition ? `<div class="pc-popup-definition"><span class="pc-popup-definition-label">${definitionLabel}${definitionSourcePill}</span>${escapeHtml(dictionaryDefinition)}</div>` : ''}
-              ${autoExplanationHtml()}`;
+              ${autoExplanationHtml()}
+              ${fallbackDetails}`;
           }
 
           if (hasPhrase) {

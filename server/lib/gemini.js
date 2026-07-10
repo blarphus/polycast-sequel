@@ -1,10 +1,50 @@
 import logger from '../logger.js';
 
+const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
+const GEMINI_MAX_ATTEMPTS = 3;
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function responseErrorMessage(body, status) {
+  try {
+    const parsed = JSON.parse(body);
+    const detail = parsed?.error?.message;
+    return detail ? `Gemini request failed (${status}): ${detail}` : `Gemini request failed (${status})`;
+  } catch {
+    return `Gemini request failed (${status})`;
+  }
+}
+
+async function requestGemini(url, options, label) {
+  let lastError;
+  for (let attempt = 1; attempt <= GEMINI_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok) return response;
+
+      const errBody = await response.text();
+      const error = new Error(responseErrorMessage(errBody, response.status));
+      error.retryable = RETRYABLE_STATUS_CODES.has(response.status);
+      lastError = error;
+      logger.warn('%s API attempt %d/%d failed: %s', label, attempt, GEMINI_MAX_ATTEMPTS, error.message);
+      if (!error.retryable || attempt === GEMINI_MAX_ATTEMPTS) throw error;
+    } catch (err) {
+      lastError = err;
+      if (err.retryable === false || attempt === GEMINI_MAX_ATTEMPTS) throw err;
+      logger.warn('%s API attempt %d/%d failed: %s', label, attempt, GEMINI_MAX_ATTEMPTS, err.message);
+    }
+    await wait(250 * (2 ** (attempt - 1)));
+  }
+  throw lastError;
+}
+
 export async function callGemini(prompt, generationConfig = {}, model = 'gemini-flash-latest') {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
-  const response = await fetch(
+  const response = await requestGemini(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: 'POST',
@@ -14,13 +54,8 @@ export async function callGemini(prompt, generationConfig = {}, model = 'gemini-
         generationConfig,
       }),
     },
+    'Gemini',
   );
-
-  if (!response.ok) {
-    const errBody = await response.text();
-    logger.error('Gemini API error: %s', errBody);
-    throw new Error('Gemini request failed');
-  }
 
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -41,7 +76,7 @@ export async function callGeminiVision(parts, generationConfig = {}, model = 'ge
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
-  const response = await fetch(
+  const response = await requestGemini(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: 'POST',
@@ -51,13 +86,8 @@ export async function callGeminiVision(parts, generationConfig = {}, model = 'ge
         generationConfig,
       }),
     },
+    'Gemini vision',
   );
-
-  if (!response.ok) {
-    const errBody = await response.text();
-    logger.error('Gemini vision API error: %s', errBody);
-    throw new Error('Gemini vision request failed');
-  }
 
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;

@@ -20,7 +20,8 @@ let savedWordsSet = new Set();
 // ---- Target language state ------------------------------------------------
 
 let targetLanguage = null;
-let dailyGoalSnapshot = { goal: 5, added: 0, remaining: 5, complete: false };
+const BONUS_XP_PER_WORD = 10;
+let dailyGoalSnapshot = { goal: 5, added: 0, remaining: 5, complete: false, overGoal: 0, bonusXp: 0 };
 
 (async function initTargetLanguage() {
   try {
@@ -93,9 +94,10 @@ chrome.runtime.onMessage.addListener((msg) => {
   } else if (msg.type === 'TARGET_LANGUAGE_UPDATED') {
     targetLanguage = msg.targetLanguage ? msg.targetLanguage.toLowerCase() : null;
   } else if (msg.type === 'DAILY_GOAL_UPDATED' && msg.snapshot) {
-    dailyGoalSnapshot = msg.snapshot;
-    updateActivePopupGoal(!!msg.justAdded);
-    if (msg.justAdded) showGoalCelebration(msg.snapshot, !!msg.justCompleted);
+    applyDailyGoalSnapshot({ ...msg.snapshot, bonusXpEarned: msg.bonusXpEarned || 0 }, {
+      celebrate: !!msg.justAdded,
+      completed: !!msg.justCompleted,
+    });
   }
 });
 
@@ -109,12 +111,17 @@ function languageName(code) {
 }
 
 function goalMarkup(snapshot) {
-  const label = snapshot.complete
-    ? 'Daily goal complete'
-    : `${snapshot.remaining} more ${snapshot.remaining === 1 ? 'word' : 'words'} today`;
-  const width = Math.min(100, (snapshot.added / Math.max(1, snapshot.goal)) * 100);
-  return `<div class="pc-popup-goal-copy"><span>${label}</span><strong>${snapshot.added}/${snapshot.goal}</strong></div>` +
-    `<div class="pc-popup-goal-track"><i style="width:${width}%"></i></div>`;
+  const goal = Math.max(1, Number(snapshot.goal) || 5);
+  const added = Math.max(0, Number(snapshot.added) || 0);
+  const stepCount = Math.min(goal, 10);
+  const filledSteps = Math.round((Math.min(added, goal) / goal) * stepCount);
+  const steps = Array.from({ length: stepCount }, (_, index) =>
+    `<i class="${index < filledSteps ? 'pc-popup-goal-step--filled' : ''}"></i>`).join('');
+  const label = snapshot.overGoal > 0
+    ? `${snapshot.overGoal} extra · ${snapshot.bonusXp} XP`
+    : snapshot.complete ? 'Goal complete' : `${snapshot.remaining} more today`;
+  return `<div class="pc-popup-goal-steps" aria-label="${added} of ${goal} daily words">${steps}</div>` +
+    `<strong>${added} of ${goal}</strong><span class="pc-popup-goal-divider"></span><span>${label}</span>`;
 }
 
 function updateActivePopupGoal(animate = false) {
@@ -126,15 +133,31 @@ function updateActivePopupGoal(animate = false) {
   if (animate) setTimeout(() => goal.classList.remove('pc-popup-goal--pulse'), 700);
 }
 
+function applyDailyGoalSnapshot(snapshot, { celebrate = false, completed = false } = {}) {
+  if (!snapshot) return;
+  const advanced = Number(snapshot.added) > Number(dailyGoalSnapshot.added);
+  dailyGoalSnapshot = snapshot;
+  updateActivePopupGoal(celebrate && advanced);
+  if (celebrate && advanced) showGoalCelebration(snapshot, completed || !!snapshot.justCompleted);
+}
+
 function showGoalCelebration(snapshot, completed) {
   document.querySelector('.pc-goal-celebration')?.remove();
   const toast = document.createElement('div');
-  toast.className = `pc-goal-celebration${completed ? ' pc-goal-celebration--complete' : ''}`;
+  const bonusXpEarned = Number(snapshot.bonusXpEarned) || 0;
+  const flame = completed || bonusXpEarned > 0;
+  toast.className = `pc-goal-celebration${completed ? ' pc-goal-celebration--complete' : ''}${bonusXpEarned ? ' pc-goal-celebration--bonus' : ''}`;
   toast.setAttribute('role', 'status');
-  toast.innerHTML = `<b>${completed ? '★' : '✓'}</b><div><strong>${completed ? 'Daily goal complete!' : 'Word added'}</strong>` +
-    `<span>${snapshot.complete ? `${snapshot.added} words added today` : `${snapshot.remaining} more to reach today's goal`}</span></div>`;
+  const icon = flame
+    ? '<b class="pc-celebration-flame" aria-hidden="true"><i></i><i></i></b>'
+    : '<b aria-hidden="true">✓</b>';
+  const title = bonusXpEarned ? `+${bonusXpEarned} XP` : completed ? 'Daily goal complete!' : 'Word added';
+  const detail = bonusXpEarned
+    ? `${snapshot.added} words today · ${snapshot.bonusXp} bonus XP total`
+    : completed ? `${snapshot.added} words added today` : `${snapshot.remaining} more to reach today's goal`;
+  toast.innerHTML = `${icon}<div><strong>${title}</strong><span>${detail}</span></div>`;
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), completed ? 3200 : 2200);
+  setTimeout(() => toast.remove(), flame ? 3200 : 2200);
 }
 
 // ---- Tokenization ---------------------------------------------------------
@@ -400,18 +423,41 @@ function openWordPopup({
             el.classList.add('pc-saved');
           }
         });
-        return await sendMessageAsync({
-          type: 'SAVE_WORD',
-          word,
-          sentence,
-          lemma,
-          targetWord: lookupResult?.target_word || null,
-          definition: lookupResult?.definition || lookupResult?.matched_gloss || null,
-          part_of_speech: lookupResult?.part_of_speech || null,
-          definition_source: lookupResult?.definition_source || null,
-          matched_gloss: lookupResult?.matched_gloss || null,
-          senseIndex: lookupResult?.sense_index ?? null,
+        const previousGoal = dailyGoalSnapshot;
+        const optimisticAdded = previousGoal.added + 1;
+        const optimisticGoal = {
+          ...previousGoal,
+          added: optimisticAdded,
+          remaining: Math.max(0, previousGoal.goal - optimisticAdded),
+          complete: optimisticAdded >= previousGoal.goal,
+          overGoal: Math.max(0, optimisticAdded - previousGoal.goal),
+          bonusXp: Math.max(0, optimisticAdded - previousGoal.goal) * BONUS_XP_PER_WORD,
+          bonusXpEarned: previousGoal.complete ? BONUS_XP_PER_WORD : 0,
+        };
+        applyDailyGoalSnapshot(optimisticGoal, {
+          celebrate: true,
+          completed: !previousGoal.complete && optimisticGoal.complete,
         });
+
+        try {
+          const result = await sendMessageAsync({
+            type: 'SAVE_WORD',
+            word,
+            sentence,
+            lemma,
+            targetWord: lookupResult?.target_word || null,
+            definition: lookupResult?.definition || lookupResult?.matched_gloss || null,
+            part_of_speech: lookupResult?.part_of_speech || null,
+            definition_source: lookupResult?.definition_source || null,
+            matched_gloss: lookupResult?.matched_gloss || null,
+            senseIndex: lookupResult?.sense_index ?? null,
+          }, { timeoutMs: 90000 });
+          applyDailyGoalSnapshot(result?.dailyGoal);
+          return result;
+        } catch (err) {
+          applyDailyGoalSnapshot(previousGoal);
+          throw err;
+        }
       },
       remove: async ({ word, lookupResult }) => {
         await sendMessageAsync({
@@ -435,7 +481,7 @@ function openWordPopup({
   const goal = document.createElement('div');
   goal.className = `pc-popup-goal${dailyGoalSnapshot.complete ? ' pc-popup-goal--complete' : ''}`;
   goal.innerHTML = goalMarkup(dailyGoalSnapshot);
-  activePopup.el.querySelector('.pc-popup-explain')?.before(goal);
+  activePopup.el.querySelector('.pc-popup-header')?.after(goal);
 }
 
 function handleWordClick(word, sentence, anchorEl) {

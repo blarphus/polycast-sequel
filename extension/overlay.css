@@ -17,6 +17,21 @@
   color: #5b9cf5;
 }
 
+.pc-page-saved-word {
+  color: #7c5cff !important;
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: rgba(45, 212, 191, 0.65);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .pc-page-saved-word {
+    color: #a99cff !important;
+  }
+}
+
 /* YouTube can retain its controls-visible inline caption offset after a word
    click pauses playback. This class is applied only for that stale hidden-
    controls state and removed before YouTube raises captions again. */

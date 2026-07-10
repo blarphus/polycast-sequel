@@ -46,7 +46,7 @@ test('context menu installation is serialized across lifecycle events', async ()
     tabs: { query: async () => [], sendMessage: async () => {}, create: async () => {} },
   };
 
-  vm.runInNewContext(source, {
+  const context = {
     chrome,
     console: { ...console, warn: (...args) => warnings.push(args.join(' ')) },
     crypto,
@@ -56,7 +56,8 @@ test('context menu installation is serialized across lifecycle events', async ()
     Date,
     setTimeout,
     clearTimeout,
-  });
+  };
+  vm.runInNewContext(source, context);
 
   assert.equal(installedListeners.length, 1);
   assert.equal(startupListeners.length, 1);
@@ -65,4 +66,8 @@ test('context menu installation is serialized across lifecycle events', async ()
   assert.equal(createCount, 1);
   assert.deepEqual([...menuIds], ['polycast-lookup-selection']);
   assert.deepEqual(warnings, []);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(context.buildDailyGoalSnapshot(5, 6))),
+    { goal: 5, added: 6, remaining: 0, complete: true, overGoal: 1, bonusXp: 10 },
+  );
 });
