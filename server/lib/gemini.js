@@ -221,13 +221,29 @@ export async function streamGemini(
 }
 
 export function parseGeminiJson(raw, context) {
-  try {
-    return JSON.parse(raw);
-  } catch (err) {
-    const error = new Error(`${context} returned invalid JSON`);
-    error.cause = err;
-    throw error;
+  // Gemini occasionally wraps JSON in markdown fences or pads it with prose
+  // even when responseMimeType is application/json. Try progressively more
+  // aggressive salvage before failing: raw → fence-stripped → outermost {...}.
+  const text = String(raw);
+  const candidates = [text];
+  const unfenced = text.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+  if (unfenced !== text) candidates.push(unfenced);
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start >= 0 && end > start) candidates.push(text.slice(start, end + 1));
+
+  let firstErr;
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch (err) {
+      firstErr = firstErr || err;
+    }
   }
+  logger.error('%s returned invalid JSON: %s', context, text.slice(0, 300));
+  const error = new Error(`${context} returned invalid JSON`);
+  error.cause = firstErr;
+  throw error;
 }
 
 export function ensureGeminiKeys(parsed, keys, context) {

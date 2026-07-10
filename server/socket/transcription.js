@@ -15,7 +15,10 @@ export function handleTranscription(io, socket) {
   let voxtralWs = null;
   let peerId = null;
   let transcriptBuffer = '';
-  let detectedLang = 'en';
+  // Voxtral's realtime API never reports a language, so start with none: the
+  // client fills each line's language from Google Translate detection instead
+  // of showing a hardcoded English label.
+  let detectedLang = null;
   let clearTimer = null;
 
   // Cached speaker info (populated on transcription:start)

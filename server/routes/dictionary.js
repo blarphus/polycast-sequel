@@ -6,7 +6,7 @@ import { enrichWord as enrichWordHelper, fetchWiktSenses } from '../enrichWord.j
 import { searchAllImages } from '../lib/imageSearch.js';
 import { getImageBytes } from '../lib/imageCache.js';
 import { validate } from '../lib/validate.js';
-import { translateText } from '../lib/googleTranslate.js';
+import { translateTextDetailed } from '../lib/googleTranslate.js';
 import { applySrsReview, validTimeZone } from '../lib/srsUpdate.js';
 import { generateStageSentence } from '../lib/stageSentence.js';
 import logger from '../logger.js';
@@ -261,9 +261,9 @@ router.post('/api/dictionary/translate', authMiddleware, validate({ body: transl
   const { sentence, fromLang, toLang } = req.body;
 
   try {
-    const translation = await translateText(sentence, fromLang || 'auto', toLang);
+    const { translation, detectedSourceLang } = await translateTextDetailed(sentence, fromLang || 'auto', toLang);
 
-    return res.json({ translation });
+    return res.json({ translation, detectedSourceLang });
   } catch (err) {
     req.log.error({ err }, 'Sentence translation error');
     return res.status(500).json({ error: err.message || 'Translation failed' });

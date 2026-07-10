@@ -113,7 +113,7 @@ export function enrichWord(
 }
 
 export function translateSentence(sentence: string, fromLang: string, toLang: string) {
-  return request<{ translation: string }>('/dictionary/translate', {
+  return request<{ translation: string; detectedSourceLang: string | null }>('/dictionary/translate', {
     method: 'POST',
     body: { sentence, fromLang, toLang },
   });

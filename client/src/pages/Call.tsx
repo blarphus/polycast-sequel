@@ -39,7 +39,8 @@ function endReasonMessage(reason: string | undefined, peerName: string): string 
     case 'disconnected': return `${peerName} disconnected`;
     case 'timeout': return 'Connection timed out';
     case 'cancelled': return 'Call cancelled';
-    default: return reason || 'Call ended';
+    case 'completed': return 'Call ended';
+    default: return 'Call ended';
   }
 }
 

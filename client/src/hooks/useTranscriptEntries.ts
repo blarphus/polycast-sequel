@@ -18,12 +18,19 @@ export function useTranscriptEntries(nativeLang: string | null | undefined) {
 
       if (nativeLang) {
         translateSentence(data.text, '', nativeLang)
-          .then(({ translation }) => {
-            if (translation && translation.toLowerCase() !== data.text.toLowerCase()) {
-              setTranscriptEntries(prev =>
-                prev.map(e => e.id === id ? { ...e, translation } : e),
-              );
-            }
+          .then(({ translation, detectedSourceLang }) => {
+            const keepTranslation = !!translation && translation.toLowerCase() !== data.text.toLowerCase();
+            setTranscriptEntries(prev =>
+              prev.map(e => e.id === id
+                ? {
+                  ...e,
+                  ...(keepTranslation ? { translation } : {}),
+                  // Google's detection labels the line; the transcriber reports
+                  // no language and previously left a hardcoded "en" everywhere.
+                  ...(detectedSourceLang ? { lang: detectedSourceLang } : {}),
+                }
+                : e),
+            );
           })
           .catch((err) => console.error('Failed to translate transcript entry:', err));
       }

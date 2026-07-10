@@ -332,7 +332,9 @@ ${imageContext ? '- It must describe or fit the chosen image scene. Do not intro
       prompt,
       {
         thinkingConfig: { thinkingBudget: 0 },
-        maxOutputTokens: 180,
+        // Generous cap: a truncated response is unparseable JSON, which was the
+        // most common cause of the example-generation fallback.
+        maxOutputTokens: 400,
         responseMimeType: 'application/json',
       },
     );

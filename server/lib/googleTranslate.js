@@ -12,6 +12,16 @@
  * Throws (no fallback) if the request fails — callers decide how to surface it.
  */
 export async function translateText(text, sourceLang, targetLang) {
+  const { translation } = await translateTextDetailed(text, sourceLang, targetLang);
+  return translation;
+}
+
+/**
+ * Like translateText, but also returns the source language Google detected
+ * (index [2] of the gtx response). The transcript panel uses it to label each
+ * line with the language actually spoken.
+ */
+export async function translateTextDetailed(text, sourceLang, targetLang) {
   const url =
     `https://translate.googleapis.com/translate_a/single?client=gtx` +
     `&sl=${encodeURIComponent(sourceLang)}&tl=${encodeURIComponent(targetLang)}` +
@@ -23,7 +33,10 @@ export async function translateText(text, sourceLang, targetLang) {
   }
 
   const data = await res.json();
-  // Response format: [[["translated text","original text",null,null,N], ...], ...]
+  // Response format: [[["translated text","original text",null,null,N], ...], null, "detected-lang", ...]
   const segments = data[0] || [];
-  return segments.map((seg) => seg[0] || '').join('');
+  return {
+    translation: segments.map((seg) => seg[0] || '').join(''),
+    detectedSourceLang: typeof data[2] === 'string' ? data[2] : null,
+  };
 }

@@ -169,6 +169,31 @@ function showGoalCelebration(snapshot, completed) {
   toast.innerHTML = `${icon}<div><strong>${title}</strong><span>${detail}</span></div>`;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), flame ? 3200 : 2200);
+  if (completed) showConfetti();
+}
+
+// Full-screen confetti rain for the moment the daily goal is reached.
+function showConfetti() {
+  document.querySelector('.pc-confetti')?.remove();
+  const container = document.createElement('div');
+  container.className = 'pc-confetti';
+  container.setAttribute('aria-hidden', 'true');
+  const colors = ['#f472b6', '#a78bfa', '#2dd4bf', '#fbbf24', '#60a5fa', '#fb7185', '#a3e635'];
+  const pieces = 36;
+  let html = '';
+  for (let i = 0; i < pieces; i += 1) {
+    const left = Math.random() * 100;
+    const delay = Math.random() * 0.5;
+    const duration = 1.6 + Math.random() * 1.2;
+    const size = 6 + Math.random() * 6;
+    const color = colors[i % colors.length];
+    const spin = Math.random() > 0.5 ? 1 : -1;
+    html += `<i style="left:${left.toFixed(1)}vw;background:${color};width:${size.toFixed(0)}px;height:${(size * 0.45).toFixed(0)}px;` +
+      `animation-delay:${delay.toFixed(2)}s;animation-duration:${duration.toFixed(2)}s;--pc-spin:${spin};"></i>`;
+  }
+  container.innerHTML = html;
+  document.body.appendChild(container);
+  setTimeout(() => container.remove(), 3400);
 }
 
 // ---- Tokenization ---------------------------------------------------------
