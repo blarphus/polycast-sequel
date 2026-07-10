@@ -518,24 +518,37 @@
 
   // Used by host environments (extension content scripts, the React wrapper) to
   // render the daily-goal flame indicator in the goal row markup they build.
+  // Layered cartoon flame: gradient orange body, yellow inner flame, white-hot
+  // core. Full color is baked into the SVG; setFlameLevel dims/greys it with
+  // CSS filters so no per-layer scripting is needed.
   const FLAME_SVG =
-    '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">' +
-    '<path d="M12.5 2.3c.9 2.6-.4 3.9-1.6 5.2-1.2 1.3-2.4 2.7-2.4 5a3.5 3.5 0 0 0 7 0c0-.8-.2-1.5-.5-2.1 1.8 1.2 3 3.4 3 6a6 6 0 0 1-12 0c0-4.6 2.7-6.8 4.2-9.3.6.9.9 1.7 1 2.5.6-1.4 1-2.6 1.3-4.3z"/></svg>';
+    '<svg width="18" height="18" viewBox="0 0 24 24">' +
+    '<defs>' +
+    '<linearGradient id="pc-flame-body" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0" stop-color="#ffb340"/><stop offset="1" stop-color="#ff5a1f"/>' +
+    '</linearGradient>' +
+    '<linearGradient id="pc-flame-heart" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0" stop-color="#ffe873"/><stop offset="1" stop-color="#ffab2e"/>' +
+    '</linearGradient>' +
+    '</defs>' +
+    '<path fill="url(#pc-flame-body)" d="M12 2.5c.5 2.7-.6 4.4-1.9 6C8.4 10.6 6.5 12.7 6.5 15.5a5.5 5.5 0 0 0 11 0c0-2.4-1.3-4.3-2.7-6-1.3-1.6-2.4-3.3-2.8-7z"/>' +
+    '<path fill="url(#pc-flame-heart)" d="M12 10.5c1.6 1.5 2.7 3.1 2.7 4.9a2.7 2.7 0 1 1-5.4 0c0-1.8 1.1-3.4 2.7-4.9z"/>' +
+    '<ellipse fill="#fff6cf" cx="12" cy="15.8" rx="1.1" ry="1.5"/>' +
+    '</svg>';
 
-  // Colors a flame icon element based on daily-goal progress: gray (unstarted)
-  // burning up to a bright orange glow as `ratio` (0-1, added/goal clamped to a
-  // max of 1) rises. Called from the host env whenever the goal snapshot
-  // changes, since the core has no direct access to that state.
+  // Dials a flame icon element between ashy-gray (no words yet) and a bright
+  // flickering burn (goal reached) based on `ratio` (0-1, added/goal clamped to
+  // a max of 1). Called from the host env whenever the goal snapshot changes,
+  // since the core has no direct access to that state.
   function setFlameLevel(flameEl, ratio) {
     if (!flameEl) return;
     const clamped = Math.max(0, Math.min(1, Number(ratio) || 0));
-    const from = [85, 89, 107];
-    const to = [251, 146, 60];
-    const mix = from.map((c, i) => Math.round(c + (to[i] - c) * clamped));
-    flameEl.style.color = `rgb(${mix.join(',')})`;
-    flameEl.style.filter = clamped > 0.04
-      ? `drop-shadow(0 0 ${(4 + clamped * 6).toFixed(1)}px rgba(251,146,60,${(clamped * 0.75).toFixed(2)}))`
-      : 'none';
+    flameEl.classList.toggle('pc-flame-lit', clamped > 0);
+    flameEl.style.filter = clamped === 0
+      ? 'grayscale(1) opacity(.45)'
+      : `grayscale(${((1 - clamped) * 0.8).toFixed(2)})` +
+        ` brightness(${(0.75 + 0.35 * clamped).toFixed(2)})` +
+        ` drop-shadow(0 0 ${(2 + 6 * clamped).toFixed(1)}px rgba(255,140,50,${(0.25 + 0.55 * clamped).toFixed(2)}))`;
   }
 
   globalThis.PolycastWordPopup = { createWordPopup, setFlameLevel, FLAME_SVG };

@@ -229,8 +229,15 @@
 
 .pc-popup-goal > strong { flex: 0 0 auto; color: #5eead4; font-size: 11px; }
 .pc-popup-goal > span:last-child { min-width: 0; white-space: nowrap; }
-.pc-popup-goal-flame { display: flex; flex: 0 0 auto; align-items: center; color: #55596b; transition: color 0.4s ease, filter 0.4s ease; }
-.pc-popup-goal-flame svg { display: block; }
+.pc-popup-goal-flame { display: flex; flex: 0 0 auto; align-items: center; transition: filter 0.5s ease; }
+.pc-popup-goal-flame svg { display: block; transform-origin: 50% 85%; }
+.pc-popup-goal-flame.pc-flame-lit svg { animation: pc-flame-flicker 1.4s ease-in-out infinite; }
+@keyframes pc-flame-flicker {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.06, 0.96) rotate(-2deg); }
+  50% { transform: scale(0.96, 1.05) rotate(1.5deg); }
+  75% { transform: scale(1.04, 0.98) rotate(-1deg); }
+}
 .pc-popup-goal-divider { width: 1px; height: 16px; background: rgba(255,255,255,.14); }
 .pc-popup-goal--complete { border-color: rgba(250,204,21,.28); background: rgba(250,204,21,.055); }
 .pc-popup-goal--complete > strong, .pc-popup-goal--complete > span:last-child { color: #fde047; }
