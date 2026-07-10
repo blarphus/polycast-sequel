@@ -440,6 +440,13 @@ export async function handleOfflineRequest(path: string, method: string, body?: 
         newToday: availableNewWords(words),
         dueWords: dueWords(),
         pendingClasswork: { count: 0, posts: [] },
+        wordsAddedToday: words.filter((word) => {
+          const created = new Date(word.created_at || 0);
+          const now = new Date();
+          return created.getFullYear() === now.getFullYear()
+            && created.getMonth() === now.getMonth()
+            && created.getDate() === now.getDate();
+        }).length,
       },
     };
   }

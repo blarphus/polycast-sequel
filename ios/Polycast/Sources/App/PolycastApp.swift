@@ -30,6 +30,7 @@ private struct RootView: View {
     @EnvironmentObject private var wordStore: WordStore
     @EnvironmentObject private var callManager: CallManager
     @ObservedObject private var fallbackNotices = FallbackNoticeCenter.shared
+    @ObservedObject private var dailyGoal = DailyWordGoalStore.shared
 
     var body: some View {
         ZStack {
@@ -67,11 +68,24 @@ private struct RootView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .zIndex(20)
             }
+
+            if let celebration = dailyGoal.celebration {
+                VStack {
+                    DailyGoalCelebrationView(celebration: celebration)
+                    Spacer()
+                }
+                .padding(.top, 12)
+                .padding(.horizontal, 16)
+                .zIndex(30)
+            }
         }
         .animation(.spring(response: 0.28, dampingFraction: 0.9), value: fallbackNotices.notice?.id)
+        .animation(.spring(response: 0.38, dampingFraction: 0.76), value: dailyGoal.celebration?.id)
         .fullScreenCover(isPresented: $callManager.isCallViewPresented) {
             CallView(friendName: callManager.activeCallDisplayName.isEmpty ? "Call" : callManager.activeCallDisplayName)
                 .environmentObject(callManager)
+                .environmentObject(session)
+                .environmentObject(wordStore)
         }
         .onChange(of: session.user?.id) {
             if session.user != nil {

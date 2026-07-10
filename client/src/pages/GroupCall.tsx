@@ -11,6 +11,9 @@ import CallControls, { PhoneOffIcon } from '../components/CallControls';
 import { MutedSpeakerIcon } from '../components/icons';
 import socket from '../socket';
 import { TranscriptionService } from '../transcription';
+import TranscriptPanel from '../components/TranscriptPanel';
+import { useTranscriptEntries } from '../hooks/useTranscriptEntries';
+import { useSavedWords } from '../hooks/useSavedWords';
 
 export default function GroupCall() {
   const { postId } = useParams<{ postId: string }>();
@@ -30,6 +33,8 @@ export default function GroupCall() {
 
   const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(localStreamRef);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [transcriptOpen, setTranscriptOpen] = useState(true);
+  const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const transcriptionRef = useRef<TranscriptionService | null>(null);
 
@@ -40,8 +45,11 @@ export default function GroupCall() {
   }, [toggleMute, localStreamRef]);
 
   // Transcription state
-  const [liveSubtitle, setLiveSubtitle] = useState<{ text: string; userId: string } | null>(null);
+  const [liveSubtitle, setLiveSubtitle] = useState<{ text: string; userId: string; lang?: string } | null>(null);
   const subtitleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeSpeakerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { transcriptEntries, onTranscriptEntry } = useTranscriptEntries(user?.native_language);
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = useSavedWords();
 
   // Local video ref
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -76,28 +84,36 @@ export default function GroupCall() {
 
   // Transcript socket events
   useEffect(() => {
-    const onTranscript = ({ text, userId }: { text: string; userId: string }) => {
+    const onTranscript = ({ text, userId, lang }: { text: string; userId: string; lang?: string }) => {
       if (!text) {
         setLiveSubtitle(null);
         return;
       }
-      setLiveSubtitle({ text, userId });
+      setLiveSubtitle({ text, userId, lang });
+      setActiveSpeakerId(userId);
+      if (activeSpeakerTimerRef.current) clearTimeout(activeSpeakerTimerRef.current);
+      activeSpeakerTimerRef.current = setTimeout(() => setActiveSpeakerId(null), 1800);
       if (subtitleTimerRef.current) clearTimeout(subtitleTimerRef.current);
       subtitleTimerRef.current = setTimeout(() => setLiveSubtitle(null), 5000);
     };
 
     socket.on('transcript', onTranscript);
+    socket.on('transcript:entry', onTranscriptEntry);
 
     return () => {
       socket.off('transcript', onTranscript);
+      socket.off('transcript:entry', onTranscriptEntry);
       if (subtitleTimerRef.current) clearTimeout(subtitleTimerRef.current);
+      if (activeSpeakerTimerRef.current) clearTimeout(activeSpeakerTimerRef.current);
     };
-  }, []);
+  }, [onTranscriptEntry]);
 
   // Leave and navigate back
   const handleLeave = useCallback(() => {
     transcriptionRef.current?.stop();
     transcriptionRef.current = null;
+    screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+    screenStreamRef.current = null;
     leave();
     navigate(-1);
   }, [leave, navigate]);
@@ -109,6 +125,7 @@ export default function GroupCall() {
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current = null;
       setIsScreenSharing(false);
+      if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
 
       const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
       if (cameraTrack) {
@@ -124,6 +141,7 @@ export default function GroupCall() {
         setIsScreenSharing(true);
 
         const screenTrack = screenStream.getVideoTracks()[0];
+        if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
 
         // Replace video track on all PCs
         for (const [, entry] of peersRef.current) {
@@ -135,6 +153,7 @@ export default function GroupCall() {
         screenTrack.onended = async () => {
           setIsScreenSharing(false);
           screenStreamRef.current = null;
+          if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
           const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
           if (cameraTrack) {
             for (const [, entry] of peersRef.current) {
@@ -154,6 +173,23 @@ export default function GroupCall() {
       }
     }
   }, [isScreenSharing, peersRef, localStreamRef]);
+
+  // A participant can join after sharing starts; make sure their newly-created
+  // sender receives the presentation track instead of the camera track.
+  useEffect(() => {
+    const screenTrack = screenStreamRef.current?.getVideoTracks()[0];
+    if (!isScreenSharing || !screenTrack) return;
+    for (const [, entry] of peersRef.current) {
+      const sender = entry.pc.getSenders().find((candidate) => candidate.track?.kind === 'video');
+      if (sender && sender.track !== screenTrack) {
+        sender.replaceTrack(screenTrack).catch((err) => console.error('[group-call] Failed to share with new participant:', err));
+      }
+    }
+  }, [isScreenSharing, participants, peersRef]);
+
+  useEffect(() => () => {
+    screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+  }, []);
 
   // Build participant list for display (remote + self)
   const totalParticipants = 1 + remoteStreams.size;
@@ -181,10 +217,15 @@ export default function GroupCall() {
   }
 
   return (
-    <div className="gc-page">
+    <div className={`gc-page${transcriptOpen ? ' transcript-open' : ''}`}>
+      <div className="gc-stage">
+        <div className="gc-topbar">
+          <div><strong>Group conversation</strong><span>{totalParticipants} participant{totalParticipants === 1 ? '' : 's'}</span></div>
+          <button type="button" onClick={() => setTranscriptOpen((open) => !open)}>{transcriptOpen ? 'Hide transcript' : 'Show transcript'}</button>
+        </div>
       <div className={`gc-grid ${gridClass}`}>
         {/* Local video */}
-        <div className="gc-tile">
+        <div className={`gc-tile${activeSpeakerId === user?.id ? ' gc-tile--speaking' : ''}${isScreenSharing ? ' gc-tile--sharing' : ''}`}>
           <video
             ref={localVideoRef}
             autoPlay
@@ -194,6 +235,7 @@ export default function GroupCall() {
           />
           <div className="gc-tile-label">
             {user?.display_name || user?.username || 'You'}
+            {isScreenSharing && <span className="gc-sharing-label">Presenting</span>}
             {isMuted && <span className="gc-mute-indicator" title="Muted"><MutedSpeakerIcon size={14} /></span>}
           </div>
         </div>
@@ -204,6 +246,7 @@ export default function GroupCall() {
             key={userId}
             stream={stream}
             displayName={getDisplayName(userId)}
+            isSpeaking={activeSpeakerId === userId}
           />
         ))}
 
@@ -218,6 +261,7 @@ export default function GroupCall() {
       {/* Live subtitle overlay */}
       {liveSubtitle && liveSubtitle.text && (
         <div className="gc-subtitle">
+          <span className="gc-subtitle-speaker">{liveSubtitle.userId === user?.id ? 'You' : getDisplayName(liveSubtitle.userId)}{liveSubtitle.lang ? ` · ${liveSubtitle.lang.toUpperCase()}` : ''}</span>
           <span className="gc-subtitle-text">{liveSubtitle.text}</span>
         </div>
       )}
@@ -237,6 +281,21 @@ export default function GroupCall() {
           variant: 'danger',
         }}
       />
+      </div>
+      {transcriptOpen && (
+        <TranscriptPanel
+          entries={transcriptEntries}
+          nativeLang={user?.native_language ?? undefined}
+          targetLang={user?.target_language ?? undefined}
+          savedWords={savedWordsSet}
+          isWordSaved={isWordSaved}
+          isDefinitionSaved={isDefinitionSaved}
+          onSaveWord={addWord}
+          onRemoveWord={removeWord}
+          onOptimisticSave={addOptimistic}
+          title="Group transcript"
+        />
+      )}
     </div>
   );
 }
@@ -245,7 +304,7 @@ export default function GroupCall() {
 // Remote video tile (avoids re-mounting <video> on every render)
 // ---------------------------------------------------------------------------
 
-function RemoteVideoTile({ stream, displayName }: { stream: MediaStream; displayName: string }) {
+function RemoteVideoTile({ stream, displayName, isSpeaking }: { stream: MediaStream; displayName: string; isSpeaking: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -257,7 +316,7 @@ function RemoteVideoTile({ stream, displayName }: { stream: MediaStream; display
   const audioEnabled = stream.getAudioTracks().some((t) => t.enabled);
 
   return (
-    <div className="gc-tile">
+    <div className={`gc-tile${isSpeaking ? ' gc-tile--speaking' : ''}`}>
       <video
         ref={videoRef}
         autoPlay

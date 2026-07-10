@@ -34,6 +34,13 @@ import { formatUsTime } from '../utils/dateFormat';
 import { useVideoClick } from '../hooks/useVideoClick';
 import { filterUnplayableVideos } from '../utils/playabilityFilter';
 import { toErrorMessage } from '../utils/errors';
+import {
+  DAILY_GOAL_EVENT,
+  getDailyGoalSnapshot,
+  seedDailyWordProgress,
+  setDailyWordGoal,
+  type DailyGoalSnapshot,
+} from '../utils/dailyGoal';
 
 export default function Home() {
   const { user } = useAuth();
@@ -55,6 +62,7 @@ export default function Home() {
   const [srsCounts, setSrsCounts] = useState({ new: 0, learning: 0, review: 0 });
   const [classesToday, setClassesToday] = useState<UpcomingClass[]>([]);
   const [pendingPosts, setPendingPosts] = useState<PendingWordList[]>([]);
+  const [dailyGoal, setDailyGoal] = useState<DailyGoalSnapshot>(getDailyGoalSnapshot);
 
   const targetLang = user?.target_language;
   const langName = LANGUAGES.find((l) => l.code === targetLang)?.name || targetLang || '';
@@ -64,6 +72,7 @@ export default function Home() {
   const refreshDashboard = useCallback(() => {
     getStudentDashboard()
       .then((dashboard) => {
+        seedDailyWordProgress(dashboard.wordsAddedToday);
         setNewWords(dashboard.newToday);
         setPendingPosts(dashboard.pendingClasswork.posts);
         let n = 0, l = 0, r = 0;
@@ -112,6 +121,7 @@ export default function Home() {
     getStudentDashboard()
       .then((dashboard) => {
         if (cancelled) return;
+        seedDailyWordProgress(dashboard.wordsAddedToday);
         setNewWords(dashboard.newToday);
         setPendingPosts(dashboard.pendingClasswork.posts);
         let n = 0;
@@ -168,6 +178,14 @@ export default function Home() {
     return () => { cancelled = true; };
   }, [targetLang]);
 
+  useEffect(() => {
+    const onGoalChange = (event: Event) => {
+      setDailyGoal((event as CustomEvent<DailyGoalSnapshot>).detail || getDailyGoalSnapshot());
+    };
+    window.addEventListener(DAILY_GOAL_EVENT, onGoalChange);
+    return () => window.removeEventListener(DAILY_GOAL_EVENT, onGoalChange);
+  }, []);
+
   const displayName = user?.display_name || user?.username || '';
   const firstName = displayName.split(/\s+/)[0];
 
@@ -210,7 +228,31 @@ export default function Home() {
       <div className="home-dashboard-grid">
         {/* Card 1: New Words Today (7 cols) */}
         <div className="home-dashboard-card home-card--words">
-          <div className="home-dashboard-label">New words today</div>
+          <div className="home-goal-header">
+            <div>
+              <div className="home-dashboard-label">Daily word goal</div>
+              <div className="home-goal-count"><strong>{dailyGoal.added}</strong><span> / {dailyGoal.goal}</span></div>
+            </div>
+            <label className="home-goal-stepper" title="Set daily word goal">
+              <span>Goal</span>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={dailyGoal.goal}
+                onChange={(event) => setDailyWordGoal(Number(event.target.value) || 1)}
+                aria-label="Daily word goal"
+              />
+            </label>
+          </div>
+          <div className={`home-goal-track${dailyGoal.complete ? ' is-complete' : ''}`} aria-label={`${dailyGoal.added} of ${dailyGoal.goal} words added today`}>
+            <span style={{ width: `${Math.min(100, (dailyGoal.added / dailyGoal.goal) * 100)}%` }} />
+          </div>
+          <p className={`home-goal-message${dailyGoal.complete ? ' is-complete' : ''}`}>
+            {dailyGoal.complete ? 'Goal met. Keep the streak going!' : `${dailyGoal.remaining} ${dailyGoal.remaining === 1 ? 'word' : 'words'} left today`}
+          </p>
+          <div className="home-words-divider" />
+          <div className="home-dashboard-label">Today&apos;s learning queue</div>
 
           {error && <p className="auth-error" style={{ margin: '0.5rem 0' }}>{error}</p>}
 

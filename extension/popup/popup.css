@@ -185,6 +185,24 @@ button:disabled {
   margin-bottom: 12px;
 }
 
+.daily-goal-card {
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 11px;
+  border: 1px solid rgba(45, 212, 191, .22);
+  border-radius: 8px;
+  background: rgba(20, 184, 166, .07);
+}
+.daily-goal-heading, .daily-goal-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.daily-goal-heading { color: #dbeafe; font-size: 12px; font-weight: 700; }
+.daily-goal-heading strong { color: #5eead4; }
+.daily-goal-track { height: 6px; margin: 9px 0 8px; overflow: hidden; border-radius: 3px; background: rgba(255,255,255,.1); }
+.daily-goal-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #3b82f6, #2dd4bf); transition: width .4s ease; }
+.daily-goal-track.complete i { background: linear-gradient(90deg, #22c55e, #facc15); }
+.daily-goal-footer { color: #8f9bb3; font-size: 10px; }
+.daily-goal-footer label { display: flex; align-items: center; gap: 4px; font-weight: 700; text-transform: uppercase; }
+.daily-goal-footer input { width: 45px; padding: 4px; border-radius: 5px; font-size: 11px; text-align: center; }
+
 #word-count-num {
   font-weight: 700;
   color: #6c63ff;

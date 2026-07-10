@@ -504,7 +504,7 @@ export default function Call() {
 
         <div className="call-top-bar">
           <div>
-            <div className="call-top-name">{displayName}</div>
+            <div className="call-top-name">{displayName}{isScreenSharing && <span className="call-sharing-badge">You are presenting</span>}</div>
             <div className="call-top-status">
               {activeCallId ? `Call ${activeCallId.slice(0, 8)}` : mediaStatus === 'requesting' ? 'Requesting camera and microphone' : 'Ready'}
             </div>

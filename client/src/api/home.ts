@@ -6,6 +6,7 @@ export interface StudentDashboard {
   newToday: SavedWord[];
   dueWords: SavedWord[];
   pendingClasswork: PendingClasswork;
+  wordsAddedToday: number;
 }
 
 export function getStudentDashboard() {

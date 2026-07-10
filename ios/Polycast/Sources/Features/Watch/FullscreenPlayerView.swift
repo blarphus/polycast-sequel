@@ -564,6 +564,14 @@ enum OrientationController {
         request(.landscapeRight)
     }
 
+    /// Permit free rotation (call screen) without forcing an orientation.
+    @MainActor
+    static func unlockRotation() {
+        AppDelegate.orientationMask = .allButUpsideDown
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else { return }
+        scene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+    }
+
     @MainActor
     static func leaveLandscape() {
         AppDelegate.orientationMask = .portrait

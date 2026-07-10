@@ -738,12 +738,12 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
           );
           const scheduled = await refreshScheduledWord(updatedRows[0].id);
           invalidateDictionaryCache(req.userId);
-          return res.status(200).json({ ...scheduled, _created: false });
+          return res.status(200).json({ ...scheduled, created: false, _created: false });
         }
       }
       const scheduled = await refreshScheduledWord(row.id);
       invalidateDictionaryCache(req.userId);
-      return res.status(200).json({ ...scheduled, _created: false });
+      return res.status(200).json({ ...scheduled, created: false, _created: false });
     }
 
     // Insert new definition
@@ -755,7 +755,7 @@ router.post('/api/dictionary/words', authMiddleware, validate({ body: saveWordBo
     );
     const scheduled = await refreshScheduledWord(rows[0].id);
     invalidateDictionaryCache(req.userId);
-    return res.status(201).json({ ...scheduled, _created: true });
+    return res.status(201).json({ ...scheduled, created: true, _created: true });
   } catch (err) {
     req.log.error({ err }, 'Error saving word');
     return res.status(500).json({ error: 'Failed to save word' });

@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var session: SessionStore
     @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var dailyGoal = DailyWordGoalStore.shared
     @State private var dashboard: StudentDashboard?
     @State private var trending: [TrendingVideo] = []
     @State private var news: [NewsArticle] = []
@@ -159,13 +160,52 @@ struct HomeView: View {
     private var dashboardSummarySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader("Today", subtitle: "Your learning queue and class summaries")
+            dailyGoalCard
             LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 12) {
-                summaryCard(title: "New words", value: "\(dashboard?.newToday.count ?? 0)", subtitle: "Words added today")
+                summaryCard(title: "New cards", value: "\(dashboard?.newToday.count ?? 0)", subtitle: "In today's queue")
                 summaryCard(title: "Due now", value: "\(dashboard?.dueWords.count ?? 0)", subtitle: "Ready to review")
                 summaryCard(title: "Pending classwork", value: "\(dashboard?.pendingClasswork.count ?? 0)", subtitle: "Assignments waiting")
                 summaryCard(title: "Classes", value: "\(classes.count)", subtitle: "Scheduled today")
             }
         }
+    }
+
+    private var dailyGoalCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Daily word goal")
+                        .font(.headline)
+                    Text("\(dailyGoal.addedToday) / \(dailyGoal.goal)")
+                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                }
+                Spacer()
+                Stepper(
+                    value: Binding(
+                        get: { dailyGoal.goal },
+                        set: { dailyGoal.setGoal($0) }
+                    ),
+                    in: 1...50
+                ) {
+                    Text("Goal")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                }
+                .labelsHidden()
+            }
+
+            ProgressView(value: dailyGoal.progress)
+                .tint(dailyGoal.isComplete ? .yellow : .teal)
+                .scaleEffect(x: 1, y: 1.8, anchor: .center)
+
+            Text(dailyGoal.isComplete
+                 ? "Goal met. Keep the streak going!"
+                 : "\(dailyGoal.remaining) \(dailyGoal.remaining == 1 ? "word" : "words") left today")
+                .font(.footnote.weight(dailyGoal.isComplete ? .semibold : .regular))
+                .foregroundStyle(dailyGoal.isComplete ? .green : .secondary)
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func summaryCard(title: String, value: String, subtitle: String) -> some View {
@@ -318,6 +358,9 @@ struct HomeView: View {
             async let classroomsValue = APIClient.shared.classrooms()
 
             dashboard = try await dashboardValue
+            if let dashboard {
+                dailyGoal.seed(dashboard.wordsAddedToday)
+            }
             trending = try await trendingValue
             news = try await newsValue
             channels = try await channelsValue

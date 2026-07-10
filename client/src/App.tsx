@@ -44,6 +44,7 @@ import PhraseTranslator from './components/PhraseTranslator';
 import BottomToolbar from './components/BottomToolbar';
 import ErrorBoundary from './components/ErrorBoundary';
 import TtsFallbackToast from './components/TtsFallbackToast';
+import DailyGoalCelebration from './components/DailyGoalCelebration';
 
 // ---------------------------------------------------------------------------
 // ProtectedRoute -- redirects to /login when the user is not authenticated
@@ -121,6 +122,7 @@ export default function App() {
       {/* Global incoming-call modal (only when authenticated) */}
       <AuthenticatedShell />
       <TtsFallbackToast />
+      <DailyGoalCelebration />
 
       <ErrorBoundary>
       <Routes>

@@ -22,7 +22,7 @@ router.get('/api/home/student-dashboard', authMiddleware, async (req, res) => {
     const visibleTeacherIds = await listLegacyTeacherIdsForStudent(req.userId);
     const timeZone = validTimeZone(req.query.timeZone);
 
-    const [newTodayResult, dueWordsResult, pendingClassworkResult] = await Promise.all([
+    const [newTodayResult, dueWordsResult, pendingClassworkResult, wordsAddedTodayResult] = await Promise.all([
       listNewTodayWords(pool, req.userId, timeZone),
       listDueWords(pool, req.userId, timeZone),
       visibleTeacherIds.length === 0
@@ -43,6 +43,13 @@ router.get('/api/home/student-dashboard', authMiddleware, async (req, res) => {
            ORDER BY sp.created_at DESC`,
           [req.userId, visibleTeacherIds],
         ),
+      pool.query(
+        `SELECT COUNT(*)::int AS count
+           FROM saved_words
+          WHERE user_id = $1
+            AND (created_at AT TIME ZONE $2)::date = (NOW() AT TIME ZONE $2)::date`,
+        [req.userId, timeZone],
+      ),
     ]);
 
     return res.json({
@@ -52,6 +59,7 @@ router.get('/api/home/student-dashboard', authMiddleware, async (req, res) => {
         count: pendingClassworkResult.rows.length,
         posts: pendingClassworkResult.rows,
       },
+      wordsAddedToday: wordsAddedTodayResult.rows[0]?.count || 0,
     });
   } catch (err) {
     req.log.error({ err }, 'GET /api/home/student-dashboard error');

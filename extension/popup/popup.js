@@ -18,6 +18,10 @@ const saveApiBaseBtn = document.getElementById('save-api-base-btn');
 const useLocalApiBtn = document.getElementById('use-local-api-btn');
 const settingsMessage = document.getElementById('settings-message');
 const wordCountEl = document.getElementById('word-count-num');
+const dailyGoalCountEl = document.getElementById('daily-goal-count');
+const dailyGoalProgressEl = document.getElementById('daily-goal-progress');
+const dailyGoalMessageEl = document.getElementById('daily-goal-message');
+const dailyGoalInputEl = document.getElementById('daily-goal-input');
 const openAppBtn = document.getElementById('open-app-btn');
 const logoutBtn = document.getElementById('logout-btn');
 
@@ -56,7 +60,7 @@ function ensureLanguageOption(code) {
 // Check status on popup open
 chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
   if (res && res.loggedIn && res.user) {
-    showStatus(res.user, res.savedWordCount || 0);
+    showStatus(res.user, res.savedWordCount || 0, res.dailyGoal);
   } else {
     showView(loginView);
   }
@@ -68,7 +72,17 @@ chrome.runtime.sendMessage({ type: 'GET_API_BASE' }, (res) => {
   }
 });
 
-function showStatus(user, wordCount) {
+function renderDailyGoal(snapshot = { goal: 5, added: 0, remaining: 5, complete: false }) {
+  dailyGoalCountEl.textContent = `${snapshot.added} / ${snapshot.goal}`;
+  dailyGoalProgressEl.style.width = `${Math.min(100, (snapshot.added / Math.max(1, snapshot.goal)) * 100)}%`;
+  dailyGoalProgressEl.parentElement.classList.toggle('complete', snapshot.complete);
+  dailyGoalMessageEl.textContent = snapshot.complete
+    ? 'Goal complete!'
+    : `${snapshot.remaining} ${snapshot.remaining === 1 ? 'word' : 'words'} left today`;
+  dailyGoalInputEl.value = String(snapshot.goal);
+}
+
+function showStatus(user, wordCount, dailyGoal) {
   displayNameEl.textContent = user.display_name || user.username;
   usernameDisplayEl.textContent = `@${user.username}`;
   nativeLangEl.textContent = langName(user.native_language);
@@ -76,6 +90,7 @@ function showStatus(user, wordCount) {
   ensureLanguageOption(user.target_language);
   targetLanguageSelect.value = user.target_language || '';
   wordCountEl.textContent = String(wordCount);
+  renderDailyGoal(dailyGoal);
   setSettingsMessage('');
   logoutBtn.classList.remove('hidden');
   showView(statusView);
@@ -107,12 +122,19 @@ loginForm.addEventListener('submit', (e) => {
       // Fetch full status to get word count
       chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (statusRes) => {
         if (statusRes && statusRes.loggedIn) {
-          showStatus(statusRes.user, statusRes.savedWordCount || 0);
+          showStatus(statusRes.user, statusRes.savedWordCount || 0, statusRes.dailyGoal);
         } else {
           showStatus(res.user, 0);
         }
       });
     }
+  });
+});
+
+dailyGoalInputEl.addEventListener('change', () => {
+  const goal = Math.min(50, Math.max(1, Number(dailyGoalInputEl.value) || 5));
+  chrome.runtime.sendMessage({ type: 'SET_DAILY_GOAL', goal }, (res) => {
+    if (res?.snapshot) renderDailyGoal(res.snapshot);
   });
 });
 

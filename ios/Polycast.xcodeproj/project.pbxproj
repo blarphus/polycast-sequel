@@ -29,6 +29,7 @@
 		5D7BC7DB29B996705F2FDEA8 /* VoIPPushManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 592164E1CAE013368C4797D8 /* VoIPPushManager.swift */; };
 		64A2E4757F57D2DC1CFDB802 /* TodayWordsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5189256AF449795DA3D1BA6D /* TodayWordsWidget.swift */; };
 		64E7A76B415CB9638CFC3DD7 /* AudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6830E0AA348B42CB7989D10 /* AudioPlayer.swift */; };
+		6688755A284F732CAE86A5A2 /* DailyWordGoalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DEACA0594E360FCE0EAA0CB /* DailyWordGoalStore.swift */; };
 		66F00ED19D3938CEB81797E2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B3AFB60DED4E6BCE411A26B2 /* Assets.xcassets */; };
 		69CC61158CF1CD098FA23284 /* FullscreenPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A35F10172AA77BE9043260E /* FullscreenPlayerView.swift */; };
 		705EEEE496F80C3151326C0F /* WordEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0743D44BB7157ED3E3B751A /* WordEditView.swift */; };
@@ -120,6 +121,7 @@
 		010B6134E33FD8B31A7B91EB /* PhrasePopupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhrasePopupView.swift; sourceTree = "<group>"; };
 		0203C8D98CA35057791AB704 /* PracticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeView.swift; sourceTree = "<group>"; };
 		08B4C5C697BC77D87370A498 /* TildeMarkup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TildeMarkup.swift; sourceTree = "<group>"; };
+		0DEACA0594E360FCE0EAA0CB /* DailyWordGoalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyWordGoalStore.swift; sourceTree = "<group>"; };
 		189B31DD998B951FA1DCFF61 /* KeychainTokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainTokenStore.swift; sourceTree = "<group>"; };
 		228D66EF6CF17CACA4CA1E29 /* ReaderText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderText.swift; sourceTree = "<group>"; };
 		25D2D5484B1B558182EF4504 /* IncomingCallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncomingCallView.swift; sourceTree = "<group>"; };
@@ -294,6 +296,7 @@
 				E6830E0AA348B42CB7989D10 /* AudioPlayer.swift */,
 				B104D6A16A6D8879BC065802 /* BookLibrary.swift */,
 				F56FBC3ACDB5E1277BF572C4 /* CallManager.swift */,
+				0DEACA0594E360FCE0EAA0CB /* DailyWordGoalStore.swift */,
 				D8147D5FDE06218B05FB7C91 /* EpubParser.swift */,
 				872DE2BA9E72A6D7E74C8B42 /* HandsFreeController.swift */,
 				189B31DD998B951FA1DCFF61 /* KeychainTokenStore.swift */,
@@ -619,6 +622,7 @@
 				34329787A8ED096E130F1701 /* ChatView.swift in Sources */,
 				A5CB3741B3FC3146019E172F /* Components.swift in Sources */,
 				448587771D145441C7AC573E /* ConversationsView.swift in Sources */,
+				6688755A284F732CAE86A5A2 /* DailyWordGoalStore.swift in Sources */,
 				82F8D5E903BD7B13085798D9 /* DictionaryView.swift in Sources */,
 				1F64DE69147E1DAACBF9B94A /* EpubParser.swift in Sources */,
 				9A8D6BADEFFFBD6F930414A1 /* FriendRequestsSheet.swift in Sources */,

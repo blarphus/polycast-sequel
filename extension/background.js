@@ -3,6 +3,9 @@
 // ---------------------------------------------------------------------------
 
 const DEFAULT_API_BASE = 'https://polycast-sequel.onrender.com';
+const DEFAULT_DAILY_WORD_GOAL = 5;
+const DAILY_GOAL_KEY = 'dailyWordGoal';
+const DAILY_PROGRESS_KEY = 'dailyWordProgress';
 const OFFLINE_MODE_KEY = 'offlineMode';
 const OFFLINE_WORDS_KEY = 'offlineDictionaryWords';
 const SELECTION_CONTEXT_MENU_ID = 'polycast-lookup-selection';
@@ -58,6 +61,63 @@ async function getApiBase() {
 async function getAuthToken() {
   const { authToken } = await chrome.storage.local.get('authToken');
   return authToken;
+}
+
+function localDateKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+async function getDailyGoalSnapshot() {
+  const stored = await chrome.storage.local.get([DAILY_GOAL_KEY, DAILY_PROGRESS_KEY]);
+  const goal = Number(stored[DAILY_GOAL_KEY]) > 0 ? Math.round(Number(stored[DAILY_GOAL_KEY])) : DEFAULT_DAILY_WORD_GOAL;
+  const progress = stored[DAILY_PROGRESS_KEY];
+  const added = progress?.date === localDateKey() ? Math.max(0, Number(progress.count) || 0) : 0;
+  return { goal, added, remaining: Math.max(0, goal - added), complete: added >= goal };
+}
+
+async function broadcastDailyGoalUpdated(snapshot, extra = {}) {
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    chrome.tabs.sendMessage(tab.id, { type: 'DAILY_GOAL_UPDATED', snapshot, ...extra }).catch(() => {});
+  }
+}
+
+async function seedDailyGoalProgress(count) {
+  const normalized = Math.max(0, Math.round(Number(count) || 0));
+  await chrome.storage.local.set({ [DAILY_PROGRESS_KEY]: { date: localDateKey(), count: normalized } });
+  const snapshot = await getDailyGoalSnapshot();
+  await broadcastDailyGoalUpdated(snapshot);
+  return snapshot;
+}
+
+async function syncDailyGoalFromServer() {
+  const token = await getAuthToken();
+  if (!token) {
+    const words = await getOfflineWords();
+    const now = new Date();
+    return seedDailyGoalProgress(words.filter((word) => {
+      const created = new Date(word.created_at || 0);
+      return created.getFullYear() === now.getFullYear()
+        && created.getMonth() === now.getMonth()
+        && created.getDate() === now.getDate();
+    }).length);
+  }
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const dashboard = await apiFetch(`/api/home/student-dashboard?timeZone=${encodeURIComponent(zone)}`);
+    return seedDailyGoalProgress(dashboard.wordsAddedToday || 0);
+  } catch {
+    return getDailyGoalSnapshot();
+  }
+}
+
+async function recordDailyGoalWord() {
+  const before = await getDailyGoalSnapshot();
+  await chrome.storage.local.set({ [DAILY_PROGRESS_KEY]: { date: localDateKey(), count: before.added + 1 } });
+  const after = await getDailyGoalSnapshot();
+  await broadcastDailyGoalUpdated(after, { justAdded: true, justCompleted: !before.complete && after.complete });
+  return { ...after, justAdded: true, justCompleted: !before.complete && after.complete };
 }
 
 async function apiFetch(path, opts = {}) {
@@ -204,11 +264,11 @@ async function saveOfflineWord(word, sentence) {
   const existing = words.find((entry) =>
     String(entry.word || '').toLowerCase() === word.toLowerCase() &&
     entry.target_language === (user.target_language || null));
-  if (existing) return existing;
+  if (existing) return { ...existing, _created: false };
 
   const saved = makeOfflineSavedWord({ word, sentence, user });
   await setOfflineWords([saved, ...words]);
-  return saved;
+  return { ...saved, _created: true };
 }
 
 async function startOfflineMode(username) {
@@ -346,18 +406,18 @@ async function handleMessage(msg) {
         }
         const words = await getOfflineWords();
         await chrome.storage.local.set({ user, savedWords: savedWordTokens(words) });
-        return { loggedIn: true, user, savedWordCount: words.length, offline: true };
+        return { loggedIn: true, user, savedWordCount: words.length, dailyGoal: await syncDailyGoalFromServer(), offline: true };
       }
 
       try {
         const user = await apiFetch('/api/me');
         await chrome.storage.local.set({ user });
         const { savedWords } = await chrome.storage.local.get('savedWords');
-        return { loggedIn: true, user, savedWordCount: (savedWords || []).length };
+        return { loggedIn: true, user, savedWordCount: (savedWords || []).length, dailyGoal: await syncDailyGoalFromServer() };
       } catch (err) {
         const { user = DEFAULT_OFFLINE_USER } = await chrome.storage.local.get('user');
         const words = await getOfflineWords();
-        return { loggedIn: true, user: { ...user, offline: true }, savedWordCount: words.length, offline: true, error: err.message };
+        return { loggedIn: true, user: { ...user, offline: true }, savedWordCount: words.length, dailyGoal: await getDailyGoalSnapshot(), offline: true, error: err.message };
       }
     }
 
@@ -416,7 +476,8 @@ async function handleMessage(msg) {
       if (!token) {
         if (!offlineMode) throw new Error('Sign in to Polycast to save words');
         const saved = await saveOfflineWord(msg.word, msg.sentence);
-        return { success: true, saved, offline: true };
+        const dailyGoal = saved._created ? await recordDailyGoalWord() : await getDailyGoalSnapshot();
+        return { success: true, saved, dailyGoal, offline: true };
       }
 
       try {
@@ -468,12 +529,26 @@ async function handleMessage(msg) {
         await chrome.storage.local.set({ savedWords: updated });
         await broadcastWordsUpdated(updated);
 
-        return { success: true, saved, fallback_notices: enriched.fallback_notices || [] };
+        const dailyGoal = saved._created ? await recordDailyGoalWord() : await getDailyGoalSnapshot();
+        return { success: true, saved, dailyGoal, fallback_notices: enriched.fallback_notices || [] };
       } catch (err) {
         if (String(err.message || '').includes('Session expired')) throw err;
         const saved = await saveOfflineWord(msg.word, msg.sentence);
-        return { success: true, saved, offline: true, warning: err.message };
+        const dailyGoal = saved._created ? await recordDailyGoalWord() : await getDailyGoalSnapshot();
+        return { success: true, saved, dailyGoal, offline: true, warning: err.message };
       }
+    }
+
+    case 'GET_DAILY_GOAL': {
+      return { snapshot: await syncDailyGoalFromServer() };
+    }
+
+    case 'SET_DAILY_GOAL': {
+      const goal = Math.min(50, Math.max(1, Math.round(Number(msg.goal) || DEFAULT_DAILY_WORD_GOAL)));
+      await chrome.storage.local.set({ [DAILY_GOAL_KEY]: goal });
+      const snapshot = await getDailyGoalSnapshot();
+      await broadcastDailyGoalUpdated(snapshot);
+      return { snapshot };
     }
 
     // Self-heal highlighting: a tapped inflection of an already-saved word is

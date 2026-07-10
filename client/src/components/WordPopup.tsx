@@ -6,12 +6,18 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useRef } from 'react';
-import { lookupWord, enrichWord, explainWord, type SaveWordData } from '../api';
+import { lookupWord, enrichWord, explainWord, getStudentDashboard, type SaveWordData } from '../api';
 import { playAiSpeech } from '../utils/aiSpeech';
 import { useDictionaryToast } from '../hooks/useDictionaryToast';
 import { useClickOutside } from '../hooks/useClickOutside';
 import '@popup/wordPopup.css';
 import '@popup/wordPopupCore.js'; // side-effect: sets window.PolycastWordPopup
+import {
+  DAILY_GOAL_EVENT,
+  getDailyGoalSnapshot,
+  seedDailyWordProgress,
+  type DailyGoalSnapshot,
+} from '../utils/dailyGoal';
 
 type LookupResult = Awaited<ReturnType<typeof lookupWord>>;
 type SavedState = 'saved' | 'new-sense' | 'unsaved';
@@ -167,7 +173,32 @@ export default function WordPopup(props: WordPopupProps) {
     });
     elRef.current = controls.el;
 
+    const goalEl = document.createElement('div');
+    goalEl.className = 'pc-popup-goal';
+    const renderGoal = (snapshot: DailyGoalSnapshot, animate = false) => {
+      goalEl.classList.toggle('pc-popup-goal--complete', snapshot.complete);
+      goalEl.classList.toggle('pc-popup-goal--pulse', animate);
+      goalEl.innerHTML = `
+        <div class="pc-popup-goal-copy">
+          <span>${snapshot.complete ? 'Daily goal complete' : `${snapshot.remaining} more ${snapshot.remaining === 1 ? 'word' : 'words'} today`}</span>
+          <strong>${snapshot.added}/${snapshot.goal}</strong>
+        </div>
+        <div class="pc-popup-goal-track"><i style="width:${Math.min(100, (snapshot.added / snapshot.goal) * 100)}%"></i></div>`;
+      if (animate) window.setTimeout(() => goalEl.classList.remove('pc-popup-goal--pulse'), 700);
+    };
+    renderGoal(getDailyGoalSnapshot());
+    controls.el.querySelector('.pc-popup-explain')?.before(goalEl);
+    const onGoalChange = (event: Event) => {
+      const detail = (event as CustomEvent<DailyGoalSnapshot & { justAdded?: boolean }>).detail;
+      if (detail) renderGoal(detail, !!detail.justAdded);
+    };
+    window.addEventListener(DAILY_GOAL_EVENT, onGoalChange);
+    getStudentDashboard()
+      .then((dashboard) => seedDailyWordProgress(dashboard.wordsAddedToday))
+      .catch(() => undefined);
+
     return () => {
+      window.removeEventListener(DAILY_GOAL_EVENT, onGoalChange);
       controls.destroy();
       elRef.current = null;
     };

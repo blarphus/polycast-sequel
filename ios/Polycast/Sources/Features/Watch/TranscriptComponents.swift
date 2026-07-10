@@ -63,6 +63,26 @@ func tokenize(_ text: String) -> [TextToken] {
     return tokens
 }
 
+/// Deterministic per-user color for transcript speaker names, matching the
+/// palette used by the web client (utils/speakerColor.ts).
+func speakerColor(for userId: String) -> Color {
+    let palette: [Color] = [
+        Color(red: 0.655, green: 0.545, blue: 0.980), // #a78bfa purple
+        Color(red: 0.204, green: 0.827, blue: 0.600), // #34d399 green
+        Color(red: 0.957, green: 0.447, blue: 0.714), // #f472b6 pink
+        Color(red: 0.984, green: 0.749, blue: 0.141), // #fbbf24 amber
+        Color(red: 0.376, green: 0.647, blue: 0.980), // #60a5fa blue
+        Color(red: 0.973, green: 0.443, blue: 0.443), // #f87171 red
+        Color(red: 0.176, green: 0.831, blue: 0.855), // #2dd4da cyan
+        Color(red: 0.984, green: 0.573, blue: 0.235), // #fb923c orange
+    ]
+    var hash: UInt32 = 5381
+    for scalar in userId.unicodeScalars {
+        hash = hash &* 33 &+ scalar.value
+    }
+    return palette[Int(hash % UInt32(palette.count))]
+}
+
 func timestampText(_ milliseconds: Int) -> String {
     let totalSeconds = milliseconds / 1000
     let minutes = totalSeconds / 60
@@ -181,6 +201,11 @@ struct InlineTokenizedText: View {
     @Binding var pausedForLookup: Bool
     /// Computes the wider explain context (recent ~50 words) lazily at tap time.
     var contextProvider: (() -> String)? = nil
+    var font: Font = .title3
+    var textColor: Color = .primary
+    /// Replaces the default tap behavior (open lookup) when set — used by the
+    /// call screen to short-circuit words that aren't in the target language.
+    var onWordTap: ((String) -> Void)? = nil
 
     @EnvironmentObject private var wordStore: WordStore
 
@@ -189,11 +214,16 @@ struct InlineTokenizedText: View {
             ForEach(Array(tokenize(text).enumerated()), id: \.offset) { _, token in
                 if token.isWord {
                     Button {
-                        selectedLookup = LookupContext(word: token.text, sentence: sentence, context: contextProvider?())
-                        pausedForLookup = true
+                        if let onWordTap {
+                            onWordTap(token.text)
+                        } else {
+                            selectedLookup = LookupContext(word: token.text, sentence: sentence, context: contextProvider?())
+                            pausedForLookup = true
+                        }
                     } label: {
                         Text(token.text)
-                            .font(.title3)
+                            .font(font)
+                            .foregroundStyle(textColor)
                             .background(
                                 wordStore.savedForms.contains(savedWordMatchKey(token.text))
                                     ? Color(red: 0.18, green: 0.8, blue: 0.443).opacity(0.22)
@@ -204,7 +234,8 @@ struct InlineTokenizedText: View {
                     .buttonStyle(.plain)
                 } else {
                     Text(token.text)
-                        .font(.title3)
+                        .font(font)
+                        .foregroundStyle(textColor)
                 }
             }
         }
@@ -279,6 +310,7 @@ private struct PopupContentHeightKey: PreferenceKey {
 struct WordPopupView: View {
     @EnvironmentObject private var session: SessionStore
     @EnvironmentObject private var wordStore: WordStore
+    @ObservedObject private var dailyGoal = DailyWordGoalStore.shared
 
     let context: LookupContext
     let onDismiss: () -> Void
@@ -454,6 +486,8 @@ struct WordPopupView: View {
             wordContent(lookup)
         }
 
+        dailyGoalProgress
+
         Button {
             Task { await explain(lookup) }
         } label: {
@@ -534,6 +568,33 @@ struct WordPopupView: View {
                 .foregroundStyle(errorRed)
                 .padding(.top, 8)
         }
+    }
+
+    private var dailyGoalProgress: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                Text(dailyGoal.isComplete
+                     ? "Daily goal complete"
+                     : "\(dailyGoal.remaining) more \(dailyGoal.remaining == 1 ? "word" : "words") today")
+                Spacer()
+                Text("\(dailyGoal.addedToday)/\(dailyGoal.goal)")
+                    .fontWeight(.bold)
+                    .foregroundStyle(dailyGoal.isComplete ? .yellow : .teal)
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(definitionText)
+
+            ProgressView(value: dailyGoal.progress)
+                .tint(dailyGoal.isComplete ? .yellow : .teal)
+        }
+        .padding(10)
+        .background((dailyGoal.isComplete ? Color.yellow : Color.teal).opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke((dailyGoal.isComplete ? Color.yellow : Color.teal).opacity(0.24))
+        }
+        .padding(.top, 10)
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: dailyGoal.addedToday)
     }
 
     private var phraseToggle: some View {

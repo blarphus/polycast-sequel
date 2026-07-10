@@ -29,8 +29,11 @@ final class CallManager: ObservableObject {
     @Published private(set) var remoteVideoTrack: RTCVideoTrack?
     @Published var isMuted = false
     @Published var isCameraOff = false
+    @Published var isScreenSharing = false
     @Published var callMode: CallMode = .video
     @Published var liveTranscript: String = ""
+    @Published var liveTranscriptLang: String = ""
+    @Published var liveTranscriptUserId: String = ""
     @Published var transcriptEntries: [TranscriptEntry] = []
 
     private let socket = SocketClient.shared
@@ -46,6 +49,7 @@ final class CallManager: ObservableObject {
 
     private var listenerIds: [UUID] = []
     private var transcriptListenerIds: [UUID] = []
+    private var reconnectHandlerId: UUID?
 
     private init() {}
 
@@ -97,9 +101,11 @@ final class CallManager: ObservableObject {
             }
         }
 
-        let endedId = socket.on("call:ended") { [weak self] _ in
+        let endedId = socket.on("call:ended") { [weak self] data in
+            let reason = (data.first as? [String: Any])?["reason"] as? String
             Task { @MainActor [weak self] in
-                self?.endCallLocally(reason: "Call ended")
+                guard let self else { return }
+                self.endCallLocally(reason: self.endReasonMessage(reason))
             }
         }
 
@@ -163,6 +169,20 @@ final class CallManager: ObservableObject {
         }
 
         listenerIds = [incomingId, ringingId, acceptedId, rejectedId, endedId, cancelledId, busyId, errorId, offerId, answerId, iceId].compactMap { $0 }
+
+        // The server's transcription session lives on one socket; if the
+        // socket reconnects mid-call (token renewal, network blip), the
+        // session dies server-side and audio chunks are silently dropped.
+        // Re-issue transcription:start on the fresh socket.
+        reconnectHandlerId = socket.onConnect { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self,
+                      self.callStatus == .connected,
+                      !self.transcriptListenerIds.isEmpty,
+                      let peerId = self.activeCallPeerId else { return }
+                self.socket.emit("transcription:start", ["peerId": peerId])
+            }
+        }
     }
 
     func stopListening() {
@@ -170,6 +190,10 @@ final class CallManager: ObservableObject {
             socket.off(id)
         }
         listenerIds.removeAll()
+        if let reconnectHandlerId {
+            socket.offConnect(reconnectHandlerId)
+            self.reconnectHandlerId = nil
+        }
     }
 
     // MARK: - Initiate Call (Caller)
@@ -281,6 +305,24 @@ final class CallManager: ObservableObject {
         isCameraOff = webRTCClient?.toggleCamera() ?? false
     }
 
+    func toggleScreenShare() {
+        guard let client = webRTCClient else { return }
+        if isScreenSharing {
+            client.stopScreenShare()
+            isScreenSharing = false
+        } else {
+            client.startScreenShare { [weak self] error in
+                Task { @MainActor [weak self] in
+                    if let error {
+                        print("[Polycast] CallManager: screen share failed: \(error)")
+                    } else {
+                        self?.isScreenSharing = true
+                    }
+                }
+            }
+        }
+    }
+
     func getLocalVideoTrack() -> RTCVideoTrack? {
         webRTCClient?.getLocalVideoTrack()
     }
@@ -296,8 +338,12 @@ final class CallManager: ObservableObject {
         let transcriptId = socket.on("transcript") { [weak self] data in
             guard let dict = data.first as? [String: Any],
                   let text = dict["text"] as? String else { return }
+            let lang = dict["lang"] as? String ?? ""
+            let userId = dict["userId"] as? String ?? ""
             Task { @MainActor [weak self] in
                 self?.liveTranscript = text
+                self?.liveTranscriptLang = lang
+                self?.liveTranscriptUserId = userId
             }
         }
 
@@ -352,15 +398,28 @@ final class CallManager: ObservableObject {
     private func setupWebRTC(mode: CallMode = .video) async {
         let client = WebRTCClient()
         client.delegate = self
-        self.webRTCClient = client
 
         do {
             let response = try await api.iceServers()
             client.createPeerConnection(iceServers: response.iceServers)
             client.addLocalStream(includeVideo: mode == .video)
+            // Only publish the client once the peer connection exists — an
+            // offer arriving during the ICE-server fetch must hit the
+            // pendingOffer path, not a client with no peer connection.
+            self.webRTCClient = client
         } catch {
             print("[Polycast] CallManager: failed to fetch ICE servers: \(error)")
             endCallLocally(reason: "Failed to set up connection")
+        }
+    }
+
+    private func endReasonMessage(_ reason: String?) -> String {
+        let name = activeCallDisplayName.isEmpty ? "Your peer" : activeCallDisplayName
+        switch reason {
+        case "left": return "\(name) left the call"
+        case "disconnected": return "\(name) disconnected"
+        case "timeout": return "Connection timed out"
+        default: return "Call ended"
         }
     }
 
@@ -435,8 +494,14 @@ final class CallManager: ObservableObject {
     }
 
     private func handleRemoteIceCandidate(_ candidateDict: [String: Any]) {
-        guard let client = webRTCClient,
-              let sdp = candidateDict["candidate"] as? String,
+        // Buffer candidates until the peer connection exists and has a remote
+        // description; they are flushed after the offer/answer is applied.
+        guard let client = webRTCClient, client.hasRemoteDescription else {
+            pendingIceCandidates.append(candidateDict)
+            return
+        }
+
+        guard let sdp = candidateDict["candidate"] as? String,
               let sdpMLineIndexValue = candidateDict["sdpMLineIndex"] else { return }
 
         let sdpMLineIndex: Int32
@@ -445,11 +510,6 @@ final class CallManager: ObservableObject {
         } else if let intValue = sdpMLineIndexValue as? Int {
             sdpMLineIndex = Int32(intValue)
         } else {
-            return
-        }
-
-        if !client.hasRemoteDescription {
-            pendingIceCandidates.append(candidateDict)
             return
         }
 
@@ -483,8 +543,11 @@ final class CallManager: ObservableObject {
         pendingIceCandidates.removeAll()
         isMuted = false
         isCameraOff = false
+        isScreenSharing = false
         callMode = .video
         liveTranscript = ""
+        liveTranscriptLang = ""
+        liveTranscriptUserId = ""
         transcriptEntries = []
         isNegotiating = false
         webRTCClient?.close()

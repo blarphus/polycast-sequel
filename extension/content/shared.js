@@ -20,6 +20,7 @@ let savedWordsSet = new Set();
 // ---- Target language state ------------------------------------------------
 
 let targetLanguage = null;
+let dailyGoalSnapshot = { goal: 5, added: 0, remaining: 5, complete: false };
 
 (async function initTargetLanguage() {
   try {
@@ -27,6 +28,15 @@ let targetLanguage = null;
     if (res && res.targetLanguage) {
       targetLanguage = res.targetLanguage.toLowerCase();
     }
+  } catch {
+    // Extension context invalidated — will work after page refresh
+  }
+})();
+
+(async function initDailyGoal() {
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'GET_DAILY_GOAL' });
+    if (res?.snapshot) dailyGoalSnapshot = res.snapshot;
   } catch {
     // Extension context invalidated — will work after page refresh
   }
@@ -82,8 +92,50 @@ chrome.runtime.onMessage.addListener((msg) => {
     });
   } else if (msg.type === 'TARGET_LANGUAGE_UPDATED') {
     targetLanguage = msg.targetLanguage ? msg.targetLanguage.toLowerCase() : null;
+  } else if (msg.type === 'DAILY_GOAL_UPDATED' && msg.snapshot) {
+    dailyGoalSnapshot = msg.snapshot;
+    updateActivePopupGoal(!!msg.justAdded);
+    if (msg.justAdded) showGoalCelebration(msg.snapshot, !!msg.justCompleted);
   }
 });
+
+function languageName(code) {
+  if (!code) return 'Detecting language';
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) || code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
+  }
+}
+
+function goalMarkup(snapshot) {
+  const label = snapshot.complete
+    ? 'Daily goal complete'
+    : `${snapshot.remaining} more ${snapshot.remaining === 1 ? 'word' : 'words'} today`;
+  const width = Math.min(100, (snapshot.added / Math.max(1, snapshot.goal)) * 100);
+  return `<div class="pc-popup-goal-copy"><span>${label}</span><strong>${snapshot.added}/${snapshot.goal}</strong></div>` +
+    `<div class="pc-popup-goal-track"><i style="width:${width}%"></i></div>`;
+}
+
+function updateActivePopupGoal(animate = false) {
+  const goal = activePopup?.el?.querySelector('.pc-popup-goal');
+  if (!goal) return;
+  goal.innerHTML = goalMarkup(dailyGoalSnapshot);
+  goal.classList.toggle('pc-popup-goal--complete', dailyGoalSnapshot.complete);
+  goal.classList.toggle('pc-popup-goal--pulse', animate);
+  if (animate) setTimeout(() => goal.classList.remove('pc-popup-goal--pulse'), 700);
+}
+
+function showGoalCelebration(snapshot, completed) {
+  document.querySelector('.pc-goal-celebration')?.remove();
+  const toast = document.createElement('div');
+  toast.className = `pc-goal-celebration${completed ? ' pc-goal-celebration--complete' : ''}`;
+  toast.setAttribute('role', 'status');
+  toast.innerHTML = `<b>${completed ? '★' : '✓'}</b><div><strong>${completed ? 'Daily goal complete!' : 'Word added'}</strong>` +
+    `<span>${snapshot.complete ? `${snapshot.added} words added today` : `${snapshot.remaining} more to reach today's goal`}</span></div>`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), completed ? 3200 : 2200);
+}
 
 // ---- Tokenization ---------------------------------------------------------
 
@@ -374,6 +426,16 @@ function openWordPopup({
         res.is_existing ? 'saved' : (savedWordsSet.has(lower) ? 'new-sense' : 'unsaved'),
     },
   });
+
+  const languageChip = document.createElement('span');
+  languageChip.className = 'pc-popup-language';
+  languageChip.textContent = languageName(targetLanguage);
+  activePopup.el.querySelector('.pc-popup-word')?.after(languageChip);
+
+  const goal = document.createElement('div');
+  goal.className = `pc-popup-goal${dailyGoalSnapshot.complete ? ' pc-popup-goal--complete' : ''}`;
+  goal.innerHTML = goalMarkup(dailyGoalSnapshot);
+  activePopup.el.querySelector('.pc-popup-explain')?.before(goal);
 }
 
 function handleWordClick(word, sentence, anchorEl) {

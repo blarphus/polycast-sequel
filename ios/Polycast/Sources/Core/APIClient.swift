@@ -479,6 +479,11 @@ final class APIClient: @unchecked Sendable {
         if let imageTerm { body["image_term"] = imageTerm }
 
         let response: SavedWordResponse = try await request("/dictionary/words", method: "POST", body: body)
+        if response.created == true {
+            await MainActor.run {
+                DailyWordGoalStore.shared.recordWordAdded()
+            }
+        }
         return response.value
     }
 

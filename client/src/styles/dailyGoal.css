@@ -1,0 +1,35 @@
+.goal-celebration {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-width: min(340px, calc(100vw - 32px));
+  padding: .8rem 1rem;
+  border: 1px solid rgba(45,212,191,.45);
+  border-radius: 8px;
+  background: #0f172a;
+  box-shadow: 0 16px 50px rgba(0,0,0,.32);
+  color: #fff;
+  transform: translateX(-50%);
+  animation: goal-toast-in .45s cubic-bezier(.22,1,.36,1), goal-toast-out .3s ease 1.9s forwards;
+}
+.goal-celebration--complete { border-color: rgba(250,204,21,.65); animation: goal-toast-in .45s cubic-bezier(.22,1,.36,1), goal-complete-glow 1.2s ease .25s, goal-toast-out .3s ease 2.85s forwards; }
+.goal-celebration-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border-radius: 50%; background: #14b8a6; }
+.goal-celebration--complete .goal-celebration-icon { background: #eab308; color: #111827; }
+.goal-celebration strong, .goal-celebration span { display: block; }
+.goal-celebration strong { font-size: .9rem; }
+.goal-celebration span { margin-top: .12rem; color: #aeb9cf; font-size: .76rem; }
+.goal-celebration-burst { position: absolute; left: 34px; top: 50%; pointer-events: none; }
+.goal-celebration-burst i { position: absolute; width: 4px; height: 12px; border-radius: 2px; background: hsl(calc(var(--i) * 30deg) 82% 58%); opacity: 0; transform: rotate(calc(var(--i) * 30deg)) translateY(-12px); }
+.goal-celebration--complete .goal-celebration-burst i { animation: goal-confetti .8s ease-out calc(var(--i) * 20ms) forwards; }
+@keyframes goal-toast-in { from { opacity: 0; transform: translate(-50%, -18px) scale(.96); } }
+@keyframes goal-toast-out { to { opacity: 0; transform: translate(-50%, -10px); } }
+@keyframes goal-complete-glow { 50% { box-shadow: 0 14px 60px rgba(250,204,21,.32); } }
+@keyframes goal-confetti { 45% { opacity: 1; } to { opacity: 0; transform: rotate(calc(var(--i) * 30deg)) translateY(-62px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-celebration, .goal-celebration--complete, .goal-celebration-burst i, .transcript-listening-dot, .pc-popup-goal--pulse { animation: none; }
+}

@@ -40,6 +40,7 @@ struct StudentDashboard: Codable {
     let newToday: [SavedWord]
     let dueWords: [SavedWord]
     let pendingClasswork: PendingClasswork
+    let wordsAddedToday: Int
 }
 
 struct PendingClasswork: Codable {

@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import ReplayKit
 @preconcurrency import WebRTC
 
 protocol WebRTCClientDelegate: AnyObject {
@@ -28,6 +29,8 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
     private var isMuted = false
     private var isCameraOff = false
     private var hasVideoTrack = false
+    private var screenCapturer: RTCVideoCapturer?
+    private(set) var isScreenSharing = false
 
     private var audioEngine: AVAudioEngine?
     private var audioConverter: AVAudioConverter?
@@ -225,11 +228,82 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
         }
     }
 
+    // MARK: - Screen Share
+
+    /// Share the app's own screen (in-app ReplayKit capture; pauses when the
+    /// app is backgrounded). Frames are pushed into the existing video source,
+    /// so the peer needs no renegotiation.
+    func startScreenShare(completion: @escaping (Error?) -> Void) {
+        guard let videoSource = localVideoSource else {
+            completion(WebRTCError.noPeerConnection)
+            return
+        }
+
+        let capturer = RTCVideoCapturer(delegate: videoSource)
+        screenCapturer = capturer
+
+        RPScreenRecorder.shared().startCapture(handler: { [weak self] sampleBuffer, type, error in
+            if let error {
+                print("[Polycast] WebRTC: screen capture frame error: \(error)")
+                return
+            }
+            guard type == .video,
+                  let self,
+                  self.isScreenSharing,
+                  let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+
+            let rtcPixelBuffer = RTCCVPixelBuffer(pixelBuffer: pixelBuffer)
+            let timeStampNs = Int64(CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer)) * Double(NSEC_PER_SEC))
+            let frame = RTCVideoFrame(buffer: rtcPixelBuffer, rotation: ._0, timeStampNs: timeStampNs)
+            videoSource.capturer(capturer, didCapture: frame)
+        }, completionHandler: { [weak self] error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if error == nil {
+                    // Stop the camera while the screen is being shared.
+                    self.videoCapturer?.stopCapture()
+                    self.isScreenSharing = true
+                } else {
+                    self.screenCapturer = nil
+                }
+                completion(error)
+            }
+        })
+    }
+
+    func stopScreenShare() {
+        guard isScreenSharing else { return }
+        isScreenSharing = false
+        screenCapturer = nil
+        RPScreenRecorder.shared().stopCapture { error in
+            if let error {
+                print("[Polycast] WebRTC: stop screen capture error: \(error)")
+            }
+        }
+        if let capturer = videoCapturer {
+            startCapture(capturer: capturer)
+        }
+    }
+
     // MARK: - Controls
 
     func toggleMute() -> Bool {
         isMuted.toggle()
         localAudioTrack?.isEnabled = !isMuted
+        // Pausing (not just discarding chunks from) the transcription tap so
+        // muting actually stops the mic being read, not just stops sending
+        // what was already captured — this is a separate AVAudioEngine tap
+        // from the WebRTC audio track above, so disabling one doesn't affect
+        // the other.
+        if isMuted {
+            audioEngine?.pause()
+        } else if let engine = audioEngine, !engine.isRunning {
+            do {
+                try engine.start()
+            } catch {
+                print("[Polycast] WebRTC: audio engine resume error: \(error)")
+            }
+        }
         return isMuted
     }
 
@@ -295,6 +369,10 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
 
         do {
             try engine.start()
+            // If mute was toggled before transcription capture began, honor it.
+            if isMuted {
+                engine.pause()
+            }
         } catch {
             print("[Polycast] WebRTC: audio engine start error: \(error)")
         }
@@ -311,6 +389,11 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
 
     func close() {
         stopAudioCapture()
+        if isScreenSharing {
+            isScreenSharing = false
+            screenCapturer = nil
+            RPScreenRecorder.shared().stopCapture { _ in }
+        }
         videoCapturer?.stopCapture()
         videoCapturer = nil
         localVideoTrack = nil

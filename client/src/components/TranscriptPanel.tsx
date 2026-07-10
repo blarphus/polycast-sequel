@@ -29,9 +29,19 @@ interface TranscriptPanelProps {
   onSaveWord?: (data: SaveWordData) => Promise<{ _created: boolean }>;
   onRemoveWord?: (id: string) => Promise<void>;
   onOptimisticSave?: (word: string) => void;
+  title?: string;
 }
 
-export default function TranscriptPanel({ entries, nativeLang, targetLang, savedWords, isWordSaved, isDefinitionSaved, onSaveWord, onRemoveWord, onOptimisticSave }: TranscriptPanelProps) {
+function languageName(code?: string) {
+  if (!code) return 'Detecting';
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) || code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
+  }
+}
+
+export default function TranscriptPanel({ entries, nativeLang, targetLang, savedWords, isWordSaved, isDefinitionSaved, onSaveWord, onRemoveWord, onOptimisticSave, title = 'Live transcript' }: TranscriptPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScroll = useRef(true);
   const [popup, setPopup] = useState<PopupState | null>(null);
@@ -75,25 +85,43 @@ export default function TranscriptPanel({ entries, nativeLang, targetLang, saved
     };
   }, []);
 
+  const recentLanguages = Array.from(new Set(entries.slice(-12).map((entry) => entry.lang).filter(Boolean))) as string[];
+
   return (
     <div
       className="transcript-panel"
       ref={containerRef}
       onScroll={handleScroll}
     >
+      <div className="transcript-header">
+        <div>
+          <span className="transcript-kicker">Conversation</span>
+          <strong>{title}</strong>
+        </div>
+        <div className="transcript-languages">
+          {(recentLanguages.length > 0 ? recentLanguages : targetLang ? [targetLang] : []).map((lang) => (
+            <span className="transcript-language-chip" key={lang}><i />{languageName(lang)}</span>
+          ))}
+        </div>
+      </div>
       {entries.length === 0 ? (
-        <p className="transcript-empty">Transcript will appear here...</p>
+        <div className="transcript-empty"><span className="transcript-listening-dot" />Listening for speech...</div>
       ) : (
         entries.map((entry) => (
           <div className="transcript-entry" key={entry.id}>
-            <span className="transcript-speaker" style={{ color: speakerColor(entry.userId) }}>{entry.displayName}</span>
-            {' \u2014 '}
-            <span className="transcript-text">
-              <TokenizedText text={entry.text} savedWords={savedWords} onWordClick={handleWordClick(entry)} />
-            </span>
+            <div className="transcript-entry-rail" style={{ backgroundColor: speakerColor(entry.userId) }} />
+            <div className="transcript-entry-content">
+              <div className="transcript-entry-meta">
+                <span className="transcript-speaker" style={{ color: speakerColor(entry.userId) }}>{entry.displayName}</span>
+                {entry.lang && <span className="transcript-entry-language">{languageName(entry.lang)}</span>}
+              </div>
+              <div className="transcript-text">
+                <TokenizedText text={entry.text} savedWords={savedWords} onWordClick={handleWordClick(entry)} />
+              </div>
             {entry.translation && (
               <div className="transcript-translation">{entry.translation}</div>
             )}
+            </div>
           </div>
         ))
       )}
