@@ -78,6 +78,12 @@ private struct RootView: View {
                 .padding(.horizontal, 16)
                 .zIndex(30)
             }
+
+            if callManager.isCallMinimized && callManager.callStatus == .connected {
+                MiniCallTileView()
+                    .environmentObject(callManager)
+                    .zIndex(50)
+            }
         }
         .animation(.spring(response: 0.28, dampingFraction: 0.9), value: fallbackNotices.notice?.id)
         .animation(.spring(response: 0.38, dampingFraction: 0.76), value: dailyGoal.celebration?.id)

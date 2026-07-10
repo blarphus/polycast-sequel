@@ -48,9 +48,18 @@ struct CallView: View {
                     }
                 }
 
-                // Transcript toggle (top-right)
+                // Minimize (top-left) and transcript toggle (top-right)
                 VStack {
                     HStack {
+                        Button {
+                            callManager.minimizeCall()
+                        } label: {
+                            Image(systemName: "chevron.down")
+                                .font(.title3)
+                                .foregroundStyle(.white)
+                                .padding(10)
+                                .background(.ultraThinMaterial, in: Circle())
+                        }
                         Spacer()
                         Button {
                             withAnimation { showTranscript.toggle() }
@@ -65,7 +74,7 @@ struct CallView: View {
                     Spacer()
                 }
                 .padding(.top, 8)
-                .padding(.trailing, 16)
+                .padding(.horizontal, 16)
 
                 // Word lookup popup (tapped transcript word)
                 if let lookup = selectedLookup {
@@ -108,14 +117,14 @@ struct CallView: View {
                     RTCVideoViewRepresentable(track: remoteTrack)
                 }
 
-                // Local preview (top-leading inset, clear of the toggle button)
+                // Local preview (top-leading inset, below the minimize button)
                 if let localTrack = callManager.getLocalVideoTrack(), !callManager.isCameraOff {
                     RTCVideoViewRepresentable(track: localTrack, mirror: !callManager.isScreenSharing)
                         .frame(width: 100, height: 140)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.3), lineWidth: 1))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        .padding(.top, 12)
+                        .padding(.top, 64)
                         .padding(.leading, 12)
                 }
             } else {

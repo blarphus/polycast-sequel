@@ -25,5 +25,11 @@ export function useMediaToggles(streamRef: React.RefObject<MediaStream | null>) 
     }
   }, [streamRef]);
 
-  return { isMuted, isCameraOff, toggleMute, toggleCamera };
+  /** Reset toggle state (e.g. when a call session ends and the stream is gone). */
+  const reset = useCallback(() => {
+    setIsMuted(false);
+    setIsCameraOff(false);
+  }, []);
+
+  return { isMuted, isCameraOff, toggleMute, toggleCamera, reset };
 }

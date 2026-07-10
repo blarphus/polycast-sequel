@@ -1,59 +1,20 @@
 // ---------------------------------------------------------------------------
-// pages/Call.tsx -- Active 1:1 call page with callId-scoped WebRTC
+// pages/Call.tsx -- Active 1:1 call page (thin view over CallProvider)
+//
+// The call session itself (WebRTC, media, transcription, signaling) lives in
+// contexts/CallProvider.tsx so it survives in-app navigation. This page only
+// starts the session from URL params and renders it.
 // ---------------------------------------------------------------------------
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { socket } from '../socket';
 import { useAuth } from '../hooks/useAuth';
 import { useAutoHideControls } from '../hooks/useAutoHideControls';
-import { useLocalMedia } from '../hooks/useLocalMedia';
-import { useMediaToggles } from '../hooks/useMediaToggles';
-import { useTranscription } from '../hooks/useTranscription';
-import {
-  createPeerConnection,
-  createOffer,
-  createAnswer,
-  addIceCandidate,
-  closePeerConnection,
-} from '../webrtc';
+import { useActiveCall } from '../contexts/CallProvider';
+import type { CallRole } from '../contexts/CallProvider';
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
 import TranscriptPanel from '../components/TranscriptPanel';
 import { useSavedWords } from '../hooks/useSavedWords';
-import { useScreenShare } from '../hooks/useScreenShare';
-import { getIceServers } from '../api';
-import {
-  startRinging,
-  stopRinging,
-  playCallConnectedSound,
-  playCallEndedSound,
-  playCallDeclinedSound,
-} from '../utils/sounds';
-
-type CallRole = 'caller' | 'callee';
-
-/** Map a server ended_reason to a user-facing status message. */
-function endReasonMessage(reason: string | undefined, peerName: string): string {
-  switch (reason) {
-    case 'left': return `${peerName} left the call`;
-    case 'disconnected': return `${peerName} disconnected`;
-    case 'timeout': return 'Connection timed out';
-    case 'cancelled': return 'Call cancelled';
-    case 'completed': return 'Call ended';
-    default: return 'Call ended';
-  }
-}
-
-interface SignalOffer {
-  callId?: string;
-  offer: RTCSessionDescriptionInit;
-  fromUserId: string;
-}
-
-interface SignalIce {
-  callId?: string;
-  candidate: RTCIceCandidateInit | null;
-}
 
 export default function Call() {
   const { peerId } = useParams<{ peerId: string }>();
@@ -65,405 +26,64 @@ export default function Call() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const activeCallIdRef = useRef<string | null>(initialCallId);
-  const pendingOfferRef = useRef<SignalOffer | null>(null);
-  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
-  const pendingCallerOfferRef = useRef(false);
-  const initiatedRef = useRef(false);
-  const connectedSoundPlayedRef = useRef(false);
-  const callOverRef = useRef(false);
-
-  const [activeCallId, setActiveCallId] = useState<string | null>(initialCallId);
-  const [callStatus, setCallStatus] = useState<string>(
-    role === 'caller' ? 'Preparing call...' : 'Preparing answer...',
-  );
-  const [turnWarning, setTurnWarning] = useState('');
-  const [remoteHasVideo, setRemoteHasVideo] = useState(false);
-  const [transcriptOpen, setTranscriptOpen] = useState(true);
-
   const {
-    streamRef,
-    videoRef: localVideoRef,
-    status: mediaStatus,
-    error: mediaError,
-    streamReady,
-    start: startMedia,
-    stop: stopMedia,
-  } = useLocalMedia({ video: true, audio: true });
-
-  const {
-    remoteLang,
+    active,
+    callEnded,
+    callId,
+    callStatus,
+    turnWarning,
+    remoteStream,
+    remoteHasVideo,
+    mediaStatus,
+    mediaError,
+    localVideoRef,
+    localStreamRef,
+    isMuted,
+    isCameraOff,
+    isScreenSharing,
     transcriptEntries,
-    cleanupTranscription,
-    setMicMuted,
-  } = useTranscription(peerId || '', streamRef, streamReady);
+    remoteLang,
+    startCall,
+    endCall,
+    toggleMute,
+    toggleCamera,
+    toggleScreenShare,
+    retryMedia,
+  } = useActiveCall();
 
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const [transcriptOpen, setTranscriptOpen] = useState(true);
   const { controlsHidden, showControls } = useAutoHideControls();
-  const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(streamRef);
-
-  const handleToggleMute = useCallback(() => {
-    toggleMute();
-    const audioTrack = streamRef.current?.getAudioTracks()[0];
-    setMicMuted(audioTrack ? !audioTrack.enabled : false);
-  }, [toggleMute, setMicMuted, streamRef]);
-  const { isScreenSharing, toggleScreenShare } = useScreenShare(streamRef, pcRef, localVideoRef);
   const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = useSavedWords();
 
-  const setCallId = useCallback((callId: string | null) => {
-    activeCallIdRef.current = callId;
-    setActiveCallId(callId);
-  }, []);
-
-  const cleanupPeer = useCallback(() => {
-    if (pcRef.current) {
-      closePeerConnection(pcRef.current);
-      pcRef.current = null;
-    }
-    pendingOfferRef.current = null;
-    pendingIceRef.current = [];
-    pendingCallerOfferRef.current = false;
-    setRemoteHasVideo(false);
-  }, []);
-
-  const flushPendingIce = useCallback(async () => {
-    const pc = pcRef.current;
-    if (!pc?.remoteDescription) return;
-    const candidates = pendingIceRef.current;
-    pendingIceRef.current = [];
-    for (const candidate of candidates) {
-      await addIceCandidate(pc, candidate);
-    }
-  }, []);
-
-  const finishCallLocally = useCallback((status: string, sound: 'ended' | 'declined' = 'ended') => {
-    callOverRef.current = true;
-    stopRinging();
-    if (sound === 'declined') {
-      playCallDeclinedSound();
-    } else {
-      playCallEndedSound();
-    }
-    setCallStatus(status);
-    cleanupTranscription();
-    cleanupPeer();
-    stopMedia();
-    setTimeout(() => navigate('/chats'), 1500);
-  }, [cleanupPeer, cleanupTranscription, navigate, stopMedia]);
-
-  const endCall = useCallback(() => {
-    const callId = activeCallIdRef.current;
-    if (callId) {
-      socket.emit('call:end', { callId });
-    } else if (peerId) {
-      socket.emit('call:end', { peerId });
-    }
-    finishCallLocally('Call ended');
-  }, [finishCallLocally, peerId]);
-
-  const sendCallerOffer = useCallback(async () => {
-    const pc = pcRef.current;
-    const stream = streamRef.current;
-    const callId = activeCallIdRef.current;
-    if (!pc || !stream || !peerId || !callId) {
-      pendingCallerOfferRef.current = true;
-      return;
-    }
-
-    pendingCallerOfferRef.current = false;
-    setCallStatus('Connecting...');
-    try {
-      const offer = await createOffer(pc, stream);
-      socket.emit('signal:offer', { callId, peerId, offer });
-    } catch (err) {
-      console.error('[call] Error creating offer:', err);
-      setCallStatus('Failed to create call offer');
-    }
-  }, [peerId, streamRef]);
-
-  const answerOffer = useCallback(async (data: SignalOffer) => {
-    const pc = pcRef.current;
-    const stream = streamRef.current;
-    if (!pc || !stream || !peerId) {
-      pendingOfferRef.current = data;
-      return;
-    }
-
-    const callId = data.callId || activeCallIdRef.current;
-    if (callId) setCallId(callId);
-
-    try {
-      const answer = await createAnswer(pc, data.offer, stream);
-      await flushPendingIce();
-      socket.emit('signal:answer', { callId, peerId, answer });
-      setCallStatus('');
-    } catch (err) {
-      console.error('[call] Error creating answer:', err);
-      setCallStatus('Failed to answer call');
-    }
-  }, [flushPendingIce, peerId, setCallId, streamRef]);
-
+  // Start the call session if none is active for these URL params.
   useEffect(() => {
-    setCallId(activeCallId);
-  }, [activeCallId, setCallId]);
+    if (!peerId || !role || active) return;
+    startCall({ peerId, role, callId: initialCallId, displayName });
+  }, [active, displayName, initialCallId, peerId, role, startCall]);
 
+  // Attach the remote stream to this page's video element.
   useEffect(() => {
-    startMedia().catch(() => {
-      setCallStatus('');
-    });
-  }, [startMedia]);
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream]);
 
+  // Attach the local stream on (re)mount -- useLocalMedia only sets srcObject
+  // at acquisition time, and this page can remount mid-call.
   useEffect(() => {
-    if (!peerId || !role) return;
+    const el = localVideoRef.current;
+    if (el && !el.srcObject && localStreamRef.current) {
+      el.srcObject = localStreamRef.current;
+    }
+  }, [localVideoRef, localStreamRef, mediaStatus]);
 
-    const matchesCall = (callId?: string) => !callId || !activeCallIdRef.current || callId === activeCallIdRef.current;
-
-    const onCallRinging = (data: { callId: string; peerId: string }) => {
-      if (role !== 'caller' || data.peerId !== peerId) return;
-      setCallId(data.callId);
-      setCallStatus('Ringing...');
-      startRinging();
-    };
-
-    const onCallAccepted = (data: { callId?: string }) => {
-      if (role !== 'caller' || !matchesCall(data.callId)) return;
-      if (data.callId) setCallId(data.callId);
-      stopRinging();
-      void sendCallerOffer();
-    };
-
-    const onSignalOffer = (data: SignalOffer) => {
-      if (role !== 'callee' || !matchesCall(data.callId)) return;
-      void answerOffer(data);
-    };
-
-    const onSignalAnswer = async (data: { callId?: string; answer: RTCSessionDescriptionInit }) => {
-      if (role !== 'caller' || !matchesCall(data.callId) || !pcRef.current) return;
-      try {
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
-        await flushPendingIce();
-        setCallStatus('');
-      } catch (err) {
-        console.error('[call] Error setting remote answer:', err);
-        setCallStatus('Failed to connect call');
-      }
-    };
-
-    const onIceCandidate = (data: SignalIce) => {
-      if (!matchesCall(data.callId)) return;
-      const pc = pcRef.current;
-      if (!pc || !data.candidate) return;
-      if (!pc.remoteDescription) {
-        pendingIceRef.current.push(data.candidate);
-        return;
-      }
-      void addIceCandidate(pc, data.candidate);
-    };
-
-    const onCallEnded = (data: { callId?: string; reason?: string }) => {
-      if (!matchesCall(data.callId)) return;
-      finishCallLocally(endReasonMessage(data.reason, displayName));
-    };
-
-    const onCallRejected = (data: { callId?: string }) => {
-      if (!matchesCall(data.callId)) return;
-      finishCallLocally('Call declined', 'declined');
-    };
-
-    const onCallCancelled = (data: { callId?: string; reason?: string }) => {
-      if (!matchesCall(data.callId)) return;
-      finishCallLocally(endReasonMessage(data.reason, displayName));
-    };
-
-    const onCallBusy = (data: { message?: string }) => {
-      finishCallLocally(data.message || 'User is already in a call', 'declined');
-    };
-
-    const onCallError = (data: { callId?: string; message: string }) => {
-      if (!matchesCall(data.callId)) return;
-      console.error('[call] call:error:', data.message);
-      finishCallLocally(data.message);
-    };
-
-    socket.on('call:ringing', onCallRinging);
-    socket.on('call:accepted', onCallAccepted);
-    socket.on('call:rejected', onCallRejected);
-    socket.on('call:ended', onCallEnded);
-    socket.on('call:cancelled', onCallCancelled);
-    socket.on('call:busy', onCallBusy);
-    socket.on('call:error', onCallError);
-    socket.on('signal:offer', onSignalOffer);
-    socket.on('signal:answer', onSignalAnswer);
-    socket.on('signal:ice-candidate', onIceCandidate);
-
-    return () => {
-      socket.off('call:ringing', onCallRinging);
-      socket.off('call:accepted', onCallAccepted);
-      socket.off('call:rejected', onCallRejected);
-      socket.off('call:ended', onCallEnded);
-      socket.off('call:cancelled', onCallCancelled);
-      socket.off('call:busy', onCallBusy);
-      socket.off('call:error', onCallError);
-      socket.off('signal:offer', onSignalOffer);
-      socket.off('signal:answer', onSignalAnswer);
-      socket.off('signal:ice-candidate', onIceCandidate);
-    };
-  }, [answerOffer, finishCallLocally, flushPendingIce, peerId, role, sendCallerOffer, setCallId]);
-
-  // Guard against accidentally leaving an active call: confirm in-app link
-  // navigation and tab close, and tell the server (so the peer is notified)
-  // when the user actually leaves.
+  // When the call ends while this page is showing, return to /chats.
   useEffect(() => {
-    const callInProgress = () => !callOverRef.current && !!activeCallIdRef.current;
-
-    const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!callInProgress()) return;
-      e.preventDefault();
-      e.returnValue = '';
-    };
-
-    const onPageHide = () => {
-      if (!callInProgress()) return;
-      socket.emit('call:end', { callId: activeCallIdRef.current, reason: 'left' });
-    };
-
-    // The only in-app navigation visible during a call is the sidebar links;
-    // BrowserRouter has no navigation blocker, so intercept anchor clicks.
-    const onClickCapture = (e: MouseEvent) => {
-      if (!callInProgress()) return;
-      const anchor = (e.target as HTMLElement).closest?.('a[href]');
-      if (!anchor) return;
-      if (!window.confirm('Leave the call?')) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
-
-    window.addEventListener('beforeunload', onBeforeUnload);
-    window.addEventListener('pagehide', onPageHide);
-    document.addEventListener('click', onClickCapture, true);
-
-    return () => {
-      window.removeEventListener('beforeunload', onBeforeUnload);
-      window.removeEventListener('pagehide', onPageHide);
-      document.removeEventListener('click', onClickCapture, true);
-      // Unmounting while the call is live (navigated away) — end it so the
-      // peer sees "left the call" instead of a frozen stream.
-      if (callInProgress()) {
-        socket.emit('call:end', { callId: activeCallIdRef.current, reason: 'left' });
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!streamReady || !peerId || !role || pcRef.current) return;
-    let cleaned = false;
-
-    (async () => {
-      let iceServers: RTCIceServer[];
-      try {
-        const config = await getIceServers();
-        iceServers = config.iceServers;
-        if (!config.turnAvailable) {
-          setTurnWarning('TURN relay is not configured. This call may fail on restrictive networks.');
-        }
-      } catch (err) {
-        console.error('[call] Failed to fetch ICE servers:', err);
-        setCallStatus(err instanceof Error ? err.message : 'Failed to load ICE servers');
-        return;
-      }
-
-      if (cleaned) return;
-
-      const pc = createPeerConnection(
-        (event) => {
-          if (remoteVideoRef.current && event.streams[0]) {
-            remoteVideoRef.current.srcObject = event.streams[0];
-            setRemoteHasVideo(event.streams[0].getVideoTracks().length > 0);
-          }
-          stopRinging();
-          if (!connectedSoundPlayedRef.current) {
-            connectedSoundPlayedRef.current = true;
-            playCallConnectedSound();
-          }
-          setCallStatus('');
-        },
-        (candidate) => {
-          const callId = activeCallIdRef.current;
-          if (candidate && peerId) {
-            socket.emit('signal:ice-candidate', {
-              callId,
-              peerId,
-              candidate: candidate.toJSON(),
-            });
-          }
-        },
-        () => {
-          setCallStatus('Connection failed. Try again.');
-          cleanupTranscription();
-          cleanupPeer();
-          setTimeout(() => navigate('/chats'), 2500);
-        },
-        iceServers,
-      );
-
-      if (cleaned) {
-        closePeerConnection(pc);
-        return;
-      }
-      pcRef.current = pc;
-
-      if (role === 'caller') {
-        if (!initiatedRef.current) {
-          initiatedRef.current = true;
-          socket.emit('call:initiate', { peerId, mode: 'video' });
-          setCallStatus('Calling...');
-        }
-      } else {
-        setCallStatus('Waiting for connection...');
-        if (pendingOfferRef.current) {
-          const offer = pendingOfferRef.current;
-          pendingOfferRef.current = null;
-          void answerOffer(offer);
-        }
-      }
-
-      if (pendingCallerOfferRef.current) {
-        void sendCallerOffer();
-      }
-    })();
-
-    return () => {
-      cleaned = true;
-    };
-  }, [answerOffer, cleanupPeer, cleanupTranscription, navigate, peerId, role, sendCallerOffer, streamReady]);
-
-  useEffect(() => {
-    if (!callStatus || callStatus === 'Call ended' || callStatus === 'Call declined') return;
-    const timeout = setTimeout(() => {
-      if (['Ringing...', 'Waiting for connection...', 'Preparing call...', 'Preparing answer...', 'Connecting...', 'Calling...'].includes(callStatus)) {
-        const callId = activeCallIdRef.current;
-        if (callId) {
-          socket.emit('call:end', { callId, reason: 'timeout' });
-        } else if (peerId) {
-          socket.emit('call:end', { peerId, reason: 'timeout' });
-        }
-        finishCallLocally('Connection timed out');
-      }
-    }, 30_000);
-
+    if (!callEnded) return;
+    const timeout = setTimeout(() => navigate('/chats'), 1500);
     return () => clearTimeout(timeout);
-  }, [callStatus, finishCallLocally, peerId]);
-
-  useEffect(() => {
-    return () => {
-      stopRinging();
-      cleanupTranscription();
-      cleanupPeer();
-      stopMedia();
-    };
-  }, [cleanupPeer, cleanupTranscription, stopMedia]);
+  }, [callEnded, navigate]);
 
   if (!role) {
     return (
@@ -507,7 +127,7 @@ export default function Call() {
           <div>
             <div className="call-top-name">{displayName}{isScreenSharing && <span className="call-sharing-badge">You are presenting</span>}</div>
             <div className="call-top-status">
-              {activeCallId ? `Call ${activeCallId.slice(0, 8)}` : mediaStatus === 'requesting' ? 'Requesting camera and microphone' : 'Ready'}
+              {callId ? `Call ${callId.slice(0, 8)}` : mediaStatus === 'requesting' ? 'Requesting camera and microphone' : 'Ready'}
             </div>
           </div>
           {turnWarning && <div className="call-network-warning">{turnWarning}</div>}
@@ -529,7 +149,7 @@ export default function Call() {
             <div className="call-status-card">
               <p className="call-status-text">{blockingMessage}</p>
               {mediaError && (
-                <button className="btn btn-primary" onClick={() => startMedia().catch(() => undefined)}>
+                <button className="btn btn-primary" onClick={() => retryMedia().catch(() => undefined)}>
                   Try Again
                 </button>
               )}
@@ -549,7 +169,7 @@ export default function Call() {
           isMuted={isMuted}
           isCameraOff={isCameraOff}
           isScreenSharing={isScreenSharing}
-          onToggleMute={handleToggleMute}
+          onToggleMute={toggleMute}
           onToggleCamera={toggleCamera}
           onToggleScreenShare={toggleScreenShare}
           primaryAction={{

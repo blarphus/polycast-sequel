@@ -25,6 +25,7 @@ final class CallManager: ObservableObject {
     @Published var incomingCall: IncomingCallInfo?
     @Published var activeCallDisplayName: String = ""
     @Published var isCallViewPresented = false
+    @Published var isCallMinimized = false
     @Published private(set) var activeCallPeerId: String?
     @Published private(set) var remoteVideoTrack: RTCVideoTrack?
     @Published var isMuted = false
@@ -295,6 +296,18 @@ final class CallManager: ObservableObject {
         endCall()
     }
 
+    // MARK: - Minimize / Restore
+
+    func minimizeCall() {
+        isCallMinimized = true
+        isCallViewPresented = false
+    }
+
+    func restoreCall() {
+        isCallMinimized = false
+        isCallViewPresented = true
+    }
+
     // MARK: - Controls
 
     func toggleMute() {
@@ -533,6 +546,7 @@ final class CallManager: ObservableObject {
         timeoutTask = nil
         callStatus = .ended(reason)
         isCallViewPresented = false
+        isCallMinimized = false
         incomingCall = nil
         activeCallId = nil
         activeCallPeerId = nil

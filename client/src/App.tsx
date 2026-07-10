@@ -45,6 +45,8 @@ import BottomToolbar from './components/BottomToolbar';
 import ErrorBoundary from './components/ErrorBoundary';
 import TtsFallbackToast from './components/TtsFallbackToast';
 import DailyGoalCelebration from './components/DailyGoalCelebration';
+import { CallProvider } from './contexts/CallProvider';
+import FloatingCallTile from './components/FloatingCallTile';
 
 // ---------------------------------------------------------------------------
 // ProtectedRoute -- redirects to /login when the user is not authenticated
@@ -119,10 +121,13 @@ export default function App() {
   return (
     <AuthProvider>
       <DictionaryToastProvider>
+      <CallProvider>
       {/* Global incoming-call modal (only when authenticated) */}
       <AuthenticatedShell />
       <TtsFallbackToast />
       <DailyGoalCelebration />
+      {/* Mini call tile while a 1:1 call is active off the call page */}
+      <FloatingCallTile />
 
       <ErrorBoundary>
       <Routes>
@@ -388,6 +393,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </ErrorBoundary>
+      </CallProvider>
       </DictionaryToastProvider>
     </AuthProvider>
   );
