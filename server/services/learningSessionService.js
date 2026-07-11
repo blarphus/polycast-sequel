@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import logger from '../logger.js';
+import { callGemini, parseGeminiJson } from '../lib/gemini.js';
 import { awardLearningSessionXp, progressionSnapshot } from '../lib/progression.js';
 
 const SESSION_SIZE = 8;
@@ -42,12 +44,8 @@ function parseForms(word) {
   return [...new Set(result.map(normalize).filter(Boolean))];
 }
 
-function contextFor(word) {
-  return String(word.sentence_context || word.example_sentence || '').replaceAll('~', '').trim();
-}
-
-function blankContext(word) {
-  let sentence = contextFor(word);
+function blankSentence(sentence, word) {
+  sentence = String(sentence || '').replaceAll('~', '').trim();
   if (!sentence) return null;
   const forms = parseForms(word).sort((a, b) => b.length - a.length);
   for (const form of forms) {
@@ -56,6 +54,47 @@ function blankContext(word) {
     if (pattern.test(sentence)) return sentence.replace(pattern, (_, prefix) => `${prefix}_____`);
   }
   return null;
+}
+
+function sourceSentencesFor(word) {
+  return [word.sentence_context, word.example_sentence]
+    .map((sentence) => String(sentence || '').replaceAll('~', '').trim())
+    .filter(Boolean);
+}
+
+function ensureFreshPracticeSentence(sentence, word) {
+  const clean = String(sentence || '').replaceAll('~', '').trim().replace(/\s+/g, ' ');
+  if (!clean || clean.length > 220) return null;
+  if (sourceSentencesFor(word).some((source) => normalize(source) === normalize(clean))) return null;
+  return blankSentence(clean, word) ? clean : null;
+}
+
+async function generatePracticeSentence(word, targetLanguage, nativeLanguage) {
+  const sources = sourceSentencesFor(word);
+  const prompt = `Write one NEW, short sentence for a vocabulary exercise in ${targetLanguage || 'the target language'}.
+
+The learner must supply the exact saved word "${word.word}". Its ${nativeLanguage || 'native-language'} meaning is "${word.translation}"${word.definition ? ` and its definition is "${word.definition}"` : ''}.
+
+Rules:
+- Use the exact saved word "${word.word}" once. Do not inflect or replace it.
+- Make a natural, standalone sentence of 6-14 words.
+- Do not quote, reuse, clip, or closely paraphrase any source sentence below.
+- Do not include tildes, blanks, explanations, or markdown.
+
+Source sentences to avoid:
+${sources.length ? sources.map((source, index) => `${index + 1}. ${source}`).join('\n') : '(none)'}
+
+Return JSON only: {"sentence":"..."}`;
+
+  const raw = await callGemini(prompt, {
+    thinkingConfig: { thinkingBudget: 0 },
+    maxOutputTokens: 120,
+    responseMimeType: 'application/json',
+  });
+  const parsed = parseGeminiJson(raw, 'Practice sentence generation');
+  const sentence = ensureFreshPracticeSentence(parsed.sentence, word);
+  if (!sentence) throw new Error('Practice sentence generation returned an invalid or reused sentence');
+  return sentence;
 }
 
 function optionSet(words, correct, field) {
@@ -78,7 +117,7 @@ function optionSet(words, correct, field) {
   return { options, correctId };
 }
 
-function makeExercise(kind, word, words, targetLanguage) {
+function makeExercise(kind, word, words, targetLanguage, generatedSentence = null) {
   if (kind === 'meaning_choice' || kind === 'listen_meaning') {
     const choice = optionSet(words.filter((entry) => entry.id !== word.id), word, 'translation');
     if (!choice) return null;
@@ -104,26 +143,37 @@ function makeExercise(kind, word, words, targetLanguage) {
   }
 
   if (kind === 'context_choice') {
-    const sentence = blankContext(word);
+    const sentence = blankSentence(generatedSentence, word);
     const choice = optionSet(words.filter((entry) => entry.id !== word.id), word, 'word');
     if (!sentence || !choice) return null;
     return {
       kind,
       savedWordId: word.id,
-      prompt: { instruction: 'Choose the missing word', sentence, options: choice.options },
+      prompt: {
+        instruction: 'Choose the missing word',
+        sentence,
+        meaning: word.translation,
+        imageUrl: word.image_url || null,
+        options: choice.options,
+      },
       answer: { type: 'option', optionId: choice.correctId, label: word.word },
     };
   }
 
   if (kind === 'context_type' || kind === 'listen_type') {
-    const sentence = kind === 'context_type' ? blankContext(word) : null;
+    const sentence = kind === 'context_type' ? blankSentence(generatedSentence, word) : null;
     if (kind === 'context_type' && !sentence) return null;
     return {
       kind,
       savedWordId: word.id,
       prompt: kind === 'listen_type'
         ? { instruction: 'Listen and type the word', audioText: word.word, language: targetLanguage }
-        : { instruction: 'Type the missing word', sentence },
+        : {
+          instruction: 'Type the missing word',
+          sentence,
+          meaning: word.translation,
+          imageUrl: word.image_url || null,
+        },
       answer: { type: 'text', accepted: parseForms(word), label: word.word },
     };
   }
@@ -168,13 +218,16 @@ function publicExercise(row, total = SESSION_SIZE) {
   };
 }
 
-async function userLanguage(db, userId) {
-  const { rows } = await db.query('SELECT target_language FROM users WHERE id = $1', [userId]);
-  return rows[0]?.target_language || null;
+async function userLanguages(db, userId) {
+  const { rows } = await db.query('SELECT target_language, native_language FROM users WHERE id = $1', [userId]);
+  return {
+    targetLanguage: rows[0]?.target_language || null,
+    nativeLanguage: rows[0]?.native_language || null,
+  };
 }
 
 export async function createLearningSession(pool, userId, { kind, sourceVideoId = null, timeZone }) {
-  const targetLanguage = await userLanguage(pool, userId);
+  const { targetLanguage, nativeLanguage } = await userLanguages(pool, userId);
   if (kind === 'flashcards') {
     const { rows } = await pool.query(
       `SELECT COUNT(*)::int AS count FROM saved_words
@@ -195,7 +248,7 @@ export async function createLearningSession(pool, userId, { kind, sourceVideoId 
   const diagnostics = [];
   const { rows: allWords } = await pool.query(
     `SELECT id, word, lemma, forms, translation, definition, sentence_context,
-            example_sentence, target_language, last_reviewed_at
+            example_sentence, image_url, target_language, last_reviewed_at
        FROM saved_words
       WHERE user_id = $1 AND target_language IS NOT DISTINCT FROM $2
         AND word <> '' AND translation <> ''
@@ -239,20 +292,51 @@ export async function createLearningSession(pool, userId, { kind, sourceVideoId 
   }
 
   const candidates = shuffle(words);
+  const contextWords = [3, 4].map((position) => candidates[position % candidates.length]);
+  const generatedSentences = new Map();
+  const sentenceResults = await Promise.allSettled(
+    contextWords.map(async (word) => ({
+      wordId: word.id,
+      sentence: await generatePracticeSentence(word, targetLanguage, nativeLanguage),
+    })),
+  );
+  let sentenceFallbackAdded = false;
+  for (let index = 0; index < sentenceResults.length; index += 1) {
+    const result = sentenceResults[index];
+    if (result.status === 'fulfilled') {
+      generatedSentences.set(result.value.wordId, result.value.sentence);
+      continue;
+    }
+    logger.warn('Practice sentence generation failed for "%s": %s', contextWords[index].word, result.reason?.message || result.reason);
+    if (!sentenceFallbackAdded) {
+      sentenceFallbackAdded = true;
+      diagnostics.push({
+        code: 'PRACTICE_SENTENCE_FALLBACK',
+        title: 'Practice fallback used',
+        message: 'A new practice sentence could not be generated, so that item was replaced with a meaning question.',
+      });
+    }
+  }
+  if (contextWords.some((word) => !word.image_url)) {
+    diagnostics.push({
+      code: 'PRACTICE_IMAGE_UNAVAILABLE',
+      title: 'Practice visual unavailable',
+      message: 'One or more saved words do not have an illustration yet, so those prompts show the translation without an image.',
+    });
+  }
   const exercises = [];
-  let contextFallbackAdded = false;
   for (let position = 0; position < SESSION_SIZE; position += 1) {
     const preferredKind = BASE_KINDS[position];
     const word = candidates[position % candidates.length];
-    let exercise = makeExercise(preferredKind, word, words, targetLanguage);
+    let exercise = makeExercise(preferredKind, word, words, targetLanguage, generatedSentences.get(word.id));
     if (!exercise) {
       exercise = makeExercise(position % 2 ? 'word_choice' : 'meaning_choice', word, words, targetLanguage);
-      if (!contextFallbackAdded && (preferredKind === 'context_choice' || preferredKind === 'context_type')) {
-        contextFallbackAdded = true;
+      if (!sentenceFallbackAdded && (preferredKind === 'context_choice' || preferredKind === 'context_type')) {
+        sentenceFallbackAdded = true;
         diagnostics.push({
-          code: 'PRACTICE_CONTEXT_FALLBACK',
+          code: 'PRACTICE_SENTENCE_FALLBACK',
           title: 'Practice fallback used',
-          message: 'A saved word had no usable sentence context, so a meaning exercise replaced it.',
+          message: 'A new practice sentence could not be generated, so that item was replaced with a meaning question.',
         });
       }
     }
@@ -451,4 +535,4 @@ export async function completeLearningSession(pool, userId, sessionId, timeZone)
   }
 }
 
-export const __test = { blankContext, makeExercise, normalize, parseForms, responseIsCorrect };
+export const __test = { blankSentence, ensureFreshPracticeSentence, makeExercise, normalize, parseForms, responseIsCorrect };

@@ -4,6 +4,7 @@ import {
   answerVocabularyExercise,
   completeLearningSession,
   createLearningSession,
+  proxyImageUrl,
   type Diagnostic,
   type ExerciseResponse,
   type LearningSession,
@@ -186,7 +187,20 @@ export default function Practice() {
           </button>
         )}
         {exercise.prompt.word && <div className="practice-term">{exercise.prompt.word}</div>}
-        {exercise.prompt.meaning && <div className="practice-meaning">{exercise.prompt.meaning}</div>}
+        {exercise.prompt.meaning && !exercise.prompt.sentence && <div className="practice-meaning">{exercise.prompt.meaning}</div>}
+        {exercise.prompt.sentence && (exercise.prompt.meaning || exercise.prompt.imageUrl) && (
+          <div className="practice-context-clue">
+            {exercise.prompt.imageUrl && (
+              <img
+                src={proxyImageUrl(exercise.prompt.imageUrl)!}
+                alt=""
+                className="practice-context-image"
+                onError={(event) => { event.currentTarget.style.display = 'none'; }}
+              />
+            )}
+            {exercise.prompt.meaning && <p><span>Meaning</span>{exercise.prompt.meaning}</p>}
+          </div>
+        )}
         {exercise.prompt.sentence && <div className="practice-sentence">{exercise.prompt.sentence}</div>}
 
         {exercise.prompt.options && (

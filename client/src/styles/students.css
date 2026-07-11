@@ -289,11 +289,13 @@
   /* Shift page content right when sidebar is showing */
   html.sidebar-visible #root {
     margin-left: var(--sidebar-width);
-    transition: margin-left 0.2s ease;
+    width: calc(100% - var(--sidebar-width));
+    transition: margin-left 0.2s ease, width 0.2s ease;
   }
 
   html.sidebar-visible.sidebar-collapsed #root {
     margin-left: var(--sidebar-collapsed-width);
+    width: calc(100% - var(--sidebar-collapsed-width));
   }
 
   /* ---- Collapsed sidebar ------------------------------------------------ */

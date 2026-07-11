@@ -47,6 +47,7 @@ export interface VocabularyExercise {
     word?: string;
     meaning?: string;
     sentence?: string;
+    imageUrl?: string | null;
     audioText?: string;
     language?: string | null;
     options?: ExerciseOption[];
