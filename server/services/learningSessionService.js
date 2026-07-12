@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import logger from '../logger.js';
-import { callGemini, parseGeminiJson } from '../lib/gemini.js';
+import { callGemini } from '../lib/gemini.js';
 import { awardLearningSessionXp, progressionSnapshot } from '../lib/progression.js';
 
 const SESSION_SIZE = 8;
@@ -89,17 +89,13 @@ Rules:
 Source sentences to avoid:
 ${sources.length ? sources.map((source, index) => `${index + 1}. ${source}`).join('\n') : '(none)'}
 
-Return JSON only: {"sentence":"..."}`;
+Return only the sentence. Nothing else.`;
 
   const raw = await callGemini(prompt, {
     thinkingConfig: { thinkingBudget: 0 },
-    // Keep this aligned with the established flashcard example generator.
-    // A 120-token cap can cut off even a short JSON response before its closing brace.
-    maxOutputTokens: 400,
-    responseMimeType: 'application/json',
+    maxOutputTokens: 96,
   });
-  const parsed = parseGeminiJson(raw, 'Practice sentence generation');
-  const sentence = ensureFreshPracticeSentence(parsed.sentence, word);
+  const sentence = ensureFreshPracticeSentence(raw, word);
   if (!sentence) throw new Error('Practice sentence generation returned an invalid or reused sentence');
   return sentence;
 }

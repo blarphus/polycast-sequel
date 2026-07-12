@@ -38,6 +38,13 @@ test('practice fallbacks retain the backend failure reason for the learner', () 
   );
 });
 
+test('fresh practice sentences are plain target-language text, not JSON payloads', () => {
+  assert.equal(
+    __test.ensureFreshPracticeSentence('La sopa está hirviendo dentro de la olla grande.', { ...words[0], word: 'olla', sentence_context: null }),
+    'La sopa está hirviendo dentro de la olla grande.',
+  );
+});
+
 test('choice and pair answers are deterministic after generation', () => {
   const choice = __test.makeExercise('meaning_choice', words[0], words, 'es');
   assert.equal(__test.responseIsCorrect(choice.answer, { optionId: choice.answer.optionId }), true);
