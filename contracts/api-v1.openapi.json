@@ -1,0 +1,85 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Polycast API", "version": "1.0.0" },
+  "paths": {
+    "/api/signup": { "post": { "operationId": "signup", "responses": { "201": { "description": "Created session", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthSession" } } } } } } },
+    "/api/login": { "post": { "operationId": "login", "responses": { "200": { "description": "Authenticated session", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthSession" } } } } } } },
+    "/api/session/restore": { "post": { "operationId": "restoreSession", "responses": { "200": { "description": "Rotated session", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthSession" } } } } } } },
+    "/api/me": { "get": { "operationId": "getMe", "responses": { "200": { "description": "Current user", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AuthUser" } } } } } } }
+  },
+  "components": {
+    "schemas": {
+      "AuthUser": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "username", "display_name", "created_at", "native_language", "target_language", "daily_new_limit", "daily_word_goal", "total_xp", "account_type", "cefr_level"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "username": { "type": "string", "minLength": 1 },
+          "display_name": { "type": ["string", "null"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "native_language": { "type": ["string", "null"] },
+          "target_language": { "type": ["string", "null"] },
+          "daily_new_limit": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "daily_word_goal": { "type": "integer", "minimum": 1, "maximum": 50 },
+          "total_xp": { "type": "integer", "minimum": 0 },
+          "account_type": { "enum": ["student", "teacher"] },
+          "cefr_level": { "anyOf": [{ "enum": ["A1", "A2", "B1", "B2", "C1", "C2"] }, { "type": "null" }] }
+        }
+      },
+      "AuthSession": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "username", "display_name", "created_at", "native_language", "target_language", "daily_new_limit", "daily_word_goal", "total_xp", "account_type", "cefr_level", "token"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" }, "username": { "type": "string", "minLength": 1 },
+          "display_name": { "type": ["string", "null"] }, "created_at": { "type": "string", "format": "date-time" },
+          "native_language": { "type": ["string", "null"] }, "target_language": { "type": ["string", "null"] },
+          "daily_new_limit": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "daily_word_goal": { "type": "integer", "minimum": 1, "maximum": 50 },
+          "total_xp": { "type": "integer", "minimum": 0 }, "account_type": { "enum": ["student", "teacher"] },
+          "cefr_level": { "anyOf": [{ "enum": ["A1", "A2", "B1", "B2", "C1", "C2"] }, { "type": "null" }] },
+          "token": { "type": "string", "minLength": 1 }
+        }
+      },
+      "FallbackDiagnostic": { "$ref": "./fallback-diagnostic.schema.json" },
+      "TranscriptWord": {
+        "type": "object", "additionalProperties": false, "required": ["text", "offset"],
+        "properties": { "text": { "type": "string" }, "offset": { "type": "integer", "minimum": 0 } }
+      },
+      "TranscriptSegment": {
+        "type": "object", "additionalProperties": false, "required": ["text", "offset", "duration", "words"],
+        "properties": {
+          "text": { "type": "string" }, "offset": { "type": "integer", "minimum": 0 },
+          "duration": { "type": "integer", "minimum": 0 },
+          "words": { "type": "array", "items": { "$ref": "#/components/schemas/TranscriptWord" } }
+        }
+      },
+      "TranscriptResponse": {
+        "type": "object", "additionalProperties": false,
+        "required": ["success", "kind", "selectedLanguage", "segments", "fallback_notices"],
+        "properties": {
+          "success": { "const": true }, "kind": { "enum": ["human", "automatic"] },
+          "selectedLanguage": { "type": ["string", "null"] },
+          "segments": { "type": "array", "items": { "$ref": "#/components/schemas/TranscriptSegment" } },
+          "fallback_notices": { "type": "array", "items": { "$ref": "#/components/schemas/FallbackDiagnostic" } }
+        }
+      },
+      "SocketEnvelope": {
+        "type": "object", "additionalProperties": false, "required": ["correlationId", "occurredAt"],
+        "properties": { "correlationId": { "type": "string" }, "occurredAt": { "type": "string", "format": "date-time" }, "fallback_notices": { "type": "array", "items": { "$ref": "#/components/schemas/FallbackDiagnostic" } } }
+      },
+      "CallSignal": {
+        "type": "object", "additionalProperties": false, "required": ["callId", "fromUserId", "correlationId", "occurredAt"],
+        "properties": { "callId": { "type": "string", "format": "uuid" }, "fromUserId": { "type": "string", "format": "uuid" }, "correlationId": { "type": "string", "minLength": 1 }, "occurredAt": { "type": "string", "format": "date-time" } }
+      },
+      "GroupCallSignal": {
+        "type": "object", "additionalProperties": false, "required": ["roomId", "fromUserId", "correlationId", "occurredAt"],
+        "properties": { "roomId": { "type": "string", "format": "uuid" }, "fromUserId": { "type": "string", "format": "uuid" }, "correlationId": { "type": "string", "minLength": 1 }, "occurredAt": { "type": "string", "format": "date-time" } }
+      },
+      "ExtensionMessage": {
+        "type": "object", "additionalProperties": false, "required": ["type", "correlationId", "occurredAt"],
+        "properties": { "type": { "type": "string", "minLength": 1 }, "correlationId": { "type": "string", "minLength": 1 }, "occurredAt": { "type": "string", "format": "date-time" }, "hostname": { "type": "string", "maxLength": 253 } }
+      }
+    }
+  }
+}

@@ -17,8 +17,25 @@ chrome.runtime.sendMessage({ type: 'GET_OFFLINE_DICTIONARY_FULL' }, (res) => {
 });
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.type === 'SYNC_OFFLINE_DICTIONARY_TO_APP') {
+  let serialized = '';
+  try { serialized = JSON.stringify(msg); } catch (error) {
+    console.warn('[polycast:fallback]', {
+      code: 'app_bridge_message_rejected', severity: 'error', title: 'App bridge update rejected',
+      message: 'A non-serializable offline dictionary update was rejected.', source: 'extension.app-bridge',
+      operation: 'validate-inbound-message', correlationId: crypto.randomUUID(), occurredAt: new Date().toISOString(),
+      detail: error?.message || String(error),
+    });
+    return;
+  }
+  if (msg?.type === 'SYNC_OFFLINE_DICTIONARY_TO_APP' && serialized.length <= 2_000_000 && Array.isArray(msg.words) && msg.words.length <= 10_000) {
     writeAppWords(msg.words || []);
+  } else if (msg?.type === 'SYNC_OFFLINE_DICTIONARY_TO_APP') {
+    console.warn('[polycast:fallback]', {
+      code: 'app_bridge_message_rejected', severity: 'error', title: 'App bridge update rejected',
+      message: 'An oversized or malformed offline dictionary update was rejected.', source: 'extension.app-bridge',
+      operation: 'validate-inbound-message', correlationId: crypto.randomUUID(), occurredAt: new Date().toISOString(),
+      detail: `bytes=${serialized.length}; entries=${Array.isArray(msg.words) ? msg.words.length : 'invalid'}`,
+    });
   }
 });
 

@@ -1,0 +1,87 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createDictionaryWordService } from './dictionaryWordService.js';
+
+function scriptedDb(results) {
+  const calls = [];
+  return {
+    calls,
+    async query(text, values) {
+      calls.push({ text, values });
+      const result = results.shift();
+      assert.ok(result, `Unexpected query: ${text}`);
+      return result;
+    },
+  };
+}
+
+test('dictionary word save creates, schedules, and awards through one service pipeline', async () => {
+  const db = scriptedDb([
+    { rows: [] },
+    { rows: [{ id: 'word-1', word: 'hola' }] },
+    { rows: [{ id: 'word-1', word: 'hola', next_review_date: '2026-07-12' }] },
+  ]);
+  const refreshCalls = [];
+  const service = createDictionaryWordService({
+    db,
+    refreshSchedule: async (input) => {
+      refreshCalls.push(input);
+      return { diagnostic: { code: 'schedule_repair_used' } };
+    },
+    awardSaveXp: async () => ({ xpEarned: 5 }),
+  });
+
+  const result = await service.save('user-1', { word: 'hola', surface_form: 'Hola' }, {
+    timeZone: 'America/Chicago', correlationId: 'correlation-1',
+  });
+
+  assert.equal(result.status, 201);
+  assert.deepEqual(result.body, {
+    id: 'word-1', word: 'hola', next_review_date: '2026-07-12',
+    created: true, _created: true, xpEarned: 5,
+  });
+  assert.equal(result.diagnostic.code, 'schedule_repair_used');
+  assert.equal(refreshCalls[0].correlationId, 'correlation-1');
+  assert.equal(db.calls[1].values[12], '["hola"]');
+});
+
+test('dictionary word save reuses an existing definition without awarding duplicate XP', async () => {
+  const db = scriptedDb([
+    { rows: [{ id: 'word-1', word: 'hola', forms: null }] },
+    { rows: [{ id: 'word-1', word: 'hola', forms: null, next_review_date: '2026-07-12' }] },
+  ]);
+  let awards = 0;
+  const service = createDictionaryWordService({
+    db,
+    refreshSchedule: async () => ({ diagnostic: null }),
+    awardSaveXp: async () => { awards += 1; return {}; },
+  });
+
+  const result = await service.save('user-1', { word: 'hola' }, {
+    timeZone: 'UTC', correlationId: 'correlation-2',
+  });
+
+  assert.equal(result.status, 200);
+  assert.equal(result.body.created, false);
+  assert.equal(awards, 0);
+  assert.equal(db.calls.length, 2);
+});
+
+test('dictionary word update rejects an empty patch before querying', async () => {
+  const db = scriptedDb([]);
+  const service = createDictionaryWordService({ db });
+  await assert.rejects(
+    () => service.update('user-1', 'word-1', {}),
+    (error) => error.code === 'request_validation_failed' && error.status === 400,
+  );
+  assert.equal(db.calls.length, 0);
+});
+
+test('dictionary word deletion reports a typed not-found error', async () => {
+  const db = scriptedDb([{ rowCount: 0 }]);
+  const service = createDictionaryWordService({ db });
+  await assert.rejects(
+    () => service.remove('user-1', 'word-1'),
+    (error) => error.code === 'dictionary_word_not_found' && error.status === 404,
+  );
+});

@@ -278,7 +278,6 @@ struct OnboardingView: View {
     @State private var nativeLanguage = LanguageOptions.all.first?.code ?? "en"
     @State private var targetLanguage = "es"
     @State private var dailyNewLimit = 5
-    @State private var accountType = "student"
     @State private var cefrLevel = "A1"
 
     var body: some View {
@@ -308,13 +307,6 @@ struct OnboardingView: View {
                     }
                 }
 
-                Section("Account") {
-                    Picker("Role", selection: $accountType) {
-                        Text("Student").tag("student")
-                        Text("Teacher").tag("teacher")
-                    }
-                }
-
                 if let authError = session.authError, !authError.isEmpty {
                     Section {
                         Text(authError)
@@ -329,7 +321,7 @@ struct OnboardingView: View {
                                 nativeLanguage: nativeLanguage,
                                 targetLanguage: targetLanguage,
                                 dailyNewLimit: dailyNewLimit,
-                                accountType: accountType,
+                                accountType: session.user?.accountType ?? "student",
                                 cefrLevel: cefrLevel
                             )
                         }

@@ -9,6 +9,7 @@ import { estimateCefrLevel } from '../lib/cefrDifficulty.js';
 import { validate } from '../lib/validate.js';
 import { parseRssItems } from '../lib/rssParser.js';
 import { extractAndCacheRawArticle, buildArticlePreview } from '../lib/articleCache.js';
+import { LANGUAGE_NAMES } from '../lib/generated/languages.js';
 
 const router = Router();
 
@@ -149,13 +150,8 @@ router.get('/api/news', authMiddleware, validate({ query: newsQuery }), async (r
   }
 });
 
-const LANG_NAMES = {
-  en: 'English', es: 'Spanish', pt: 'Portuguese',
-  fr: 'French', ja: 'Japanese', de: 'German',
-};
-
 function buildRewritePrompt(lang, level, rawBody) {
-  const langName = LANG_NAMES[lang] || lang;
+  const langName = LANGUAGE_NAMES[lang] || lang;
   return `You are a language teacher. Rewrite the following ${langName} article at CEFR ${level} level.
 
 Rules:

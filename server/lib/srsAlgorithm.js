@@ -2,13 +2,12 @@
 // lib/srsAlgorithm.js -- Anki-style Spaced Repetition algorithm
 // ---------------------------------------------------------------------------
 
-const LEARNING_STEPS = [60, 600];        // 1 min, 10 min
-const GRADUATING_INTERVAL = 86400;       // 1 day
-// const EASY_GRADUATING_INTERVAL = 345600; // 4 days -- unused since the rating
-//   collapsed to a binary correct/incorrect (good/again only). Flagged for
-//   deletion in a future audit.
-const MIN_EASE = 1.3;
-const MIN_REVIEW_INTERVAL = 86400;       // 1 day minimum
+import {
+  GRADUATING_INTERVAL,
+  LEARNING_STEPS,
+  MIN_EASE,
+  MIN_REVIEW_INTERVAL,
+} from './generated/srsContract.js';
 
 function roundedDayInterval(seconds) {
   return Math.max(Math.round(seconds / MIN_REVIEW_INTERVAL), 1) * MIN_REVIEW_INTERVAL;

@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.classwork.editmodal');
 // ---------------------------------------------------------------------------
 // components/classwork/EditModal.tsx — Edit existing post modal
 // ---------------------------------------------------------------------------
@@ -38,7 +40,7 @@ export default function EditModal({
       const updated = await api.updatePost(post.id, data);
       onSave(updated);
     } catch (err: any) {
-      console.error('Edit post failed:', err);
+      runtimeLog.error('Edit post failed:', err);
       setError(toErrorMessage(err));
     } finally {
       setSaving(false);

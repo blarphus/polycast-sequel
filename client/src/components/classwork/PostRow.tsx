@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.classwork.postrow');
 // ---------------------------------------------------------------------------
 // components/classwork/PostRow.tsx — Compact post row with click-to-expand
 // ---------------------------------------------------------------------------
@@ -188,7 +190,7 @@ function StudentWordListBody({
     try {
       await api.toggleWordKnown(post.id, word.id, newKnown);
     } catch (err: any) {
-      console.error('toggleWordKnown failed:', err);
+      runtimeLog.error('toggleWordKnown failed:', err);
       setError(toErrorMessage(err));
       setKnownIds((prev) => {
         const next = new Set(prev);
@@ -207,7 +209,7 @@ function StudentWordListBody({
       setCompleted(true);
       onUpdate({ id: post.id, completed: true });
     } catch (err: any) {
-      console.error('addPostToDictionary failed:', err);
+      runtimeLog.error('addPostToDictionary failed:', err);
       setError(toErrorMessage(err));
     } finally {
       setAdding(false);
@@ -281,7 +283,7 @@ function StudentProgressSection({ postId }: { postId: string }) {
       const result = await api.getPostCompletions(postId);
       setData(result);
     } catch (err: any) {
-      console.error('getPostCompletions failed:', err);
+      runtimeLog.error('getPostCompletions failed:', err);
       setError(toErrorMessage(err));
     } finally {
       setLoading(false);
@@ -483,7 +485,7 @@ export function PostRow({
       await api.deletePost(post.id);
       onDeletePost(post.id);
     } catch (err) {
-      console.error('Delete post failed:', err);
+      runtimeLog.error('Delete post failed:', err);
       setDeleting(false);
     }
   };

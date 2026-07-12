@@ -15,6 +15,12 @@ import { searchAllImages } from '../lib/imageSearch.js';
 import { pickBestImage } from '../lib/imagePick.js';
 import { storeImageBytes } from '../lib/imageCache.js';
 
+if (process.argv.includes('--help')) {
+  console.log('Usage: node server/scripts/recacheDeadImages.js [--dry-run]\nReplaces expiring external saved-word images. --dry-run searches/selects but performs no cache or saved-word writes.');
+  process.exit(0);
+}
+const dryRun = process.argv.includes('--dry-run');
+
 const { rows: words } = await pool.query(
   `SELECT id, word, translation, definition, example_sentence, image_term
    FROM saved_words
@@ -43,12 +49,16 @@ for (const w of words) {
       failed++;
       continue;
     }
-    const id = await storeImageBytes(chosen.buffer, chosen.contentType, chosen.url ?? null);
-    await pool.query(
-      'UPDATE saved_words SET image_url = $1 WHERE id = $2',
-      [`/api/dictionary/image/${id}`, w.id],
-    );
-    console.log(`OK   ${w.word} ("${term}") -> /api/dictionary/image/${id}`);
+    if (dryRun) {
+      console.log(`DRY  ${w.word} ("${term}"): selected ${chosen.url || 'candidate image'}`);
+    } else {
+      const id = await storeImageBytes(chosen.buffer, chosen.contentType, chosen.url ?? null);
+      await pool.query(
+        'UPDATE saved_words SET image_url = $1 WHERE id = $2',
+        [`/api/dictionary/image/${id}`, w.id],
+      );
+      console.log(`OK   ${w.word} ("${term}") -> /api/dictionary/image/${id}`);
+    }
     updated++;
   } catch (err) {
     console.log(`FAIL ${w.word}: ${err.message}`);

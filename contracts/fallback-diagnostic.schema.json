@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://polycast.app/contracts/fallback-diagnostic.schema.json",
+  "title": "Polycast fallback diagnostic",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["code", "severity", "title", "message", "source", "operation", "correlationId", "occurredAt"],
+  "properties": {
+    "code": { "type": "string", "pattern": "^[a-z0-9_.-]+$" },
+    "severity": { "enum": ["info", "warning", "error"] },
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "message": { "type": "string", "minLength": 1, "maxLength": 1000 },
+    "source": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "operation": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "correlationId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "detail": { "type": "string", "maxLength": 2000 }
+  }
+}

@@ -12,7 +12,13 @@ function responseErrorMessage(body, status) {
     const parsed = JSON.parse(body);
     const detail = parsed?.error?.message;
     return detail ? `Gemini request failed (${status}): ${detail}` : `Gemini request failed (${status})`;
-  } catch {
+  } catch (error) {
+    logger.warn({
+      event: 'gemini_error_payload_fallback',
+      status,
+      responseLength: body.length,
+      err: error,
+    }, 'Gemini returned a non-JSON error; using the HTTP status message');
     return `Gemini request failed (${status})`;
   }
 }
@@ -96,46 +102,6 @@ export async function callGeminiVision(parts, generationConfig = {}, model = 'ge
     throw new Error('Gemini vision returned no text content');
   }
   return text;
-}
-
-/**
- * Generate an image from a text prompt with Imagen (via the :predict endpoint).
- * Returns { buffer, contentType } for the first image, or throws. Used as the
- * flashcard-image fallback when no stock photo fits the word (typically abstract
- * concepts). Imagen 4 Fast is Google's cheapest+newest image model (~$0.02/img).
- */
-export async function callImagen(prompt, model = 'imagen-4.0-fast-generate-001') {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        instances: [{ prompt }],
-        parameters: { sampleCount: 1, aspectRatio: '1:1' },
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const errBody = await response.text();
-    logger.error('Imagen API error: %s', errBody);
-    throw new Error('Imagen request failed');
-  }
-
-  const data = await response.json();
-  const prediction = data.predictions?.[0];
-  if (!prediction?.bytesBase64Encoded) {
-    logger.error('Imagen API returned no image: %s', JSON.stringify(data).slice(0, 500));
-    throw new Error('Imagen returned no image content');
-  }
-  return {
-    buffer: Buffer.from(prediction.bytesBase64Encoded, 'base64'),
-    contentType: prediction.mimeType || 'image/png',
-  };
 }
 
 export async function streamGemini(

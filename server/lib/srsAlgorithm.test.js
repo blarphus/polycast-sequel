@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { computeNextReview } from './srsAlgorithm.js';
+import { MAX_PROMPT_STAGE, SRS_GOLDEN_FIXTURES } from './generated/srsContract.js';
 
 const reviewCard = {
   srs_interval: 30 * 86400,
@@ -39,4 +40,20 @@ test('good on a graduated review grows the interval by the ease factor', () => {
   // 30 days * 2.5 ease = 75 days
   assert.equal(reviewed.srs_interval, 75 * 86400);
   assert.equal(reviewed.due_seconds, 75 * 86400);
+});
+
+test('canonical SRS golden fixtures match the server algorithm', () => {
+  for (const fixture of SRS_GOLDEN_FIXTURES) {
+    const actual = computeNextReview(fixture.card, fixture.answer);
+    const currentStage = Math.min(Math.max(fixture.card.prompt_stage, 0), MAX_PROMPT_STAGE);
+    const promptStage = fixture.answer === 'again'
+      ? Math.max(currentStage - 1, 0)
+      : Math.min(currentStage + 1, MAX_PROMPT_STAGE);
+
+    assert.deepEqual(
+      { ...actual, prompt_stage: promptStage },
+      fixture.expected,
+      fixture.name,
+    );
+  }
 });

@@ -6,14 +6,11 @@ Usage:
     python3 server/scripts/generateSubtitles.py "/path/to/video/folder" --language pt
 """
 
-import sys
+import argparse
 import os
 import subprocess
 import tempfile
 import glob
-
-import mlx_whisper
-
 
 def format_timestamp(seconds):
     """Convert seconds to SRT timestamp format: HH:MM:SS,mmm"""
@@ -63,6 +60,7 @@ def transcribe_file(video_path, language="pt"):
         extract_audio(video_path, wav_path)
 
         print(f"  Transcribing...")
+        import mlx_whisper
         result = mlx_whisper.transcribe(
             wav_path,
             path_or_hf_repo="mlx-community/whisper-large-v3-turbo",
@@ -81,16 +79,13 @@ def transcribe_file(video_path, language="pt"):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python3 generateSubtitles.py <folder> [--language xx]")
-        sys.exit(1)
-
-    folder = sys.argv[1]
-    language = "pt"
-
-    if "--language" in sys.argv:
-        idx = sys.argv.index("--language")
-        language = sys.argv[idx + 1]
+    parser = argparse.ArgumentParser(description="Generate sidecar SRT subtitles with mlx-whisper.")
+    parser.add_argument("folder")
+    parser.add_argument("--language", default="pt")
+    parser.add_argument("--dry-run", action="store_true", help="list candidate videos without ffmpeg, transcription, or writes")
+    args = parser.parse_args()
+    folder = args.folder
+    language = args.language
 
     video_files = sorted(
         glob.glob(os.path.join(folder, "*.avi"))
@@ -100,9 +95,13 @@ def main():
 
     if not video_files:
         print(f"No video files found in: {folder}")
-        sys.exit(1)
+        parser.error(f"No video files found in: {folder}")
 
     print(f"Found {len(video_files)} video files. Language: {language}\n")
+    if args.dry_run:
+        for video in video_files:
+            print(f"DRY {os.path.basename(video)}")
+        return
 
     for i, video in enumerate(video_files, 1):
         print(f"[{i}/{len(video_files)}] {os.path.basename(video)}")

@@ -6,7 +6,6 @@ struct SettingsView: View {
     @State private var nativeLanguage = ""
     @State private var targetLanguage = ""
     @State private var dailyNewLimit = 5
-    @State private var accountType = "student"
     @State private var cefrLevel = "A1"
     @State private var savedMessage = ""
     @State private var savingTargetLanguage = false
@@ -61,10 +60,6 @@ struct SettingsView: View {
 
             Section("Learning") {
                 Stepper("Daily new words: \(dailyNewLimit)", value: $dailyNewLimit, in: 1...50)
-                Picker("Role", selection: $accountType) {
-                    Text("Student").tag("student")
-                    Text("Teacher").tag("teacher")
-                }
             }
 
             Section("Appearance") {
@@ -115,7 +110,6 @@ struct SettingsView: View {
             nativeLanguage = session.user?.nativeLanguage ?? "en"
             targetLanguage = session.user?.targetLanguage ?? "es"
             dailyNewLimit = session.user?.dailyNewLimit ?? 5
-            accountType = session.user?.accountType ?? "student"
             cefrLevel = session.user?.cefrLevel ?? "A1"
         }
         .onChange(of: targetLanguage) { _, newValue in
@@ -134,7 +128,7 @@ struct SettingsView: View {
             nativeLanguage: nativeLanguage,
             targetLanguage: targetLanguage,
             dailyNewLimit: dailyNewLimit,
-            accountType: accountType,
+            accountType: session.user?.accountType ?? "student",
             cefrLevel: cefrLevel
         )
     }

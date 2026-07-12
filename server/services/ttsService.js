@@ -1,3 +1,5 @@
+import { synthesizeWorkerSpeech } from './mediaWorkerService.js';
+
 async function synthesizeWithOpenAi({ text, languageCode }) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('No TTS provider supports this language');
@@ -40,39 +42,14 @@ export function audioContentType(audioBuffer) {
 }
 
 /** Shared TTS service. Cloudflare handles English and Spanish. */
-export async function synthesizeVoiceFeedback({ text, languageCode }) {
-  const workerUrl = process.env.CF_TRANSCRIPT_WORKER_URL;
-  const workerSecret = process.env.CF_TRANSCRIPT_WORKER_SECRET;
-  if (!workerUrl || !workerSecret) {
-    throw new Error('Cloudflare TTS worker is not configured');
-  }
-
-  const url = new URL(workerUrl);
-  url.searchParams.set('action', 'tts');
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${workerSecret}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      text,
-      languageCode,
-    }),
-  });
-
-  if (response.status === 422) {
+export async function synthesizeVoiceFeedback({ text, languageCode, userId, correlationId }) {
+  try {
+    return {
+      audioBuffer: await synthesizeWorkerSpeech(text, languageCode, { userId, correlationId }),
+      usedFallback: false,
+    };
+  } catch (error) {
+    if (error.upstreamStatus !== 422) throw error;
     return synthesizeWithOpenAi({ text, languageCode });
   }
-
-  if (!response.ok) {
-    const errBody = await response.text().catch(() => '');
-    throw new Error(errBody || 'Cloudflare speech synthesis failed');
-  }
-
-  return {
-    audioBuffer: Buffer.from(await response.arrayBuffer()),
-    usedFallback: false,
-  };
 }

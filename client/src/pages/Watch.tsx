@@ -2,6 +2,7 @@
 // pages/Watch.tsx -- YouTube video player with synced clickable transcript
 // ---------------------------------------------------------------------------
 
+import '../styles/watch.css';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';

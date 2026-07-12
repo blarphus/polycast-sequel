@@ -2,6 +2,7 @@
 // pages/Dictionary.tsx -- Personal dictionary with collapsible entries
 // ---------------------------------------------------------------------------
 
+import '../styles/dictionary.css';
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -15,6 +16,7 @@ import { getDictionaryWordGroups, proxyImageUrl } from '../api';
 import type { DictionarySortMode, DictionaryWordGroup, SavedWord } from '../api';
 import { SearchIcon, SearchMinusIcon, BookPlusIcon, ChevronDownIcon, TrashIcon, GripVerticalIcon } from '../components/icons';
 import { FrequencyDots, FREQUENCY_DOT_COLORS } from '../components/FrequencyDots';
+import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 // -- DueStatusBadge: shows SRS status in collapsed header -------------------
 
@@ -104,7 +106,14 @@ function parseWordForms(forms: string | null | undefined): string[] {
       return Array.isArray(parsed)
         ? parsed.map((form) => String(form).trim()).filter(Boolean)
         : [];
-    } catch {
+    } catch (error) {
+      emitFallbackDiagnostic({
+        code: 'dictionary_forms_display_fallback',
+        severity: 'warning',
+        title: 'Saved forms unavailable',
+        message: 'This entry had malformed structured forms, so its forms list is hidden until the data is repaired.',
+        detail: error instanceof Error ? error.message : String(error),
+      }, { source: 'web.dictionary', operation: 'render-word-forms' });
       return [];
     }
   }
@@ -167,6 +176,8 @@ export default function Dictionary() {
   const [lookupInitialQuery, setLookupInitialQuery] = useState('');
   const [imagePickerWord, setImagePickerWord] = useState<SavedWord | null>(null);
   const [page, setPage] = useState(0);
+  const [pageCursors, setPageCursors] = useState<Array<string | null>>([null]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [wordGroups, setWordGroups] = useState<DictionaryWordGroup[]>([]);
   const [dueNextGroupKeys, setDueNextGroupKeys] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -203,16 +214,25 @@ export default function Dictionary() {
   const loadPage = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getDictionaryWordGroups(page, WORDS_PER_PAGE, search, sort);
+      const data = await getDictionaryWordGroups(page, pageCursors[page] ?? null, WORDS_PER_PAGE, search, sort);
       setWordGroups(data.groups);
       setDueNextGroupKeys(new Set(data.dueNextGroupKeys));
       setTotalPages(data.totalPages);
       setTotalGroups(data.totalGroups);
+      setNextCursor(data.nextCursor);
+      if (data.nextCursor) {
+        setPageCursors((current) => {
+          if (current[page + 1] === data.nextCursor) return current;
+          const next = current.slice(0, page + 1);
+          next[page + 1] = data.nextCursor;
+          return next;
+        });
+      }
       if (data.page !== page) setPage(data.page);
     } finally {
       setLoading(false);
     }
-  }, [page, search, sort]);
+  }, [page, pageCursors, search, sort]);
 
   useEffect(() => {
     void loadPage();
@@ -345,13 +365,13 @@ export default function Dictionary() {
                 className="form-input dict-search"
                 placeholder="Search words..."
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                onChange={(e) => { setSearch(e.target.value); setPage(0); setPageCursors([null]); }}
               />
             </div>
             <select
               className="form-input dict-sort"
               value={sort}
-              onChange={(e) => { setSort(e.target.value as DictionarySortMode); setPage(0); }}
+              onChange={(e) => { setSort(e.target.value as DictionarySortMode); setPage(0); setPageCursors([null]); }}
             >
               <option value="queue">Queue</option>
               <option value="date">Recent first</option>
@@ -568,8 +588,8 @@ export default function Dictionary() {
                   </span>
                   <button
                     className="dict-page-btn"
-                    onClick={() => setPage((p) => p + 1)}
-                    disabled={page >= totalPages - 1}
+                    onClick={() => { if (nextCursor) setPage((p) => p + 1); }}
+                    disabled={!nextCursor}
                   >
                     Next &rarr;
                   </button>

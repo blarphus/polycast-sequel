@@ -38,7 +38,7 @@ final class SocketClient: @unchecked Sendable {
 
     func connect() {
         guard let token = APIClient.shared.token else {
-            print("[Polycast] SocketClient: no token, skipping connect")
+            PolycastLog.runtime.error("[Polycast] SocketClient: no token, skipping connect")
             return
         }
 
@@ -63,7 +63,7 @@ final class SocketClient: @unchecked Sendable {
         self.socket = socket
 
         socket.on(clientEvent: .connect) { [weak self] _, _ in
-            print("[Polycast] Socket connected")
+            PolycastLog.runtime.error("[Polycast] Socket connected")
             self?.startHeartbeat()
             if let handlers = self?.connectHandlers.values {
                 for handler in handlers {
@@ -73,16 +73,16 @@ final class SocketClient: @unchecked Sendable {
         }
 
         socket.on(clientEvent: .disconnect) { [weak self] _, _ in
-            print("[Polycast] Socket disconnected")
+            PolycastLog.runtime.error("[Polycast] Socket disconnected")
             self?.stopHeartbeat()
         }
 
         socket.on(clientEvent: .reconnect) { _, _ in
-            print("[Polycast] Socket reconnected")
+            PolycastLog.runtime.error("[Polycast] Socket reconnected")
         }
 
         socket.on(clientEvent: .error) { data, _ in
-            print("[Polycast] Socket error: \(data)")
+            PolycastLog.runtime.error("[Polycast] Socket error: \(data)")
         }
 
         for (uuid, registered) in registeredHandlers {
@@ -172,14 +172,6 @@ final class SocketClient: @unchecked Sendable {
 
     func offConnect(_ uuid: UUID) {
         connectHandlers.removeValue(forKey: uuid)
-    }
-
-    func offAll(_ event: String) {
-        socket?.off(event)
-        for (uuid, registered) in registeredHandlers where registered.event == event {
-            registeredHandlers.removeValue(forKey: uuid)
-            handlerMap.removeValue(forKey: uuid)
-        }
     }
 
     private var handlerMap: [UUID: UUID] = [:]

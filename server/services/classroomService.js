@@ -204,19 +204,6 @@ export async function deleteClassroom(classroomId, teacherId) {
   await pool.query('DELETE FROM classrooms WHERE id = $1', [classroomId]);
 }
 
-export async function getTeacherDefaultClassroom(teacherId) {
-  const { rows } = await pool.query(
-    `SELECT c.*
-     FROM classrooms c
-     JOIN classroom_teachers ct ON ct.classroom_id = c.id AND ct.teacher_id = $1
-     WHERE c.is_default_migrated = true
-     ORDER BY c.created_at ASC
-     LIMIT 1`,
-    [teacherId],
-  );
-  return rows[0] || null;
-}
-
 export async function getClassroomTopics(classroomId) {
   const { rows } = await pool.query(
     `SELECT * FROM classroom_topics

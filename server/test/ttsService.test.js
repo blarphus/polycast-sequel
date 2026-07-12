@@ -16,7 +16,13 @@ test('synthesizeVoiceFeedback proxies Cloudflare audio through the private worke
 
   globalThis.fetch = async (url, options) => {
     assert.equal(String(url), 'https://worker.example.test/transcripts?existing=1&action=tts');
-    assert.equal(options.headers.Authorization, 'Bearer test-secret');
+    const token = options.headers.Authorization.replace('Bearer ', '');
+    assert.notEqual(token, 'test-secret');
+    const [, encodedClaims] = token.split('.');
+    const claims = JSON.parse(Buffer.from(encodedClaims, 'base64url').toString('utf8'));
+    assert.equal(claims.scope, 'tts');
+    assert.equal(claims.sub, 'server');
+    assert.ok(claims.exp > claims.iat);
     assert.deepEqual(JSON.parse(options.body), { text: 'Hola mundo', languageCode: 'es-MX' });
     return new Response(Uint8Array.from([1, 2, 3]), {
       status: 200,

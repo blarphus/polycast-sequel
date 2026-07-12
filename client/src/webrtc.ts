@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from './utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.webrtc');
 // ---------------------------------------------------------------------------
 // webrtc.ts -- WebRTC peer connection management
 // ---------------------------------------------------------------------------
@@ -28,7 +30,7 @@ export function createPeerConnection(
   };
 
   pc.oniceconnectionstatechange = () => {
-    console.log('[webrtc] ICE connection state:', pc.iceConnectionState);
+    runtimeLog.log('[webrtc] ICE connection state:', pc.iceConnectionState);
     // Only treat 'failed' as fatal — 'disconnected' is transient and
     // the ICE agent may recover on its own.
     if (pc.iceConnectionState === 'failed') {
@@ -37,7 +39,7 @@ export function createPeerConnection(
   };
 
   pc.onconnectionstatechange = () => {
-    console.log('[webrtc] Connection state:', pc.connectionState);
+    runtimeLog.log('[webrtc] Connection state:', pc.connectionState);
     if (pc.connectionState === 'failed') {
       onIceFailure?.();
     }
@@ -102,7 +104,7 @@ export async function addIceCandidate(
   try {
     await pc.addIceCandidate(new RTCIceCandidate(candidate));
   } catch (err) {
-    console.warn('[webrtc] Failed to add ICE candidate:', err);
+    runtimeLog.warn('[webrtc] Failed to add ICE candidate:', err);
   }
 }
 
@@ -115,13 +117,9 @@ export function closePeerConnection(pc: RTCPeerConnection): void {
   pc.oniceconnectionstatechange = null;
   pc.onconnectionstatechange = null;
 
-  pc.getSenders().forEach((sender) => {
-    try {
-      pc.removeTrack(sender);
-    } catch {
-      // already closed
-    }
-  });
+  if (pc.signalingState !== 'closed') {
+    pc.getSenders().forEach((sender) => pc.removeTrack(sender));
+  }
 
   pc.close();
 }

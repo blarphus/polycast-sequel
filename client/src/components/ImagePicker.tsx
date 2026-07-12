@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.imagepicker');
 // ---------------------------------------------------------------------------
 // components/ImagePicker.tsx -- Modal for searching & picking a word image
 // ---------------------------------------------------------------------------
@@ -37,7 +39,7 @@ export default function ImagePicker({ initialQuery, onSelect, onClose }: Props) 
       setImages(result.images);
       setSearched(true);
     } catch (err) {
-      console.error('Image search error:', err);
+      runtimeLog.error('Image search error:', err);
       setSearched(true);
     } finally {
       setSearching(false);
@@ -117,7 +119,7 @@ export default function ImagePicker({ initialQuery, onSelect, onClose }: Props) 
       await onSelect(url);
       onClose();
     } catch (err) {
-      console.error('Image select error:', err);
+      runtimeLog.error('Image select error:', err);
       setSavingUrl(null);
     }
   };

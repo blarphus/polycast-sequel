@@ -8,6 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import { unzipSync, strFromU8 } from 'fflate';
+import { emitFallbackDiagnostic } from './fallbackDiagnostics';
 
 export interface EpubBlock {
   type: 'h1' | 'h2' | 'h3' | 'p' | 'img';
@@ -107,7 +108,15 @@ function splitSentences(text: string): string[] {
         if (s) out.push(s);
       }
       if (out.length) return out;
-    } catch { /* fall through to regex */ }
+    } catch (error) {
+      emitFallbackDiagnostic({
+        code: 'epub_sentence_segmenter_fallback',
+        severity: 'warning',
+        title: 'Simpler sentence splitting used',
+        message: 'The browser sentence segmenter failed, so this book is using punctuation-based sentence splitting.',
+        detail: error instanceof Error ? error.message : String(error),
+      }, { source: 'web.epub', operation: 'split-sentences' });
+    }
   }
   return clean.split(/(?<=[.!?…])\s+/).map((s) => s.trim()).filter(Boolean);
 }

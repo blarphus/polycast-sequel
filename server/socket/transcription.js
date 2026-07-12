@@ -36,13 +36,14 @@ export function handleTranscription(io, socket) {
   }
 
   function emitTranscript(text) {
+    const groupRoom = getGroupRoom();
     const transcriptData = {
       text,
       lang: detectedLang,
       userId: socket.userId,
+      roomId: groupRoom ? groupRoom.slice('group:'.length) : null,
     };
 
-    const groupRoom = getGroupRoom();
     if (groupRoom) {
       // Broadcast to entire group room (including self)
       io.to(groupRoom).emit('transcript', transcriptData);
@@ -76,6 +77,7 @@ export function handleTranscription(io, socket) {
       displayName: speakerName,
       text: text.trim(),
       lang: detectedLang,
+      roomId: getGroupRoom()?.slice('group:'.length) || null,
     };
 
     const groupRoom = getGroupRoom();
@@ -98,10 +100,8 @@ export function handleTranscription(io, socket) {
       clearTimer = null;
     }
     if (voxtralWs) {
-      try {
+      if (voxtralWs.readyState !== WebSocket.CLOSED && voxtralWs.readyState !== WebSocket.CLOSING) {
         voxtralWs.close();
-      } catch {
-        // already closed
       }
       voxtralWs = null;
     }

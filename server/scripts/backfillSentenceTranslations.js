@@ -22,6 +22,12 @@ dotenv.config({ path: path.join(path.dirname(__filename), '..', '..', '.env') })
 
 const { Pool } = pg;
 
+if (process.argv.includes('--help')) {
+  console.log(`Usage: node server/scripts/backfillSentenceTranslations.js [--dry-run] [--limit=N] [--concurrency=N] [--passes=N]
+Backfills missing sentence translations. --dry-run performs reads/generation but no database updates.`);
+  process.exit(0);
+}
+
 function argValue(name, fallback = null) {
   const prefix = `--${name}=`;
   const match = process.argv.find((arg) => arg.startsWith(prefix));

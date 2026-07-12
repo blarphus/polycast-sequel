@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.usebooks');
 // ---------------------------------------------------------------------------
 // hooks/useBooks.ts -- Manage the on-device EPUB library.
 // ---------------------------------------------------------------------------
@@ -16,7 +18,7 @@ export function useBooks() {
       setBooks(await listBooks());
       setError('');
     } catch (err) {
-      console.error('Failed to load books:', err);
+      runtimeLog.error('Failed to load books:', err);
       setError('Could not open your book library.');
     } finally {
       setLoading(false);

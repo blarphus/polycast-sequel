@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.usedictionarytoast');
 // ---------------------------------------------------------------------------
 // hooks/useDictionaryToast.tsx -- Background dictionary saves with error-only feedback
 // ---------------------------------------------------------------------------
@@ -107,7 +109,7 @@ export function DictionaryToastProvider({ children }: { children: ReactNode }) {
       .then(() => { job.status = 'done'; })
       .catch((err) => {
         job.status = 'error';
-        console.error(`Dictionary save failed for "${word}":`, err);
+        runtimeLog.error(`Dictionary save failed for "${word}":`, err);
       })
       .finally(() => { recalc(); });
   }, []);

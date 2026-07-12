@@ -85,6 +85,11 @@
     scheduleSubtitleProcessing();
   });
 
+  document.addEventListener('pc-page-diagnostic', (event) => {
+    const diagnostic = event.detail || {};
+    showFallbackToast(diagnostic.title, diagnostic.message, diagnostic);
+  });
+
   // -- Auto-switch learning language to the subtitle language ----------------
 
   // Watching subtitles in a language other than the current target switches
@@ -99,7 +104,15 @@
     if (targetLanguage && targetLanguage.startsWith(base)) return;
     lastRequestedLang = base;
     chrome.runtime.sendMessage({ type: 'CAPTION_LANGUAGE_DETECTED', languageCode: base })
-      .catch((err) => console.error('[polycast] caption language switch failed:', err));
+      .catch((err) => showFallbackToast('Caption language update failed', 'Polycast could not align the learning language with this caption track.', {
+        code: 'caption_language_switch_failed',
+        severity: 'error',
+        source: 'extension.youtube',
+        operation: 'switch-target-language',
+        correlationId: crypto.randomUUID(),
+        occurredAt: new Date().toISOString(),
+        detail: err?.message || String(err),
+      }));
   }
 
   // -- Untokenize: strip .pc-word spans back to plain text ------------------

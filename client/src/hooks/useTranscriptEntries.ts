@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.usetranscriptentries');
 // ---------------------------------------------------------------------------
 // hooks/useTranscriptEntries.ts -- Manages transcript entries + auto-translate
 // ---------------------------------------------------------------------------
@@ -32,7 +34,7 @@ export function useTranscriptEntries(nativeLang: string | null | undefined) {
                 : e),
             );
           })
-          .catch((err) => console.error('Failed to translate transcript entry:', err));
+          .catch((err) => runtimeLog.error('Failed to translate transcript entry:', err));
       }
     },
     [nativeLang],

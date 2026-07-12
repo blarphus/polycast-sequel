@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.localvideos');
 // ---------------------------------------------------------------------------
 // pages/LocalVideos.tsx — Browse and select local video files from a folder
 // ---------------------------------------------------------------------------
 
+import '../styles/localVideos.css';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FolderIcon, CheckCircleIcon, CheckIcon } from '../components/icons';
@@ -68,7 +71,7 @@ export default function LocalVideos() {
           generateThumbnails(restored);
         }
       } catch (err) {
-        console.error('Failed to restore directory:', err);
+        runtimeLog.error('Failed to restore directory:', err);
       }
       if (!cancelled) setRestoring(false);
     })();
@@ -98,7 +101,7 @@ export default function LocalVideos() {
         return;
       } catch (err: any) {
         if (err.name === 'AbortError') return;
-        console.error('showDirectoryPicker failed, falling back to input:', err);
+        runtimeLog.error('showDirectoryPicker failed, falling back to input:', err);
         window.dispatchEvent(new CustomEvent('polycast:fallback', {
           detail: {
             title: 'File picker fallback used',

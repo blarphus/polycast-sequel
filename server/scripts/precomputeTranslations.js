@@ -22,6 +22,11 @@ import { callGemini } from '../lib/gemini.js';
 const __dirname = path.dirname(__filename);
 const TEMPLATE_PATH = path.join(__dirname, '..', 'data', 'templates', 'cefrj-a1.json');
 const LANGUAGES = ['pt', 'es'];
+const dryRun = process.argv.includes('--dry-run');
+if (process.argv.includes('--help')) {
+  console.log('Usage: node server/scripts/precomputeTranslations.js [--dry-run]\nComputes missing template translations. --dry-run performs no template write.');
+  process.exit(0);
+}
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -239,8 +244,8 @@ async function main() {
     }
   }
 
-  fs.writeFileSync(TEMPLATE_PATH, JSON.stringify(data, null, 2) + '\n');
-  console.log(`\nWrote updated template to ${path.basename(TEMPLATE_PATH)}`);
+  if (!dryRun) fs.writeFileSync(TEMPLATE_PATH, JSON.stringify(data, null, 2) + '\n');
+  console.log(dryRun ? '\nDry run: template was not written.' : `\nWrote updated template to ${path.basename(TEMPLATE_PATH)}`);
 }
 
 main().catch(err => { console.error('Fatal error:', err); process.exit(1); });

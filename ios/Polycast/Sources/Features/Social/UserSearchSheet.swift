@@ -100,7 +100,7 @@ struct UserSearchSheet: View {
         do {
             results = try await api.searchUsers(query: q)
         } catch {
-            print("[Polycast] UserSearch error: \(error)")
+            PolycastLog.runtime.error("[Polycast] UserSearch error: \(error)")
         }
         loading = false
     }
@@ -110,7 +110,7 @@ struct UserSearchSheet: View {
             try await api.sendFriendRequest(userId: userId)
             sentRequests.insert(userId)
         } catch {
-            print("[Polycast] sendFriendRequest error: \(error)")
+            PolycastLog.runtime.error("[Polycast] sendFriendRequest error: \(error)")
         }
     }
 }

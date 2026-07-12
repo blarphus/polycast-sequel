@@ -42,7 +42,6 @@
 
     const isTranslating = !!track.translationLanguage;
     if (isTranslating || track.languageCode !== audioLang) {
-      console.debug('[polycast] resetting caption track to audio language:', audioLang);
       player.setOption('captions', 'track', { languageCode: audioLang });
     }
   }
@@ -61,7 +60,17 @@
       // YouTube's player object changes shape during navigation; the guard above
       // catches the common not-ready case, so anything reaching here is worth
       // surfacing. We still retry on the next poll.
-      console.warn('[youtube-page] caption-lang read failed:', err);
+      document.dispatchEvent(new CustomEvent('pc-page-diagnostic', { detail: {
+        code: 'youtube_caption_bridge_retry',
+        severity: 'warning',
+        title: 'YouTube caption bridge retrying',
+        message: 'YouTube changed its player state while Polycast was reading the active caption language. Polycast will retry on the next poll.',
+        source: 'extension.youtube-page',
+        operation: 'read-caption-language',
+        correlationId: crypto.randomUUID(),
+        occurredAt: new Date().toISOString(),
+        detail: err?.message || String(err),
+      } }));
     }
   }
 

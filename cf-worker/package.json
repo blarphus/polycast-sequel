@@ -2,12 +2,15 @@
   "name": "polycast-transcript-worker",
   "version": "1.0.0",
   "private": true,
+  "engines": { "node": ">=22.12" },
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test": "node --test test/*.test.js",
+    "check": "npm test && wrangler deploy --dry-run --outdir /tmp/polycast-worker-check"
   },
   "devDependencies": {
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.110.0"
   }
 }

@@ -148,7 +148,7 @@ struct ChatView: View {
             hasMore = page.hasMore
         } catch {
             self.error = error.localizedDescription
-            print("[Polycast] ChatView load error: \(error)")
+            PolycastLog.runtime.error("[Polycast] ChatView load error: \(error)")
         }
         loading = false
     }
@@ -160,7 +160,7 @@ struct ChatView: View {
             messages.insert(contentsOf: page.messages.reversed(), at: 0)
             hasMore = page.hasMore
         } catch {
-            print("[Polycast] ChatView loadEarlier error: \(error)")
+            PolycastLog.runtime.error("[Polycast] ChatView loadEarlier error: \(error)")
         }
     }
 
@@ -175,7 +175,7 @@ struct ChatView: View {
             error = ""
         } catch {
             self.error = error.localizedDescription
-            print("[Polycast] ChatView send error: \(error)")
+            PolycastLog.runtime.error("[Polycast] ChatView send error: \(error)")
         }
         sending = false
     }
@@ -189,7 +189,7 @@ struct ChatView: View {
                 try? await api.markMessagesRead(friendId: friendId)
             }
         } catch {
-            print("[Polycast] ChatView poll error: \(error)")
+            PolycastLog.runtime.error("[Polycast] ChatView poll error: \(error)")
         }
     }
 

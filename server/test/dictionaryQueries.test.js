@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { listDictionaryGroupPage, listDueWords, listNewWordPreview, listStudyOverview, listWidgetPreview } from '../lib/dictionaryQueries.js';
+import {
+  ensureCardsScheduled,
+  ensureScheduleCurrent,
+  listDictionaryGroupPage,
+  listDueWords,
+  listNewWordPreview,
+  listStudyOverview,
+  listWidgetPreview,
+} from '../lib/dictionaryQueries.js';
 
 function recordingDatabase(rows = []) {
   const calls = [];
@@ -16,17 +24,24 @@ function recordingDatabase(rows = []) {
 function reviewRow(id) {
   return {
     id,
+    word: id,
+    target_language: 'es',
     srs_interval: 86400,
     learning_step: null,
     last_reviewed_at: '2026-06-01T12:00:00Z',
     due_at: '2026-06-18T00:00:00Z',
     created_at: '2026-06-01T12:00:00Z',
+    priority: false,
+    frequency_count: 0,
+    frequency: 0,
   };
 }
 
 function newRow(id, queuePosition) {
   return {
     id,
+    word: id,
+    target_language: 'es',
     srs_interval: 0,
     learning_step: null,
     last_reviewed_at: null,
@@ -39,118 +54,54 @@ function newRow(id, queuePosition) {
   };
 }
 
-test('listNewWordPreview returns ordered candidates without introducing cards', async () => {
+test('dictionary preview is a pure ordered read', async () => {
   const db = recordingDatabase([{ id: 'word-1' }]);
-
   const result = await listNewWordPreview(db, 'user-1', 7);
 
   assert.deepEqual(result.rows, [{ id: 'word-1' }]);
-  assert.match(db.calls[0].text, /UPDATE saved_words/);
-  assert.match(db.calls[0].text, /queue_position/);
-  assert.deepEqual(db.calls[0].values, ['user-1']);
-  assert.match(db.calls[1].text, /SET due_at = NULL/);
-  assert.match(db.calls[1].text, /last_reviewed_at IS NULL/);
-  assert.deepEqual(db.calls[1].values, ['user-1']);
-  assert.match(db.calls[2].text, /last_reviewed_at IS NOT NULL/);
-  assert.deepEqual(db.calls[2].values, ['user-1', 'UTC']);
-  assert.match(db.calls[3].text, /overdue_review_cards/);
-  assert.match(db.calls[3].text, /\(sw\.due_at AT TIME ZONE \$2\)::date < \(NOW\(\) AT TIME ZONE \$2\)::date/);
-  assert.match(db.calls[3].text, /SET due_at = date_trunc\('day', NOW\(\) AT TIME ZONE \$2\) AT TIME ZONE \$2/);
-  assert.doesNotMatch(db.calls[3].text, /MIN\(due_date\)/);
-  assert.doesNotMatch(db.calls[3].text, /make_interval\(days => shift\.days\)/);
-  assert.deepEqual(db.calls[3].values, ['user-1', 'UTC']);
-  assert.deepEqual(db.calls[4].values, ['user-1', 7]);
-  assert.match(db.calls[4].text, /last_reviewed_at IS NULL/);
-  assert.match(db.calls[4].text, /queue_position ASC NULLS LAST/);
-  assert.doesNotMatch(db.calls[4].text, /due_at IS NOT NULL/);
-  assert.doesNotMatch(db.calls[4].text, /due_at <= NOW\(\)/);
-  assert.match(db.calls[4].text, /LIMIT \$2/);
-  assert.doesNotMatch(db.calls[4].text, /UPDATE|INSERT/i);
+  assert.equal(db.calls.length, 1);
+  assert.deepEqual(db.calls[0].values, ['user-1', 7]);
+  assert.match(db.calls[0].text, /queue_position ASC NULLS LAST/);
+  assert.doesNotMatch(db.calls[0].text, /UPDATE|INSERT|DELETE/i);
 });
 
-test('listDueWords limits queued new cards without scheduling them', async () => {
+test('due queue is a pure read and keeps the supplied daily limit', async () => {
   const db = recordingDatabase();
-
   await listDueWords(db, 'user-1', 'America/Chicago', 15);
 
-  assert.match(db.calls[0].text, /UPDATE saved_words/);
-  assert.deepEqual(db.calls[0].values, ['user-1']);
-  assert.match(db.calls[1].text, /SET due_at = NULL/);
-  assert.deepEqual(db.calls[1].values, ['user-1']);
-  assert.deepEqual(db.calls[2].values, ['user-1', 'America/Chicago']);
-  assert.deepEqual(db.calls[3].values, ['user-1', 'America/Chicago']);
-  assert.deepEqual(db.calls[4].values, ['user-1', 'America/Chicago', 15]);
-  assert.match(db.calls[4].text, /COALESCE\(\$3::int, daily_new_limit\)/);
-  assert.match(db.calls[4].text, /introduced_today/);
-  assert.match(db.calls[4].text, /sw\.queue_position ASC NULLS LAST/);
-  assert.doesNotMatch(db.calls[4].text, /new_cards[\s\S]*sw\.due_at IS NOT NULL/);
-  assert.doesNotMatch(db.calls[4].text, /new_cards[\s\S]*sw\.due_at <= NOW\(\)/);
-  assert.doesNotMatch(db.calls[4].text, /sw\.due_at IS NULL\s+AND sw\.last_reviewed_at IS NULL/);
+  assert.equal(db.calls.length, 1);
+  assert.deepEqual(db.calls[0].values, ['user-1', 'America/Chicago', 15]);
+  assert.match(db.calls[0].text, /COALESCE\(\$3::int, daily_new_limit\)/);
+  assert.match(db.calls[0].text, /introduced_today/);
+  assert.doesNotMatch(db.calls[0].text, /UPDATE|INSERT|DELETE/i);
 });
 
-test('listDueWords spaces new cards through the review queue', async () => {
-  const rows = [
-    ...Array.from({ length: 100 }, (_, index) => reviewRow(`review-${index + 1}`)),
-    ...Array.from({ length: 20 }, (_, index) => newRow(`new-${index + 1}`, index)),
-  ];
-  const db = recordingDatabase(rows);
-
-  const result = await listDueWords(db, 'user-1', 'America/Chicago', 20);
-
-  assert.deepEqual(result.rows.slice(0, 6).map((row) => row.id), [
-    'review-1',
-    'review-2',
-    'review-3',
-    'review-4',
-    'review-5',
-    'new-1',
-  ]);
-  assert.equal(result.rows[11].id, 'new-2');
-  assert.equal(result.rows[119].id, 'new-20');
+test('due queue uses the saved daily limit when override is absent', async () => {
+  const db = recordingDatabase();
+  await listDueWords(db, 'user-1');
+  assert.deepEqual(db.calls[0].values, ['user-1', 'UTC', null]);
 });
 
-test('listDueWords paginates the interleaved study queue', async () => {
+test('due queue spaces new cards through reviews and paginates after interleaving', async () => {
   const rows = [
     ...Array.from({ length: 10 }, (_, index) => reviewRow(`review-${index + 1}`)),
     ...Array.from({ length: 2 }, (_, index) => newRow(`new-${index + 1}`, index)),
   ];
   const db = recordingDatabase(rows);
-
   const result = await listDueWords(db, 'user-1', 'America/Chicago', 2, 5, 4);
-
-  assert.deepEqual(result.rows.map((row) => row.id), [
-    'review-5',
-    'new-1',
-    'review-6',
-    'review-7',
-    'review-8',
-  ]);
+  assert.deepEqual(result.rows.map((row) => row.id), ['review-5', 'new-1', 'review-6', 'review-7', 'review-8']);
 });
 
-test('listDueWords keeps the saved daily limit when no override is supplied', async () => {
-  const db = recordingDatabase();
-
-  await listDueWords(db, 'user-1');
-
-  assert.deepEqual(db.calls[0].values, ['user-1']);
-  assert.deepEqual(db.calls[1].values, ['user-1']);
-  assert.deepEqual(db.calls[2].values, ['user-1', 'UTC']);
-  assert.deepEqual(db.calls[3].values, ['user-1', 'UTC']);
-  assert.deepEqual(db.calls[4].values, ['user-1', 'UTC', null]);
-});
-
-test('listStudyOverview subtracts introduced cards from available new cards', async () => {
+test('study overview subtracts introduced cards without a scheduling write', async () => {
   const db = recordingDatabase([{ due: 2, new_available: 3, daily_new_limit: 5 }]);
-
   const overview = await listStudyOverview(db, 'user-1', 'America/Chicago');
-
   assert.deepEqual(overview, { due: 2, new_available: 3, daily_new_limit: 5 });
-  assert.match(db.calls[4].text, /introduced_today/);
-  assert.match(db.calls[4].text, /GREATEST\(COALESCE\(\(SELECT daily_new_limit FROM prefs\), 0\) - \(SELECT cnt FROM introduced_today\), 0\)/);
-  assert.deepEqual(db.calls[4].values, ['user-1', 'America/Chicago']);
+  assert.equal(db.calls.length, 1);
+  assert.match(db.calls[0].text, /introduced_today/);
+  assert.doesNotMatch(db.calls[0].text, /UPDATE|INSERT|DELETE/i);
 });
 
-test('listWidgetPreview returns overview and preview words after one scheduling pass', async () => {
+test('widget preview performs two bounded pure reads', async () => {
   const db = {
     calls: [],
     async query(text, values) {
@@ -158,169 +109,115 @@ test('listWidgetPreview returns overview and preview words after one scheduling 
       if (/SELECT\s+\(SELECT COUNT\(\*\)::int FROM saved_words/.test(text)) {
         return { rows: [{ due: 12, new_available: 5, daily_new_limit: 5 }] };
       }
-      if (/SELECT\s+sw\.id/.test(text) && /sw\.image_url/.test(text) && /LIMIT \$2/.test(text)) {
-        return { rows: [{ id: 'preview-1' }, { id: 'preview-2' }] };
-      }
-      return { rows: [], rowCount: 0 };
+      return { rows: [{ id: 'preview-1' }] };
     },
   };
-
   const result = await listWidgetPreview(db, 'user-1', 8, 'America/Chicago');
-
   assert.deepEqual(result, {
     overview: { due: 12, new_available: 5, daily_new_limit: 5 },
-    words: [{ id: 'preview-1' }, { id: 'preview-2' }],
+    words: [{ id: 'preview-1' }],
   });
-  assert.equal(db.calls.length, 6);
-  assert.match(db.calls[0].text, /queue_position/);
-  assert.match(db.calls[3].text, /overdue_review_cards/);
-  assert.deepEqual(db.calls[4].values, ['user-1', 'America/Chicago']);
-  assert.deepEqual(db.calls[5].values, ['user-1', 8]);
-  assert.doesNotMatch(db.calls[5].text, /SELECT sw\.\*/);
-  assert.match(db.calls[5].text, /sw\.image_url/);
+  assert.equal(db.calls.length, 2);
+  for (const call of db.calls) assert.doesNotMatch(call.text, /UPDATE|INSERT|DELETE/i);
 });
 
-test('listDictionaryGroupPage projects queued new-card dates without setting due_at', async () => {
+function pagedGroupDatabase({ rows, pageKeys, dueKeys = pageKeys, dailyNewLimit = 5, introducedToday = 0 }) {
+  const calls = [];
+  return {
+    calls,
+    async query(text, values) {
+      calls.push({ text, values });
+      if (/SELECT target_language, daily_new_limit FROM users/.test(text)) {
+        return { rows: [{ target_language: 'es', daily_new_limit: dailyNewLimit }] };
+      }
+      if (/SELECT COUNT\(\*\)::int AS count FROM summaries/.test(text)) {
+        return { rows: [{ count: pageKeys.length }] };
+      }
+      if (/SELECT COUNT\(\*\)::int AS cnt FROM saved_words/.test(text)) {
+        return { rows: [{ cnt: introducedToday }] };
+      }
+      if (/WHERE has_new/.test(text)) return { rows: dueKeys };
+      if (/SELECT word, target_language,/.test(text)) return { rows: pageKeys };
+      if (/jsonb_to_recordset/.test(text)) {
+        const keys = JSON.parse(values[2]);
+        const wanted = new Set(keys.map((key) => `${key.word}|${key.target_language || ''}`));
+        return { rows: rows.filter((row) => wanted.has(`${row.word}|${row.target_language || ''}`)) };
+      }
+      throw new Error(`Unexpected query: ${text}`);
+    },
+  };
+}
+
+test('group pagination fetches only page keys/entries and projects new-card dates', async () => {
   const today = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'UTC',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+    timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(new Date());
-  const tomorrowDate = new Date(`${today}T00:00:00Z`);
-  tomorrowDate.setUTCDate(tomorrowDate.getUTCDate() + 1);
-  const tomorrow = tomorrowDate.toISOString().slice(0, 10);
+  const rows = [newRow('alpha', 0), newRow('beta', 1), newRow('gamma', 2)];
+  const pageKeys = rows.map(({ word, target_language }) => ({ word, target_language }));
+  const db = pagedGroupDatabase({ rows, pageKeys, dailyNewLimit: 2 });
 
-  const rows = [
-    { ...newRow('new-1', 0), word: 'alpha', target_language: 'es' },
-    { ...newRow('new-2', 1), word: 'beta', target_language: 'es' },
-    { ...newRow('new-3', 2), word: 'gamma', target_language: 'es' },
-  ];
-  const db = {
-    async query(text, values) {
-      if (/SELECT target_language, daily_new_limit FROM users/.test(text)) {
-        return { rows: [{ target_language: 'es', daily_new_limit: 5 }] };
-      }
-      if (/SELECT COUNT\(\*\)::int AS cnt FROM saved_words/.test(text)) {
-        return { rows: [{ cnt: 3 }] };
-      }
-      if (/SELECT \* FROM saved_words/.test(text)) {
-        return { rows };
-      }
-      return { rows: [], rowCount: 0 };
-    },
-  };
-
-  const result = await listDictionaryGroupPage(db, 'user-1', {
-    page: 0,
-    limit: 10,
-    sort: 'queue',
-    timeZone: 'UTC',
-  });
-
-  const projected = Object.fromEntries(
-    result.groups.map((group) => [group.word, group.primaryEntry.projected_due_at]),
-  );
-  assert.deepEqual(projected, {
-    alpha: `${today}T00:00:00`,
-    beta: `${today}T00:00:00`,
-    gamma: `${tomorrow}T00:00:00`,
-  });
+  const result = await listDictionaryGroupPage(db, 'user-1', { limit: 10, sort: 'queue', timeZone: 'UTC' });
+  assert.deepEqual(result.groups.map((group) => group.word), ['alpha', 'beta', 'gamma']);
+  assert.equal(result.groups[0].primaryEntry.projected_due_at, `${today}T00:00:00`);
   assert.equal(result.groups[0].primaryEntry.due_at, null);
+  assert.ok(db.calls.some((call) => /LIMIT \$4/.test(call.text) && !/OFFSET/.test(call.text)));
+  assert.ok(db.calls.some((call) => /jsonb_to_recordset/.test(call.text)));
+  assert.ok(db.calls.every((call) => !/UPDATE|INSERT|DELETE/i.test(call.text)));
 });
 
-test('listDictionaryGroupPage queue sort keeps new cards in projected order before reviews', async () => {
+test('group pagination delegates frequency ordering to SQL using raw counts first', async () => {
   const rows = [
-    { ...newRow('late', 10), word: 'late', target_language: 'es' },
-    { ...reviewRow('review'), word: 'review', target_language: 'es', queue_position: 1 },
-    { ...newRow('early', 2), word: 'early', target_language: 'es' },
-    { ...newRow('middle', 5), word: 'middle', target_language: 'es' },
+    { ...newRow('high', 0), frequency: 3, frequency_count: 900 },
+    { ...newRow('middle', 1), frequency: 3, frequency_count: 600 },
+    { ...newRow('low', 2), frequency: 2, frequency_count: null },
   ];
+  const pageKeys = rows.map(({ word, target_language }) => ({ word, target_language }));
+  const db = pagedGroupDatabase({ rows, pageKeys });
+  const result = await listDictionaryGroupPage(db, 'user-1', { limit: 10, sort: 'freq-high' });
+  assert.deepEqual(result.groups.map((group) => group.word), ['high', 'middle', 'low']);
+  const pageQuery = db.calls.find((call) => /SELECT word, target_language,/.test(call.text));
+  assert.match(pageQuery.text, /max_frequency_count DESC NULLS LAST, max_frequency DESC NULLS LAST/);
+});
+
+test('explicit mutation scheduling retains bounded repair/rollover behavior', async () => {
+  const db = recordingDatabase();
+  await ensureCardsScheduled(db, 'user-1', 'America/Chicago');
+  assert.equal(db.calls.length, 4);
+  assert.match(db.calls[0].text, /UPDATE saved_words/);
+  assert.match(db.calls[3].text, /overdue_review_cards/);
+  assert.deepEqual(db.calls[3].values, ['user-1', 'America/Chicago']);
+});
+
+test('current schedule check is read-only and skips repair work', async () => {
+  const calls = [];
   const db = {
     async query(text, values) {
-      if (/SELECT target_language, daily_new_limit FROM users/.test(text)) {
-        return { rows: [{ target_language: 'es', daily_new_limit: 2 }] };
-      }
-      if (/SELECT COUNT\(\*\)::int AS cnt FROM saved_words/.test(text)) {
-        return { rows: [{ cnt: 0 }] };
-      }
-      if (/SELECT \* FROM saved_words/.test(text)) {
-        return { rows };
+      calls.push({ text, values });
+      if (/SELECT schedule_version/.test(text)) {
+        return { rows: [{ schedule_version: 4, scheduled_version: 4, local_day: '2026-07-12', current_day: '2026-07-12' }] };
       }
       return { rows: [], rowCount: 0 };
     },
   };
-
-  const result = await listDictionaryGroupPage(db, 'user-queue-order', {
-    page: 0,
-    limit: 10,
-    sort: 'queue',
-    timeZone: 'UTC',
-  });
-
-  assert.deepEqual(result.groups.map((group) => group.word), ['early', 'middle', 'late', 'review']);
-  assert.deepEqual(result.groups.slice(0, 3).map((group) => group.primaryEntry.projected_due_at), [
-    result.groups[0].primaryEntry.projected_due_at,
-    result.groups[1].primaryEntry.projected_due_at,
-    result.groups[2].primaryEntry.projected_due_at,
-  ].sort());
+  const result = await ensureScheduleCurrent(db, 'user-1', 'UTC');
+  assert.deepEqual(result, { used: false, reason: null, changedCount: 0 });
+  assert.equal(calls.filter((call) => /UPDATE saved_words/.test(call.text)).length, 0);
+  assert.equal(calls.filter((call) => /INSERT INTO user_schedule_state/.test(call.text)).length, 0);
 });
 
-test('listDictionaryGroupPage frequency sort uses raw corpus count before rounded frequency', async () => {
-  const rows = [
-    { ...newRow('middle', 1), word: 'middle', target_language: 'es', frequency: 3, frequency_count: 600 },
-    { ...newRow('high', 0), word: 'high', target_language: 'es', frequency: 3, frequency_count: 900 },
-    { ...newRow('unknown', 2), word: 'unknown', target_language: 'es', frequency: 3, frequency_count: null },
-    { ...newRow('unknown-later', 4), word: 'unknown-later', target_language: 'es', frequency: 3, frequency_count: null },
-    { ...newRow('low-badge', 3), word: 'low-badge', target_language: 'es', frequency: 2, frequency_count: null },
-  ];
+test('dirty schedule check performs one repair transaction and records its reason', async () => {
+  const calls = [];
   const db = {
-    async query(text) {
-      if (/SELECT target_language, daily_new_limit FROM users/.test(text)) {
-        return { rows: [{ target_language: 'es', daily_new_limit: 5 }] };
+    async query(text, values) {
+      calls.push({ text, values });
+      if (/SELECT schedule_version/.test(text)) {
+        return { rows: [{ schedule_version: 5, scheduled_version: 4, local_day: '2026-07-12', current_day: '2026-07-12' }] };
       }
-      if (/SELECT COUNT\(\*\)::int AS cnt FROM saved_words/.test(text)) {
-        return { rows: [{ cnt: 0 }] };
-      }
-      if (/SELECT \* FROM saved_words/.test(text)) {
-        return { rows };
-      }
-      return { rows: [], rowCount: 0 };
+      return { rows: [], rowCount: /overdue_review_cards/.test(text) ? 2 : 0 };
     },
   };
-
-  const high = await listDictionaryGroupPage(db, 'user-1', {
-    page: 0,
-    limit: 10,
-    sort: 'freq-high',
-    timeZone: 'UTC',
-  });
-  const low = await listDictionaryGroupPage(db, 'user-1', {
-    page: 0,
-    limit: 10,
-    sort: 'freq-low',
-    timeZone: 'UTC',
-  });
-
-  assert.deepEqual(high.groups.map((group) => group.word), ['high', 'middle', 'unknown', 'unknown-later', 'low-badge']);
-  assert.deepEqual(low.groups.map((group) => group.word), ['low-badge', 'unknown', 'unknown-later', 'middle', 'high']);
-});
-
-test('scheduler rolls only overdue day-level review cards to today', async () => {
-  const db = recordingDatabase();
-
-  await listDueWords(db, 'user-1', 'America/Chicago');
-
-  const rollover = db.calls[3];
-  assert.deepEqual(rollover.values, ['user-1', 'America/Chicago']);
-  assert.match(rollover.text, /overdue_review_cards/);
-  assert.match(rollover.text, /\(sw\.due_at AT TIME ZONE \$2\)::date < \(NOW\(\) AT TIME ZONE \$2\)::date/);
-  assert.match(rollover.text, /SET due_at = date_trunc\('day', NOW\(\) AT TIME ZONE \$2\) AT TIME ZONE \$2/);
-  assert.match(rollover.text, /sw\.last_reviewed_at IS NOT NULL/);
-  assert.match(rollover.text, /sw\.learning_step IS NULL/);
-  assert.match(rollover.text, /GREATEST\(COALESCE\(sw\.srs_interval, 0\), 0\) >= 86400/);
-  assert.match(rollover.text, /AND sw\.due_at IS NOT NULL/);
-  assert.doesNotMatch(rollover.text, /MIN\(due_date\)/);
-  assert.doesNotMatch(rollover.text, /make_interval\(days => shift\.days\)/);
-  assert.doesNotMatch(rollover.text, /shift\.days > 0/);
+  const result = await ensureScheduleCurrent(db, 'user-1', 'UTC');
+  assert.deepEqual(result, { used: true, reason: 'dirty-mutation', changedCount: 2 });
+  assert.equal(calls.filter((call) => /UPDATE saved_words/.test(call.text)).length, 4);
+  assert.equal(calls.filter((call) => /INSERT INTO user_schedule_state/.test(call.text)).length, 1);
 });

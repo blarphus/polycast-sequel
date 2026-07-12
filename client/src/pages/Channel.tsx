@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.channel');
 // ---------------------------------------------------------------------------
 // pages/Channel.tsx -- Detail page for a curated YouTube channel
 // ---------------------------------------------------------------------------
 
+import '../styles/browse.css';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -38,7 +41,7 @@ export default function Channel() {
         filterUnplayableVideos(data.videos, setVideos);
       })
       .catch((err) => {
-        console.error('Failed to fetch channel videos:', err);
+        runtimeLog.error('Failed to fetch channel videos:', err);
         if (!cancelled) setError('Failed to load channel videos. Please try again.');
       })
       .finally(() => { if (!cancelled) setLoading(false); });

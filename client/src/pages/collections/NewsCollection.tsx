@@ -1,3 +1,6 @@
+import { createScopedRuntimeLogger } from '../../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.collections.newscollection');
+import '../../styles/collectionGrid.css';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CollectionGridPage from '../../components/collections/CollectionGridPage';
@@ -165,7 +168,7 @@ export default function NewsCollection() {
         setArticles(collectionItems);
       })
       .catch((error) => {
-        console.error('Failed to fetch news collection:', error);
+        runtimeLog.error('Failed to fetch news collection:', error);
         if (!cancelled) setArticles([]);
       })
       .finally(() => {

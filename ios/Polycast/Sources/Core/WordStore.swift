@@ -40,13 +40,6 @@ final class WordStore: ObservableObject {
         }
     }
 
-    func loadIfStale(maxAge: TimeInterval, showLoading: Bool = false) async {
-        if let lastLoadedAt, Date().timeIntervalSince(lastLoadedAt) < maxAge {
-            return
-        }
-        await load(showLoading: showLoading)
-    }
-
     func insert(_ word: SavedWord) {
         if !words.contains(where: { $0.id == word.id }) {
             words.insert(word, at: 0)

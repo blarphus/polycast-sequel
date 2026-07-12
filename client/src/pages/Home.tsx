@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.home');
 // ---------------------------------------------------------------------------
 // pages/Home.tsx -- Central learning hub (default landing page)
 // ---------------------------------------------------------------------------
 
+import '../styles/home.css';
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -90,7 +93,7 @@ export default function Home() {
         }
         setSrsCounts({ new: n, learning: l, review: r });
       })
-      .catch((err) => console.error('Dashboard refresh failed:', err));
+      .catch((err) => runtimeLog.error('Dashboard refresh failed:', err));
   }, []);
 
   // Refresh dashboard at midnight when new cards become due
@@ -119,20 +122,20 @@ export default function Home() {
         setProgression(nextProgression);
       })
       .catch((err) => {
-        console.error('Progression refresh failed:', err);
+        runtimeLog.error('Progression refresh failed:', err);
         if (!cancelled) setError(`Progression fallback used: ${toErrorMessage(err)}`);
       });
     getFriends()
       .then((f) => { if (!cancelled) setFriends(f); })
       .catch((err) => {
-        console.error('Failed to fetch friends:', err);
+        runtimeLog.error('Failed to fetch friends:', err);
         if (!cancelled) setError(toErrorMessage(err));
       });
 
     getClassesToday()
       .then(({ classes: c }) => { if (!cancelled) setClassesToday(c); })
       .catch((err) => {
-        console.error('Failed to fetch today\'s classes:', err);
+        runtimeLog.error('Failed to fetch today\'s classes:', err);
         if (!cancelled) setError(toErrorMessage(err));
       });
 
@@ -153,7 +156,7 @@ export default function Home() {
         setSrsCounts({ new: n, learning: l, review: r });
       })
       .catch((err) => {
-        console.error('Failed to fetch student dashboard:', err);
+        runtimeLog.error('Failed to fetch student dashboard:', err);
         if (!cancelled) setError(toErrorMessage(err));
       })
       .finally(() => {
@@ -168,7 +171,7 @@ export default function Home() {
           filterUnplayableVideos(v, setTrending);
         })
         .catch((err) => {
-          console.error('Failed to fetch trending videos:', err);
+          runtimeLog.error('Failed to fetch trending videos:', err);
           if (!cancelled) setError(toErrorMessage(err));
         })
         .finally(() => { if (!cancelled) setTrendingLoading(false); });
@@ -176,7 +179,7 @@ export default function Home() {
       getNews(targetLang, user?.cefr_level)
         .then((articles) => { if (!cancelled) setNews(articles); })
         .catch((err) => {
-          console.error('Failed to fetch news:', err);
+          runtimeLog.error('Failed to fetch news:', err);
           if (!cancelled) setError(toErrorMessage(err));
         })
         .finally(() => { if (!cancelled) setNewsLoading(false); });
@@ -184,7 +187,7 @@ export default function Home() {
       getChannels(targetLang)
         .then((ch) => { if (!cancelled) setChannels(ch); })
         .catch((err) => {
-          console.error('Failed to fetch channels:', err);
+          runtimeLog.error('Failed to fetch channels:', err);
           if (!cancelled) setError(toErrorMessage(err));
         })
         .finally(() => { if (!cancelled) setChannelsLoading(false); });
@@ -316,7 +319,7 @@ export default function Home() {
                   const goal = Math.min(50, Math.max(1, Number(event.target.value) || 1));
                   setDailyGoal((current) => ({ ...current, goal, remaining: Math.max(0, goal - current.added), complete: current.added >= goal }));
                   void updateSettings(user?.native_language || null, user?.target_language || null, undefined, undefined, undefined, goal)
-                    .catch((err) => console.error('Daily goal save failed:', err));
+                    .catch((err) => runtimeLog.error('Daily goal save failed:', err));
                 }}
                 aria-label="Daily word goal"
               />

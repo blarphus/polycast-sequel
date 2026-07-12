@@ -5,7 +5,6 @@ import {
   getDailyGoalSnapshot,
   recordDailyWordAdded,
   seedDailyWordProgress,
-  setDailyWordGoal,
 } from '../utils/dailyGoal';
 
 describe('daily word goal', () => {
@@ -29,14 +28,13 @@ describe('daily word goal', () => {
     expect(getDailyGoalSnapshot()).toEqual({ goal: 5, added: 4, remaining: 1, complete: false });
   });
 
-  it('announces the transition that completes a custom goal', () => {
+  it('announces the transition that completes the goal', () => {
     const listener = vi.fn();
     window.addEventListener(DAILY_GOAL_EVENT, listener);
-    setDailyWordGoal(2);
-    seedDailyWordProgress(1);
+    seedDailyWordProgress(4);
     recordDailyWordAdded();
     const detail = (listener.mock.calls.at(-1)?.[0] as CustomEvent).detail;
-    expect(detail).toMatchObject({ goal: 2, added: 2, remaining: 0, complete: true, justCompleted: true });
+    expect(detail).toMatchObject({ goal: 5, added: 5, remaining: 0, complete: true, justCompleted: true });
     window.removeEventListener(DAILY_GOAL_EVENT, listener);
   });
 });

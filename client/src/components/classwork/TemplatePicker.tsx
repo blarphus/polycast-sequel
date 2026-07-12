@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.classwork.templatepicker');
 import React, { useState, useEffect } from 'react';
 import * as api from '../../api';
 import type { TemplateSummary, StreamPostWord } from '../../api';
@@ -28,7 +30,7 @@ export default function TemplatePicker({ onSelect, onClose }: Props) {
         setCollapsed(initial);
       })
       .catch((err) => {
-        console.error('Failed to load templates:', err);
+        runtimeLog.error('Failed to load templates:', err);
         setError(toErrorMessage(err));
       })
       .finally(() => setLoading(false));
@@ -47,7 +49,7 @@ export default function TemplatePicker({ onSelect, onClose }: Props) {
         language: res.textbook.language,
       });
     } catch (err) {
-      console.error('Failed to load template unit:', err);
+      runtimeLog.error('Failed to load template unit:', err);
       setLoadingUnit(null);
     }
   };

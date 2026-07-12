@@ -15,6 +15,20 @@
 (function () {
   const POPUP_WIDTH = 300;
 
+  function logPopupDiagnostic(code, operation, message, error) {
+    console.warn('[polycast:diagnostic]', {
+      code,
+      severity: 'error',
+      title: 'Word popup operation failed',
+      message,
+      source: 'shared.word-popup',
+      operation,
+      correlationId: globalThis.crypto?.randomUUID?.() || `popup-${Date.now()}`,
+      occurredAt: new Date().toISOString(),
+      detail: error?.message || String(error || 'unknown error'),
+    });
+  }
+
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str == null ? '' : String(str);
@@ -204,7 +218,14 @@
         e.stopPropagation();
         speakBtn.classList.add('pc-popup-speak--playing');
         Promise.resolve(handlers.speak({ word, sentence }))
-          .catch((err) => console.error('[word-popup] speak failed:', err))
+          .catch((err) => {
+            logPopupDiagnostic('word_popup_speech_failed', 'speak-word', 'The selected word could not be spoken.', err);
+            if (!destroyed) {
+              bodyEl.querySelector('.pc-popup-speech-error')?.remove();
+              bodyEl.insertAdjacentHTML('beforeend', `<div class="pc-popup-error pc-popup-speech-error">${escapeHtml(err?.message || 'Speech failed')}</div>`);
+              position();
+            }
+          })
           .finally(() => { if (!destroyed) speakBtn.classList.remove('pc-popup-speak--playing'); });
       });
     }
@@ -265,10 +286,12 @@
             renderSaveButton();
           })
           .catch((err) => {
-            console.error('[word-popup] remove failed:', err);
+            logPopupDiagnostic('word_popup_remove_failed', 'remove-word', 'The word could not be removed from the dictionary.', err);
             if (!destroyed) {
               saveState = 'saved';
               renderSaveButton();
+              bodyEl.insertAdjacentHTML('beforeend', `<div class="pc-popup-error pc-popup-save-error">${escapeHtml(err?.message || 'Remove failed')}</div>`);
+              position();
             }
           });
         return;
@@ -295,7 +318,7 @@
               `<div class="pc-popup-error pc-popup-save-error">${escapeHtml(err?.message || 'Save failed. Try again.')}</div>`,
             );
             position();
-            console.warn('[word-popup] save failed:', err);
+            logPopupDiagnostic('word_popup_save_failed', 'save-word', 'The word could not be saved to the dictionary.', err);
           });
       }
     });
@@ -318,7 +341,7 @@
         })
         .catch((err) => {
           if (destroyed) return;
-          console.error('[word-popup] explain failed:', err);
+          logPopupDiagnostic('word_popup_explain_failed', 'explain-word', 'The word explanation could not be loaded.', err);
           explainBox.innerHTML = `<div class="pc-popup-error">${escapeHtml(err && err.message || 'Explain failed')}</div>`;
           explainBtn.disabled = false;
         });
@@ -491,7 +514,7 @@
               showActions();
             })
             .catch((err) => {
-              console.error('[word-popup] auto explain failed:', err);
+              logPopupDiagnostic('word_popup_auto_explain_failed', 'auto-explain-word', 'The automatic word explanation could not be loaded.', err);
               if (destroyed) return;
               autoExplanationState = 'error';
               renderBody();
@@ -501,7 +524,7 @@
       })
       .catch((err) => {
         if (destroyed) return;
-        console.error('[word-popup] lookup failed:', err);
+        logPopupDiagnostic('word_popup_lookup_failed', 'lookup-word', 'The word lookup could not be loaded.', err);
         bodyEl.innerHTML = `<div class="pc-popup-error">${escapeHtml(err && err.message || 'Lookup failed')}</div>`;
       });
 

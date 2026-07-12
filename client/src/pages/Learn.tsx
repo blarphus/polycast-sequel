@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.learn');
 // ---------------------------------------------------------------------------
 // pages/Learn.tsx -- Flashcard-based SRS study page (Correct / Incorrect)
 // ---------------------------------------------------------------------------
 
+import '../styles/learn.css';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { completeLearningSession, createLearningSession, getDueWords, reviewWord, proxyImageUrl, type SavedWord, type SrsAnswer } from '../api';
@@ -133,7 +136,7 @@ export default function Learn() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Failed to fetch due words:', err);
+        runtimeLog.error('Failed to fetch due words:', err);
         setError(err.message);
         setLoading(false);
       });
@@ -155,7 +158,7 @@ export default function Learn() {
           const speech = await preloadCardAudio(card.id);
           if (!cancelled) preloadedAudioRef.current.set(card.id, speech);
         } catch (err) {
-          console.error(`Failed to preload audio for ${card.id}:`, err);
+          runtimeLog.error(`Failed to preload audio for ${card.id}:`, err);
         }
       }
     };
@@ -228,7 +231,7 @@ export default function Learn() {
     else playCorrectSound();
 
     const timeLabel = getButtonTimeLabel(currentCard, answer);
-    const currentStage = Math.min(currentCard.prompt_stage ?? 0, 3);
+    const currentStage = Math.min(Math.max(currentCard.prompt_stage ?? 0, 0), 20);
     setFeedback({
       answer,
       text: `${timeLabel} · Stage ${currentStage} → ${nextPromptStage(currentCard, answer)}`,
@@ -247,7 +250,7 @@ export default function Learn() {
     const requeue = nextDueSeconds <= 20 * 60;
     const localUpdate = applyAnswerLocally(currentCard, answer);
     const reviewPromise = reviewWord(currentCard.id, answer, learningSessionId || undefined).catch((err) => {
-      console.error('Review API error:', err);
+      runtimeLog.error('Review API error:', err);
       return localUpdate;
     });
 
@@ -289,7 +292,7 @@ export default function Learn() {
         const unseen = more.filter((card) => !knownIds.has(card.id));
         if (unseen.length > 0) setCards((prev) => [...prev, ...unseen]);
       } catch (err) {
-        console.error('Failed to check for more cards:', err);
+        runtimeLog.error('Failed to check for more cards:', err);
       } finally {
         setCheckingForMore(false);
       }
@@ -453,7 +456,7 @@ export default function Learn() {
   const useBlue = isBlueGradient(promptType);
   const counts = getStudyQueueCounts(cards.slice(currentIndex));
   const currentBucket = getStudyQueueBucket(card);
-  const displayStage = Math.min(card.prompt_stage ?? 0, 3);
+  const displayStage = Math.min(Math.max(card.prompt_stage ?? 0, 0), 20);
 
   return (
     <div className={`learn-page${useBlue ? ' learn-page--recognition' : ''}`}>

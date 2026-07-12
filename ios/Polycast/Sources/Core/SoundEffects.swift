@@ -18,7 +18,7 @@ final class SoundEffects: @unchecked Sendable {
             try AVAudioSession.sharedInstance().setActive(true)
             try engine.start()
         } catch {
-            print("[SoundEffects] Failed to start audio engine: \(error)")
+            PolycastLog.runtime.error("[SoundEffects] Failed to start audio engine: \(error)")
         }
     }
 
@@ -29,7 +29,7 @@ final class SoundEffects: @unchecked Sendable {
                 try AVAudioSession.sharedInstance().setActive(true)
                 try engine.start()
             } catch {
-                print("[SoundEffects] Failed to restart engine: \(error)")
+                PolycastLog.runtime.error("[SoundEffects] Failed to restart engine: \(error)")
             }
         }
     }

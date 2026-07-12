@@ -2,6 +2,8 @@
  * Shared normalization helpers for word forms and lemmas.
  * Used by enrichWord.js and stream-words.js.
  */
+import logger from '../logger.js';
+
 
 /**
  * Parse a comma-separated forms string into a JSON array string.
@@ -29,7 +31,13 @@ export function parseFormsValue(forms) {
       try {
         const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) list = parsed;
-      } catch {
+      } catch (error) {
+        logger.warn({
+          event: 'legacy_word_forms_parser_used',
+          operation: 'normalize-word-fields',
+          inputLength: trimmed.length,
+          err: error,
+        }, 'Malformed JSON word forms used the legacy comma parser');
         list = trimmed.split(',');
       }
     } else {

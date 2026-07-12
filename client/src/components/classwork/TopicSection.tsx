@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.classwork.topicsection');
 // ---------------------------------------------------------------------------
 // components/classwork/TopicSection.tsx — Topic section with compact post rows
 // ---------------------------------------------------------------------------
@@ -113,7 +115,7 @@ export function TopicSection({
       const updated = await api.updateTopic(topic.id, { title: renameTitle.trim() });
       onRenameTopic(updated);
     } catch (err) {
-      console.error('Rename topic failed:', err);
+      runtimeLog.error('Rename topic failed:', err);
     } finally {
       setRenaming(false);
     }

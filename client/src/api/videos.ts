@@ -1,4 +1,5 @@
 import { request } from './core';
+import { emitFallbackDiagnostic, type FallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 export interface VideoSummary {
   id: string;
@@ -67,14 +68,16 @@ function detectUserRegion(): string {
       const region = parts[parts.length - 1].toUpperCase();
       if (region.length === 2) return region;
     }
-  } catch {
-    // ignore locale detection failures
+  } catch (error) {
+    emitFallbackDiagnostic({
+      code: 'region_detection_fallback',
+      severity: 'info',
+      title: 'Regional video filtering unavailable',
+      message: 'Browser locale detection failed, so video requests will use the provider default region.',
+      detail: error instanceof Error ? error.message : String(error),
+    }, { source: 'web.videos', operation: 'detect-user-region' });
   }
   return '';
-}
-
-export function getVideos() {
-  return request<VideoSummary[]>('/videos');
 }
 
 export function getVideo(id: string) {
@@ -128,26 +131,13 @@ export function retryVideoTranscript(id: string) {
   return request<VideoDetail>(`/videos/${id}/transcript/retry`, { method: 'POST' });
 }
 
-// The two functions below hit the external Cloudflare transcript worker
-// directly (a different origin), so they use raw fetch rather than the shared
-// request() helper, which is scoped to the /api backend.
-const CF_WORKER_URL = 'https://polycast-transcript-worker.polycast-app.workers.dev';
-
 export async function checkVideoPlayability(videoIds: string[]): Promise<{ blocked: Set<string>; shorts: Set<string> }> {
-  const empty = { blocked: new Set<string>(), shorts: new Set<string>() };
-  const res = await fetch(`${CF_WORKER_URL}?action=check`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ videoIds }),
-  });
-  if (!res.ok) {
-    console.error(`checkVideoPlayability failed: HTTP ${res.status}`);
-    return empty;
-  }
-  const data = await res.json();
+  const data = await request<{ success: boolean; results: Record<string, string | { status: string; isShort: boolean; diagnostic?: FallbackDiagnostic }> }>(
+    '/videos/playability',
+    { method: 'POST', body: { videoIds } },
+  );
   if (!data.success || !data.results) {
-    console.error('checkVideoPlayability: unexpected response', data);
-    return empty;
+    throw new Error('Playability service returned an invalid response');
   }
   const blocked = new Set<string>();
   const shorts = new Set<string>();
@@ -155,7 +145,10 @@ export async function checkVideoPlayability(videoIds: string[]): Promise<{ block
     if (typeof result === 'string') {
       if (result !== 'OK') blocked.add(id);
     } else {
-      const r = result as { status: string; isShort: boolean };
+      const r = result as { status: string; isShort: boolean; diagnostic?: FallbackDiagnostic };
+      if (r.diagnostic) {
+        emitFallbackDiagnostic(r.diagnostic, { source: 'web.video', operation: 'check-playability' });
+      }
       if (r.status !== 'OK') blocked.add(id);
       if (r.isShort) shorts.add(id);
     }
@@ -164,30 +157,10 @@ export async function checkVideoPlayability(videoIds: string[]): Promise<{ block
 }
 
 export async function fetchTranscriptFromWorker(youtubeId: string, lang: string): Promise<TranscriptSegment[]> {
-  const url = `${CF_WORKER_URL}?videoId=${encodeURIComponent(youtubeId)}&lang=${encodeURIComponent(lang)}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const bodyText = await res.text();
-    let message = `Worker returned ${res.status}`;
-    if (bodyText) {
-      try {
-        const parsed = JSON.parse(bodyText);
-        message = parsed.error || message;
-      } catch {
-        message = bodyText;
-      }
-    }
-    throw new Error(message);
-  }
-  const data = await res.json();
-  if (!data.success || !Array.isArray(data.segments)) {
-    throw new Error(data.error || 'No segments returned');
-  }
-  return data.segments.map((seg: { text: string; start: number; dur: number }) => ({
-    text: seg.text,
-    offset: Math.round(seg.start * 1000),
-    duration: Math.round(seg.dur * 1000),
-  }));
+  const params = new URLSearchParams({ youtubeId, lang });
+  const data = await request<{ segments: TranscriptSegment[] }>(`/videos/transcript/youtube?${params}`);
+  if (!Array.isArray(data.segments)) throw new Error('Transcript service returned an invalid response');
+  return data.segments;
 }
 
 export function uploadTranscript(videoId: string, segments: TranscriptSegment[]): Promise<VideoDetail> {

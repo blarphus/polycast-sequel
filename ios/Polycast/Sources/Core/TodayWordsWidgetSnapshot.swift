@@ -1,7 +1,10 @@
 import Darwin
 import Foundation
+import OSLog
 import Security
 import UIKit
+
+private let widgetSnapshotLogger = Logger(subsystem: "app.polycast.widget", category: "Snapshot")
 
 let todayWordsWidgetKind = "TodayWordsWidget"
 let polycastAppGroupIdentifier = "group.com.patron.polycast"
@@ -309,7 +312,7 @@ enum TodayWordsWidgetStore {
         addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
         if addStatus != errSecSuccess && addStatus != errSecDuplicateItem {
-            print("[PolycastWidget] Failed to save shared widget snapshot: \(addStatus)")
+            widgetSnapshotLogger.error("[PolycastWidget] Failed to save shared widget snapshot: \(addStatus)")
         }
     }
 
@@ -461,7 +464,7 @@ enum TodayWordsWidgetImageStore {
         if addStatus == errSecSuccess || addStatus == errSecDuplicateItem {
             postDebugSignal("shared-image-ready")
         } else {
-            print("[PolycastWidget] Failed to save shared widget image: \(addStatus)")
+            widgetSnapshotLogger.error("[PolycastWidget] Failed to save shared widget image: \(addStatus)")
             postDebugSignal("shared-image-failed")
         }
     }

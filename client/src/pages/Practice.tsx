@@ -1,3 +1,4 @@
+import '../styles/practice.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -110,7 +111,7 @@ export default function Practice() {
   }
 
   function pairLeft(leftId: string) {
-    if (feedback || Object.hasOwn(pairs, leftId)) return;
+    if (feedback || Object.prototype.hasOwnProperty.call(pairs, leftId)) return;
     setSelectedLeft(leftId);
   }
 
@@ -173,6 +174,8 @@ export default function Practice() {
       {diagnostics.map((diagnostic) => (
         <div className="practice-diagnostic" role="status" key={diagnostic.code}>
           <strong>{diagnostic.title}</strong><span>{diagnostic.message}</span>
+          {diagnostic.detail && <small>{diagnostic.detail}</small>}
+          <small>{diagnostic.code} · {diagnostic.source}/{diagnostic.operation} · ref {diagnostic.correlationId}</small>
         </div>
       ))}
       {error && <div className="practice-error" role="alert">{error}</div>}
@@ -222,7 +225,7 @@ export default function Practice() {
           <div className="practice-match">
             <div>
               {exercise.prompt.left?.map((item) => (
-                <button key={item.id} className={`${selectedLeft === item.id ? 'selected' : ''}${Object.hasOwn(pairs, item.id) ? ' matched' : ''}`} onClick={() => pairLeft(item.id)}>{item.text}</button>
+                <button key={item.id} className={`${selectedLeft === item.id ? 'selected' : ''}${Object.prototype.hasOwnProperty.call(pairs, item.id) ? ' matched' : ''}`} onClick={() => pairLeft(item.id)}>{item.text}</button>
               ))}
             </div>
             <div>

@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applySrsReview, validTimeZone, MAX_PROMPT_STAGE } from './srsUpdate.js';
 
-test('validTimeZone accepts IANA zones and rejects invalid values', () => {
+test('validTimeZone accepts IANA zones, defaults missing values, and rejects explicit invalid values', () => {
   assert.equal(validTimeZone('America/Chicago'), 'America/Chicago');
-  assert.equal(validTimeZone('not/a-zone'), 'UTC');
+  assert.throws(() => validTimeZone('not/a-zone'), (error) => error.status === 400);
+  assert.equal(validTimeZone(null), 'UTC');
 });
 
 test('day intervals are stored at local midnight in the supplied timezone', async () => {
@@ -169,4 +170,3 @@ test('hook errors are swallowed and do not crash the review', async () => {
   assert.ok(result, 'review response should still be returned');
   assert.equal(result.id, 'card-1');
 });
-

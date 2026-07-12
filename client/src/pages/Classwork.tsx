@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.classwork');
 // ---------------------------------------------------------------------------
 // pages/Classwork.tsx — Class stream (Google Classroom-style)
 // ---------------------------------------------------------------------------
 
+import '../styles/classwork.css';
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -77,7 +80,7 @@ export default function Classwork() {
         if ('student_count' in result) setStudentCount((result as { student_count?: number }).student_count);
       })
       .catch((err: any) => {
-        console.error('getStream failed:', err);
+        runtimeLog.error('getStream failed:', err);
         setError(toErrorMessage(err));
       })
       .finally(() => setLoading(false));
@@ -159,7 +162,7 @@ export default function Classwork() {
         });
       };
       es.onerror = (e) => {
-        console.error('enrichPostStream error:', e);
+        runtimeLog.error('enrichPostStream error:', e);
         es.close();
         setEnrichingWordIds((prev) => { const next = new Map(prev); next.delete(post.id); return next; });
       };
@@ -174,7 +177,7 @@ export default function Classwork() {
     try {
       await api.reorderStream([{ id: postId, kind: 'post', position: post.position ?? 0, topic_id: newTopicId }]);
     } catch (err: any) {
-      console.error('Move post failed:', err);
+      runtimeLog.error('Move post failed:', err);
       setError(toErrorMessage(err));
       setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, topic_id: post.topic_id } : p)));
     }
@@ -194,7 +197,7 @@ export default function Classwork() {
       setTopics((prev) => prev.filter((t) => t.id !== topicId));
       setPosts((prev) => prev.map((p) => (p.topic_id === topicId ? { ...p, topic_id: null } : p)));
     } catch (err: any) {
-      console.error('Delete topic failed:', err);
+      runtimeLog.error('Delete topic failed:', err);
       setError(toErrorMessage(err));
     }
   };
@@ -208,7 +211,7 @@ export default function Classwork() {
         : await api.createClassroomTopic(activeClassroomId!, newTopicTitle.trim());
       setTopics((prev) => [...prev, topic as StreamTopic]);
     } catch (err: any) {
-      console.error('Create topic failed:', err);
+      runtimeLog.error('Create topic failed:', err);
       setError(toErrorMessage(err));
     } finally {
       setNewTopicTitle('');
@@ -298,7 +301,7 @@ export default function Classwork() {
     });
 
     api.reorderStream(items).catch((err: any) => {
-      console.error('Reorder posts failed:', err);
+      runtimeLog.error('Reorder posts failed:', err);
       setError(toErrorMessage(err));
       setPosts(previousPosts);
     });
@@ -341,7 +344,7 @@ export default function Classwork() {
     setTopics(reordered.map((t, i) => ({ ...t, position: i })));
 
     api.reorderStream(reordered.map((t, i) => ({ id: t.id, kind: 'topic' as const, position: i }))).catch((err: any) => {
-      console.error('Reorder topics failed:', err);
+      runtimeLog.error('Reorder topics failed:', err);
       setError(toErrorMessage(err));
       setTopics(previousTopics);
     });

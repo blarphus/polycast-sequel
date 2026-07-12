@@ -18,6 +18,14 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const args = process.argv.slice(2);
+if (args.includes('--help')) {
+  console.log('Usage: node scripts/build-catalog.mjs [--dry-run]\nReads .categorization-state.json, fetches YouTube metadata, and rebuilds server/data/pt-catalog.json. --dry-run performs no write.');
+  process.exit(0);
+}
+const dryRun = args.includes('--dry-run');
+const unknownArg = args.find((arg) => arg !== '--dry-run');
+if (unknownArg) throw new Error(`Unknown argument: ${unknownArg}`);
 
 // Load .env from project root
 const envPath = path.join(__dirname, '..', '.env');
@@ -259,13 +267,13 @@ catalog.sort((a, b) => b.videos.length - a.videos.length);
 // Step 5: Write output
 // ---------------------------------------------------------------------------
 
-fs.writeFileSync(outputPath, JSON.stringify(catalog, null, 2));
+if (!dryRun) fs.writeFileSync(outputPath, JSON.stringify(catalog, null, 2));
 
 console.log(`Matched: ${matched}`);
 console.log(`Shorts filtered: ${shortsSet.size}`);
 console.log(`Unmatched: ${unmatched}`);
 console.log(`Categories with videos: ${catalog.length}`);
-console.log(`Output: ${outputPath}`);
+console.log(dryRun ? `Dry run: would write ${outputPath}` : `Output: ${outputPath}`);
 
 if (unmatchedVideos.length > 0) {
   console.log(`\nUnmatched videos (likely deleted from YouTube or title changed):`);

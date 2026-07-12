@@ -4,6 +4,12 @@ import readline from 'readline';
 import path from 'path';
 import crypto from 'crypto';
 
+if (process.argv.includes('--help')) {
+  console.log('Usage: node server/scripts/extractWsdTrainingData.js [SOURCE_DIR] [--dry-run]\nBuilds deterministic WSD train/eval JSONL files. --dry-run computes counts without writing files.');
+  process.exit(0);
+}
+const dryRun = process.argv.includes('--dry-run');
+
 // ── Config ────────────────────────────────────────────────────────
 const LANGUAGES = [
   { code: 'en', name: 'English',    file: 'kaikki.org-dictionary-English.jsonl.gz' },
@@ -110,7 +116,7 @@ function generateSamples(groups, langCode) {
 
 // ── Main ──────────────────────────────────────────────────────────
 async function main() {
-  const dir = process.argv[2] || path.join(process.env.HOME, 'Desktop', 'wiktionary-test');
+  const dir = process.argv.find((arg, index) => index >= 2 && !arg.startsWith('--')) || path.join(process.env.HOME, 'Desktop', 'wiktionary-test');
   const outDir = dir;
 
   console.log('Extracting WSD training data...\n');
@@ -173,10 +179,12 @@ async function main() {
   const trainPath = path.join(outDir, 'wsd-train.jsonl');
   const evalPath = path.join(outDir, 'wsd-eval.jsonl');
 
-  fs.writeFileSync(trainPath, trainSamples.map(s => JSON.stringify(s)).join('\n') + '\n');
-  fs.writeFileSync(evalPath, evalSamples.map(s => JSON.stringify(s)).join('\n') + '\n');
+  if (!dryRun) {
+    fs.writeFileSync(trainPath, trainSamples.map(s => JSON.stringify(s)).join('\n') + '\n');
+    fs.writeFileSync(evalPath, evalSamples.map(s => JSON.stringify(s)).join('\n') + '\n');
+  }
 
-  console.log(`\nOutput:`);
+  console.log(dryRun ? `\nDry run (no files written):` : `\nOutput:`);
   console.log(`  ${trainPath} (${trainSamples.length} samples)`);
   console.log(`  ${evalPath} (${evalSamples.length} samples)`);
 

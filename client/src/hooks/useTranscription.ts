@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.usetranscription');
 // ---------------------------------------------------------------------------
 // hooks/useTranscription.ts -- Shared media acquisition + transcription setup
 // ---------------------------------------------------------------------------
@@ -95,7 +97,7 @@ export function useTranscription(
 
         setStreamReady(true);
       } catch (err) {
-        console.error('[useTranscription] Setup error:', err);
+        runtimeLog.error('[useTranscription] Setup error:', err);
       }
     }
 

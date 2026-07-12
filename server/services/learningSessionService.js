@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import logger from '../logger.js';
 import { callGemini } from '../lib/gemini.js';
+import { normalizeFallbackDiagnostic } from '../lib/fallbackDiagnostics.js';
 import { awardLearningSessionXp, progressionSnapshot } from '../lib/progression.js';
 
 const SESSION_SIZE = 8;
@@ -37,7 +38,13 @@ function parseForms(word) {
         ? JSON.parse(word.forms)
         : String(word.forms).split(',');
       if (Array.isArray(parsed)) result.push(...parsed);
-    } catch {
+    } catch (error) {
+      logger.warn({
+        event: 'legacy_word_forms_parser_used',
+        operation: 'build-learning-session',
+        wordId: word.id,
+        err: error,
+      }, 'Malformed JSON word forms used the legacy comma parser');
       result.push(...String(word.forms).split(','));
     }
   }
@@ -229,7 +236,7 @@ async function userLanguages(db, userId) {
   };
 }
 
-export async function createLearningSession(pool, userId, { kind, sourceVideoId = null, timeZone }) {
+export async function createLearningSession(pool, userId, { kind, sourceVideoId = null, timeZone, correlationId }) {
   const { targetLanguage, nativeLanguage } = await userLanguages(pool, userId);
   if (kind === 'flashcards') {
     const { rows } = await pool.query(
@@ -350,6 +357,18 @@ export async function createLearningSession(pool, userId, { kind, sourceVideoId 
   }
   if (exercises.length !== SESSION_SIZE) throw new Error('Could not build a complete vocabulary session');
 
+  const normalizedDiagnostics = diagnostics.map((diagnostic) => normalizeFallbackDiagnostic({
+    ...diagnostic,
+    severity: diagnostic.severity || 'warning',
+    source: 'server.practice',
+    operation: 'create-vocabulary-session',
+    correlationId,
+    detail: diagnostic.detail || `sourceVideoId=${sourceVideoId || 'none'}`,
+  }));
+  for (const diagnostic of normalizedDiagnostics) {
+    logger.warn({ fallback: diagnostic, userId }, 'Practice fallback path used');
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -357,7 +376,7 @@ export async function createLearningSession(pool, userId, { kind, sourceVideoId 
       `INSERT INTO learning_sessions
         (user_id, kind, target_language, source_video_id, total_items, diagnostics)
        VALUES ($1, 'vocabulary', $2, $3, $4, $5::jsonb) RETURNING *`,
-      [userId, targetLanguage, sourceVideoId, SESSION_SIZE, JSON.stringify(diagnostics)],
+      [userId, targetLanguage, sourceVideoId, SESSION_SIZE, JSON.stringify(normalizedDiagnostics)],
     );
     const session = sessions[0];
     const created = [];
@@ -374,7 +393,7 @@ export async function createLearningSession(pool, userId, { kind, sourceVideoId 
     return {
       session,
       exercise: publicExercise(created[0]),
-      diagnostics,
+      diagnostics: normalizedDiagnostics,
       progression: await progressionSnapshot(pool, userId, timeZone),
     };
   } catch (err) {

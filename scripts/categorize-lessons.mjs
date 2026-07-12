@@ -34,8 +34,13 @@ const { LESSONS_BY_LANG } = await import(path.join(__dirname, '..', 'server', 'd
 
 // CLI args
 const args = process.argv.slice(2);
+if (args.includes('--help')) {
+  console.log('Usage: node scripts/categorize-lessons.mjs [--lang CODE] [--reset] [--dry-run]\nFetches and categorizes lesson videos. --dry-run performs no state or report writes.');
+  process.exit(0);
+}
 const lang = args.includes('--lang') ? args[args.indexOf('--lang') + 1] : 'pt';
 const reset = args.includes('--reset');
+const dryRun = args.includes('--dry-run');
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -118,7 +123,7 @@ if (!reset && fs.existsSync(statePath)) {
 }
 
 function saveState() {
-  fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
+  if (!dryRun) fs.writeFileSync(statePath, JSON.stringify(state, null, 2));
 }
 
 function writeDocument() {
@@ -168,7 +173,7 @@ function writeDocument() {
     lines.push('');
   }
 
-  fs.writeFileSync(outputPath, lines.join('\n'), 'utf-8');
+  if (!dryRun) fs.writeFileSync(outputPath, lines.join('\n'), 'utf-8');
 }
 
 // ---------------------------------------------------------------------------

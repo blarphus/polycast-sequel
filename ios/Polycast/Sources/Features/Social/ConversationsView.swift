@@ -170,7 +170,7 @@ struct ConversationsView: View {
             error = ""
         } catch {
             self.error = error.localizedDescription
-            print("[Polycast] ConversationsView load error: \(error)")
+            PolycastLog.runtime.error("[Polycast] ConversationsView load error: \(error)")
         }
         loading = false
     }

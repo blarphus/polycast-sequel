@@ -2,43 +2,11 @@
 // App.tsx -- Root component with auth, routing, and global incoming-call modal
 // ---------------------------------------------------------------------------
 
-import React, { useEffect } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { DictionaryToastProvider } from './hooks/useDictionaryToast';
 import { useSocket } from './hooks/useSocket';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Home from './pages/Home';
-import ConversationList from './pages/ConversationList';
-import ChatView from './pages/ChatView';
-import Call from './pages/Call';
-import Test from './pages/Test';
-import Settings from './pages/Settings';
-import Onboarding from './pages/Onboarding';
-import Dictionary from './pages/Dictionary';
-import Learn from './pages/Learn';
-import LearnPreview from './pages/LearnPreview';
-import Students from './pages/Students';
-import StudentDetail from './pages/StudentDetail';
-import Classwork from './pages/Classwork';
-import Classes from './pages/Classes';
-import Watch from './pages/Watch';
-import Browse from './pages/Browse';
-import Channel from './pages/Channel';
-import Lesson from './pages/Lesson';
-import Lessons from './pages/Lessons';
-import GroupCall from './pages/GroupCall';
-import ReadArticle from './pages/ReadArticle';
-import NewsCollection from './pages/collections/NewsCollection';
-import Practice from './pages/Practice';
-import Calendar from './pages/Calendar';
-import DrillPicker from './pages/DrillPicker';
-import VoicePractice from './pages/VoicePractice';
-import LocalVideos from './pages/LocalVideos';
-import LocalWatch from './pages/LocalWatch';
-import Library from './pages/Library';
-import Reader from './pages/Reader';
 import IncomingCall from './components/IncomingCall';
 import PhraseTranslator from './components/PhraseTranslator';
 import BottomToolbar from './components/BottomToolbar';
@@ -46,7 +14,42 @@ import ErrorBoundary from './components/ErrorBoundary';
 import TtsFallbackToast from './components/TtsFallbackToast';
 import DailyGoalCelebration from './components/DailyGoalCelebration';
 import { CallProvider } from './contexts/CallProvider';
+import { GroupCallProvider } from './contexts/GroupCallProvider';
 import FloatingCallTile from './components/FloatingCallTile';
+import FloatingGroupCallTile from './components/FloatingGroupCallTile';
+
+const Login = lazy(() => import('./pages/Login'));
+const Signup = lazy(() => import('./pages/Signup'));
+const Home = lazy(() => import('./pages/Home'));
+const ConversationList = lazy(() => import('./pages/ConversationList'));
+const ChatView = lazy(() => import('./pages/ChatView'));
+const Call = lazy(() => import('./pages/Call'));
+const Test = lazy(() => import('./pages/Test'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
+const Dictionary = lazy(() => import('./pages/Dictionary'));
+const Learn = lazy(() => import('./pages/Learn'));
+const LearnPreview = lazy(() => import('./pages/LearnPreview'));
+const Students = lazy(() => import('./pages/Students'));
+const StudentDetail = lazy(() => import('./pages/StudentDetail'));
+const Classwork = lazy(() => import('./pages/Classwork'));
+const Classes = lazy(() => import('./pages/Classes'));
+const Watch = lazy(() => import('./pages/Watch'));
+const Browse = lazy(() => import('./pages/Browse'));
+const Channel = lazy(() => import('./pages/Channel'));
+const Lesson = lazy(() => import('./pages/Lesson'));
+const Lessons = lazy(() => import('./pages/Lessons'));
+const GroupCall = lazy(() => import('./pages/GroupCall'));
+const ReadArticle = lazy(() => import('./pages/ReadArticle'));
+const NewsCollection = lazy(() => import('./pages/collections/NewsCollection'));
+const Practice = lazy(() => import('./pages/Practice'));
+const Calendar = lazy(() => import('./pages/Calendar'));
+const DrillPicker = lazy(() => import('./pages/DrillPicker'));
+const VoicePractice = lazy(() => import('./pages/VoicePractice'));
+const LocalVideos = lazy(() => import('./pages/LocalVideos'));
+const LocalWatch = lazy(() => import('./pages/LocalWatch'));
+const Library = lazy(() => import('./pages/Library'));
+const Reader = lazy(() => import('./pages/Reader'));
 
 // ---------------------------------------------------------------------------
 // ProtectedRoute -- redirects to /login when the user is not authenticated
@@ -122,14 +125,17 @@ export default function App() {
     <AuthProvider>
       <DictionaryToastProvider>
       <CallProvider>
+      <GroupCallProvider>
       {/* Global incoming-call modal (only when authenticated) */}
       <AuthenticatedShell />
       <TtsFallbackToast />
       <DailyGoalCelebration />
       {/* Mini call tile while a 1:1 call is active off the call page */}
       <FloatingCallTile />
+      <FloatingGroupCallTile />
 
       <ErrorBoundary>
+      <Suspense fallback={<div className="loading-screen"><div className="loading-spinner" /></div>}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
@@ -392,7 +398,9 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
       </ErrorBoundary>
+      </GroupCallProvider>
       </CallProvider>
       </DictionaryToastProvider>
     </AuthProvider>

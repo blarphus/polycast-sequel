@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 import cookie from 'cookie';
-import { verifyToken } from '../auth.js';
+import { isSessionActive, verifyToken } from '../auth.js';
 import { handleConnect, handleDisconnect, setupHeartbeat } from './presence.js';
 import { handleSignaling } from './signaling.js';
 import { handleCalls, handleCallDisconnect } from './calls.js';
@@ -10,15 +10,8 @@ import { handleGroupCall, handleGroupCallDisconnect } from './groupCall.js';
 import pool from '../db.js';
 import redisClient from '../redis.js';
 import logger from '../logger.js';
+import { setSocketServer } from './serverState.js';
 
-let ioInstance = null;
-
-/**
- * Return the Socket.IO server instance (available after setupSocket is called).
- */
-export function getIO() {
-  return ioInstance;
-}
 
 /**
  * Create and configure a Socket.IO server attached to the given HTTP server.
@@ -36,7 +29,7 @@ export function setupSocket(server) {
   const io = new Server(server, {
     cors: {
       origin: (origin, cb) => {
-        if (!origin || allowedOrigins.includes(origin) || origin.startsWith('chrome-extension://')) {
+        if (!origin || allowedOrigins.includes(origin)) {
           cb(null, true);
         } else {
           cb(null, false);
@@ -46,10 +39,10 @@ export function setupSocket(server) {
     },
   });
 
-  ioInstance = io;
+  setSocketServer(io);
 
   // ------- Authentication middleware -------
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     try {
       const cookieHeader = socket.handshake.headers.cookie;
       const cookies = cookie.parse(cookieHeader || '');
@@ -61,12 +54,13 @@ export function setupSocket(server) {
 
       const decoded = verifyToken(token);
 
-      if (!decoded) {
+      if (!decoded || !await isSessionActive(decoded)) {
         return next(new Error('Invalid or expired token'));
       }
 
       // Attach userId to the socket for use in handlers
       socket.userId = decoded.userId;
+      socket.sessionId = decoded.sessionId;
       next();
     } catch (err) {
       next(new Error('Authentication failed'));
@@ -98,12 +92,17 @@ export function setupSocket(server) {
     // Register group call handlers
     handleGroupCall(io, socket);
 
+    // Socket.IO clears room membership before `disconnect`; capture and clean
+    // group rooms during `disconnecting` while that authoritative state exists.
+    socket.on('disconnecting', async () => {
+      await handleGroupCallDisconnect(io, socket);
+    });
+
     // Handle disconnection
     socket.on('disconnect', async () => {
       logger.info(`Socket disconnected: ${socket.id} (user: ${socket.userId})`);
       handleDisconnect(io, socket, redisClient);
       handleCallDisconnect(io, socket, pool);
-      await handleGroupCallDisconnect(io, socket);
     });
   });
 

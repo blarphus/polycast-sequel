@@ -8,7 +8,8 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage", "contextMenus"],
+  "permissions": ["storage", "contextMenus", "activeTab", "scripting"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
   "host_permissions": [
     "*://*.youtube.com/*",
     "https://*.netflix.com/*",
@@ -25,28 +26,13 @@
   "content_scripts": [
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["shared/wordPopupCore.js", "content/shared.js", "content/youtube.js", "content/selection.js", "content/pageHighlights.js"],
+      "js": ["shared/textTokens.js", "shared/wordPopupCore.js", "content/shared.js", "content/youtube.js", "content/selection.js", "content/pageHighlights.js"],
       "css": ["shared/wordPopup.css", "overlay.css"],
       "run_at": "document_idle"
     },
     {
       "matches": ["https://*.netflix.com/*"],
-      "js": ["shared/wordPopupCore.js", "content/shared.js", "content/netflix.js", "content/selection.js", "content/pageHighlights.js"],
-      "css": ["shared/wordPopup.css", "overlay.css"],
-      "run_at": "document_idle"
-    },
-    {
-      "matches": ["http://*/*", "https://*/*"],
-      "exclude_matches": [
-        "*://*.youtube.com/*",
-        "https://*.netflix.com/*",
-        "http://localhost:5173/*",
-        "http://127.0.0.1:5173/*",
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*",
-        "https://polycast-sequel.onrender.com/*"
-      ],
-      "js": ["shared/wordPopupCore.js", "content/shared.js", "content/selection.js", "content/pageHighlights.js"],
+      "js": ["shared/textTokens.js", "shared/wordPopupCore.js", "content/shared.js", "content/netflix.js", "content/selection.js", "content/pageHighlights.js"],
       "css": ["shared/wordPopup.css", "overlay.css"],
       "run_at": "document_idle"
     },

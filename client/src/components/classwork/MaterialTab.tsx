@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.classwork.materialtab');
 // ---------------------------------------------------------------------------
 // components/classwork/MaterialTab.tsx — Material post creation tab
 // ---------------------------------------------------------------------------
@@ -28,7 +30,7 @@ export default function MaterialTab({
     try {
       await onSubmit({ title, body, attachments });
     } catch (err: any) {
-      console.error('Create material post failed:', err);
+      runtimeLog.error('Create material post failed:', err);
       setError(toErrorMessage(err));
     } finally {
       setSubmitting(false);

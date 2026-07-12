@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.floatingcalltile');
 // ---------------------------------------------------------------------------
 // components/FloatingCallTile.tsx -- Draggable mini video tile shown while a
 // 1:1 call is active and the user is on any page other than the call page.
@@ -100,13 +102,13 @@ export default function FloatingCallTile() {
 
   const openNativePip = () => {
     if (!('pictureInPictureEnabled' in document) || !document.pictureInPictureEnabled) {
-      console.error('[call] Picture-in-Picture is not supported in this browser');
+      runtimeLog.error('[call] Picture-in-Picture is not supported in this browser');
       return;
     }
     const el = videoRef.current;
     if (!el) return;
     el.requestPictureInPicture().catch((err) => {
-      console.error('[call] requestPictureInPicture failed:', err);
+      runtimeLog.error('[call] requestPictureInPicture failed:', err);
     });
   };
 

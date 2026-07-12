@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.useactiveclassroom');
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as api from '../api';
 import type { Classroom } from '../api';
@@ -52,7 +54,7 @@ export function useActiveClassroom(preferredClassroomId?: string | null) {
         return chooseClassroomId(items, preferredClassroomId);
       });
     } catch (err) {
-      console.error('Failed to load classrooms:', err);
+      runtimeLog.error('Failed to load classrooms:', err);
       setError(err instanceof Error ? err.message : 'Failed to load classrooms');
     } finally {
       setLoading(false);

@@ -131,7 +131,7 @@ final class HandsFreeController: ObservableObject {
             return
         }
         guard attempt < 12 else {
-            print("[Polycast] Hands-free: MPVolumeView slider not found; volume won't be pinned")
+            PolycastLog.runtime.error("[Polycast] Hands-free: MPVolumeView slider not found; volume won't be pinned")
             return
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
@@ -172,7 +172,7 @@ final class HandsFreeController: ObservableObject {
             player.play()
             keepAlivePlayer = player
         } catch {
-            print("[Polycast] Hands-free keep-alive failed: \(error)")
+            PolycastLog.runtime.error("[Polycast] Hands-free keep-alive failed: \(error)")
         }
     }
 

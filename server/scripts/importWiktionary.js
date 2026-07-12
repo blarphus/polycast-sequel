@@ -96,6 +96,10 @@ async function insertBatch(pool, lang, rows) {
 }
 
 async function main() {
+  if (process.argv.includes('--help')) {
+    console.log('Usage: node server/scripts/importWiktionary.js <directory> [--dry-run]\nImports *-senses.jsonl.gz files. --dry-run validates discovery only and performs no database connection or writes.');
+    return;
+  }
   const dir = process.argv[2];
   if (!dir) {
     console.error('Usage: node server/scripts/importWiktionary.js <directory>');
@@ -111,6 +115,10 @@ async function main() {
   }
 
   console.log(`Found ${files.length} files: ${files.join(', ')}`);
+  if (process.argv.includes('--dry-run')) {
+    console.log('Dry run: input discovery succeeded; no database connection or writes performed.');
+    return;
+  }
 
   const poolConfig = { connectionString: process.env.DATABASE_URL };
   if (process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes('render.com')) {

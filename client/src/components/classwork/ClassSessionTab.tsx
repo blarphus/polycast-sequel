@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.classwork.classsessiontab');
 // ---------------------------------------------------------------------------
 // components/classwork/ClassSessionTab.tsx — Class session creation tab
 // ---------------------------------------------------------------------------
@@ -62,7 +64,7 @@ export default function ClassSessionTab({
         });
       }
     } catch (err: any) {
-      console.error('Create class session failed:', err);
+      runtimeLog.error('Create class session failed:', err);
       setError(toErrorMessage(err));
     } finally {
       setSubmitting(false);

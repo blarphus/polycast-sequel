@@ -15,7 +15,7 @@ func parseISO8601Date(_ value: String) -> Date? {
 /// Soft upper bound for the prompt-stage ladder, mirroring the server-side
 /// `MAX_PROMPT_STAGE` in `server/lib/srsUpdate.js`. Used by the local
 /// preview path to keep the client from drifting past the server's safety net.
-let maxPromptStage = 20
+let maxPromptStage = GeneratedSRSContract.maxPromptStage
 
 /// Difficulty ladder, one rung per prompt_stage. Comprehension first, then
 /// production; each stage removes exactly one crutch:
@@ -93,12 +93,9 @@ func getInstructionText(_ promptType: PromptType) -> String {
 
 // MARK: - SRS Algorithm
 
-private let learningSteps = [60, 600]         // 1 min, 10 min
-private let graduatingInterval = 86400        // 1 day
-// private let easyGraduatingInterval = 345600 // 4 days -- unused since the
-//   rating collapsed to a binary correct/incorrect (good/again only).
-//   Flagged for deletion in a future audit.
-private let minReviewInterval = 86400         // 1 day
+private let learningSteps = GeneratedSRSContract.learningSteps
+private let graduatingInterval = GeneratedSRSContract.graduatingInterval
+private let minReviewInterval = GeneratedSRSContract.minimumReviewInterval
 
 private func roundedDayInterval(_ seconds: Double) -> Int {
     max(Int(round(seconds / Double(minReviewInterval))), 1) * minReviewInterval
@@ -150,10 +147,9 @@ private func localDateKey(_ date: Date = .now, calendar: Calendar = .current) ->
 func studyQueueBucket(card: SavedWord, now: Date = .now, calendar: Calendar = .current) -> StudyQueueBucket {
     let today = localDateKey(now, calendar: calendar)
     if card.relearningDate == today { return .learning }
-    // A card is "new" (blue) only until its first answer. Once answered — right
-    // or wrong — it leaves the new bucket: a wrong answer today makes it
-    // relearning (red, handled above), otherwise it counts as review (green).
-    if isNewCard(card) { return .new }
+    // Ordinary learning steps remain in the blue queue for the local day on
+    // which the card was introduced. A failed card is red via relearningDate.
+    if isNewCard(card) || card.introducedDate == today { return .new }
     return .review
 }
 
@@ -175,38 +171,6 @@ func studyQueueCounts(cards: ArraySlice<SavedWord>, now: Date = .now, calendar: 
         }
     }
     return counts
-}
-
-func interleavedStudyQueue(_ cards: [SavedWord], now: Date = .now, calendar: Calendar = .current) -> [SavedWord] {
-    let newCards = cards.filter { isNewCard($0) }
-    guard !newCards.isEmpty else { return cards }
-
-    let reviewCards = cards.filter { !isNewCard($0) }
-    guard !reviewCards.isEmpty else { return newCards }
-
-    let reviewInterval = max(reviewCards.count / newCards.count, 1)
-    var queue: [SavedWord] = []
-    queue.reserveCapacity(cards.count)
-
-    var reviewIndex = 0
-    var newIndex = 0
-
-    while reviewIndex < reviewCards.count {
-        let nextReviewIndex = min(reviewIndex + reviewInterval, reviewCards.count)
-        queue.append(contentsOf: reviewCards[reviewIndex..<nextReviewIndex])
-        reviewIndex = nextReviewIndex
-
-        if newIndex < newCards.count {
-            queue.append(newCards[newIndex])
-            newIndex += 1
-        }
-    }
-
-    if newIndex < newCards.count {
-        queue.append(contentsOf: newCards[newIndex...])
-    }
-
-    return queue
 }
 
 /// Mirror of the server's prompt_stage rule: one stage up on correct, one
@@ -252,7 +216,7 @@ func applyAnswerLocally(card: SavedWord, answer: String, now: Date = .now, calen
         // Review card: "again" enters relearning; "good" stays in review.
         newStep = incorrect ? 0 : nil
         if incorrect {
-            newEase = max(newEase - 0.20, 1.3)
+            newEase = max(newEase - 0.20, GeneratedSRSContract.minimumEaseFactor)
             newInterval = minReviewInterval
         } else {
             newInterval = dueSeconds

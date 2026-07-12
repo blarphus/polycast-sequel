@@ -13,7 +13,6 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,11 +27,10 @@ if (fs.existsSync(envPath)) {
 }
 
 // Dynamic import of server modules (they use ES modules)
-const require = createRequire(import.meta.url);
 const serverDir = path.join(__dirname, '..', 'server');
 
-// We need the functions from enrichWord.js
-const { callGemini, fetchWordImage } = await import(path.join(serverDir, 'enrichWord.js'));
+const { callGemini } = await import(path.join(serverDir, 'lib', 'gemini.js'));
+const { fetchWordImage } = await import(path.join(serverDir, 'lib', 'imageSearch.js'));
 const { applyCorpusFrequency } = await import(path.join(serverDir, 'lib', 'wordFrequency.js'));
 
 // ---------------------------------------------------------------------------
@@ -45,7 +43,12 @@ const DELAY_MS = 300; // small delay between Gemini calls to avoid rate limits
 
 // CLI args
 const args = process.argv.slice(2);
+if (args.includes('--help')) {
+  console.log('Usage: node scripts/enrich-a1.mjs [--dry-run] [--smoke] [--unit <unit-id>] [--word <word>]\n--smoke validates imports/input without network or writes. --dry-run performs enrichment/network calls but does not write.');
+  process.exit(0);
+}
 const dryRun = args.includes('--dry-run');
+const smoke = args.includes('--smoke');
 const unitFilter = args.includes('--unit') ? args[args.indexOf('--unit') + 1] : null;
 const wordFilter = args.includes('--word') ? args[args.indexOf('--word') + 1]?.toLowerCase() : null;
 
@@ -128,6 +131,13 @@ Respond with ONLY the JSON object, no other text.`;
 async function main() {
   console.log('Loading cefrj-a1.json...');
   const data = JSON.parse(fs.readFileSync(JSON_PATH, 'utf-8'));
+  if (smoke) {
+    if (!Array.isArray(data.units) || !data.units.length || typeof callGemini !== 'function' || typeof fetchWordImage !== 'function') {
+      throw new Error('Enrichment smoke validation failed');
+    }
+    console.log(`Enrichment smoke passed: ${data.units.length} unit(s), no network calls or writes.`);
+    return;
+  }
 
   const units = unitFilter
     ? data.units.filter(u => u.id === unitFilter)

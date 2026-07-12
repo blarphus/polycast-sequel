@@ -33,7 +33,7 @@ final class AudiobookPlayer: NSObject, AVAudioPlayerDelegate {
         do {
             try loadTrack(index, at: saved.time)
         } catch {
-            print("[Polycast] Could not open audiobook track: \(error.localizedDescription)")
+            reportFallback(code: "audiobook_restore_failed", title: "Audiobook unavailable", message: "The saved audiobook track could not be opened, so audiobook playback is disabled for this book.", source: "ios.audiobook", operation: "restore-track", detail: "track=\(index)", error: error)
             return nil
         }
     }
@@ -50,7 +50,7 @@ final class AudiobookPlayer: NSObject, AVAudioPlayerDelegate {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
-            print("[Polycast] Could not activate audio session: \(error)")
+            reportFallback(code: "audiobook_audio_session_fallback", title: "Audiobook audio route fallback used", message: "The spoken-audio session could not be activated, so playback will use the current system audio route.", source: "ios.audiobook", operation: "activate-audio-session", error: error)
         }
         player.rate = Float(rate)
         player.play()
@@ -95,7 +95,7 @@ final class AudiobookPlayer: NSObject, AVAudioPlayerDelegate {
                     }
                     if wasPlaying { play() }
                 } catch {
-                    print("[Polycast] Could not open audiobook track: \(error.localizedDescription)")
+                    reportFallback(code: "audiobook_previous_track_failed", title: "Previous audiobook track unavailable", message: "The previous track could not be opened, so playback stayed on the current track.", source: "ios.audiobook", operation: "skip-to-previous-track", detail: "track=\(trackIndex - 1)", error: error)
                 }
             } else {
                 player.currentTime = 0
@@ -107,7 +107,7 @@ final class AudiobookPlayer: NSObject, AVAudioPlayerDelegate {
                     try loadTrack(trackIndex + 1, at: target - player.duration)
                     if wasPlaying { play() }
                 } catch {
-                    print("[Polycast] Could not open audiobook track: \(error.localizedDescription)")
+                    reportFallback(code: "audiobook_next_track_failed", title: "Next audiobook track unavailable", message: "The next track could not be opened, so playback stayed on the current track.", source: "ios.audiobook", operation: "skip-to-next-track", detail: "track=\(trackIndex + 1)", error: error)
                 }
             } else {
                 player.currentTime = max(player.duration - 0.5, 0)
@@ -145,7 +145,7 @@ final class AudiobookPlayer: NSObject, AVAudioPlayerDelegate {
                 if wasPlaying { play() }
                 savePosition()
             } catch {
-                print("[Polycast] Could not open audiobook track: \(error.localizedDescription)")
+                reportFallback(code: "audiobook_auto_advance_failed", title: "Audiobook auto-advance stopped", message: "The next track could not be opened, so audiobook playback stopped.", source: "ios.audiobook", operation: "auto-advance-track", detail: "track=\(trackIndex + 1)", error: error)
                 isPlaying = false
             }
         }

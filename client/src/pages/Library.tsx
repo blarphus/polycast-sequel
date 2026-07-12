@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.library');
 // ---------------------------------------------------------------------------
 // pages/Library.tsx -- EPUB library: upload + open books (stored on-device).
 // ---------------------------------------------------------------------------
 
+import '../styles/epub.css';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBooks } from '../hooks/useBooks';
@@ -59,7 +62,7 @@ export default function Library() {
       }
       if (files.length === 1 && lastId) navigate(`/books/${lastId}`);
     } catch (err) {
-      console.error('Failed to import EPUB:', err);
+      runtimeLog.error('Failed to import EPUB:', err);
       setUploadError(err instanceof Error ? err.message : 'Could not import that EPUB.');
     } finally {
       setBusy(false);
@@ -69,7 +72,7 @@ export default function Library() {
 
   const handleDelete = async (book: BookMeta) => {
     if (!window.confirm(`Remove "${book.title}" from your library?`)) return;
-    try { await remove(book.id); } catch (err) { console.error('Failed to delete book:', err); }
+    try { await remove(book.id); } catch (err) { runtimeLog.error('Failed to delete book:', err); }
   };
 
   return (

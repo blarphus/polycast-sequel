@@ -292,7 +292,7 @@ struct StudentsView: View {
             }
         } catch {
             self.error = error.localizedDescription
-            print("[Polycast] StudentsView loadClassrooms error: \(error)")
+            PolycastLog.runtime.error("[Polycast] StudentsView loadClassrooms error: \(error)")
         }
         loading = false
     }
@@ -306,7 +306,7 @@ struct StudentsView: View {
             self.error = ""
         } catch {
             self.error = error.localizedDescription
-            print("[Polycast] StudentsView loadRoster error: \(error)")
+            PolycastLog.runtime.error("[Polycast] StudentsView loadRoster error: \(error)")
         }
         rosterLoading = false
     }
@@ -329,7 +329,7 @@ struct StudentsView: View {
                     searchResults = results
                 }
             } catch {
-                print("[Polycast] Student search error: \(error)")
+                PolycastLog.runtime.error("[Polycast] Student search error: \(error)")
             }
         }
     }
@@ -342,7 +342,7 @@ struct StudentsView: View {
             await loadRoster(classroomId: classroomId)
         } catch {
             self.error = error.localizedDescription
-            print("[Polycast] Add student error: \(error)")
+            PolycastLog.runtime.error("[Polycast] Add student error: \(error)")
         }
     }
 
@@ -354,7 +354,7 @@ struct StudentsView: View {
             addedIds.remove(studentId)
         } catch {
             self.error = error.localizedDescription
-            print("[Polycast] Remove student error: \(error)")
+            PolycastLog.runtime.error("[Polycast] Remove student error: \(error)")
         }
     }
 }

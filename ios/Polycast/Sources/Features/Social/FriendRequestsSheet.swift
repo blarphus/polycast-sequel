@@ -92,7 +92,7 @@ struct FriendRequestsSheet: View {
         do {
             requests = try await api.friendRequests()
         } catch {
-            print("[Polycast] FriendRequestsSheet load error: \(error)")
+            PolycastLog.runtime.error("[Polycast] FriendRequestsSheet load error: \(error)")
         }
         loading = false
     }
@@ -104,7 +104,7 @@ struct FriendRequestsSheet: View {
             requests.removeAll { $0.id == req.id }
             onUpdate()
         } catch {
-            print("[Polycast] accept error: \(error)")
+            PolycastLog.runtime.error("[Polycast] accept error: \(error)")
         }
         processing.remove(req.id)
     }
@@ -116,7 +116,7 @@ struct FriendRequestsSheet: View {
             requests.removeAll { $0.id == req.id }
             onUpdate()
         } catch {
-            print("[Polycast] reject error: \(error)")
+            PolycastLog.runtime.error("[Polycast] reject error: \(error)")
         }
         processing.remove(req.id)
     }

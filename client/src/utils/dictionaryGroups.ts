@@ -195,21 +195,3 @@ export function buildDictionaryGroups(words: SavedWord[], search: string, sort: 
 
   return groups;
 }
-
-export function getDueNextGroupKeys(groups: DictionaryWordGroup[], dailyNewLimit: number): Set<string> {
-  if (dailyNewLimit <= 0) return new Set();
-
-  const nextGroups = new Set<string>();
-  const queuedNewEntries = groups
-    .flatMap((group) => group.entries
-      .filter(isDictionaryEntryNew)
-      .map((entry) => ({ groupKey: group.key, entry })))
-    .sort((a, b) => compareNewEntries(a.entry, b.entry))
-    .slice(0, dailyNewLimit);
-
-  for (const item of queuedNewEntries) {
-    nextGroups.add(item.groupKey);
-  }
-
-  return nextGroups;
-}

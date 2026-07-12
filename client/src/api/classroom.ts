@@ -129,10 +129,6 @@ export function createClassroom(data: { name: string; section?: string; subject?
   });
 }
 
-export function getClassroom(id: string) {
-  return request<Classroom>(`/classrooms/${id}`);
-}
-
 export function updateClassroom(id: string, data: {
   name?: string;
   section?: string | null;

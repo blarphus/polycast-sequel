@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from './scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.utils.readerprefs');
 // ---------------------------------------------------------------------------
 // utils/readerPrefs.ts -- Per-device EPUB reader preferences (theme, font,
 // text size), persisted in localStorage. Deliberately independent of the
@@ -50,7 +52,7 @@ export function loadReaderPrefs(): ReaderPrefs {
     };
   } catch (err) {
     // Corrupt storage shouldn't break the reader — surface it and fall back to defaults.
-    console.error('readerPrefs: failed to parse stored prefs:', err);
+    runtimeLog.error('readerPrefs: failed to parse stored prefs:', err);
     return { ...DEFAULT_PREFS };
   }
 }

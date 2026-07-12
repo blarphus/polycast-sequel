@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.classroom.classroomsetupbanner');
 import React, { useEffect, useState } from 'react';
 import * as api from '../../api';
 import type { Classroom } from '../../api';
@@ -35,7 +37,7 @@ export default function ClassroomSetupBanner({ classroom, onUpdated }: Props) {
       });
       onUpdated(updated);
     } catch (err) {
-      console.error('Failed to update classroom:', err);
+      runtimeLog.error('Failed to update classroom:', err);
       setError(err instanceof Error ? err.message : 'Failed to update classroom');
     } finally {
       setSaving(false);

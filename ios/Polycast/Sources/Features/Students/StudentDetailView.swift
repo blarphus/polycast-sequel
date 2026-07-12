@@ -505,7 +505,7 @@ struct StudentDetailView: View {
             error = ""
         } catch {
             self.error = error.localizedDescription
-            print("[Polycast] StudentDetailView load error: \(error)")
+            PolycastLog.runtime.error("[Polycast] StudentDetailView load error: \(error)")
         }
         loading = false
     }

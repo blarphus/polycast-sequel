@@ -13,6 +13,7 @@ const OFFLINE_MODE_KEY = 'offlineMode';
 const OFFLINE_WORDS_KEY = 'offlineDictionaryWords';
 const SELECTION_CONTEXT_MENU_ID = 'polycast-lookup-selection';
 const SITE_HIGHLIGHT_OVERRIDES_KEY = 'siteHighlightOverrides';
+const SITE_CONTENT_SCRIPTS_KEY = 'siteContentScriptIds';
 const PAGE_CUE_DATE_KEY = 'pageCueDate';
 const DEFAULT_OFFLINE_USER = {
   id: 'offline-local-user',
@@ -25,10 +26,22 @@ const DEFAULT_OFFLINE_USER = {
   cefr_level: null,
   offline: true,
 };
+const SESSION_SCOPED_STORAGE_KEYS = [
+  'authToken', 'user', 'savedWords', RECALL_CATALOG_KEY,
+  RECALL_CHALLENGE_KEY, 'progression', OFFLINE_MODE_KEY,
+];
+
+if (typeof importScripts === 'function') importScripts('generated/messageContract.js', 'background/messageRouter.js', 'background/activation.js');
+const MESSAGE_CONTRACT = globalThis.PolycastExtensionMessageContract;
+if (!MESSAGE_CONTRACT) throw new Error('Generated extension message contract is unavailable');
+const validateRuntimeMessage = globalThis.PolycastExtensionMessageRouter.createMessageValidator(MESSAGE_CONTRACT);
+globalThis.validateRuntimeMessage = validateRuntimeMessage;
+
 
 let contextMenuInstallPromise = null;
 let savedTokenIndex = new Map();
 let savedTokenRevision = 0;
+let sessionExpirationPromise = null;
 
 function rebuildSavedTokenIndex(words) {
   const next = new Map();
@@ -75,7 +88,11 @@ function installContextMenus() {
     chrome.contextMenus.removeAll(() => {
       const removeError = chrome.runtime.lastError;
       if (removeError) {
-        console.warn('[Polycast] Could not clear context menus:', removeError.message);
+        void broadcastFallbackNotice(
+          'Context menu reset failed',
+          'Polycast could not clear the previous selection menu and will retry at the next browser startup.',
+          { code: 'context_menu_reset_failed', operation: 'install-context-menu', detail: removeError.message },
+        );
       }
 
       chrome.contextMenus.create({
@@ -85,7 +102,11 @@ function installContextMenus() {
       }, () => {
         const createError = chrome.runtime.lastError;
         if (createError) {
-          console.warn('[Polycast] Could not create context menu:', createError.message);
+          void broadcastFallbackNotice(
+            'Selection menu unavailable',
+            'Polycast could not create the browser selection menu. Popup and in-page word lookup remain available.',
+            { code: 'context_menu_create_failed', operation: 'install-context-menu', detail: createError.message },
+          );
         }
         contextMenuInstallPromise = null;
         resolve();
@@ -99,35 +120,59 @@ function installContextMenus() {
 chrome.runtime.onInstalled.addListener(installContextMenus);
 chrome.runtime.onStartup.addListener(installContextMenus);
 
-chrome.contextMenus?.onClicked.addListener((info, tab) => {
-  if (info.menuItemId !== SELECTION_CONTEXT_MENU_ID || !tab?.id) return;
-
-  const message = {
-    type: 'POLYCAST_LOOKUP_SELECTION',
-    selectionText: info.selectionText || '',
-    requestedAt: Date.now(),
+function makeFallbackDiagnostic({ code, title, message, source = 'extension.background', operation, detail, severity = 'warning', correlationId, occurredAt }) {
+  return {
+    code,
+    severity,
+    title,
+    message,
+    source,
+    operation,
+    correlationId: correlationId || crypto.randomUUID(),
+    occurredAt: occurredAt || new Date().toISOString(),
+    ...(detail ? { detail } : {}),
   };
-  const options = Number.isInteger(info.frameId) ? { frameId: info.frameId } : undefined;
-  chrome.tabs.sendMessage(tab.id, message, options)
-    .then((response) => {
-      if (Number.isFinite(response?.shellLatencyMs)) {
-        console.info(`[Polycast] Selection popup shell opened in ${response.shellLatencyMs}ms`);
-      }
-    })
-    .catch(() => {
-      if (!options) return;
-      // Chrome's PDF viewer reports selections from its internal extension
-      // frame, where our content script cannot run. Retry in the top page
-      // with the selectionText supplied by contextMenus.
-      return chrome.tabs.sendMessage(tab.id, message)
-        .then((response) => {
-          if (Number.isFinite(response?.shellLatencyMs)) {
-            console.info(`[Polycast] Selection popup shell opened in ${response.shellLatencyMs}ms`);
-          }
-        })
-        .catch(() => {});
+}
+
+async function surfaceBackgroundDiagnostic(diagnostic) {
+  await chrome.storage.local.set({ lastFallbackDiagnostic: diagnostic });
+  if (chrome.action) {
+    await chrome.action.setBadgeText({ text: '!' });
+    await chrome.action.setBadgeBackgroundColor({ color: '#b45309' });
+    await chrome.action.setTitle({ title: `${diagnostic.title}: ${diagnostic.message} · ${diagnostic.code} · ref ${diagnostic.correlationId}` });
+  }
+}
+
+async function sendTabMessageSafe(tabId, payload, operation) {
+  if (!Number.isInteger(tabId)) return undefined;
+  try {
+    return await chrome.tabs.sendMessage(tabId, payload);
+  } catch (err) {
+    const diagnostic = makeFallbackDiagnostic({
+      code: 'extension_ui_delivery_failed',
+      title: 'Extension notice delivery failed',
+      message: 'The target tab could not receive an extension update.',
+      operation,
+      detail: `tabId=${tabId}; reason=${err?.message || 'unknown error'}`,
+      severity: 'error',
     });
+    console.warn('[polycast:fallback-delivery-failed]', diagnostic);
+    await surfaceBackgroundDiagnostic(diagnostic);
+    return undefined;
+  }
+}
+
+
+
+const { activateOptionalSite, deactivateOptionalSite } = globalThis.PolycastActivationHandlers.create({
+  makeFallbackDiagnostic,
+  sendTabMessageSafe,
+  surfaceBackgroundDiagnostic,
+  SITE_HIGHLIGHT_OVERRIDES_KEY,
+  SITE_CONTENT_SCRIPTS_KEY,
 });
+globalThis.activateOptionalSite = activateOptionalSite;
+globalThis.deactivateOptionalSite = deactivateOptionalSite;
 
 async function getApiBase() {
   const { apiBase } = await chrome.storage.local.get('apiBase');
@@ -167,7 +212,7 @@ async function getDailyGoalSnapshot() {
 async function broadcastDailyGoalUpdated(snapshot, extra = {}) {
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, { type: 'DAILY_GOAL_UPDATED', snapshot, ...extra }).catch(() => {});
+    await sendTabMessageSafe(tab.id, { type: 'DAILY_GOAL_UPDATED', snapshot, ...extra }, 'broadcast-daily-goal');
   }
 }
 
@@ -199,6 +244,7 @@ async function syncDailyGoalFromServer() {
     await chrome.storage.local.set({ progression });
     return seedDailyGoalProgress(progression.dailyGoal?.added || 0, progression.dailyGoal?.goal);
   } catch (err) {
+    if (isSessionExpiredError(err)) throw err;
     await broadcastFallbackNotice('Daily goal fallback', `Using cached goal progress because the account sync failed: ${err.message}`);
     return getDailyGoalSnapshot();
   }
@@ -216,6 +262,31 @@ async function recordDailyGoalWord() {
   return { ...after, justAdded: true, justCompleted, bonusXpEarned };
 }
 
+function isSessionExpiredError(error) {
+  return error?.code === 'extension_session_expired';
+}
+
+async function invalidateExpiredExtensionSession(path) {
+  if (sessionExpirationPromise) return sessionExpirationPromise;
+  sessionExpirationPromise = (async () => {
+    await chrome.storage.local.remove(SESSION_SCOPED_STORAGE_KEYS);
+    savedTokenIndex = new Map();
+    savedTokenRevision += 1;
+    await broadcastWordsUpdated([]);
+    return broadcastFallbackNotice(
+      'Extension session expired',
+      'The saved Polycast session is no longer valid. The extension cleared account data and requires you to sign in again.',
+      {
+        code: 'extension_session_expired',
+        operation: 'invalidate-session',
+        severity: 'error',
+        detail: `status=401; path=${path}`,
+      },
+    );
+  })();
+  return sessionExpirationPromise;
+}
+
 async function apiFetch(path, opts = {}) {
   const apiBase = await getApiBase();
   const token = await getAuthToken();
@@ -231,9 +302,12 @@ async function apiFetch(path, opts = {}) {
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
 
-  if (res.status === 401) {
-    await chrome.storage.local.remove(['authToken', 'user', 'savedWords']);
-    throw new Error('Session expired — please log in again');
+  if (res.status === 401 && token) {
+    const diagnostic = await invalidateExpiredExtensionSession(path);
+    const error = new Error('Session expired — please log in again');
+    error.code = diagnostic.code;
+    error.diagnostic = diagnostic;
+    throw error;
   }
 
   if (!res.ok) {
@@ -253,7 +327,17 @@ function parseWordForms(rawForms) {
     try {
       const parsed = JSON.parse(rawForms);
       if (Array.isArray(parsed)) return parsed.filter((v) => typeof v === 'string');
-    } catch { /* fall through to comma split */ }
+    } catch (error) {
+      void broadcastFallbackNotice(
+        'Legacy word forms parser used',
+        'A saved word had malformed structured forms, so the extension used its legacy comma-separated representation.',
+        {
+          code: 'legacy_word_forms_parser_used',
+          operation: 'parse-word-forms',
+          detail: error?.message || String(error),
+        },
+      );
+    }
   }
   return String(rawForms).split(',').map((s) => s.trim()).filter(Boolean);
 }
@@ -395,30 +479,41 @@ async function syncOfflineWordsToAppTabs(words) {
     ],
   });
   for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, { type: 'SYNC_OFFLINE_DICTIONARY_TO_APP', words }).catch(() => {});
+    await sendTabMessageSafe(tab.id, { type: 'SYNC_OFFLINE_DICTIONARY_TO_APP', words }, 'sync-offline-dictionary');
   }
 }
 
 async function broadcastWordsUpdated(savedWords) {
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, { type: 'WORDS_UPDATED', revision: savedTokenRevision }).catch(() => {});
+    await sendTabMessageSafe(tab.id, { type: 'WORDS_UPDATED', revision: savedTokenRevision }, 'broadcast-words-updated');
   }
 }
 
-async function broadcastFallbackNotice(title, message) {
+async function broadcastFallbackNotice(title, message, options = {}) {
+  const diagnostic = makeFallbackDiagnostic({
+    code: options.code || 'extension_fallback_used',
+    title,
+    message,
+    operation: options.operation || 'unknown',
+    detail: options.detail,
+    severity: options.severity || 'warning',
+  });
+  console.warn('[polycast:fallback]', diagnostic);
+  await surfaceBackgroundDiagnostic(diagnostic);
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, { type: 'POLYCAST_FALLBACK_NOTICE', title, message }).catch(() => {});
+    await sendTabMessageSafe(tab.id, { type: 'POLYCAST_FALLBACK_NOTICE', diagnostic }, 'broadcast-fallback-notice');
   }
+  return diagnostic;
 }
 
 async function broadcastWildRecallUpdated(challenge, progression = null, diagnostic = null) {
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, {
+    await sendTabMessageSafe(tab.id, {
       type: 'WILD_RECALL_UPDATED', challenge, progression, diagnostic,
-    }).catch(() => {});
+    }, 'broadcast-wild-recall');
   }
 }
 
@@ -440,7 +535,7 @@ async function storeProgression(progression, { justAdded = false, awardedXp = 0 
 async function broadcastTargetLanguageUpdated(targetLanguage) {
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
-    chrome.tabs.sendMessage(tab.id, { type: 'TARGET_LANGUAGE_UPDATED', targetLanguage }).catch(() => {});
+    await sendTabMessageSafe(tab.id, { type: 'TARGET_LANGUAGE_UPDATED', targetLanguage }, 'broadcast-target-language');
   }
 }
 
@@ -449,8 +544,43 @@ async function broadcastTargetLanguageUpdated(targetLanguage) {
 // ---------------------------------------------------------------------------
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  handleMessage(msg, sender).then(sendResponse).catch((err) => {
-    sendResponse({ error: err.message });
+  let validated;
+  try {
+    validated = validateRuntimeMessage(msg, sender);
+  } catch (error) {
+    const diagnostic = makeFallbackDiagnostic({
+      code: 'extension_message_rejected',
+      severity: 'error',
+      title: 'Extension message rejected',
+      message: 'Polycast rejected an invalid or unauthorized extension message before it reached application logic.',
+      operation: 'validate-runtime-message',
+      detail: error?.message || String(error),
+    });
+    console.warn('[polycast:fallback]', diagnostic);
+    sendResponse({ error: diagnostic.message, diagnostic, fallback_notices: [diagnostic] });
+    return false;
+  }
+  handleMessage(validated, sender).then(async (result) => {
+    if (result?.diagnostic) {
+      console.warn('[polycast:fallback]', result.diagnostic);
+      await surfaceBackgroundDiagnostic(result.diagnostic);
+    }
+    sendResponse(result && typeof result === 'object'
+      ? { ...result, correlationId: validated.correlationId, occurredAt: validated.occurredAt }
+      : result);
+  }).catch((err) => {
+    const diagnostic = err?.diagnostic || makeFallbackDiagnostic({
+      code: 'extension_message_handler_failed',
+      severity: 'error',
+      title: 'Extension request failed',
+      message: `The ${validated.type} extension request could not be completed.`,
+      operation: validated.type.toLocaleLowerCase().replaceAll('_', '-'),
+      detail: err?.message || String(err),
+      correlationId: validated.correlationId,
+      occurredAt: validated.occurredAt,
+    });
+    console.warn('[polycast:fallback]', diagnostic);
+    sendResponse({ error: err?.message || diagnostic.message, diagnostic, fallback_notices: [diagnostic], correlationId: validated.correlationId, occurredAt: validated.occurredAt });
   });
   return true; // keep channel open for async response
 });
@@ -466,15 +596,34 @@ async function handleMessage(msg, sender = {}) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: msg.username, password: msg.password }),
         });
-      } catch {
+      } catch (error) {
+        const diagnostic = await broadcastFallbackNotice(
+          'Offline sign-in fallback used',
+          'The Polycast server could not be reached, so the extension entered local offline mode. Account XP and synchronization are unavailable.',
+          {
+            code: 'extension_offline_login_used',
+            operation: 'login',
+            detail: error?.message || String(error),
+          },
+        );
         const user = await startOfflineMode(msg.username);
-        return { success: true, user, offline: true };
+        return { success: true, user, offline: true, fallback_notices: [diagnostic] };
       }
 
       if (!res.ok) {
         const text = await res.text();
         let payload = {};
-        try { payload = JSON.parse(text); } catch { /* non-JSON response */ }
+        try {
+          payload = JSON.parse(text);
+        } catch (error) {
+          console.warn('[polycast:diagnostic]', makeFallbackDiagnostic({
+            code: 'login_error_payload_fallback',
+            title: 'Login error details unavailable',
+            message: 'The server returned a non-JSON login error, so the HTTP status will be shown.',
+            operation: 'parse-login-error',
+            detail: `status=${res.status}; responseLength=${text.length}; reason=${error?.message || String(error)}`,
+          }));
+        }
         throw new Error(payload.error || `Login failed (${res.status})`);
       }
 
@@ -486,37 +635,7 @@ async function handleMessage(msg, sender = {}) {
         user: { id, username, display_name, native_language, target_language, daily_word_goal, total_xp },
       });
       await chrome.storage.local.remove(OFFLINE_MODE_KEY);
-
-      const savedWords = await fetchSavedWords();
-      await broadcastWordsUpdated(savedWords);
-
-      return { success: true, user: { id, username, display_name, native_language, target_language, daily_word_goal, total_xp } };
-    }
-
-    case 'REMOTE_LOGIN': {
-      const apiBase = await getApiBase();
-      const res = await fetch(`${apiBase}/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: msg.username, password: msg.password }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        let payload = {};
-        try { payload = JSON.parse(text); } catch { /* non-JSON response */ }
-        console.error('Login failed:', res.status, text.slice(0, 300));
-        throw new Error(payload.error || `Login failed (${res.status})`);
-      }
-
-      const data = await res.json();
-      const { token, id, username, display_name, native_language, target_language, daily_word_goal, total_xp } = data;
-
-      await chrome.storage.local.set({
-        authToken: token,
-        user: { id, username, display_name, native_language, target_language, daily_word_goal, total_xp },
-      });
-      await chrome.storage.local.remove(OFFLINE_MODE_KEY);
+      sessionExpirationPromise = null;
 
       const savedWords = await fetchSavedWords();
       await broadcastWordsUpdated(savedWords);
@@ -525,7 +644,8 @@ async function handleMessage(msg, sender = {}) {
     }
 
     case 'LOGOUT': {
-      await chrome.storage.local.remove(['authToken', 'user', 'savedWords', RECALL_CATALOG_KEY, RECALL_CHALLENGE_KEY, 'progression', OFFLINE_MODE_KEY]);
+      await chrome.storage.local.remove(SESSION_SCOPED_STORAGE_KEYS);
+      sessionExpirationPromise = null;
       await broadcastWordsUpdated([]);
       savedTokenIndex = new Map();
       savedTokenRevision += 1;
@@ -542,7 +662,13 @@ async function handleMessage(msg, sender = {}) {
         }
         const words = await getOfflineWords();
         await chrome.storage.local.set({ user, savedWords: savedWordTokens(words) });
-        return { loggedIn: true, user, savedWordCount: words.length, dailyGoal: await syncDailyGoalFromServer(), offline: true, diagnostic: 'Offline fallback used: XP is not account-backed.' };
+        const diagnostic = makeFallbackDiagnostic({
+          code: 'extension_offline_status_used',
+          title: 'Offline account status used',
+          message: 'The extension is using local status. Account XP and cross-device synchronization are unavailable.',
+          operation: 'get-status',
+        });
+        return { loggedIn: true, user, savedWordCount: words.length, dailyGoal: await syncDailyGoalFromServer(), offline: true, diagnostic };
       }
 
       try {
@@ -553,9 +679,21 @@ async function handleMessage(msg, sender = {}) {
         const { progression = null } = await chrome.storage.local.get('progression');
         return { loggedIn: true, user, savedWordCount: catalog.length, dailyGoal, progression };
       } catch (err) {
+        if (isSessionExpiredError(err)) {
+          return { loggedIn: false, error: err.message, diagnostic: err.diagnostic, fallback_notices: [err.diagnostic] };
+        }
         const { user = DEFAULT_OFFLINE_USER } = await chrome.storage.local.get('user');
         const words = await getOfflineWords();
-        return { loggedIn: true, user: { ...user, offline: true }, savedWordCount: words.length, dailyGoal: await getDailyGoalSnapshot(), offline: true, error: err.message };
+        const diagnostic = await broadcastFallbackNotice(
+          'Cached extension status used',
+          'The live account status could not be loaded, so the extension is showing cached local status.',
+          {
+            code: 'extension_cached_status_used',
+            operation: 'get-status',
+            detail: err?.message || String(err),
+          },
+        );
+        return { loggedIn: true, user: { ...user, offline: true }, savedWordCount: words.length, dailyGoal: await getDailyGoalSnapshot(), offline: true, diagnostic };
       }
     }
 
@@ -677,7 +815,7 @@ async function handleMessage(msg, sender = {}) {
           fallback_notices: enriched.fallback_notices || [],
         };
       } catch (err) {
-        if (String(err.message || '').includes('Session expired')) throw err;
+        if (isSessionExpiredError(err)) throw err;
         const saved = await saveOfflineWord(msg.word, msg.sentence);
         const dailyGoal = saved._created ? await recordDailyGoalWord() : await getDailyGoalSnapshot();
         return { success: true, saved, dailyGoal, offline: true, warning: err.message };
@@ -697,7 +835,13 @@ async function handleMessage(msg, sender = {}) {
         await chrome.storage.local.set({ [DAILY_GOAL_KEY]: goal });
         const snapshot = await getDailyGoalSnapshot();
         await broadcastDailyGoalUpdated(snapshot);
-        return { snapshot, offline: true, diagnostic: 'Offline fallback used: daily goal is local and XP cannot sync.' };
+        const diagnostic = makeFallbackDiagnostic({
+          code: 'offline_daily_goal_used',
+          title: 'Local daily goal used',
+          message: 'The daily goal was saved locally because account XP cannot synchronize in offline mode.',
+          operation: 'set-daily-goal',
+        });
+        return { snapshot, offline: true, diagnostic };
       }
       const updatedUser = await apiFetch('/api/me/settings', {
         method: 'PATCH',
@@ -731,6 +875,7 @@ async function handleMessage(msg, sender = {}) {
             body: { form },
           });
         } catch (err) {
+          if (isSessionExpiredError(err)) throw err;
           // Local highlight already applied; persistence will retry next tap.
           return { success: true, persisted: false, warning: err.message };
         }
@@ -775,13 +920,22 @@ async function handleMessage(msg, sender = {}) {
 
     case 'DETECT_PAGE_LANGUAGE': {
       let tabLanguage = '';
+      const detectionFailures = [];
       if (sender.tab?.id) {
-        try { tabLanguage = await chrome.tabs.detectLanguage(sender.tab.id); } catch { /* use text detector */ }
+        try {
+          tabLanguage = await chrome.tabs.detectLanguage(sender.tab.id);
+        } catch (error) {
+          detectionFailures.push(`tab-detector=${error?.message || String(error)}`);
+        }
       }
       let textDetection = null;
       const sample = String(msg.sample || '').slice(0, 15000);
       if (sample.length >= 80) {
-        try { textDetection = await chrome.i18n.detectLanguage(sample); } catch { /* declared language fallback */ }
+        try {
+          textDetection = await chrome.i18n.detectLanguage(sample);
+        } catch (error) {
+          detectionFailures.push(`text-detector=${error?.message || String(error)}`);
+        }
       }
       const topText = textDetection?.languages?.[0] || null;
       const textReliable = !!(textDetection?.isReliable && topText && topText.language !== 'und' && topText.percentage >= 55);
@@ -793,17 +947,31 @@ async function handleMessage(msg, sender = {}) {
       }
       const declared = String(msg.declaredLanguage || '').split(/[-_]/)[0].toLocaleLowerCase();
       if (declared) {
+        const diagnostic = makeFallbackDiagnostic({
+          code: 'declared_page_language_fallback',
+          title: 'Declared page language fallback used',
+          message: `Chrome could not reliably detect this page, so its declared language (${declared}) was used.`,
+          operation: 'detect-page-language',
+          detail: detectionFailures.join('; ') || 'Chrome detection returned an unreliable result.',
+        });
         return {
           language: declared,
           reliable: false,
           percentage: null,
           source: 'declared-fallback',
-          diagnostic: `Language detection fallback used: Chrome could not reliably detect this page, so its declared language (${declared}) was used.`,
+          diagnostic,
         };
       }
+      const diagnostic = makeFallbackDiagnostic({
+        code: 'page_language_unavailable',
+        title: 'Page language unavailable',
+        message: 'Chrome could not determine this page language, so automatic highlights are off.',
+        operation: 'detect-page-language',
+        detail: detectionFailures.join('; ') || 'Chrome detection returned an unreliable result and the page declares no language.',
+      });
       return {
         language: '', reliable: false, percentage: null, source: 'unavailable',
-        diagnostic: 'Language detection fallback used: Chrome could not determine this page language, so automatic highlights are off.',
+        diagnostic,
       };
     }
 
@@ -818,14 +986,18 @@ async function handleMessage(msg, sender = {}) {
 
     case 'SET_SITE_HIGHLIGHT_OVERRIDE': {
       const hostname = String(msg.hostname || '').toLocaleLowerCase();
-      const override = ['auto', 'on', 'off'].includes(msg.override) ? msg.override : 'auto';
+      if (!['auto', 'on', 'off'].includes(msg.override)) throw new Error('Page highlight mode must be auto, on, or off');
+      const override = msg.override;
       if (!hostname) throw new Error('No active site');
+      const optionalSite = msg.pageUrl && !/(^|\.)youtube\.com$|(^|\.)netflix\.com$/.test(hostname);
+      if (optionalSite && override !== 'off') await activateOptionalSite({ pageUrl: msg.pageUrl, hostname, tabId: Number(msg.tabId) });
+      if (optionalSite && override === 'off') await deactivateOptionalSite(msg.pageUrl, hostname);
       const stored = await chrome.storage.local.get(SITE_HIGHLIGHT_OVERRIDES_KEY);
       const overrides = { ...(stored[SITE_HIGHLIGHT_OVERRIDES_KEY] || {}), [hostname]: override };
       if (override === 'auto') delete overrides[hostname];
       await chrome.storage.local.set({ [SITE_HIGHLIGHT_OVERRIDES_KEY]: overrides });
       const tabId = Number(msg.tabId) || sender.tab?.id;
-      if (tabId) chrome.tabs.sendMessage(tabId, { type: 'SITE_HIGHLIGHT_OVERRIDE_UPDATED', override }).catch(() => {});
+      if (tabId) await sendTabMessageSafe(tabId, { type: 'SITE_HIGHLIGHT_OVERRIDE_UPDATED', override }, 'update-site-highlight-override');
       return { hostname, override };
     }
 
@@ -847,10 +1019,16 @@ async function handleMessage(msg, sender = {}) {
       const { [OFFLINE_MODE_KEY]: offlineMode, [RECALL_CHALLENGE_KEY]: cachedChallenge, progression } =
         await chrome.storage.local.get([OFFLINE_MODE_KEY, RECALL_CHALLENGE_KEY, 'progression']);
       if (!token || offlineMode) {
+        const diagnostic = makeFallbackDiagnostic({
+          code: 'wild_recall_offline_unavailable',
+          title: 'Wild Recall unavailable offline',
+          message: 'Wild Recall requires the account-backed XP service, so no challenge is available in offline mode.',
+          operation: 'get-wild-recall-state',
+        });
         return {
           challenge: null,
           progression: progression || null,
-          diagnostic: 'Offline fallback used: Wild Recall requires the account-backed XP service.',
+          diagnostic,
         };
       }
       try {
@@ -861,17 +1039,35 @@ async function handleMessage(msg, sender = {}) {
         const { [RECALL_CATALOG_KEY]: catalog = [] } = await chrome.storage.local.get(RECALL_CATALOG_KEY);
         return { challenge, progression: remote, catalog };
       } catch (err) {
+        if (isSessionExpiredError(err)) throw err;
+        const diagnostic = await broadcastFallbackNotice(
+          'Wild Recall catalog fallback used',
+          'The live recall catalog could not be loaded, so the extension kept the last cached challenge and progression.',
+          {
+            code: 'wild_recall_catalog_fallback',
+            operation: 'get-wild-recall-state',
+            detail: err?.message || String(err),
+          },
+        );
         return {
           challenge: cachedChallenge || null,
           progression: progression || null,
-          diagnostic: `Wild Recall catalog fallback used: ${err.message}`,
+          diagnostic,
         };
       }
     }
 
     case 'MAYBE_ARM_WILD_RECALL': {
       const token = await getAuthToken();
-      if (!token) return { challenge: null, diagnostic: 'Wild Recall is unavailable until you sign in.' };
+      if (!token) return {
+        challenge: null,
+        diagnostic: makeFallbackDiagnostic({
+          code: 'wild_recall_signin_required',
+          title: 'Wild Recall unavailable',
+          message: 'Wild Recall is unavailable until you sign in.',
+          operation: 'arm-wild-recall',
+        }),
+      };
       const { [RECALL_CHALLENGE_KEY]: existing } = await chrome.storage.local.get(RECALL_CHALLENGE_KEY);
       if (existing) return { challenge: existing };
       const { [RECALL_CATALOG_KEY]: catalog = [] } = await chrome.storage.local.get(RECALL_CATALOG_KEY);
@@ -888,7 +1084,14 @@ async function handleMessage(msg, sender = {}) {
         await broadcastWildRecallUpdated(result.challenge || null, result.progression || null, result.unavailable || null);
         return result;
       } catch (err) {
-        const diagnostic = `Wild Recall preparation fallback used: ${err.message}`;
+        if (isSessionExpiredError(err)) throw err;
+        const diagnostic = makeFallbackDiagnostic({
+          code: 'wild_recall_preparation_fallback',
+          title: 'Wild Recall preparation fallback used',
+          message: 'The recall challenge could not be prepared, so this page will continue without one.',
+          operation: 'arm-wild-recall',
+          detail: err?.message || String(err),
+        });
         await broadcastWildRecallUpdated(null, null, diagnostic);
         return { challenge: null, diagnostic };
       }

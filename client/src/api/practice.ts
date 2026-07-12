@@ -67,7 +67,17 @@ export interface LearningSession {
   awarded_xp: number;
 }
 
-export interface Diagnostic { code: string; title: string; message: string }
+export interface Diagnostic {
+  code: string;
+  severity: 'info' | 'warning' | 'error';
+  title: string;
+  message: string;
+  source: string;
+  operation: string;
+  correlationId: string;
+  occurredAt: string;
+  detail?: string;
+}
 export type ExerciseResponse =
   | { optionId: string }
   | { text: string }

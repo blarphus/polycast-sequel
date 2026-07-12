@@ -4,6 +4,7 @@ import TokenizedText from './TokenizedText';
 import type { SaveWordData } from '../api';
 import { PopupState } from '../textTokens';
 import { speakerColor } from '../utils/speakerColor';
+import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 /** Compare primary language subtags: 'pt-BR' matches 'pt'. */
 function isSameLanguage(a: string, b: string): boolean {
@@ -36,7 +37,14 @@ function languageName(code?: string) {
   if (!code) return 'Detecting';
   try {
     return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) || code.toUpperCase();
-  } catch {
+  } catch (error) {
+    emitFallbackDiagnostic({
+      code: 'transcript_language_name_fallback',
+      severity: 'warning',
+      title: 'Language name fallback used',
+      message: 'The browser could not localize this transcript language, so Polycast is showing its raw code.',
+      detail: error instanceof Error ? error.message : String(error),
+    }, { source: 'web.transcript', operation: 'format-language-name' });
     return code.toUpperCase();
   }
 }

@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.uselocalmedia');
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type LocalMediaStatus = 'idle' | 'requesting' | 'ready' | 'denied' | 'unavailable' | 'error';
@@ -70,7 +72,7 @@ export function useLocalMedia(constraints: MediaStreamConstraints = { video: tru
       setStatus('ready');
       return stream;
     } catch (err) {
-      console.error('[media] getUserMedia failed:', err);
+      runtimeLog.error('[media] getUserMedia failed:', err);
       const described = describeMediaError(err);
       setStatus(described.status);
       setError(described.error);

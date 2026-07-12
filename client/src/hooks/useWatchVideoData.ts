@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.usewatchvideodata');
 import { useCallback, useEffect, useState } from 'react';
 import {
   fetchTranscriptFromWorker,
@@ -25,7 +27,7 @@ export function useWatchVideoData(id: string | undefined) {
         if (!cancelled) setVideo(nextVideo);
       })
       .catch((err) => {
-        console.error('Failed to fetch video:', err);
+        runtimeLog.error('Failed to fetch video:', err);
         if (!cancelled) setError(toErrorMessage(err));
       })
       .finally(() => {
@@ -44,7 +46,7 @@ export function useWatchVideoData(id: string | undefined) {
       getVideo(id)
         .then((nextVideo) => setVideo(nextVideo))
         .catch((err) => {
-          console.error('Failed to refresh video transcript status:', err);
+          runtimeLog.error('Failed to refresh video transcript status:', err);
         });
     }, 4000);
 
@@ -69,7 +71,7 @@ export function useWatchVideoData(id: string | undefined) {
         setVideo(updated);
       })
       .catch((err) => {
-        console.error('[client-fetch] CF Worker transcript fetch failed:', err);
+        runtimeLog.error('[client-fetch] CF Worker transcript fetch failed:', err);
       })
       .finally(() => {
         if (!cancelled) setClientFetching(false);
@@ -87,7 +89,7 @@ export function useWatchVideoData(id: string | undefined) {
       const updated = await retryVideoTranscript(id);
       setVideo(updated);
     } catch (err) {
-      console.error('Failed to retry transcript fetch:', err);
+      runtimeLog.error('Failed to retry transcript fetch:', err);
     } finally {
       setRetryingTranscript(false);
     }

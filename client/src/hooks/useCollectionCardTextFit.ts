@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.usecollectioncardtextfit');
 import { useEffect, useRef, useState } from 'react';
 import type React from 'react';
 
@@ -226,7 +228,7 @@ export function useCollectionCardTextFit({
         ));
         setShowSecondary((prev) => (prev === nextShowSecondary ? prev : nextShowSecondary));
       } catch (error) {
-        console.error('Failed to fit collection card text:', error);
+        runtimeLog.error('Failed to fit collection card text:', error);
       }
     };
 

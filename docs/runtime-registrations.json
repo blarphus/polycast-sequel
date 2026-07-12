@@ -1,0 +1,650 @@
+{
+  "generatedAt": "deterministic-from-runtime-registration",
+  "summary": {
+    "apiRoutes": 139,
+    "extensionMessages": 28,
+    "socketRegistrations": 12
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "*"
+    },
+    {
+      "method": "GET",
+      "path": "/api/classes/today"
+    },
+    {
+      "method": "GET",
+      "path": "/api/classroom/students"
+    },
+    {
+      "method": "POST",
+      "path": "/api/classroom/students"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/classroom/students/:studentId"
+    },
+    {
+      "method": "GET",
+      "path": "/api/classroom/students/:studentId/stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/classrooms"
+    },
+    {
+      "method": "POST",
+      "path": "/api/classrooms"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/classrooms/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/api/classrooms/:id"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/classrooms/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/api/classrooms/:id/students"
+    },
+    {
+      "method": "POST",
+      "path": "/api/classrooms/:id/students"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/classrooms/:id/students/:studentId"
+    },
+    {
+      "method": "GET",
+      "path": "/api/classrooms/:id/students/:studentId/stats"
+    },
+    {
+      "method": "GET",
+      "path": "/api/classrooms/:id/topics"
+    },
+    {
+      "method": "POST",
+      "path": "/api/classrooms/:id/topics"
+    },
+    {
+      "method": "GET",
+      "path": "/api/conversations"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/calendar"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/calendar/:date"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/due"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dictionary/enrich"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/explain"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dictionary/explain-selection"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/image-proxy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/image-search"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/image/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/lookup"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/new-preview"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/new-today"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/dictionary/queue-reorder"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/study-overview"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dictionary/translate"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/widget-preview"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/wikt-lookup"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/word-groups"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/words"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dictionary/words"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/dictionary/words/:id"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/dictionary/words/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/words/:id/audio"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dictionary/words/:id/forms"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/dictionary/words/:id/image"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/dictionary/words/:id/review"
+    },
+    {
+      "method": "GET",
+      "path": "/api/friendkeeper/categories"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/friendkeeper/categories"
+    },
+    {
+      "method": "GET",
+      "path": "/api/friendkeeper/contacts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/friendkeeper/contacts/:id/events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/friendkeeper/export"
+    },
+    {
+      "method": "GET",
+      "path": "/api/friendkeeper/important"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/friendkeeper/important"
+    },
+    {
+      "method": "POST",
+      "path": "/api/friendkeeper/sync"
+    },
+    {
+      "method": "GET",
+      "path": "/api/friendkeeper/sync-request"
+    },
+    {
+      "method": "POST",
+      "path": "/api/friendkeeper/sync-request"
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends"
+    },
+    {
+      "method": "POST",
+      "path": "/api/friends/:id/accept"
+    },
+    {
+      "method": "POST",
+      "path": "/api/friends/:id/reject"
+    },
+    {
+      "method": "POST",
+      "path": "/api/friends/request"
+    },
+    {
+      "method": "GET",
+      "path": "/api/friends/requests"
+    },
+    {
+      "method": "POST",
+      "path": "/api/group-call/:postId/join"
+    },
+    {
+      "method": "POST",
+      "path": "/api/group-call/:postId/leave"
+    },
+    {
+      "method": "GET",
+      "path": "/api/group-call/:postId/participants"
+    },
+    {
+      "method": "GET",
+      "path": "/api/home/student-dashboard"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ice-servers"
+    },
+    {
+      "method": "POST",
+      "path": "/api/learning-sessions"
+    },
+    {
+      "method": "POST",
+      "path": "/api/learning-sessions/:id/answers"
+    },
+    {
+      "method": "POST",
+      "path": "/api/learning-sessions/:id/complete"
+    },
+    {
+      "method": "POST",
+      "path": "/api/login"
+    },
+    {
+      "method": "POST",
+      "path": "/api/logout"
+    },
+    {
+      "method": "GET",
+      "path": "/api/me"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/me/settings"
+    },
+    {
+      "method": "GET",
+      "path": "/api/messages/:friendId"
+    },
+    {
+      "method": "POST",
+      "path": "/api/messages/:friendId"
+    },
+    {
+      "method": "POST",
+      "path": "/api/messages/:friendId/read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/news"
+    },
+    {
+      "method": "GET",
+      "path": "/api/news/article"
+    },
+    {
+      "method": "GET",
+      "path": "/api/news/article/stream"
+    },
+    {
+      "method": "GET",
+      "path": "/api/placement-test"
+    },
+    {
+      "method": "GET",
+      "path": "/api/practice/drill-sessions"
+    },
+    {
+      "method": "POST",
+      "path": "/api/practice/drill-sessions"
+    },
+    {
+      "method": "POST",
+      "path": "/api/practice/voice/sessions"
+    },
+    {
+      "method": "GET",
+      "path": "/api/practice/voice/sessions/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/api/practice/voice/sessions/:id/complete"
+    },
+    {
+      "method": "POST",
+      "path": "/api/practice/voice/sessions/:id/grade"
+    },
+    {
+      "method": "POST",
+      "path": "/api/practice/voice/speak"
+    },
+    {
+      "method": "POST",
+      "path": "/api/practice/voice/transcribe"
+    },
+    {
+      "method": "GET",
+      "path": "/api/progression"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/progression/accent"
+    },
+    {
+      "method": "POST",
+      "path": "/api/progression/wild-recall/answer"
+    },
+    {
+      "method": "POST",
+      "path": "/api/progression/wild-recall/arm"
+    },
+    {
+      "method": "POST",
+      "path": "/api/progression/wild-recall/click"
+    },
+    {
+      "method": "GET",
+      "path": "/api/session/accounts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/session/accounts/:userId"
+    },
+    {
+      "method": "POST",
+      "path": "/api/session/export"
+    },
+    {
+      "method": "POST",
+      "path": "/api/session/restore"
+    },
+    {
+      "method": "POST",
+      "path": "/api/session/switch"
+    },
+    {
+      "method": "POST",
+      "path": "/api/signup"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stream"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stream/pending"
+    },
+    {
+      "method": "POST",
+      "path": "/api/stream/posts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/stream/posts/:id"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/stream/posts/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stream/posts/:id/completions"
+    },
+    {
+      "method": "GET",
+      "path": "/api/stream/posts/:id/enrich"
+    },
+    {
+      "method": "POST",
+      "path": "/api/stream/posts/:postId/add-to-dictionary"
+    },
+    {
+      "method": "POST",
+      "path": "/api/stream/posts/:postId/known"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/stream/reorder"
+    },
+    {
+      "method": "POST",
+      "path": "/api/stream/topics"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/stream/topics/:id"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/stream/topics/:id"
+    },
+    {
+      "method": "POST",
+      "path": "/api/stream/words/batch-translate"
+    },
+    {
+      "method": "POST",
+      "path": "/api/stream/words/example"
+    },
+    {
+      "method": "POST",
+      "path": "/api/stream/words/lookup"
+    },
+    {
+      "method": "GET",
+      "path": "/api/templates"
+    },
+    {
+      "method": "GET",
+      "path": "/api/templates/:textbookId/:unitId"
+    },
+    {
+      "method": "POST",
+      "path": "/api/translate/phrase"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/users/me/ios-voip-token"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/users/me/ios-voip-token"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/search"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos"
+    },
+    {
+      "method": "POST",
+      "path": "/api/videos"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/:id"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/videos/:id/transcript"
+    },
+    {
+      "method": "POST",
+      "path": "/api/videos/:id/transcript/retry"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/channel/:handle"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/channels"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/videos/channels/:handle/subscription"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/channels/:handle/subscription"
+    },
+    {
+      "method": "POST",
+      "path": "/api/videos/channels/:handle/subscription"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/highlights"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/lesson/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/lessons"
+    },
+    {
+      "method": "POST",
+      "path": "/api/videos/playability"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/related/:youtubeId"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/search"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/search/full"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/shorts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/subscriptions"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/transcript/youtube"
+    },
+    {
+      "method": "GET",
+      "path": "/api/videos/trending"
+    }
+  ],
+  "extensionMessages": [
+    "ADD_WORD_FORM",
+    "ANSWER_WILD_RECALL",
+    "CAPTION_LANGUAGE_DETECTED",
+    "CLAIM_PAGE_CUE",
+    "CLICK_WILD_RECALL",
+    "DETECT_PAGE_LANGUAGE",
+    "EXPLAIN_WORD",
+    "GET_API_BASE",
+    "GET_DAILY_GOAL",
+    "GET_OFFLINE_DICTIONARY_FULL",
+    "GET_PAGE_HIGHLIGHT_CONFIG",
+    "GET_SAVED_WORDS",
+    "GET_STATUS",
+    "GET_TARGET_LANGUAGE",
+    "GET_WILD_RECALL_STATE",
+    "LOGIN",
+    "LOGOUT",
+    "LOOKUP_WORD",
+    "MATCH_PAGE_TOKENS",
+    "MAYBE_ARM_WILD_RECALL",
+    "OPEN_WEB_APP",
+    "REMOVE_WORD",
+    "SAVE_WORD",
+    "SET_API_BASE",
+    "SET_DAILY_GOAL",
+    "SET_SITE_HIGHLIGHT_OVERRIDE",
+    "SET_TARGET_LANGUAGE",
+    "UPDATE_OFFLINE_DICTIONARY"
+  ],
+  "socketRegistrations": [
+    {
+      "file": "server/socket/index.js",
+      "event": "connection"
+    },
+    {
+      "file": "server/socket/index.js",
+      "event": "disconnect"
+    },
+    {
+      "file": "server/socket/transcription.js",
+      "event": "disconnect"
+    },
+    {
+      "file": "server/socket/index.js",
+      "event": "disconnecting"
+    },
+    {
+      "file": "server/socket/groupCall.js",
+      "event": "group:answer"
+    },
+    {
+      "file": "server/socket/groupCall.js",
+      "event": "group:ice"
+    },
+    {
+      "file": "server/socket/groupCall.js",
+      "event": "group:join"
+    },
+    {
+      "file": "server/socket/groupCall.js",
+      "event": "group:leave"
+    },
+    {
+      "file": "server/socket/groupCall.js",
+      "event": "group:offer"
+    },
+    {
+      "file": "server/socket/transcription.js",
+      "event": "transcription:audio"
+    },
+    {
+      "file": "server/socket/transcription.js",
+      "event": "transcription:start"
+    },
+    {
+      "file": "server/socket/transcription.js",
+      "event": "transcription:stop"
+    }
+  ]
+}

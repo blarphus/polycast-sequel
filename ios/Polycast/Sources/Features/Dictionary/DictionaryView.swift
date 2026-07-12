@@ -654,7 +654,7 @@ struct DictionaryView: View {
             try await APIClient.shared.deleteWord(id: id)
             wordStore.remove(id: id)
         } catch {
-            print("[Dictionary] Delete failed: \(error)")
+            PolycastLog.runtime.error("[Dictionary] Delete failed: \(error)")
         }
     }
 

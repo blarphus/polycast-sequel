@@ -327,7 +327,7 @@ final class CallManager: ObservableObject {
             client.startScreenShare { [weak self] error in
                 Task { @MainActor [weak self] in
                     if let error {
-                        print("[Polycast] CallManager: screen share failed: \(error)")
+                        PolycastLog.runtime.error("[Polycast] CallManager: screen share failed: \(error)")
                     } else {
                         self?.isScreenSharing = true
                     }
@@ -421,7 +421,7 @@ final class CallManager: ObservableObject {
             // pendingOffer path, not a client with no peer connection.
             self.webRTCClient = client
         } catch {
-            print("[Polycast] CallManager: failed to fetch ICE servers: \(error)")
+            PolycastLog.runtime.error("[Polycast] CallManager: failed to fetch ICE servers: \(error)")
             endCallLocally(reason: "Failed to set up connection")
         }
     }
@@ -447,7 +447,15 @@ final class CallManager: ObservableObject {
         guard let callId else { return true }
         let canonicalId = canonicalCallId(callId)
         if let activeCallId, canonicalCallId(activeCallId) != canonicalId {
-            print("[Polycast] CallManager: ignoring signal for call \(canonicalId); active call is \(canonicalCallId(activeCallId))")
+            reportFallback(
+                code: "stale_call_signal_ignored",
+                title: "Stale call update ignored",
+                message: "Polycast ignored a signaling update for a call that is no longer active.",
+                source: "ios.call",
+                operation: "accept-signal",
+                detail: "receivedCall=\(canonicalId); activeCall=\(self.canonicalCallId(activeCallId))",
+                severity: "info"
+            )
             return false
         }
         activeCallId = canonicalId
@@ -465,7 +473,7 @@ final class CallManager: ObservableObject {
             if let activeCallId { payload["callId"] = canonicalCallId(activeCallId) }
             socket.emit("signal:offer", payload)
         } catch {
-            print("[Polycast] CallManager: failed to create offer: \(error)")
+            PolycastLog.runtime.error("[Polycast] CallManager: failed to create offer: \(error)")
             endCallLocally(reason: "Connection failed")
         }
     }
@@ -486,7 +494,7 @@ final class CallManager: ObservableObject {
             if let activeCallId { payload["callId"] = canonicalCallId(activeCallId) }
             socket.emit("signal:answer", payload)
         } catch {
-            print("[Polycast] CallManager: failed to create answer: \(error)")
+            PolycastLog.runtime.error("[Polycast] CallManager: failed to create answer: \(error)")
             endCallLocally(reason: "Connection failed")
         }
     }
@@ -501,7 +509,7 @@ final class CallManager: ObservableObject {
             isNegotiating = false
             flushPendingIceCandidates()
         } catch {
-            print("[Polycast] CallManager: failed to set remote answer: \(error)")
+            PolycastLog.runtime.error("[Polycast] CallManager: failed to set remote answer: \(error)")
             endCallLocally(reason: "Connection failed")
         }
     }

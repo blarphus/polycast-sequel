@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 export function tokenize(text: string): string[] {
-  return text.match(/([\p{L}\p{M}\d']+|[.,!?;:]+|\s+)/gu) || [];
+  return text.match(/([\p{L}\p{M}\d']+|[^\p{L}\p{M}\d']+)/gu) || [];
 }
 
 export function isWordToken(token: string): boolean {

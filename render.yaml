@@ -3,7 +3,7 @@ services:
     name: polycast-sequel
     runtime: node
     plan: starter
-    buildCommand: cd client && npm install --include=dev && npm run build && cd ../server && npm install
+    buildCommand: cd client && npm ci --include=dev && npm run build && cd ../server && npm ci --omit=dev
     startCommand: cd server && node index.js
     envVars:
       - key: DATABASE_URL
@@ -23,10 +23,20 @@ services:
         sync: false
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: CLIENT_ORIGIN
+        value: https://polycast-sequel.onrender.com
       - key: CF_TRANSCRIPT_WORKER_URL
         sync: false
       - key: CF_TRANSCRIPT_WORKER_SECRET
         sync: false
+      - key: INNERTUBE_API_KEY
+        sync: false
+      - key: EXTENSION_ORIGIN
+        sync: false
+      - key: CACHE_VERSION
+        value: v1
       - key: FRIENDKEEPER_API_KEY
         sync: false
       - key: TURN_URLS

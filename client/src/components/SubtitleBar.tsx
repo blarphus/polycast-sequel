@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.subtitlebar');
 // ---------------------------------------------------------------------------
 // components/SubtitleBar.tsx -- Subtitle overlay with scrolling lines
 // ---------------------------------------------------------------------------
@@ -27,10 +29,10 @@ function langLabel(lang: string): string {
     const display = new Intl.DisplayNames(['en'], { type: 'language' });
     const base = lang.split('-')[0];
     const name = display.of(base);
-    if (!name) console.warn(`SubtitleBar: Intl.DisplayNames returned no name for lang "${lang}"`);
+    if (!name) runtimeLog.warn(`SubtitleBar: Intl.DisplayNames returned no name for lang "${lang}"`);
     return name ?? lang;
   } catch (err) {
-    console.error(`SubtitleBar: failed to get display name for lang "${lang}":`, err);
+    runtimeLog.error(`SubtitleBar: failed to get display name for lang "${lang}":`, err);
     return lang;
   }
 }

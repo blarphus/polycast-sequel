@@ -1,6 +1,18 @@
 import { request } from './core';
 import type { SavedWord } from './dictionary';
-import type { PendingClasswork } from './classwork';
+
+export interface PendingWordList {
+  id: string;
+  title: string;
+  word_count: number;
+  teacher_name: string;
+  created_at: string;
+}
+
+export interface PendingClasswork {
+  count: number;
+  posts: PendingWordList[];
+}
 
 export interface StudentDashboard {
   newToday: SavedWord[];

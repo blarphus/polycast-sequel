@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.lessons');
 // ---------------------------------------------------------------------------
 // pages/Lessons.tsx -- Full-page grid of all lesson playlists
 // ---------------------------------------------------------------------------
 
+import '../styles/browse.css';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -29,7 +32,7 @@ export default function Lessons() {
       .then((data) => {
         if (!cancelled) setLessons(data.filter((l) => l.videoCount > 0));
       })
-      .catch((err) => console.error('Failed to fetch lessons:', err))
+      .catch((err) => runtimeLog.error('Failed to fetch lessons:', err))
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };

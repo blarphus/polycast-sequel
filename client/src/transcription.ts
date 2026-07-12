@@ -4,6 +4,19 @@
 // ---------------------------------------------------------------------------
 
 import { socket } from './socket';
+import { logRuntimeDiagnostic } from './utils/runtimeDiagnostics';
+
+function logAudioContextFailure(operation: string, error: unknown) {
+  logRuntimeDiagnostic({
+    code: 'transcription_audio_context_failed',
+    severity: 'error',
+    source: 'web.transcription',
+    operation,
+    message: 'The call transcription audio pipeline could not change state.',
+    detail: error,
+    visible: true,
+  });
+}
 
 /**
  * Captures PCM audio from a MediaStream and streams it to the server
@@ -19,7 +32,6 @@ export class TranscriptionService {
 
   constructor(peerId: string) {
     this.peerId = peerId;
-    console.log('[transcription] TranscriptionService created, peerId=', peerId);
   }
 
   /**
@@ -28,30 +40,29 @@ export class TranscriptionService {
    */
   start(stream: MediaStream): void {
     if (this.running) {
-      console.warn('[transcription] Already running, ignoring start()');
+      logRuntimeDiagnostic({
+        code: 'transcription_duplicate_start_ignored',
+        severity: 'warning',
+        source: 'web.transcription',
+        operation: 'start',
+        message: 'A duplicate transcription start was ignored to prevent two audio pipelines.',
+        detail: `peerId=${this.peerId}`,
+        visible: true,
+      });
       return;
     }
     this.running = true;
 
-    console.log('[transcription] Starting Voxtral transcription for peerId=', this.peerId);
-    console.log('[transcription] Stream tracks:', stream.getTracks().map(t => `${t.kind}:${t.label}:${t.readyState}`));
-
     // Tell the server to open a Voxtral WebSocket
     socket.emit('transcription:start', { peerId: this.peerId });
-    console.log('[transcription] Emitted transcription:start');
 
     // Create AudioContext at 16 kHz for native PCM capture
     this.audioContext = new AudioContext({ sampleRate: 16000 });
-    console.log('[transcription] AudioContext created, sampleRate=', this.audioContext.sampleRate, 'state=', this.audioContext.state);
 
     // iOS Safari starts AudioContext in 'suspended' state — resume it so
     // onaudioprocess events actually fire.
     if (this.audioContext.state === 'suspended') {
-      this.audioContext.resume().then(() => {
-        console.log('[transcription] AudioContext resumed successfully, state=', this.audioContext?.state);
-      }).catch((err) => {
-        console.error('[transcription] AudioContext.resume() failed:', err);
-      });
+      this.audioContext.resume().catch((error) => logAudioContextFailure('resume-on-start', error));
     }
 
     this.sourceNode = this.audioContext.createMediaStreamSource(stream);
@@ -75,7 +86,6 @@ export class TranscriptionService {
     this.processorNode.connect(muteNode);
     muteNode.connect(this.audioContext.destination);
 
-    console.log('[transcription] Audio pipeline connected, streaming to server');
   }
 
   /**
@@ -86,15 +96,14 @@ export class TranscriptionService {
   setMuted(muted: boolean): void {
     if (!this.audioContext) return;
     if (muted && this.audioContext.state === 'running') {
-      this.audioContext.suspend().catch((err) => console.error('[transcription] AudioContext.suspend() failed:', err));
+      this.audioContext.suspend().catch((error) => logAudioContextFailure('suspend-for-mute', error));
     } else if (!muted && this.audioContext.state === 'suspended') {
-      this.audioContext.resume().catch((err) => console.error('[transcription] AudioContext.resume() failed:', err));
+      this.audioContext.resume().catch((error) => logAudioContextFailure('resume-after-mute', error));
     }
   }
 
   /** Stop transcription and release audio resources. */
   stop(): void {
-    console.log('[transcription] Stopping transcription');
     this.running = false;
     socket.emit('transcription:stop');
 
@@ -107,10 +116,9 @@ export class TranscriptionService {
       this.sourceNode = null;
     }
     if (this.audioContext) {
-      this.audioContext.close().catch((err) => console.error('[transcription] AudioContext.close() failed:', err));
+      this.audioContext.close().catch((error) => logAudioContextFailure('close', error));
       this.audioContext = null;
     }
-    console.log('[transcription] Stopped and cleaned up');
   }
 }
 

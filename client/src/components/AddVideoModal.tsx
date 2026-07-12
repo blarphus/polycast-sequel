@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.addvideomodal');
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addVideo } from '../api';
@@ -36,7 +38,7 @@ export default function AddVideoModal({ onClose, onAdded }: Props) {
       onClose();
       navigate(`/watch/${video.id}`);
     } catch (err) {
-      console.error('addVideo failed:', err);
+      runtimeLog.error('addVideo failed:', err);
       setError(toErrorMessage(err));
     } finally {
       setLoading(false);

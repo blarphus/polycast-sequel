@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.calendar');
 // ---------------------------------------------------------------------------
 // pages/Calendar.tsx -- Monthly review calendar showing due word counts
 // ---------------------------------------------------------------------------
 
+import '../styles/calendar.css';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -50,7 +53,7 @@ export default function Calendar() {
       setDayCounts(data.days);
       setNewToday(data.newToday);
     } catch (err) {
-      console.error('Failed to fetch calendar:', err);
+      runtimeLog.error('Failed to fetch calendar:', err);
     } finally {
       setLoading(false);
     }
@@ -84,7 +87,7 @@ export default function Calendar() {
       const words = await getCalendarDayWords(dateStr);
       setDayWords(words);
     } catch (err) {
-      console.error('Failed to fetch day words:', err);
+      runtimeLog.error('Failed to fetch day words:', err);
     } finally {
       setDayLoading(false);
     }

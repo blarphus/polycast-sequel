@@ -116,32 +116,3 @@ export function transcribeVoicePracticeTurn(data: {
     body: data,
   });
 }
-
-export async function synthesizeVoicePracticeFeedback(data: {
-  text: string;
-  languageCode?: string;
-}) {
-  // Raw fetch (not the shared request() helper): the response is an audio Blob,
-  // not JSON.
-  const res = await fetch('/api/practice/voice/speak', {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    let message = 'Failed to synthesize voice feedback';
-    try {
-      const payload = await res.json();
-      message = payload.error || payload.message || message;
-    } catch {
-      // keep default message
-    }
-    throw new Error(message);
-  }
-
-  return res.blob();
-}

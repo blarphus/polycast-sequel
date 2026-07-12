@@ -47,7 +47,7 @@ final class KeychainTokenStore {
 
         let status = SecItemAdd(attrs as CFDictionary, nil)
         if status != errSecSuccess {
-            print("[Polycast] Failed to save auth token\(accessGroup.map { " for access group \($0)" } ?? ""): \(status)")
+            PolycastLog.runtime.error("[Polycast] Failed to save auth token\(accessGroup.map { " for access group \($0)" } ?? ""): \(status)")
         }
     }
 

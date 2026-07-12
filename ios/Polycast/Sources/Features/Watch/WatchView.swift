@@ -81,7 +81,7 @@ struct WatchView: View {
                     self.video = updated
                     if updated.transcriptStatus != "processing" { break }
                 } catch {
-                    print("[Polycast] Transcript poll failed: \(error)")
+                    PolycastLog.runtime.error("[Polycast] Transcript poll failed: \(error)")
                     break
                 }
             }
@@ -438,11 +438,11 @@ struct WatchView: View {
                     video: video
                 )
             } catch {
-                print("[Polycast] Channel lookup failed: \(error)")
+                PolycastLog.runtime.error("[Polycast] Channel lookup failed: \(error)")
                 selectedChannel = fallbackChannel(content: content, video: video)
             }
         } catch {
-            print("[Polycast] Related videos fetch failed: \(error)")
+            PolycastLog.runtime.error("[Polycast] Related videos fetch failed: \(error)")
             _ = try? await channelsResult
         }
     }
@@ -457,7 +457,7 @@ struct WatchView: View {
             )
             pushTarget = WatchTarget(id: detail.id)
         } catch {
-            print("[Polycast] Failed to open recommended video: \(error)")
+            PolycastLog.runtime.error("[Polycast] Failed to open recommended video: \(error)")
         }
     }
 
@@ -495,7 +495,7 @@ struct WatchView: View {
                     )
                     video = updated
                 } catch {
-                    print("[Polycast] Client-side transcript fetch failed: \(error)")
+                    PolycastLog.runtime.error("[Polycast] Client-side transcript fetch failed: \(error)")
                 }
                 clientFetching = false
             }

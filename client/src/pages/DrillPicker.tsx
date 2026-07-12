@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.drillpicker');
 // ---------------------------------------------------------------------------
 // pages/DrillPicker.tsx -- Tense picker + leaderboard for conjugation drills
 // ---------------------------------------------------------------------------
 
+import '../styles/practice.css';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -43,7 +46,7 @@ export default function DrillPicker() {
     getDrillSessions()
       .then((data) => setSessions(data.sessions))
       .catch((err) => {
-        console.error('Failed to fetch drill sessions:', err);
+        runtimeLog.error('Failed to fetch drill sessions:', err);
         setError(err.message);
       })
       .finally(() => setLoading(false));
@@ -98,7 +101,7 @@ export default function DrillPicker() {
       const data = await getDrillSessions();
       setSessions(data.sessions);
     } catch (err: any) {
-      console.error('Failed to save drill session:', err);
+      runtimeLog.error('Failed to save drill session:', err);
     }
     setDrillProblems(null);
   };

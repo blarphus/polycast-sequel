@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.wordpopup');
 // ---------------------------------------------------------------------------
 // components/WordPopup.tsx — thin React wrapper around the shared, framework-
 // agnostic popup core (extension/shared/wordPopupCore.js). The same core powers
@@ -83,7 +85,7 @@ export default function WordPopup(props: WordPopupProps) {
   useEffect(() => {
     const core = window.PolycastWordPopup;
     if (!core) {
-      console.error('WordPopup: shared popup core (window.PolycastWordPopup) not loaded');
+      runtimeLog.error('WordPopup: shared popup core (window.PolycastWordPopup) not loaded');
       return;
     }
 

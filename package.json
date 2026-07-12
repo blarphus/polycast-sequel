@@ -1,0 +1,31 @@
+{
+  "name": "polycast-sequel-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "engines": { "node": ">=22.12" },
+  "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "generate": "node scripts/generate-contracts.mjs",
+    "check:contracts": "node scripts/generate-contracts.mjs --check",
+    "check:fallbacks": "node scripts/check-fallbacks.mjs",
+    "inventory:fallbacks": "node scripts/generate-fallback-inventory.mjs",
+    "check:fallback-inventory": "node scripts/generate-fallback-inventory.mjs --check",
+    "check:logging": "node scripts/check-runtime-logging.mjs",
+    "check:worker-auth": "node scripts/check-worker-auth.mjs",
+    "check:deployment-config": "node scripts/check-deployment-config.mjs",
+    "check": "bash scripts/check-all.sh",
+    "check:fast": "bash scripts/check-all.sh --skip-ios",
+    "check:xcodegen": "bash scripts/check-xcodegen.sh",
+    "audit": "cd client && npm audit && cd ../server && npm audit && cd ../cf-worker && npm audit",
+    "sbom": "bash scripts/generate-sbom.sh",
+    "check:dependency-policy": "node scripts/check-dependency-policy.mjs",
+    "check:tools": "bash scripts/check-tools.sh",
+    "inventory": "node scripts/generate-code-inventory.mjs",
+    "check:inventory": "node scripts/generate-code-inventory.mjs --check",
+    "registrations": "node scripts/check-runtime-registrations.mjs --write",
+    "check:registrations": "node scripts/check-runtime-registrations.mjs",
+    "format": "node scripts/check-format.mjs",
+    "clean": "bash scripts/clean-workspace.sh",
+    "clean:report": "bash scripts/clean-workspace.sh --report"
+  }
+}

@@ -1,10 +1,10 @@
-import { ZodError } from 'zod';
+import { ValidationError } from './httpErrors.js';
 
 /**
  * Express middleware factory for Zod validation.
  * Validates req.params, req.query, and/or req.body against provided schemas.
  * On success, overwrites the validated property with parsed values (free trimming/coercion).
- * On failure, responds 400 with { error, errors }.
+ * On failure, forwards a typed 400 error to the one response mapper.
  */
 export function validate(schemas) {
   return (req, res, next) => {
@@ -28,10 +28,7 @@ export function validate(schemas) {
     }
 
     if (allErrors.length > 0) {
-      return res.status(400).json({
-        error: allErrors[0].message,
-        errors: allErrors,
-      });
+      return next(new ValidationError(allErrors));
     }
 
     next();

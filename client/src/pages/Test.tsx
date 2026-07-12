@@ -73,3 +73,4 @@ export default function Test() {
     </div>
   );
 }
+import '../styles/call.css';

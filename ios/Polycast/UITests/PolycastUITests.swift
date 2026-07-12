@@ -1,13 +1,20 @@
 import XCTest
 
+@MainActor
 final class PolycastUITests: XCTestCase {
+    private func clockValue(_ element: XCUIElement) -> Double {
+        if let number = element.value as? NSNumber { return number.doubleValue }
+        if let text = element.value as? String, let number = Double(text) { return number }
+        return Double(element.label) ?? 0
+    }
+
     func testLaunches() {
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
     }
 
-    func testLandscapePlayerAdvancesWithRealAutomaticCaptions() throws {
+    func testHermeticLandscapePlayerAdvancesWithAutomaticCaptionFixture() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestLandscapePlayer"]
         app.launch()
@@ -24,31 +31,33 @@ final class PolycastUITests: XCTestCase {
             "The subtitle strip grew beyond its intended height"
         )
 
-        let clock = app.staticTexts["landscape-player-time"]
+        let clock = subtitles.staticTexts.firstMatch
         XCTAssertTrue(clock.waitForExistence(timeout: 15))
-        let first = Double(clock.value as? String ?? "") ?? 0
+        let first = clockValue(clock)
         sleep(3)
-        let second = Double(clock.value as? String ?? "") ?? 0
-        XCTAssertGreaterThan(second, first + 1, "The real YouTube player did not advance")
+        let second = clockValue(clock)
+        XCTAssertGreaterThan(second, first + 1, "The hermetic player clock did not advance")
 
         XCTAssertTrue(app.buttons.count > 1, "No clickable caption words were exposed")
     }
 
-    func testLandscapeSharedPlayerLoadsPreviouslyBlackVideo() throws {
+    func testHermeticSharedPlayerAdvancesWithoutNetwork() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestLandscapePlayer", "-uiTestLandscapeTerVideo"]
         app.launch()
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 15))
-        let clock = app.staticTexts["landscape-player-time"]
+        let subtitles = app.otherElements["landscape-subtitle-panel"]
+        XCTAssertTrue(subtitles.waitForExistence(timeout: 15))
+        let clock = subtitles.staticTexts.firstMatch
         XCTAssertTrue(clock.waitForExistence(timeout: 15))
-        let first = Double(clock.value as? String ?? "") ?? 0
+        let first = clockValue(clock)
         sleep(3)
-        let second = Double(clock.value as? String ?? "") ?? 0
-        XCTAssertGreaterThan(second, first + 1, "The shared YouTube player remained blank or failed to play")
+        let second = clockValue(clock)
+        XCTAssertGreaterThan(second, first + 1, "The shared hermetic player clock stopped")
     }
 
-    func testLandscapeAutomaticSubtitleWordIsClickable() throws {
+    func testHermeticAutomaticSubtitleWordIsClickable() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-uiTestLandscapePlayer", "-uiTestLandscapePaused"]
         app.launch()
@@ -87,12 +96,12 @@ final class PolycastUITests: XCTestCase {
             "Expansion replaced the vertical YouTube player instead of resizing it"
         )
 
-        let clock = app.staticTexts["landscape-player-time"]
+        let clock = subtitles.staticTexts.firstMatch
         XCTAssertTrue(clock.waitForExistence(timeout: 15))
-        let first = Double(clock.value as? String ?? "") ?? 0
+        let first = clockValue(clock)
         sleep(3)
-        let second = Double(clock.value as? String ?? "") ?? 0
-        XCTAssertGreaterThan(second, first + 1, "The retained YouTube player stopped advancing")
+        let second = clockValue(clock)
+        XCTAssertGreaterThan(second, first + 1, "The retained hermetic player stopped advancing")
         XCTAssertTrue(app.buttons["y"].waitForExistence(timeout: 15))
     }
 

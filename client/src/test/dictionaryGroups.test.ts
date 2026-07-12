@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDictionaryGroups, getDueNextGroupKeys } from '../utils/dictionaryGroups';
+import { buildDictionaryGroups } from '../utils/dictionaryGroups';
 import type { SavedWord } from '../api';
 
 function makeWord(overrides: any): SavedWord {
@@ -33,19 +33,6 @@ function makeWord(overrides: any): SavedWord {
 }
 
 describe('dictionaryGroups', () => {
-  it('marks exact due-next groups from the queued new cards', () => {
-    const groups = buildDictionaryGroups([
-      makeWord({ id: 'a1', word: 'alpha', queue_position: 1 }),
-      makeWord({ id: 'b1', word: 'beta', queue_position: 2 }),
-      makeWord({ id: 'b2', word: 'beta', queue_position: 3 }),
-      makeWord({ id: 'c1', word: 'charlie', queue_position: 4 }),
-    ], '', 'queue');
-
-    const dueNext = getDueNextGroupKeys(groups, 2);
-
-    expect(Array.from(dueNext)).toEqual(['alpha|es', 'beta|es']);
-  });
-
   it('uses the most relevant entry as the primary badge source', () => {
     const groups = buildDictionaryGroups([
       makeWord({
@@ -74,7 +61,6 @@ describe('dictionaryGroups', () => {
     ], '', 'queue');
 
     expect(groups.map((group) => group.word)).toEqual(['louvado', 'cargo', 'prefeito']);
-    expect(Array.from(getDueNextGroupKeys(groups, 2))).toEqual(['louvado|es', 'cargo|es']);
   });
 
   it('keeps all new queue groups ahead of review groups in projected order', () => {

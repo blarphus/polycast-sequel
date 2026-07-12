@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.errorboundary');
 import React from 'react';
 
 interface Props {
@@ -16,7 +18,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, info.componentStack);
+    runtimeLog.error('ErrorBoundary caught:', error, info.componentStack);
   }
 
   render() {

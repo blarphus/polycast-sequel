@@ -2,16 +2,18 @@
 // utils/srs.ts -- Anki-style SRS helpers (client-side)
 // ---------------------------------------------------------------------------
 
-import type { SavedWord, SrsAnswer } from '../api/dictionary';
+import type { SavedWord } from '../api/dictionary';
+import {
+  GRADUATING_INTERVAL,
+  LEARNING_STEPS,
+  MAX_PROMPT_STAGE,
+  MIN_EASE,
+  MIN_REVIEW_INTERVAL,
+  type SrsAnswer,
+} from '../generated/srsContract';
 
-// Constants matching server/routes/dictionary.js
-const LEARNING_STEPS = [60, 600];        // 1 min, 10 min
-const GRADUATING_INTERVAL = 86400;       // 1 day
-// const EASY_GRADUATING_INTERVAL = 345600; // 4 days -- unused since the rating
-//   collapsed to a binary correct/incorrect (good/again only). Flagged for
-//   deletion in a future audit.
-const MIN_EASE = 1.3;
-const MIN_REVIEW_INTERVAL = 86400;       // 1 day
+export { MAX_PROMPT_STAGE, SRS_ALGORITHM_VERSION } from '../generated/srsContract';
+export type { SrsAnswer } from '../generated/srsContract';
 
 function roundedDayInterval(seconds: number): number {
   return Math.max(Math.round(seconds / MIN_REVIEW_INTERVAL), 1) * MIN_REVIEW_INTERVAL;
@@ -38,7 +40,7 @@ export function computeNextReviewState(card: SavedWord, answer: SrsAnswer): Next
   let srsInterval = card.srs_interval;
   let easeFactor = card.ease_factor;
   let learningStep = card.learning_step;
-  let dueSeconds = MIN_REVIEW_INTERVAL;
+  let dueSeconds: number = MIN_REVIEW_INTERVAL;
 
   if (isRelearning(card)) {
     const step = card.learning_step ?? 0;
@@ -92,9 +94,9 @@ export function getNextDueSeconds(card: SavedWord, answer: SrsAnswer): number {
 }
 
 export function nextPromptStage(card: SavedWord, answer: SrsAnswer): number {
-  const stage = Math.min(card.prompt_stage ?? 0, 3);
+  const stage = Math.min(Math.max(card.prompt_stage ?? 0, 0), MAX_PROMPT_STAGE);
   if (answer === 'again') return Math.max(stage - 1, 0);
-  return Math.min(stage + 1, 3);
+  return Math.min(stage + 1, MAX_PROMPT_STAGE);
 }
 
 export function applyAnswerLocally(card: SavedWord, answer: SrsAnswer, now = new Date()): SavedWord {

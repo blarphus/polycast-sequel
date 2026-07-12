@@ -99,8 +99,12 @@ function decodeCursor(cursor) {
     const parsed = JSON.parse(Buffer.from(String(cursor), 'base64url').toString('utf8'));
     const offset = Number(parsed.offset);
     return Number.isFinite(offset) && offset > 0 ? Math.floor(offset) : 0;
-  } catch {
-    return 0;
+  } catch (error) {
+    const invalidCursor = new Error('Invalid video pagination cursor');
+    invalidCursor.status = 400;
+    invalidCursor.expose = true;
+    invalidCursor.cause = error;
+    throw invalidCursor;
   }
 }
 

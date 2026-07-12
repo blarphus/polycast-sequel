@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.useauth');
 // ---------------------------------------------------------------------------
 // hooks/useAuth.ts -- AuthContext, AuthProvider, useAuth
 // ---------------------------------------------------------------------------
@@ -12,8 +14,9 @@ import {
   createElement,
 } from 'react';
 import * as api from '../api';
+import { SESSION_EXPIRED_EVENT, setApiSessionActive, type SessionExpiredDetail } from '../api/core';
 import type { AuthUser } from '../api';
-import { loadSavedAccounts, removeSavedAccount, upsertSavedAccount, type SavedAccount } from '../utils/savedAccounts';
+import type { SavedAccount } from '../utils/savedAccounts';
 import { toErrorMessage } from '../utils/errors';
 
 interface AuthContextValue {
@@ -35,8 +38,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState('');
-  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>(() => loadSavedAccounts());
-  const [currentSessionToken, setCurrentSessionToken] = useState<string | null>(null);
+  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
+
+  useEffect(() => {
+    const handleSessionExpired = (event: Event) => {
+      const detail = (event as CustomEvent<SessionExpiredDetail>).detail;
+      setApiSessionActive(false);
+      setUser(null);
+      setSavedAccounts([]);
+      setAuthError(detail?.diagnostic?.message || 'Your session expired. Please log in again.');
+      setLoading(false);
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, []);
+
+  const refreshProfiles = useCallback(async () => {
+    const { accounts } = await api.getProfileAccounts();
+    setSavedAccounts(accounts);
+  }, []);
 
   // Check session on mount
   useEffect(() => {
@@ -45,26 +65,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .getMe()
       .then((u) => {
         if (!cancelled) {
+          setApiSessionActive(true);
           setUser(u);
           setAuthError('');
-          const accounts = loadSavedAccounts();
-          const matchingAccount = accounts.find((account) => account.id === u.id) || null;
-          setSavedAccounts(accounts);
-          setCurrentSessionToken(matchingAccount?.token || null);
-          api.exportSessionToken()
-            .then(({ token }) => {
-              if (cancelled) return;
-              setCurrentSessionToken(token);
-              setSavedAccounts(upsertSavedAccount(u, token));
+          api.getProfileAccounts()
+            .then(({ accounts }) => {
+              if (!cancelled) setSavedAccounts(accounts);
             })
             .catch((err) => {
-              console.error('Auth session export failed:', err);
+              runtimeLog.error('Profile session list failed:', err);
             });
         }
       })
       .catch((err) => {
-        console.error('Auth session check failed:', err);
+        runtimeLog.error('Auth session check failed:', err);
         if (!cancelled) {
+          setApiSessionActive(false);
           setUser(null);
           setAuthError(toErrorMessage(err));
         }
@@ -79,64 +95,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (username: string, password: string) => {
     const u = await api.login(username, password);
+    setApiSessionActive(true);
     setUser(u);
     setAuthError('');
-    setCurrentSessionToken(u.token);
-    setSavedAccounts(upsertSavedAccount(u, u.token));
-  }, []);
+    await refreshProfiles();
+  }, [refreshProfiles]);
 
   const signup = useCallback(async (username: string, password: string, displayName: string) => {
     const u = await api.signup(username, password, displayName);
+    setApiSessionActive(true);
     setUser(u);
     setAuthError('');
-    setCurrentSessionToken(u.token);
-    setSavedAccounts(upsertSavedAccount(u, u.token));
-  }, []);
+    await refreshProfiles();
+  }, [refreshProfiles]);
 
   const logout = useCallback(async () => {
-    await api.logout();
-    setUser(null);
-    setAuthError('');
-    setCurrentSessionToken(null);
+    try {
+      await api.logout();
+    } finally {
+      setApiSessionActive(false);
+      setUser(null);
+      setSavedAccounts([]);
+      setAuthError('');
+    }
   }, []);
 
   const switchAccount = useCallback(async (userId: string) => {
-    const account = savedAccounts.find((entry) => entry.id === userId);
-    if (!account) {
+    if (!savedAccounts.some((entry) => entry.id === userId)) {
       throw new Error('Saved account not found');
     }
 
-    try {
-      const nextUser = await api.restoreSession(account.token);
-      setUser(nextUser);
-      setAuthError('');
-      setCurrentSessionToken(nextUser.token);
-      setSavedAccounts(upsertSavedAccount(nextUser, nextUser.token));
-    } catch (err) {
-      const message = toErrorMessage(err);
-      if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('expired')) {
-        setSavedAccounts(removeSavedAccount(userId));
-      }
-      throw err;
-    }
-  }, [savedAccounts]);
+    const nextUser = await api.switchProfile(userId);
+    setUser(nextUser);
+    setAuthError('');
+    await refreshProfiles();
+  }, [savedAccounts, refreshProfiles]);
 
   const forgetSavedAccount = useCallback((userId: string) => {
-    const nextAccounts = removeSavedAccount(userId);
-    setSavedAccounts(nextAccounts);
-    if (user?.id === userId) {
-      setCurrentSessionToken(null);
-    }
-  }, [user?.id]);
+    void api.forgetProfile(userId)
+      .then(refreshProfiles)
+      .catch((err) => setAuthError(toErrorMessage(err)));
+  }, [refreshProfiles]);
 
   const updateSettings = useCallback(async (native_language: string | null, target_language: string | null, daily_new_limit?: number, account_type?: 'student' | 'teacher', cefr_level?: string | null, daily_word_goal?: number) => {
     const u = await api.updateSettings(native_language, target_language, daily_new_limit, account_type, cefr_level, daily_word_goal);
     setUser(u);
     setAuthError('');
-    if (currentSessionToken) {
-      setSavedAccounts(upsertSavedAccount(u, currentSessionToken));
-    }
-  }, [currentSessionToken]);
+    await refreshProfiles();
+  }, [refreshProfiles]);
 
   return createElement(
     AuthContext.Provider,

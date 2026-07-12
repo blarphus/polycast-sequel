@@ -161,6 +161,8 @@ router.post('/api/practice/voice/speak', authMiddleware, validate({ body: speakB
     const { audioBuffer, usedFallback } = await synthesizeVoiceFeedback({
       text: req.body.text,
       languageCode: req.body.languageCode,
+      userId: req.userId,
+      correlationId: req.id,
     });
     if (usedFallback) res.setHeader('X-Polycast-TTS-Fallback', 'openai');
     res.setHeader('Content-Type', audioContentType(audioBuffer));

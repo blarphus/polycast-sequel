@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.api.news');
 import { request } from './core';
 
 export interface NewsArticle {
@@ -67,7 +69,7 @@ export async function streamNewsArticleRewrite(
     try {
       payload = await res.json();
     } catch (parseErr) {
-      console.error(`GET /news/article/stream failed to parse error response (${res.status}):`, parseErr);
+      runtimeLog.error(`GET /news/article/stream failed to parse error response (${res.status}):`, parseErr);
       throw new Error(`GET /news/article/stream failed (${res.status} ${res.statusText})`);
     }
     throw new Error(payload.error ?? payload.message ?? `GET /news/article/stream failed (${res.status})`);

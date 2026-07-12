@@ -10,6 +10,7 @@ final class SessionStore: ObservableObject {
     private let tokenStore = KeychainTokenStore()
     private let api = APIClient.shared
     private var lastWidgetSnapshotRefresh: Date?
+    nonisolated(unsafe) private var sessionExpirationObserver: NSObjectProtocol?
 
     var needsOnboarding: Bool {
         user?.nativeLanguage == nil || user?.targetLanguage == nil
@@ -17,12 +18,42 @@ final class SessionStore: ObservableObject {
 
     init() {
         api.token = tokenStore.load()
+        sessionExpirationObserver = NotificationCenter.default.addObserver(
+            forName: APIClient.sessionExpiredNotification,
+            object: api,
+            queue: .main
+        ) { [weak self] notification in
+            let path = notification.userInfo?["path"] as? String ?? "unknown"
+            let correlationID = notification.userInfo?["correlationId"] as? String ?? "missing"
+            Task { @MainActor [weak self] in
+                self?.handleExpiredSession(path: path, correlationID: correlationID)
+            }
+        }
         if api.token != nil {
             reloadTodayWordsWidget()
         }
         Task {
             await restoreSession()
         }
+    }
+
+    deinit {
+        if let sessionExpirationObserver {
+            NotificationCenter.default.removeObserver(sessionExpirationObserver)
+        }
+    }
+
+    private func handleExpiredSession(path: String, correlationID: String) {
+        tokenStore.clear()
+        api.token = nil
+        SocketClient.shared.disconnect()
+        user = nil
+        authError = "Your session expired. Please log in again."
+        TodayWordsWidgetStore.clearSnapshot()
+        WidgetCenter.shared.reloadAllTimelines()
+        PolycastLog.runtime.error(
+            "[Polycast] Session invalidated source=ios.api operation=invalidate-session path=\(path, privacy: .public) correlation=\(correlationID, privacy: .public)"
+        )
     }
 
     func restoreSession() async {
@@ -68,7 +99,7 @@ final class SessionStore: ObservableObject {
             VoIPPushManager.shared.refreshRegistration()
             return true
         } catch {
-            print("[Polycast] Login error: \(error)")
+            PolycastLog.runtime.error("[Polycast] Login error: \(error)")
             authError = error.localizedDescription
             return false
         }
@@ -131,7 +162,14 @@ final class SessionStore: ObservableObject {
             tokenStore.save(token: token)
             reloadTodayWordsWidget()
         } catch {
-            print("[Polycast] Session token refresh failed: \(error)")
+            reportFallback(
+                code: "session_token_refresh_fallback",
+                title: "Session refresh fallback used",
+                message: "Polycast could not rotate the session token, so the current short-lived session remains active.",
+                source: "ios.session",
+                operation: "renew-session-token",
+                error: error
+            )
         }
     }
 
@@ -160,7 +198,14 @@ final class SessionStore: ObservableObject {
                 await api.cacheTodayWordsWidgetImages(for: snapshot)
                 WidgetCenter.shared.reloadAllTimelines()
             } catch {
-                print("[Polycast] Failed to refresh shared widget snapshot: \(error)")
+                reportFallback(
+                    code: "widget_cached_snapshot_fallback",
+                    title: "Cached widget snapshot used",
+                    message: "The latest widget data could not be loaded, so the widget will keep its last saved snapshot.",
+                    source: "ios.session",
+                    operation: "refresh-widget-snapshot",
+                    error: error
+                )
             }
         }
     }

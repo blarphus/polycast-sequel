@@ -1,5 +1,6 @@
 import { buildDictionaryGroups, isDictionaryEntryNew } from '../utils/dictionaryGroups';
 import { applyAnswerLocally } from '../utils/srs';
+import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 import type { AuthSession, AuthUser } from './auth';
 import type {
   DictionarySortMode,
@@ -19,10 +20,6 @@ function canUseStorage(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
 
-export function isOfflineModeEnabled(): boolean {
-  return canUseStorage() && window.localStorage.getItem(OFFLINE_ENABLED_KEY) === 'true';
-}
-
 function markOfflineEnabled() {
   if (canUseStorage()) window.localStorage.setItem(OFFLINE_ENABLED_KEY, 'true');
 }
@@ -40,9 +37,12 @@ function getOfflineUser(): AuthSession {
       id: 'offline-local-user',
       username: 'offline',
       display_name: 'Offline Mode',
+      created_at: '1970-01-01T00:00:00.000Z',
       native_language: 'en',
       target_language: 'es',
       daily_new_limit: 20,
+      daily_word_goal: 5,
+      total_xp: 0,
       account_type: 'student',
       cefr_level: null,
       token: 'offline-local-token',
@@ -53,8 +53,14 @@ function getOfflineUser(): AuthSession {
   if (raw) {
     try {
       return JSON.parse(raw);
-    } catch {
-      // Fall through and replace malformed data.
+    } catch (error) {
+      emitFallbackDiagnostic({
+        code: 'offline_profile_storage_repaired',
+        severity: 'warning',
+        title: 'Offline profile repaired',
+        message: 'Stored offline profile data was malformed, so Polycast replaced it with a safe local profile.',
+        detail: error instanceof Error ? error.message : String(error),
+      }, { source: 'web.offline-dictionary', operation: 'load-offline-profile' });
     }
   }
 
@@ -62,9 +68,12 @@ function getOfflineUser(): AuthSession {
     id: 'offline-local-user',
     username: 'offline',
     display_name: 'Offline Mode',
+    created_at: '1970-01-01T00:00:00.000Z',
     native_language: 'en',
     target_language: 'es',
     daily_new_limit: 20,
+    daily_word_goal: 5,
+    total_xp: 0,
     account_type: 'student',
     cefr_level: null,
     token: 'offline-local-token',
@@ -86,7 +95,14 @@ function readWords(): SavedWord[] {
   try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
-  } catch {
+  } catch (error) {
+    emitFallbackDiagnostic({
+      code: 'offline_dictionary_storage_repaired',
+      severity: 'warning',
+      title: 'Offline dictionary repaired',
+      message: 'Stored offline words were malformed, so Polycast reset the local dictionary copy.',
+      detail: error instanceof Error ? error.message : String(error),
+    }, { source: 'web.offline-dictionary', operation: 'read-offline-words' });
     return [];
   }
 }
@@ -322,6 +338,8 @@ function dictionaryGroups(searchParams: URLSearchParams) {
     page: adjustedPage,
     totalGroups,
     totalPages,
+    nextCursor: adjustedPage < totalPages - 1 ? `offline:${adjustedPage + 1}` : null,
+    hasMore: adjustedPage < totalPages - 1,
   };
 }
 

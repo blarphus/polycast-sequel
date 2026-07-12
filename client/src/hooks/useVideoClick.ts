@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.usevideoclick');
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { addVideo, TrendingVideo } from '../api';
@@ -14,7 +16,7 @@ export function useVideoClick(targetLang: string) {
       const added = await addVideo(url, targetLang);
       navigate(`/watch/${added.id}`);
     } catch (err) {
-      console.error('Failed to add video:', err);
+      runtimeLog.error('Failed to add video:', err);
       setAddingVideoId(null);
     }
   }

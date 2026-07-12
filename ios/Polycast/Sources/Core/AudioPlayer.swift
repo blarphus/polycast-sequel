@@ -24,7 +24,7 @@ final class AudioPlayer {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
-            print("[Polycast] Failed to configure audio session: \(error)")
+            reportFallback(code: "audio_session_configuration_fallback", title: "Audio session fallback used", message: "The preferred playback audio session could not be activated; playback may use the current system audio route.", source: "ios.audio", operation: "configure-audio-session", error: error)
         }
     }
 
@@ -65,7 +65,7 @@ final class AudioPlayer {
                 cacheData(data, forKey: key)
                 playData(data)
             } catch {
-                print("[Polycast] Failed to play audio for word \(wordId): \(error)")
+                reportFallback(code: "word_audio_unavailable", title: "Word audio unavailable", message: "The pronunciation could not be loaded, so this card will continue without audio.", source: "ios.audio", operation: "play-word-audio", detail: "wordId=\(wordId)", error: error)
             }
         }
     }
@@ -83,7 +83,7 @@ final class AudioPlayer {
                 cacheData(data, forKey: key)
                 playData(data)
             } catch {
-                print("[Polycast] Failed to speak text: \(error)")
+                reportFallback(code: "speech_audio_unavailable", title: "Speech audio unavailable", message: "Speech synthesis failed, so Polycast will continue without spoken audio.", source: "ios.audio", operation: "speak-text", detail: "language=\(languageCode ?? "unspecified")", error: error)
             }
         }
     }
@@ -119,7 +119,7 @@ final class AudioPlayer {
             cacheData(data, forKey: key)
             return data
         } catch {
-            print("[Polycast] Failed to speak text: \(error)")
+            reportFallback(code: "speech_sequence_item_skipped", title: "Speech sequence fallback used", message: "One part of the speech sequence could not be synthesized and was skipped.", source: "ios.audio", operation: "load-speech-sequence-item", detail: "language=\(languageCode ?? "unspecified")", error: error)
             return nil
         }
     }
@@ -141,7 +141,7 @@ final class AudioPlayer {
                     guard !Task.isCancelled else { break }
                     cacheData(data, forKey: key)
                 } catch {
-                    print("[Polycast] Failed to preload audio for \(card.id): \(error)")
+                    reportFallback(code: "word_audio_preload_fallback", title: "Audio preload fallback used", message: "A pronunciation could not be preloaded; Polycast will request it again when the card needs it.", source: "ios.audio", operation: "preload-word-audio", detail: "wordId=\(card.id)", error: error, severity: "info")
                 }
             }
         }
@@ -161,7 +161,7 @@ final class AudioPlayer {
                     guard !Task.isCancelled else { break }
                     cacheData(data, forKey: key)
                 } catch {
-                    print("[Polycast] Failed to preload speech for \"\(item.text)\": \(error)")
+                    reportFallback(code: "speech_preload_fallback", title: "Speech preload fallback used", message: "Speech could not be preloaded; Polycast will request it again when needed.", source: "ios.audio", operation: "preload-speech", detail: "language=\(item.languageCode ?? "unspecified")", error: error, severity: "info")
                 }
             }
         }
@@ -179,7 +179,7 @@ final class AudioPlayer {
             player = try AVAudioPlayer(data: data)
             player?.play()
         } catch {
-            print("[Polycast] AVAudioPlayer error: \(error)")
+            reportFallback(code: "audio_decode_failed", title: "Audio playback unavailable", message: "The returned audio could not be decoded, so playback was skipped.", source: "ios.audio", operation: "decode-audio", error: error)
         }
     }
 
@@ -191,7 +191,7 @@ final class AudioPlayer {
             p.play()
             return p.duration
         } catch {
-            print("[Polycast] AVAudioPlayer error: \(error)")
+            reportFallback(code: "audio_sequence_decode_failed", title: "Audio sequence item skipped", message: "One returned audio clip could not be decoded and was skipped.", source: "ios.audio", operation: "decode-sequence-audio", error: error)
             return 0
         }
     }

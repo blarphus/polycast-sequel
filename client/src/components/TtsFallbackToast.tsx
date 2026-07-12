@@ -1,11 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-
-interface FallbackEventDetail {
-  languageCode?: string;
-  title?: string;
-  message?: string;
-  detail?: string;
-}
+import { normalizeFallbackDiagnostic, type FallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 const LANGUAGE_NAMES: Record<string, string> = {
   de: 'German',
@@ -22,32 +16,31 @@ function languageName(languageCode?: string) {
 }
 
 export default function TtsFallbackToast() {
-  const [notice, setNotice] = useState<{ title: string; message: string } | null>(null);
+  const [notice, setNotice] = useState<FallbackDiagnostic | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const showNotice = (next: { title: string; message: string }) => {
+    const showNotice = (next: FallbackDiagnostic) => {
       setNotice(next);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setNotice(null), 7000);
     };
 
     const handleTtsFallback = (event: Event) => {
-      const detail = (event as CustomEvent<FallbackEventDetail>).detail;
+      const detail = (event as CustomEvent<Partial<FallbackDiagnostic>>).detail;
       const language = languageName(detail?.languageCode);
-      showNotice({
+      showNotice(normalizeFallbackDiagnostic({
+        code: 'tts_provider_fallback',
+        severity: 'warning',
         title: 'Voice fallback used',
         message: `Cloudflare does not support ${language} yet. Using the OpenAI voice fallback.`,
-      });
+        languageCode: detail?.languageCode,
+      }, { source: 'web.tts', operation: 'synthesize-speech' }));
     };
 
     const handleFallback = (event: Event) => {
-      const detail = (event as CustomEvent<FallbackEventDetail>).detail;
-      const message = [detail?.message, detail?.detail].filter(Boolean).join(' ');
-      showNotice({
-        title: detail?.title || 'Fallback used',
-        message: message || 'Polycast used a fallback path.',
-      });
+      const detail = (event as CustomEvent<Partial<FallbackDiagnostic>>).detail;
+      showNotice(normalizeFallbackDiagnostic(detail, { source: 'web.unknown', operation: 'unknown' }));
     };
 
     window.addEventListener('polycast:tts-fallback', handleTtsFallback);
@@ -64,9 +57,11 @@ export default function TtsFallbackToast() {
   return (
     <div className="tts-fallback-toast" role="status">
       <span aria-hidden="true">!</span>
-      <span>
+      <span className="fallback-toast-body">
         <strong>{notice.title}</strong>
         <span>{notice.message}</span>
+        {notice.detail && <span className="fallback-toast-detail">{' '}{notice.detail}</span>}
+        <small>{notice.code} · {notice.source}/{notice.operation} · ref {notice.correlationId}</small>
       </span>
     </div>
   );

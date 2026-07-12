@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.wordlookupmodal');
 // ---------------------------------------------------------------------------
 // components/WordLookupModal.tsx -- Look up words via Wiktionary DB and save them
 // ---------------------------------------------------------------------------
@@ -5,6 +7,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { wiktLookup, enrichWord } from '../api';
 import type { WiktSense } from '../api';
+import type { SaveWordData } from '../api';
 import { useDictionaryToast } from '../hooks/useDictionaryToast';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 
@@ -12,19 +15,7 @@ interface Props {
   targetLang: string;
   nativeLang: string;
   isDefinitionSaved?: (word: string, definition: string) => boolean;
-  onSave?: (data: {
-    word: string;
-    translation: string;
-    definition: string;
-    target_language: string;
-    frequency?: number | null;
-    frequency_count?: number | null;
-    example_sentence?: string | null;
-    part_of_speech?: string | null;
-    image_url?: string | null;
-    lemma?: string | null;
-    forms?: string | null;
-  }) => Promise<unknown>;
+  onSave?: (data: SaveWordData) => Promise<unknown>;
   onOptimisticSave?: (word: string) => void;
   onPick?: (sense: WiktSense) => void;
   initialQuery?: string;
@@ -68,7 +59,7 @@ export default function WordLookupModal({ targetLang, nativeLang, isDefinitionSa
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Lookup failed';
-      console.error('Wiktionary lookup error:', err);
+      runtimeLog.error('Wiktionary lookup error:', err);
       setSearchError(msg);
     } finally {
       setSearching(false);

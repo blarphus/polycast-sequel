@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE ONLY: non-production SRS visualization; canonical behavior lives in contracts/srs-v1.json. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Polycast SRS Sandbox</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #181b22;
+    --panel2: #1f242d;
+    --border: #2a303b;
+    --text: #e6e9ef;
+    --muted: #8b93a3;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f59e0b;
+    --purple: #a855f7;
+    --highlight: #fde68a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  /* ---- Practice column ---- */
+  #practice {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+    overflow-y: auto;
+  }
+  .topbar {
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .counts { display: flex; gap: 10px; font-weight: 600; }
+  .counts .blue { color: var(--blue); }
+  .counts .red { color: var(--red); }
+  .counts .green { color: var(--green); }
+  .vclock { font-variant-numeric: tabular-nums; }
+
+  .card {
+    width: 100%;
+    max-width: 560px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 22px;
+    position: relative;
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    user-select: none;
+  }
+  .stage-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--purple);
+    background: rgba(168,85,247,0.12);
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .phase-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--panel2);
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .instruction {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 28px 0 18px;
+  }
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+  }
+  .es-sentence { font-size: 24px; line-height: 1.4; }
+  .en-sentence { font-size: 22px; line-height: 1.4; }
+  .big-word { font-size: 34px; font-weight: 700; }
+  .big-word.target { color: var(--green); }
+  .definition { font-size: 15px; color: var(--muted); font-style: italic; max-width: 90%; }
+  .pos { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 1px; }
+  .word-pair { font-size: 18px; color: var(--text); }
+  .word-pair .arrow { color: var(--muted); }
+  mark { background: var(--highlight); color: #1b1300; padding: 0 4px; border-radius: 4px; }
+  .pic {
+    width: 150px; height: 150px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #2a303b, #232833);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 13px; text-align: center; padding: 8px;
+  }
+  .flip-hint { text-align: center; color: var(--muted); font-size: 12px; margin-top: 10px; }
+
+  .answer-buttons {
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .answer-buttons button {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+  }
+  .btn-again { background: var(--red); }
+  .btn-good { background: var(--green); }
+  .answer-buttons .sub { font-size: 11px; font-weight: 500; opacity: 0.9; }
+  .answer-buttons button:disabled { opacity: 0.5; cursor: default; }
+
+  .feedback {
+    width: 100%; max-width: 560px;
+    text-align: center;
+    margin-top: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    min-height: 20px;
+  }
+  .feedback.again { color: var(--red); }
+  .feedback.good { color: var(--green); }
+
+  .controls { margin-top: 18px; }
+  .controls button {
+    background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 14px; cursor: pointer; font-size: 13px;
+  }
+
+  /* ---- Side panel ---- */
+  #side {
+    width: 420px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 18px;
+  }
+  #side h2 { font-size: 15px; margin: 0 0 4px; }
+  #side .hint { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+  .card-row {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    background: var(--panel2);
+  }
+  .card-row .head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; cursor: pointer; gap: 8px;
+  }
+  .card-row .head:hover { background: rgba(255,255,255,0.03); }
+  .card-row .word { font-weight: 700; font-size: 14px; }
+  .card-row .meta { font-size: 11px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .pill { padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+  .pill.stage { background: rgba(168,85,247,0.15); color: var(--purple); }
+  .pill.due { background: rgba(245,158,11,0.15); color: var(--orange); }
+  .pill.next { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .history {
+    border-top: 1px solid var(--border);
+    padding: 8px 12px;
+    display: none;
+    font-size: 11.5px;
+  }
+  .history.open { display: block; }
+  .history table { width: 100%; border-collapse: collapse; }
+  .history th, .history td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--border); }
+  .history th { color: var(--muted); font-weight: 600; }
+  .history .ans-again { color: var(--red); font-weight: 700; }
+  .history .ans-good { color: var(--green); font-weight: 700; }
+  .history .empty { color: var(--muted); font-style: italic; padding: 4px 6px; }
+  .legend { font-size: 11px; color: var(--muted); margin: 6px 0 14px; line-height: 1.5; }
+  .legend code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <div id="practice">
+    <div class="topbar">
+      <div class="counts" id="counts"></div>
+      <div class="vclock" id="vclock"></div>
+    </div>
+    <div class="card" id="card" onclick="flip()"></div>
+    <div class="answer-buttons" id="buttons"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="controls">
+      <button onclick="resetAll()">Reset all cards</button>
+    </div>
+  </div>
+
+  <div id="side">
+    <h2>All cards &amp; history</h2>
+    <div class="hint">Click a card to expand its full stage / timing history.</div>
+    <div class="legend">
+      Phases: <code>Learning</code> (new, steps 1&nbsp;min&rarr;10&nbsp;min) &middot;
+      <code>Relearning</code> (lapsed, 10&nbsp;min) &middot;
+      <code>Review</code> (graduated, interval&times;ease).<br>
+      Times are real SRS intervals, but the queue uses a <b>virtual clock</b>:
+      a "1&nbsp;mo" card is just ordered after shorter ones &mdash; no real waiting.
+    </div>
+    <div id="cardList"></div>
+  </div>
+
+<script>
+"use strict";
+
+// ===========================================================================
+//  SRS algorithm — ported VERBATIM from server/lib/srsAlgorithm.js and
+//  mirrored against ios/Polycast/Sources/Core/SRS.swift. Do not "improve" it;
+//  it must match the real app exactly.
+// ===========================================================================
+
+const LEARNING_STEPS = [60, 600];        // 1 min, 10 min
+const GRADUATING_INTERVAL = 86400;       // 1 day
+const RELEARNING_STEP = 60;              // 1 min (one relearning step) — sandbox tweak: wrong answers bump down to 1 min, not 10
+
+const MIN_EASE = 1.3;
+const MIN_REVIEW_INTERVAL = 86400;       // 1 day minimum
+const MAX_PROMPT_STAGE = 20;
+
+function roundedDayInterval(seconds) {
+  return Math.max(Math.round(seconds / MIN_REVIEW_INTERVAL), 1) * MIN_REVIEW_INTERVAL;
+}
+
+// card fields used: srs_interval, ease_factor, learning_step (null|0|1), srs state
+function computeNextReview(card, answer) {
+  const isRelearning = card.learning_step !== null && card.srs_interval > 0;
+  const isLearning = !isRelearning && (card.learning_step !== null || card.srs_interval === 0);
+
+  let newInterval = card.srs_interval;
+  let newEase = card.ease_factor;
+  let newStep = card.learning_step;
+  let dueSeconds;
+
+  if (isRelearning) {
+    if (answer === 'again') {
+      newStep = 0;
+      dueSeconds = RELEARNING_STEP;
+    } else {
+      newStep = null;
+      dueSeconds = card.srs_interval;
+    }
+  } else if (isLearning) {
+    const step = card.learning_step ?? 0;
+    if (answer === 'again') {
+      newStep = 0;
+      dueSeconds = LEARNING_STEPS[0];
+    } else if (step >= LEARNING_STEPS.length - 1) {
+      newStep = null;
+      newInterval = GRADUATING_INTERVAL;
+      dueSeconds = GRADUATING_INTERVAL;
+    } else {
+      newStep = step + 1;
+      dueSeconds = LEARNING_STEPS[step + 1];
+    }
+  } else {
+    const oldInterval = card.srs_interval;
+    if (answer === 'again') {
+      newEase = Math.max(newEase - 0.20, MIN_EASE);
+      newInterval = MIN_REVIEW_INTERVAL;
+      newStep = 0;
+      dueSeconds = RELEARNING_STEP;
+    } else {
+      newInterval = roundedDayInterval(oldInterval * newEase);
+      dueSeconds = newInterval;
+    }
+  }
+
+  return {
+    srs_interval: newInterval,
+    ease_factor: newEase,
+    learning_step: newStep,
+    due_seconds: dueSeconds,
+    correct_delta: answer === 'again' ? 0 : 1,
+    incorrect_delta: answer === 'again' ? 1 : 0,
+  };
+}
+
+function nextPromptStage(stage, answer) {
+  if (answer === 'again') return Math.max(stage - 1, 0);
+  return Math.min(stage + 1, MAX_PROMPT_STAGE);
+}
+
+// matches SRS.swift formatDuration
+function formatDuration(seconds) {
+  if (seconds < 60) return `${seconds} s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
+  if (seconds < 86400) return `${Math.round(seconds / 3600)} hr`;
+  if (seconds < 2592000) return `${Math.round(seconds / 86400)} d`;
+  return `${Math.round(seconds / 2592000)} mo`;
+}
+
+function isNewCard(card) {
+  return card.srs_interval === 0 && card.learning_step === null && card.last_reviewed_at === null;
+}
+
+function phaseLabel(card) {
+  if (isNewCard(card)) return 'New';
+  const isRelearning = card.learning_step !== null && card.srs_interval > 0;
+  if (isRelearning) return 'Relearning';
+  const isLearning = !isRelearning && (card.learning_step !== null || card.srs_interval === 0);
+  if (isLearning) return 'Learning';
+  return 'Review';
+}
+
+// ===========================================================================
+//  Card content — 10 prebuilt Spanish cards (target=es, native=en).
+//  Sentences use ~tildes~ around the target word / its translation, exactly
+//  like the enrichment convention.
+// ===========================================================================
+
+const SEED = [
+  { word:'perro', translation:'dog', pos:'noun', definition:'a domesticated canine kept as a pet',
+    example:'El ~perro~ corre por el parque.', sentenceTranslation:'The ~dog~ runs through the park.', imageTerm:'a dog' },
+  { word:'comer', translation:'to eat', pos:'verb', definition:'to consume food',
+    example:'Me gusta ~comer~ frutas frescas.', sentenceTranslation:'I like ~to eat~ fresh fruit.', imageTerm:'eating food' },
+  { word:'casa', translation:'house', pos:'noun', definition:'a building where people live',
+    example:'Mi ~casa~ está cerca de la playa.', sentenceTranslation:'My ~house~ is near the beach.', imageTerm:'a house' },
+  { word:'rápido', translation:'fast', pos:'adjective', definition:'moving with great speed',
+    example:'El tren es muy ~rápido~.', sentenceTranslation:'The train is very ~fast~.', imageTerm:'something fast' },
+  { word:'agua', translation:'water', pos:'noun', definition:'the clear liquid that falls as rain',
+    example:'Bebo ~agua~ todos los días.', sentenceTranslation:'I drink ~water~ every day.', imageTerm:'a glass of water' },
+  { word:'feliz', translation:'happy', pos:'adjective', definition:'feeling or showing pleasure',
+    example:'Ella está muy ~feliz~ hoy.', sentenceTranslation:'She is very ~happy~ today.', imageTerm:'a happy person' },
+  { word:'libro', translation:'book', pos:'noun', definition:'a written or printed work of pages',
+    example:'Leo un ~libro~ interesante.', sentenceTranslation:'I am reading an interesting ~book~.', imageTerm:'a book' },
+  { word:'hablar', translation:'to speak', pos:'verb', definition:'to say words, to talk',
+    example:'Quiero ~hablar~ contigo.', sentenceTranslation:'I want ~to speak~ with you.', imageTerm:'people talking' },
+  { word:'ciudad', translation:'city', pos:'noun', definition:'a large town',
+    example:'La ~ciudad~ nunca duerme.', sentenceTranslation:'The ~city~ never sleeps.', imageTerm:'a city skyline' },
+  { word:'amigo', translation:'friend', pos:'noun', definition:'a person you know well and like',
+    example:'Mi mejor ~amigo~ vive aquí.', sentenceTranslation:'My best ~friend~ lives here.', imageTerm:'two friends' },
+];
+
+let cards = [];
+let virtualNow = 0;      // virtual clock, seconds since start
+let seqCounter = 0;      // tiebreak ordering for the queue
+let current = null;      // currently shown card
+let isFlipped = false;
+
+function makeCards() {
+  cards = SEED.map((s, i) => ({
+    ...s,
+    id: 'c' + i,
+    srs_interval: 0,
+    ease_factor: 2.5,
+    learning_step: null,
+    prompt_stage: 0,
+    correct_count: 0,
+    incorrect_count: 0,
+    last_reviewed_at: null,   // virtual seconds of last review, or null
+    last_answer: null,        // 'again' | 'good' | null  (for blue/red/green)
+    answered_once: false,
+    dueAtVirtual: 0,          // all new cards due now
+    seq: i,
+    stageSentences: {},       // { stageNumber: {example, translation} } synthesized on advance
+    history: [],
+  }));
+}
+
+// ---- queue: always present the earliest-due card (virtual ordering) ----
+function pickCurrent() {
+  let best = null;
+  for (const c of cards) {
+    if (best === null
+        || c.dueAtVirtual < best.dueAtVirtual
+        || (c.dueAtVirtual === best.dueAtVirtual && c.seq < best.seq)) {
+      best = c;
+    }
+  }
+  current = best;
+  if (current) virtualNow = Math.max(virtualNow, current.dueAtVirtual);
+  isFlipped = false;
+}
+
+// ===========================================================================
+//  Stage rendering — faithful to FLASHCARDS.md stage table.
+// ===========================================================================
+
+function hl(text) {
+  if (!text) return '';
+  return text.replace(/~([^~]+)~/g, '<mark>$1</mark>');
+}
+
+// returns {example, translation} for the card's current stage, or null
+function currentExample(card) {
+  const stage = card.prompt_stage;
+  if (stage <= 3) {
+    if (!card.example) return null;
+    return { example: card.example, translation: card.sentenceTranslation || '' };
+  }
+  // stage 4+: look up synthesized per-stage pair; fall back to highest <= stage
+  const stages = Object.keys(card.stageSentences).map(Number).filter(s => s <= stage).sort((a,b)=>b-a);
+  if (stages.length === 0) return null;
+  return card.stageSentences[stages[0]];
+}
+
+function getPromptType(card) {
+  const stage = card.prompt_stage;
+  if (stage === 0) return 'meetWord';
+  if (stage === 1) return currentExample(card) ? 'sentenceMeaning' : 'wordProduction';
+  if (stage === 2) return 'wordProduction';
+  return currentExample(card) ? 'sentenceProduction' : 'wordProduction';
+}
+
+function pic(card) { return `<div class="pic">${card.imageTerm}</div>`; }
+
+function instructionText(type) {
+  return { meetWord:'What does the highlighted word mean?',
+           sentenceMeaning:'What does this sentence mean?',
+           wordProduction:'How do you say this?',
+           sentenceProduction:'How do you say this sentence?' }[type];
+}
+
+function renderCard() {
+  const card = current;
+  const stage = card.prompt_stage;
+  const type = getPromptType(card);
+  const pair = currentExample(card);
+  let body = '';
+
+  if (!isFlipped) {
+    let inner = '';
+    if (type === 'meetWord') {
+      inner = `<div class="es-sentence">${hl(card.example) || `<span class="big-word">${card.word}</span>`}</div>${pic(card)}`;
+    } else if (type === 'sentenceMeaning') {
+      inner = `<div class="es-sentence">${hl(pair.example)}</div>`; // NO picture
+    } else if (type === 'wordProduction') {
+      inner = `<div class="big-word">${card.translation}</div><div class="pos">${card.pos}</div><div class="definition">${card.definition}</div>${pic(card)}`;
+    } else { // sentenceProduction
+      inner = `<div class="en-sentence">${hl(pair.translation)}</div>${pic(card)}`;
+    }
+    body = `<div class="instruction">${instructionText(type)}</div><div class="content">${inner}</div>
+            <div class="flip-hint">tap to reveal answer</div>`;
+  } else {
+    let inner = '';
+    if (type === 'meetWord') {
+      inner = `<div class="big-word">${card.translation}</div>${pic(card)}<div class="definition">${card.definition}</div>
+               <div class="en-sentence">${hl(card.sentenceTranslation)}</div>`;
+    } else if (type === 'sentenceMeaning') {
+      inner = `<div class="en-sentence">${hl(pair.translation)}</div>${pic(card)}
+               <div class="word-pair">${card.word} <span class="arrow">&mdash;</span> ${card.translation}</div>`;
+    } else if (type === 'wordProduction') {
+      inner = `<div class="big-word target">${card.word}</div>${pic(card)}<div class="definition">${card.definition}</div>
+               <div class="es-sentence">${hl(card.example)}</div>`;
+    } else { // sentenceProduction
+      inner = `<div class="es-sentence">${hl(pair.example)}</div>${pic(card)}
+               <div class="word-pair">${card.word} <span class="arrow">&mdash;</span> ${card.translation}</div>`;
+    }
+    body = `<div class="instruction">answer</div><div class="content">${inner}</div>
+            <div class="flip-hint">tap to flip back</div>`;
+  }
+
+  document.getElementById('card').innerHTML =
+    `<div class="stage-badge">Stage ${stage}</div><div class="phase-badge">${phaseLabel(card)}</div>${body}`;
+
+  // answer buttons with the time + stage each would move the card to
+  const againNext = computeNextReview(card, 'again');
+  const goodNext = computeNextReview(card, 'good');
+  document.getElementById('buttons').innerHTML = `
+    <button class="btn-again" onclick="answer('again')">Incorrect
+      <span class="sub">${formatDuration(againNext.due_seconds)} &middot; Stage ${nextPromptStage(stage,'again')}</span></button>
+    <button class="btn-good" onclick="answer('good')">Correct
+      <span class="sub">${formatDuration(goodNext.due_seconds)} &middot; Stage ${nextPromptStage(stage,'good')}</span></button>`;
+}
+
+function flip() { isFlipped = !isFlipped; renderCard(); }
+
+// ===========================================================================
+//  Answering
+// ===========================================================================
+
+function answer(ans) {
+  const card = current;
+  const stageFrom = card.prompt_stage;
+  const phaseFrom = phaseLabel(card);
+  const next = computeNextReview(card, ans);
+  const stageTo = nextPromptStage(stageFrom, ans);
+
+  // record history BEFORE mutating
+  card.history.push({
+    at: virtualNow,
+    answer: ans,
+    phaseFrom,
+    stageFrom, stageTo,
+    dueSeconds: next.due_seconds,
+    intervalFrom: card.srs_interval,
+    intervalTo: next.srs_interval,
+    easeFrom: card.ease_factor,
+    easeTo: next.ease_factor,
+    stepTo: next.learning_step,
+  });
+
+  // apply
+  card.srs_interval = next.srs_interval;
+  card.ease_factor = next.ease_factor;
+  card.learning_step = next.learning_step;
+  card.prompt_stage = stageTo;
+  card.correct_count += next.correct_delta;
+  card.incorrect_count += next.incorrect_delta;
+  card.last_reviewed_at = virtualNow;
+  card.last_answer = ans;
+  card.answered_once = true;
+  card.dueAtVirtual = virtualNow + next.due_seconds;
+  card.seq = ++seqCounter;
+
+  // synthesize a fresh per-stage sentence when advancing to a new high stage
+  // (>=4). The real app generates this via Gemini off the request path; here we
+  // fabricate a deterministic variant so the stage 4+ layout is visible.
+  if (ans === 'good' && stageTo >= 4 && !card.stageSentences[stageTo]) {
+    card.stageSentences[stageTo] = {
+      example: `[s${stageTo}] ${card.example}`,
+      translation: `[s${stageTo}] ${card.sentenceTranslation}`,
+    };
+  }
+
+  // feedback overlay "Stage A -> B"
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback ' + ans;
+  fb.textContent = `${formatDuration(next.due_seconds)} · Stage ${stageFrom} → ${stageTo}`;
+
+  pickCurrent();
+  renderAll();
+}
+
+// ===========================================================================
+//  Session counter (blue / red / green) — per FLASHCARDS.md.
+//  Blue: never answered. Red: most-recent answer was 'again'. Green: answered,
+//  most-recent answer correct. Each card counted once.
+// ===========================================================================
+
+function renderCounts() {
+  let blue = 0, red = 0, green = 0;
+  for (const c of cards) {
+    if (!c.answered_once) blue++;
+    else if (c.last_answer === 'again') red++;
+    else green++;
+  }
+  document.getElementById('counts').innerHTML =
+    `<span class="blue">${blue} new</span><span class="red">${red} learning</span><span class="green">${green} known</span>`;
+  document.getElementById('vclock').textContent = `virtual clock: +${formatDuration(virtualNow)}`;
+}
+
+// ===========================================================================
+//  Side panel
+// ===========================================================================
+
+const openRows = new Set();
+function toggleRow(id) { if (openRows.has(id)) openRows.delete(id); else openRows.add(id); renderList(); }
+
+function renderList() {
+  const sorted = [...cards].sort((a,b) =>
+    a.dueAtVirtual - b.dueAtVirtual || a.seq - b.seq);
+  let html = '';
+  for (const c of sorted) {
+    const isCur = current && c.id === current.id;
+    const dueLabel = c.answered_once ? `due +${formatDuration(Math.max(c.dueAtVirtual - virtualNow, 0))}` : 'due now';
+    const rows = c.history.map((h, i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td class="ans-${h.answer}">${h.answer === 'again' ? 'Incorrect' : 'Correct'}</td>
+        <td>${h.stageFrom}→${h.stageTo}</td>
+        <td>${h.phaseFrom}</td>
+        <td>${formatDuration(h.dueSeconds)}</td>
+        <td>${h.easeFrom.toFixed(2)}→${h.easeTo.toFixed(2)}</td>
+      </tr>`).join('');
+    const histInner = c.history.length
+      ? `<table>
+           <tr><th>#</th><th>Answer</th><th>Stage</th><th>Phase</th><th>Next due</th><th>Ease</th></tr>
+           ${rows}
+         </table>`
+      : `<div class="empty">No reviews yet.</div>`;
+    html += `
+      <div class="card-row" style="${isCur ? 'outline:2px solid var(--purple);' : ''}">
+        <div class="head" onclick="toggleRow('${c.id}')">
+          <div>
+            <div class="word">${c.word} <span style="color:var(--muted);font-weight:400">&mdash; ${c.translation}</span></div>
+            <div class="meta">
+              <span class="pill stage">Stage ${c.prompt_stage}</span>
+              <span>${phaseLabel(c)}</span>
+              <span>&check; ${c.correct_count} &nbsp; &times; ${c.incorrect_count}</span>
+            </div>
+          </div>
+          <div class="meta">
+            <span class="pill ${c.answered_once ? 'next' : 'due'}">${dueLabel}</span>
+          </div>
+        </div>
+        <div class="history ${openRows.has(c.id) ? 'open' : ''}">${histInner}</div>
+      </div>`;
+  }
+  document.getElementById('cardList').innerHTML = html;
+}
+
+function renderAll() {
+  renderCard();
+  renderCounts();
+  renderList();
+}
+
+function resetAll() {
+  makeCards();
+  virtualNow = 0;
+  seqCounter = SEED.length - 1;
+  document.getElementById('feedback').textContent = '';
+  pickCurrent();
+  renderAll();
+}
+
+// boot
+resetAll();
+</script>
+</body>
+</html>

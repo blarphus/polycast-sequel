@@ -1,3 +1,4 @@
+import '../styles/voicePractice.css';
 import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVoicePracticeSession } from '../hooks/useVoicePracticeSession';

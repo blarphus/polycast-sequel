@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.usesavedwords');
 // ---------------------------------------------------------------------------
 // hooks/useSavedWords.ts -- Manage personal dictionary words
 // ---------------------------------------------------------------------------
@@ -6,6 +8,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getSavedWords, saveWord, deleteSavedWord, updateWordImage, reorderQueue, SavedWord } from '../api';
 import { toErrorMessage } from '../utils/errors';
 import { applyAccountDailyGoal, recordDailyWordAdded } from '../utils/dailyGoal';
+import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 function parseWordForms(rawForms: string | null | undefined) {
   if (!rawForms) return [];
@@ -14,7 +17,15 @@ function parseWordForms(rawForms: string | null | undefined) {
     try {
       const parsed = JSON.parse(rawForms);
       if (Array.isArray(parsed)) return parsed.filter((v): v is string => typeof v === 'string');
-    } catch { /* fall through to comma split */ }
+    } catch (error) {
+      emitFallbackDiagnostic({
+        code: 'legacy_word_forms_parser_used',
+        severity: 'warning',
+        title: 'Legacy word forms repaired',
+        message: 'A saved word had malformed structured forms, so Polycast used its legacy comma-separated representation.',
+        detail: error instanceof Error ? error.message : String(error),
+      }, { source: 'web.dictionary', operation: 'parse-word-forms' });
+    }
   }
   return rawForms.split(',').map(s => s.trim()).filter(Boolean);
 }
@@ -38,7 +49,7 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
       setError('');
       return data;
     } catch (err) {
-      console.error('Failed to load saved words:', err);
+      runtimeLog.error('Failed to load saved words:', err);
       setError(toErrorMessage(err));
       throw err;
     } finally {
@@ -57,7 +68,7 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
         if (!cancelled) setWords(data);
       })
       .catch((err) => {
-        console.error('Failed to load saved words:', err);
+        runtimeLog.error('Failed to load saved words:', err);
         if (!cancelled) setError(toErrorMessage(err));
       })
       .finally(() => {
@@ -167,7 +178,7 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
       try {
         await reorderQueue(items);
       } catch (err) {
-        console.error('Queue reorder failed:', err);
+        runtimeLog.error('Queue reorder failed:', err);
         setWords(previousWords);
         setError(toErrorMessage(err));
       }

@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.usevoicepracticesession');
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   completeVoicePracticeSession,
@@ -133,7 +135,7 @@ export function useVoicePracticeSession() {
     try {
       await playAiSpeech(text, languageCode);
     } catch (err) {
-      console.error('OpenAI TTS playback failed', err);
+      runtimeLog.error('OpenAI TTS playback failed', err);
       setError(err instanceof Error ? err.message : 'OpenAI TTS playback failed');
     }
   }, []);
@@ -280,7 +282,7 @@ export function useVoicePracticeSession() {
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
       if (audioContextRef.current) {
         audioContextRef.current.close().catch((err) => {
-          console.error('Failed to close voice practice audio context', err);
+          runtimeLog.error('Failed to close voice practice audio context', err);
         });
       }
       stopAiSpeech();

@@ -58,7 +58,7 @@ final class BookLibrary: ObservableObject {
         do {
             try JSONEncoder().encode(chapters).write(to: url, options: .atomic)
         } catch {
-            print("[Polycast] Could not write chapter cache: \(error.localizedDescription)")
+            PolycastLog.runtime.error("[Polycast] Could not write chapter cache: \(error.localizedDescription)")
         }
     }
 
@@ -70,7 +70,15 @@ final class BookLibrary: ObservableObject {
         do {
             return try JSONDecoder().decode([BookChapter].self, from: data)
         } catch {
-            print("[Polycast] Could not decode chapter cache: \(error.localizedDescription)")
+            reportFallback(
+                code: "epub_chapter_cache_miss_fallback",
+                title: "Book cache fallback used",
+                message: "The cached chapter data could not be read, so Polycast will parse the original EPUB again.",
+                source: "ios.book-library",
+                operation: "decode-chapter-cache",
+                detail: "cache=\(url.lastPathComponent)",
+                error: error
+            )
             return nil
         }
     }

@@ -181,6 +181,22 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type !== 'POLYCAST_LOOKUP_SELECTION') return false;
+    if (typeof helpers().validateInboundMessage === 'function' && !helpers().validateInboundMessage(msg, ['POLYCAST_LOOKUP_SELECTION'])) {
+      sendResponse({
+        error: 'Invalid selection lookup request',
+        diagnostic: {
+          code: 'selection_message_rejected', severity: 'error',
+          title: 'Selection request rejected', message: 'An invalid selection lookup request was rejected.',
+          source: 'extension.selection', operation: 'validate-inbound-message',
+          correlationId: crypto.randomUUID(), occurredAt: new Date().toISOString(),
+        },
+      });
+      return false;
+    }
+    if (typeof msg.selectionText !== 'string' || msg.selectionText.length > 20_000 || !Number.isFinite(Number(msg.requestedAt))) {
+      sendResponse({ error: 'Selection lookup request fields are invalid' });
+      return false;
+    }
     try {
       const opened = lookupSelectedWord(msg.selectionText);
       const requestedAt = Number(msg.requestedAt);

@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.usechatconversation');
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { getFriends, getMessages, markMessagesRead, sendMessage } from '../api';
 import type { Friend, Message } from '../api';
@@ -56,9 +58,9 @@ export function useChatConversation({ friendId, userId }: UseChatConversationOpt
           setFriendOnline(friend.online);
         }
 
-        markMessagesRead(friendId!).catch((err) => console.error('Failed to mark messages read:', err));
+        markMessagesRead(friendId!).catch((err) => runtimeLog.error('Failed to mark messages read:', err));
       } catch (err) {
-        console.error('Failed to load chat:', err);
+        runtimeLog.error('Failed to load chat:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -86,7 +88,7 @@ export function useChatConversation({ friendId, userId }: UseChatConversationOpt
           return [...prev, msg];
         });
         if (msg.sender_id === friendId) {
-          markMessagesRead(friendId!).catch((err) => console.error('Failed to mark messages read:', err));
+          markMessagesRead(friendId!).catch((err) => runtimeLog.error('Failed to mark messages read:', err));
         }
         setTimeout(() => scrollToBottom(), 50);
       }
@@ -161,7 +163,7 @@ export function useChatConversation({ friendId, userId }: UseChatConversationOpt
         });
       }
     } catch (err) {
-      console.error('Failed to load more messages:', err);
+      runtimeLog.error('Failed to load more messages:', err);
     } finally {
       setLoadingMore(false);
     }
@@ -198,7 +200,7 @@ export function useChatConversation({ friendId, userId }: UseChatConversationOpt
       const real = await sendMessage(friendId, body);
       setMessages((prev) => prev.map((message) => (message.id === tempId ? real : message)));
     } catch (err) {
-      console.error('Failed to send message:', err);
+      runtimeLog.error('Failed to send message:', err);
       setMessages((prev) => prev.filter((message) => message.id !== tempId));
       setInput(body);
     } finally {

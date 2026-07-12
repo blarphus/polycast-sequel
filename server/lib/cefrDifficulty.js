@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import logger from '../logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,7 +23,13 @@ export function loadCefrMap(language) {
     const data = JSON.parse(readFileSync(filePath, 'utf-8'));
     cache.set(language, data);
     return data;
-  } catch {
+  } catch (error) {
+    logger.warn({
+      event: 'cefr_map_unavailable',
+      language,
+      operation: 'load-cefr-map',
+      err: error,
+    }, 'CEFR map unavailable; transcript difficulty will use aggregate heuristics');
     cache.set(language, null);
     return null;
   }

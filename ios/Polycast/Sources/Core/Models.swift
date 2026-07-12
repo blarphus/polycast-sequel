@@ -1,41 +1,5 @@
 import Foundation
 
-struct AuthUser: Codable, Equatable {
-    let id: String
-    let username: String
-    let displayName: String?
-    let nativeLanguage: String?
-    let targetLanguage: String?
-    let dailyNewLimit: Int?
-    let accountType: String
-    let cefrLevel: String?
-}
-
-struct AuthResponse: Codable {
-    let token: String
-    let id: String
-    let username: String
-    let displayName: String?
-    let nativeLanguage: String?
-    let targetLanguage: String?
-    let dailyNewLimit: Int?
-    let accountType: String
-    let cefrLevel: String?
-
-    var user: AuthUser {
-        AuthUser(
-            id: id,
-            username: username,
-            displayName: displayName,
-            nativeLanguage: nativeLanguage,
-            targetLanguage: targetLanguage,
-            dailyNewLimit: dailyNewLimit,
-            accountType: accountType,
-            cefrLevel: cefrLevel
-        )
-    }
-}
-
 struct StudentDashboard: Codable {
     let newToday: [SavedWord]
     let dueWords: [SavedWord]
@@ -141,12 +105,20 @@ struct StudyOverview: Codable {
 
 /// YouTube's own related/recommended videos for a single video, plus the
 /// video's channel, parsed from the InnerTube `next` endpoint.
-struct RelatedContent {
+struct RelatedContent: Codable {
     let channelName: String?
     let channelHandle: String?
     let channelID: String?
     let channelAvatarURL: String?
     let videos: [TrendingVideo]
+
+    enum CodingKeys: String, CodingKey {
+        case channelName
+        case channelHandle
+        case channelID
+        case channelAvatarURL
+        case videos
+    }
 }
 
 struct ChannelSummary: Codable, Identifiable {
@@ -369,20 +341,6 @@ struct StageSentence: Codable, Hashable {
 
 struct OKResponse: Codable {
     let ok: Bool
-}
-
-struct DrillSessionsEnvelope: Codable {
-    let sessions: [DrillSession]
-}
-
-struct DrillSession: Codable, Identifiable, Hashable {
-    let id: String
-    let tenseKey: String
-    let verbFilter: String
-    let questionCount: Int
-    let correctCount: Int
-    let durationSeconds: Int
-    let createdAt: String
 }
 
 // MARK: - Wiktionary Lookup

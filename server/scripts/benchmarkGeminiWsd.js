@@ -14,6 +14,10 @@ const DEFAULT_EVAL_PATH = path.join(process.env.HOME || '', 'Desktop', 'wiktiona
 const REQUIRED_LANGUAGES = ['en', 'es', 'pt', 'fr', 'de'];
 
 function parseArgs(argv) {
+  if (argv.includes('--help')) {
+    console.log('Usage: node server/scripts/benchmarkGeminiWsd.js [--eval-path PATH] [--per-lang N] [--max-errors-shown N] [--sample-in PATH] [--sample-out PATH]');
+    process.exit(0);
+  }
   const options = {
     evalPath: DEFAULT_EVAL_PATH,
     perLang: 20,
@@ -232,11 +236,12 @@ function printSummary(results, options) {
 }
 
 async function main() {
+  const options = parseArgs(process.argv.slice(2));
+
   if (!process.env.GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY is not configured in the root .env');
   }
 
-  const options = parseArgs(process.argv.slice(2));
   const samples = options.sampleInPath ? null : loadEvalSamples(options.evalPath);
   const selectedSamples = options.sampleInPath
     ? loadSavedSample(options.sampleInPath)

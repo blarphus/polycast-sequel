@@ -33,13 +33,15 @@
   let recallIndicator = null;
   let recallRequestStarted = false;
   let matchedRangeCapShown = false;
+  let domMutationFallbackShown = false;
+  let rangeLookupFallbackShown = false;
   const recallSampledForPage = Math.random() < 0.15;
 
   function baseLanguage(value) {
     return String(value || '').toLocaleLowerCase().split(/[-_]/)[0];
   }
 
-  function showDiagnostic(title, message) {
+  function showDiagnostic(title, message, metadata = {}) {
     if (!message) return;
     document.querySelector('.pc-fallback-toast')?.remove();
     const toast = document.createElement('div');
@@ -48,9 +50,28 @@
     heading.textContent = title;
     const detail = document.createElement('span');
     detail.textContent = message;
-    toast.append(heading, detail);
+    const reference = document.createElement('small');
+    reference.textContent = [
+      metadata.code || 'extension_fallback_used',
+      metadata.source || 'extension.page-highlights',
+      metadata.operation || 'highlight-page',
+      metadata.correlationId || crypto.randomUUID(),
+      metadata.detail || '',
+    ].filter(Boolean).join(' · ');
+    toast.append(heading, detail, reference);
     document.body.append(toast);
     window.setTimeout(() => toast.remove(), 8000);
+    console.warn('[polycast:fallback]', {
+      code: metadata.code || 'extension_fallback_used',
+      severity: metadata.severity || 'warning',
+      title,
+      message,
+      source: metadata.source || 'extension.page-highlights',
+      operation: metadata.operation || 'highlight-page',
+      correlationId: metadata.correlationId || crypto.randomUUID(),
+      occurredAt: metadata.occurredAt || new Date().toISOString(),
+      ...(metadata.detail ? { detail: metadata.detail } : {}),
+    });
   }
 
   function samplePageText() {
@@ -110,7 +131,17 @@
         ? JSON.parse(challenge.forms)
         : String(challenge?.forms || '').split(',');
       if (Array.isArray(parsed)) values.push(...parsed);
-    } catch { /* word and lemma still work */ }
+    } catch (error) {
+      showDiagnostic(
+        'Saved forms fallback used',
+        'Challenge forms were malformed, so recall matching is limited to the saved word and lemma.',
+        {
+          code: 'recall_forms_parser_fallback',
+          operation: 'build-recall-tokens',
+          detail: error?.message || String(error),
+        },
+      );
+    }
     return new Set(values.map((value) => String(value || '').trim().toLocaleLowerCase()).filter(Boolean));
   }
 
@@ -133,7 +164,12 @@
       recallChallenge = result?.challenge || null;
       selectRecallRange();
       if (result?.diagnostic || result?.unavailable) {
-        showDiagnostic('Wild Recall fallback', result.diagnostic || result.unavailable);
+        const diagnostic = result.diagnostic || result.unavailable;
+        showDiagnostic(
+          diagnostic.title || 'Wild Recall fallback',
+          diagnostic.message || String(diagnostic),
+          diagnostic,
+        );
       }
     } catch (err) {
       showDiagnostic('Wild Recall fallback', `Wild Recall preparation fallback used: ${err.message}`);
@@ -181,7 +217,20 @@
       try {
         range.surroundContents(span);
         highlightEntries.push({ range: document.createRange(), token: occurrence.token, wordId: matchMap.get(occurrence.token).wordId, span });
-      } catch { /* DOM changed between matching and rendering */ }
+      } catch (error) {
+        if (!domMutationFallbackShown) {
+          domMutationFallbackShown = true;
+          showDiagnostic(
+            'Highlight mutation fallback used',
+            'The page changed during highlighting, so affected matches were skipped and will be retried on the next scan.',
+            {
+              code: 'highlight_dom_mutation_fallback',
+              operation: 'wrap-highlight-range',
+              detail: error?.message || String(error),
+            },
+          );
+        }
+      }
     }
   }
 
@@ -296,7 +345,13 @@
     detectionSource = detection?.source || '';
     enabled = override === 'on' || (override === 'auto' && !!targetLanguage && detectedLanguage === targetLanguage);
     if (override === 'off') enabled = false;
-    if (detection?.diagnostic) showDiagnostic('Language detection fallback', detection.diagnostic);
+    if (detection?.diagnostic) {
+      showDiagnostic(
+        detection.diagnostic.title || 'Language detection fallback',
+        detection.diagnostic.message || String(detection.diagnostic),
+        detection.diagnostic,
+      );
+    }
     if (enabled) {
       startObservers();
       const cue = await chrome.runtime.sendMessage({ type: 'CLAIM_PAGE_CUE' });
@@ -309,7 +364,23 @@
     const position = document.caretPositionFromPoint?.(x, y);
     if (!position) return null;
     return highlightEntries.find((entry) => {
-      try { return entry.range.isPointInRange(position.offsetNode, position.offset); } catch { return false; }
+      try {
+        return entry.range.isPointInRange(position.offsetNode, position.offset);
+      } catch (error) {
+        if (!rangeLookupFallbackShown) {
+          rangeLookupFallbackShown = true;
+          showDiagnostic(
+            'Highlight lookup fallback used',
+            'The page changed during click lookup, so this stale highlight was ignored.',
+            {
+              code: 'highlight_range_lookup_fallback',
+              operation: 'resolve-highlight-click',
+              detail: error?.message || String(error),
+            },
+          );
+        }
+        return false;
+      }
     }) || null;
   }
 
@@ -345,13 +416,30 @@
   });
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    const acceptedTypes = ['WORDS_UPDATED', 'WILD_RECALL_UPDATED', 'POLYCAST_FALLBACK_NOTICE', 'SITE_HIGHLIGHT_OVERRIDE_UPDATED', 'GET_PAGE_HIGHLIGHT_STATUS'];
+    const validateMessage = globalThis.PolycastContent?.validateInboundMessage;
+    if (typeof validateMessage === 'function' && !validateMessage(msg, acceptedTypes)) {
+      if (msg?.type && acceptedTypes.includes(msg.type)) showDiagnostic(
+        'Page update rejected',
+        'An invalid page-highlight update was rejected before it could change the page.',
+        { code: 'page_highlight_message_rejected', severity: 'error', operation: 'validate-inbound-message', detail: `type=${String(msg.type)}` },
+      );
+      return false;
+    }
     if (msg.type === 'WORDS_UPDATED') void resolveLanguageGate();
     if (msg.type === 'WILD_RECALL_UPDATED') {
       recallChallenge = msg.challenge || null;
       selectRecallRange();
-      if (msg.diagnostic) showDiagnostic('Wild Recall fallback', msg.diagnostic);
+      if (msg.diagnostic) showDiagnostic(
+        msg.diagnostic.title || 'Wild Recall fallback',
+        msg.diagnostic.message || String(msg.diagnostic),
+        msg.diagnostic,
+      );
     }
-    if (msg.type === 'POLYCAST_FALLBACK_NOTICE') showDiagnostic(msg.title || 'Fallback used', msg.message);
+    if (msg.type === 'POLYCAST_FALLBACK_NOTICE') {
+      const diagnostic = msg.diagnostic || msg;
+      showDiagnostic(diagnostic.title || 'Fallback used', diagnostic.message || 'An alternate path was used.', diagnostic);
+    }
     if (msg.type === 'SITE_HIGHLIGHT_OVERRIDE_UPDATED') void resolveLanguageGate(msg.override);
     if (msg.type === 'GET_PAGE_HIGHLIGHT_STATUS') {
       sendResponse({ hostname: location.hostname, enabled, override, detectedLanguage, detectionSource, targetLanguage });

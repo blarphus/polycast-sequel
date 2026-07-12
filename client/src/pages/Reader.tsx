@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.reader');
 // ---------------------------------------------------------------------------
 // pages/Reader.tsx -- Paginated EPUB reader. Renders chapter text through the
 // shared TokenizedText component (every word clickable -> WordPopup -> save),
@@ -5,6 +7,8 @@
 // DOM stays real (no iframe). WordPopup is position:fixed, so the page transform
 // never affects its anchoring.
 // ---------------------------------------------------------------------------
+
+import '../styles/epub.css';
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -78,7 +82,7 @@ export default function Reader() {
         }
         setBook(parsed);
       } catch (err) {
-        console.error('Failed to open book:', err);
+        runtimeLog.error('Failed to open book:', err);
         if (!cancelled) setLoadError(err instanceof Error ? err.message : 'Could not open this book.');
       }
     })();

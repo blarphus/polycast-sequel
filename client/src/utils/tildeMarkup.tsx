@@ -14,18 +14,6 @@ export function renderTildeHighlight(text: string, className: string) {
   );
 }
 
-/** Replace ~word~ with _____ for the cloze front. */
-export function renderCloze(text: string) {
-  const parts = text.split(/~([^~]+)~/g);
-  return parts.map((part, i) =>
-    i % 2 === 1 ? (
-      <span key={i} className="flashcard-cloze">_____</span>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  );
-}
-
 /** Strip ~tildes~ from example sentence for TTS playback. */
 export function stripTildes(text: string): string {
   return text.replace(/~([^~]+)~/g, '$1');

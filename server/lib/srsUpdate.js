@@ -1,4 +1,9 @@
 import { computeNextReview } from './srsAlgorithm.js';
+import logger from '../logger.js';
+import { normalizeFallbackDiagnostic } from './fallbackDiagnostics.js';
+import { MAX_PROMPT_STAGE, SRS_ALGORITHM_VERSION } from './generated/srsContract.js';
+
+export { MAX_PROMPT_STAGE, SRS_ALGORITHM_VERSION } from './generated/srsContract.js';
 
 /**
  * Soft cap on the prompt-stage ladder. Stages 0-3 are the original four
@@ -7,8 +12,6 @@ import { computeNextReview } from './srsAlgorithm.js';
  * stage, so there is no hard upper limit — this cap is just a safety net
  * against unbounded growth in pathological cases.
  */
-export const MAX_PROMPT_STAGE = 20;
-
 /**
  * Apply an SRS review to a saved word.
  *
@@ -33,8 +36,12 @@ export function validTimeZone(timeZone) {
   try {
     new Intl.DateTimeFormat('en-US', { timeZone }).format();
     return timeZone;
-  } catch {
-    return 'UTC';
+  } catch (error) {
+    const invalidTimeZone = new Error(`Invalid IANA time zone: ${timeZone}`);
+    invalidTimeZone.status = 400;
+    invalidTimeZone.expose = true;
+    invalidTimeZone.cause = error;
+    throw invalidTimeZone;
   }
 }
 
@@ -115,12 +122,10 @@ export async function applySrsReview(
     ],
   );
 
-  // Fire-and-forget: if the card just advanced to a new high stage (>= 4)
-  // for the first time, kick off a Gemini call to produce the per-stage
-  // example sentence off the request path. Errors are logged but never
-  // propagate to the review response — the user will see the card with the
-  // stage-2 fallback layout (per FLASHCARDS.md) and we will retry the
-  // generation on the next correct answer from the same stage.
+  let fallbackNotices = [];
+  // Generate the next high-stage sentence before returning so a failure can
+  // be represented in both the response UI and structured logs. The review
+  // itself remains successful and uses the documented word-production layout.
   if (
     newStage > currentStage
     && newStage >= 4
@@ -128,16 +133,30 @@ export async function applySrsReview(
   ) {
     const existingStages = stageStageList(card.stage_sentences);
     if (!existingStages.includes(newStage)) {
-      void Promise.resolve()
-        .then(() => onAdvanceToNewStage({ db, card, newStage }))
-        .catch((err) => {
-          // eslint-disable-next-line no-console
-          console.error('[srsUpdate] stage-sentence generation failed:', err);
+      try {
+        await onAdvanceToNewStage({ db, card, newStage });
+      } catch (err) {
+        const diagnostic = normalizeFallbackDiagnostic({
+          code: 'stage_sentence_generation_fallback',
+          severity: 'warning',
+          title: 'Practice sentence fallback used',
+          message: 'The next stage sentence could not be generated, so this card will use the word-production layout.',
+          source: 'server.srs',
+          operation: 'advance-prompt-stage',
+          detail: `cardId=${wordId}; stage=${newStage}; reason=${err?.message || 'unknown error'}`,
         });
+        fallbackNotices = [diagnostic];
+        logger.warn({ fallback: diagnostic, err, cardId: wordId, stage: newStage }, 'Stage-sentence fallback used');
+      }
     }
   }
 
-  return updated[0] || null;
+  const result = updated[0] || null;
+  if (result) {
+    result.srs_algorithm_version = SRS_ALGORITHM_VERSION;
+    if (fallbackNotices.length > 0) result.fallback_notices = fallbackNotices;
+  }
+  return result;
 }
 
 /**
@@ -150,7 +169,13 @@ function stageStageList(raw) {
   let parsed;
   try {
     parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  } catch {
+  } catch (error) {
+    logger.warn({
+      event: 'stage_sentence_metadata_fallback',
+      operation: 'parse-stage-sentences',
+      payloadLength: String(raw).length,
+      err: error,
+    }, 'Malformed stage sentence metadata treated as empty');
     return [];
   }
   if (!Array.isArray(parsed)) return [];

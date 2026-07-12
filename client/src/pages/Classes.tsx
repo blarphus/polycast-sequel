@@ -1,3 +1,6 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.classes');
+import '../styles/classrooms.css';
 import { useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../api';
@@ -80,7 +83,7 @@ export default function Classes() {
       setCreateNativeLang('');
       setShowCreateForm(false);
     } catch (err) {
-      console.error('Failed to create classroom:', err);
+      runtimeLog.error('Failed to create classroom:', err);
       setCreateError(err instanceof Error ? err.message : 'Failed to create classroom');
     } finally {
       setCreating(false);
@@ -102,7 +105,7 @@ export default function Classes() {
       await api.deleteClassroom(classroom.id);
       await reloadClassrooms();
     } catch (err) {
-      console.error('Failed to delete classroom:', err);
+      runtimeLog.error('Failed to delete classroom:', err);
       setCreateError(err instanceof Error ? err.message : 'Failed to delete classroom');
     }
   };

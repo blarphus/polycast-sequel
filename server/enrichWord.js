@@ -107,18 +107,6 @@ function cleanLemmaRef(raw) {
   return raw.replace(/[^a-zA-ZÀ-ÿ-]+$/, '');
 }
 
-/** True if a gloss is a bare inflection / alternative-form note rather than a real definition. */
-export function isFormOf(gloss) {
-  return FORM_OF_RE.test(gloss);
-}
-
-/** Extract the referenced base word from a form-of gloss, or null if it isn't one. */
-export function extractFormOfLemma(gloss) {
-  const m = FORM_OF_RE.exec(gloss);
-  if (!m) return null;
-  return cleanLemmaRef(m[1]) || null;
-}
-
 // A gloss that is ONLY a grammatical-form label (e.g. "third-person singular present
 // indicative") carries no meaning and no "of <lemma>" to follow, so it is useless as a
 // definition. Detect these so they can be dropped, leaving the meaning-bearing senses.
@@ -686,7 +674,9 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
   // rotting upstream stock-photo link.
   const imageSearchTerm = geminiImageTerm || translation || word;
   const _tImg0 = Date.now();
-  const candidates = await searchAllImages(imageSearchTerm, 4); // up to ~8 (Pixabay + Wikimedia)
+  const candidates = await searchAllImages(imageSearchTerm, 4, {
+    onFallback: (diagnostic) => fallback_notices.push(diagnostic),
+  }); // up to ~8 (Pixabay + Wikimedia)
   let chosen = candidates.length
     ? await pickBestImage({ word, definition, sentence, candidates })
     : null;

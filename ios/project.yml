@@ -4,10 +4,10 @@ options:
 packages:
   WebRTC:
     url: https://github.com/stasel/WebRTC
-    from: "126.0.0"
+    exactVersion: "126.0.0"
   socket.io-client-swift:
     url: https://github.com/socketio/socket.io-client-swift
-    from: "16.1.1"
+    exactVersion: "16.1.1"
 settings:
   base:
     SWIFT_VERSION: 6.0

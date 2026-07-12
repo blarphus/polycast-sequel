@@ -224,7 +224,7 @@ struct WordLookupView: View {
                 wordStore.insert(saved)
             } catch {
                 // Roll back the optimistic row and surface the failure.
-                print("[Polycast] Save word failed: \(error.localizedDescription)")
+                PolycastLog.runtime.error("[Polycast] Save word failed: \(error.localizedDescription)")
                 wordStore.remove(id: tempId)
                 savedIndices.remove(index)
                 self.error = error.localizedDescription

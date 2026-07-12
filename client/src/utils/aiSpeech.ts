@@ -1,3 +1,5 @@
+import { emitFallbackDiagnostic } from './fallbackDiagnostics';
+
 let activeAudio: HTMLAudioElement | null = null;
 let activeUrl: string | null = null;
 
@@ -70,8 +72,14 @@ export async function playAiSpeech(text: string, languageCode?: string, preloade
     try {
       const payload = await res.json();
       message = payload.error || payload.message || message;
-    } catch {
-      // keep default
+    } catch (error) {
+      emitFallbackDiagnostic({
+        code: 'speech_error_payload_fallback',
+        severity: 'warning',
+        title: 'Speech error details unavailable',
+        message: 'The speech service returned a non-JSON error, so Polycast is showing its default failure message.',
+        detail: `status=${res.status}; reason=${error instanceof Error ? error.message : String(error)}`,
+      }, { source: 'web.speech', operation: 'parse-speech-error' });
     }
     throw new Error(message);
   }

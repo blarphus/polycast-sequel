@@ -1,4 +1,6 @@
 // ---------------------------------------------------------------------------
+
+import { emitFallbackDiagnostic } from './fallbackDiagnostics';
 // utils/localVideoStore.ts — Module-level store for local video/SRT files
 // with IndexedDB persistence, progress tracking, and thumbnail generation
 // ---------------------------------------------------------------------------
@@ -58,7 +60,14 @@ export async function loadDirHandle(): Promise<FileSystemDirectoryHandle | null>
       req.onsuccess = () => { db.close(); resolve(req.result ?? null); };
       req.onerror = () => { db.close(); reject(req.error); };
     });
-  } catch {
+  } catch (error) {
+    emitFallbackDiagnostic({
+      code: 'local_video_directory_restore_fallback',
+      severity: 'warning',
+      title: 'Saved video folder unavailable',
+      message: 'The previously selected video folder could not be restored, so Polycast will ask you to choose it again.',
+      detail: error instanceof Error ? error.message : String(error),
+    }, { source: 'web.local-video', operation: 'load-directory-handle' });
     return null;
   }
 }

@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import pool from '../db.js';
-import redisClient from '../redis.js';
 import { callGemini, parseGeminiJson } from '../lib/gemini.js';
 
 const MAX_TARGET_SENTENCE_WORDS = 16;
@@ -34,13 +33,6 @@ function cleanSentenceCandidate(text) {
   if (wordCount < MIN_TARGET_SENTENCE_WORDS || wordCount > MAX_TARGET_SENTENCE_WORDS) return null;
   if (!/[.!?]$/.test(normalized)) return null;
   return normalized;
-}
-
-function splitIntoSentences(text) {
-  return normalizeWhitespace(text)
-    .split(/(?<=[.!?])\s+/)
-    .map(cleanSentenceCandidate)
-    .filter(Boolean);
 }
 
 function buildContentHash({ sourceType, sourceRefId, targetLanguage, nativeLanguage, sourceText }) {
@@ -115,62 +107,6 @@ async function fetchSavedWordCandidates(userId, targetLanguage) {
         focusWords: row.word ? [row.word] : [],
       }];
     });
-}
-
-async function fetchVideoCandidates(targetLanguage) {
-  const { rows } = await pool.query(
-    `SELECT id, transcript
-       FROM videos
-      WHERE language = $1
-        AND transcript IS NOT NULL
-      ORDER BY created_at DESC
-      LIMIT 12`,
-    [targetLanguage],
-  );
-
-  const candidates = [];
-  for (const row of rows) {
-    const transcript = Array.isArray(row.transcript) ? row.transcript : [];
-    for (const segment of transcript) {
-      const sentence = cleanSentenceCandidate(segment?.text);
-      if (!sentence) continue;
-      candidates.push({
-        sourceType: 'video',
-        sourceRefId: row.id,
-        sourceText: sentence,
-        assignmentPriority: false,
-        focusWords: [],
-      });
-      if (candidates.length >= 24) break;
-    }
-    if (candidates.length >= 24) break;
-  }
-  return candidates;
-}
-
-async function fetchNewsCandidates(targetLanguage) {
-  if (!redisClient.isReady) {
-    return [];
-  }
-
-  const newsKey = `news8:${targetLanguage}`;
-  const raw = await redisClient.get(newsKey);
-  if (!raw) {
-    return [];
-  }
-
-  const items = JSON.parse(raw);
-  return items.flatMap((item, index) => {
-    const sentence = splitIntoSentences(item.preview || '')[0];
-    if (!sentence) return [];
-    return [{
-      sourceType: 'news',
-      sourceRefId: item.link || String(index),
-      sourceText: sentence,
-      assignmentPriority: false,
-      focusWords: [],
-    }];
-  }).slice(0, 12);
 }
 
 async function getOrCreateSentenceCard({

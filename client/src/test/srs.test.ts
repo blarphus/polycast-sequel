@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SavedWord } from '../api/dictionary';
+import { SRS_GOLDEN_FIXTURES } from '../generated/srsContract';
 import {
   applyAnswerLocally,
   computeNextReviewState,
   getDueStatus,
   getStudyQueueBucket,
   getStudyQueueCounts,
+  nextPromptStage,
 } from '../utils/srs';
 
 function card(overrides: Partial<SavedWord> = {}): SavedWord {
@@ -168,6 +170,37 @@ describe('Anki-style study queues', () => {
     const failed = applyAnswerLocally(card(), 'again', now);
 
     expect(new Date(failed.due_at!).getTime() - now.getTime()).toBe(60_000);
+  });
+
+  it('preserves and advances prompt stages beyond the legacy stage-three cap', () => {
+    expect(nextPromptStage(card({ prompt_stage: 4 }), 'good')).toBe(5);
+    expect(nextPromptStage(card({ prompt_stage: 19 }), 'good')).toBe(20);
+    expect(nextPromptStage(card({ prompt_stage: 20 }), 'good')).toBe(20);
+    expect(nextPromptStage(card({ prompt_stage: 20 }), 'again')).toBe(19);
+  });
+});
+
+describe('canonical SRS contract', () => {
+  it('matches every generated golden fixture', () => {
+    for (const fixture of SRS_GOLDEN_FIXTURES) {
+      const input = card({
+        srs_interval: fixture.card.srs_interval,
+        ease_factor: fixture.card.ease_factor,
+        learning_step: fixture.card.learning_step,
+        prompt_stage: fixture.card.prompt_stage,
+        last_reviewed_at: fixture.card.srs_interval > 0 ? '2026-06-01T00:00:00.000Z' : null,
+      });
+      const next = computeNextReviewState(input, fixture.answer);
+      expect({
+        srs_interval: next.srsInterval,
+        ease_factor: next.easeFactor,
+        learning_step: next.learningStep,
+        due_seconds: next.dueSeconds,
+        correct_delta: fixture.answer === 'again' ? 0 : 1,
+        incorrect_delta: fixture.answer === 'again' ? 1 : 0,
+        prompt_stage: nextPromptStage(input, fixture.answer),
+      }, fixture.name).toEqual(fixture.expected);
+    }
   });
 });
 

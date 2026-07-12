@@ -1,4 +1,5 @@
 import { readFileSync } from 'fs';
+import logger from '../logger.js';
 
 // ---------------------------------------------------------------------------
 // Word frequency from wordfreq's blended Zipf data.
@@ -12,9 +13,19 @@ import { readFileSync } from 'fs';
 // ---------------------------------------------------------------------------
 
 const FREQ_LANGS = ['en', 'es', 'pt', 'fr', 'de', 'ja'];
+const supportedLanguages = new Set(FREQ_LANGS);
 
 const langMaps = new Map(); // lang -> Map(word -> zipf)
-for (const lang of FREQ_LANGS) {
+export function frequencyCacheStats() {
+  return {
+    loadedLanguages: [...langMaps.keys()].sort(),
+    entryCount: [...langMaps.values()].reduce((sum, map) => sum + map.size, 0),
+    maximumLanguages: FREQ_LANGS.length,
+  };
+}
+function loadLanguage(lang) {
+  const existing = langMaps.get(lang);
+  if (existing) return existing;
   const filePath = new URL(`../data/frequency/${lang}.txt`, import.meta.url);
   const map = new Map();
   const text = readFileSync(filePath, 'utf-8');
@@ -27,12 +38,13 @@ for (const lang of FREQ_LANGS) {
     if (word && !Number.isNaN(zipf)) map.set(word, zipf);
   }
   langMaps.set(lang, map);
+  return map;
 }
 
 function langKey(targetLang) {
   if (!targetLang) return null;
   const base = targetLang.toLowerCase().split('-')[0];
-  return langMaps.has(base) ? base : null;
+  return supportedLanguages.has(base) ? base : null;
 }
 
 // Continuous Zipf (log10 occurrences per billion) -> 1-10 learner band. Thresholds approximate
@@ -60,21 +72,18 @@ function parseForms(forms) {
       try {
         const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) return parsed;
-      } catch { /* fall through to comma split */ }
+      } catch (error) {
+        logger.warn({
+          event: 'legacy_word_forms_parser_used',
+          operation: 'frequency-lookup',
+          inputLength: trimmed.length,
+          err: error,
+        }, 'Malformed JSON word forms used the legacy comma parser');
+      }
     }
     return trimmed.split(',').map((s) => s.trim()).filter(Boolean);
   }
   return [];
-}
-
-/**
- * Look up a single word's Zipf value in a language's table. Returns null if absent.
- */
-export function getZipf(word, targetLang) {
-  const lang = langKey(targetLang);
-  if (!lang || !word) return null;
-  const z = langMaps.get(lang).get(String(word).toLowerCase());
-  return z ?? null;
 }
 
 /**
@@ -92,7 +101,7 @@ export function getZipf(word, targetLang) {
 export function applyCorpusFrequency(word, targetLang, currentFrequency, { lemma = null, forms = null } = {}) {
   const lang = langKey(targetLang);
   if (!lang) return { frequency: currentFrequency ?? null, frequency_count: null, zipf: null };
-  const map = langMaps.get(lang);
+  const map = loadLanguage(lang);
 
   // Every surface token that counts toward this lemma's frequency.
   const tokens = new Set();

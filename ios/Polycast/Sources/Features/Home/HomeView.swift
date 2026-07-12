@@ -99,15 +99,10 @@ struct HomeView: View {
         "de": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Neuschwanstein_Castle_from_Marienbr%C3%BCcke%2C_2011_May.jpg/960px-Neuschwanstein_Castle_from_Marienbr%C3%BCcke%2C_2011_May.jpg",
     ]
 
-    private static let languageNames: [String: String] = [
-        "en": "English", "es": "Spanish", "pt": "Brazilian Portuguese",
-        "fr": "French", "ja": "Japanese", "de": "German",
-    ]
-
     private var banner: some View {
         let lang = session.user?.targetLanguage
         let bannerUrl = lang.flatMap { Self.languageBanners[$0] }.flatMap { URL(string: $0) }
-        let langName = lang.flatMap { Self.languageNames[$0] }
+        let langName = LanguageOptions.name(for: lang)
         let firstName = session.user?.displayName ?? session.user?.username ?? "Polycast"
 
         return ZStack(alignment: .bottomLeading) {
@@ -377,7 +372,7 @@ struct HomeView: View {
                         trending.removeAll { result.blocked.contains($0.youtubeId) || result.shorts.contains($0.youtubeId) }
                     }
                 } catch {
-                    print("[Polycast] Home playability filter failed: \(error)")
+                    PolycastLog.runtime.error("[Polycast] Home playability filter failed: \(error)")
                 }
             }
         } catch {

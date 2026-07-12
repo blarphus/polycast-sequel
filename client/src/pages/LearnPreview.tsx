@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.learnpreview');
 // ---------------------------------------------------------------------------
 // pages/LearnPreview.tsx -- Stage preview/simulator for flashcard prompt types
 // ---------------------------------------------------------------------------
 
+import '../styles/learn.css';
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDueWords, getSavedWords, proxyImageUrl, type SavedWord } from '../api';
@@ -46,7 +49,7 @@ export default function LearnPreview() {
           });
         }
       })
-      .catch((err) => console.error('Failed to load preview card:', err))
+      .catch((err) => runtimeLog.error('Failed to load preview card:', err))
       .finally(() => setLoading(false));
   }, []);
 

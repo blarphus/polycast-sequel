@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.phrasetranslator');
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { explainSelection, translatePhrase } from '../api';
@@ -127,22 +129,23 @@ export default function PhraseTranslator() {
       })
       .catch((err) => {
         if (id !== requestIdRef.current) return;
-        console.error('Phrase translation failed:', err);
+        runtimeLog.error('Phrase translation failed:', err);
         setError(true);
         setLoading(false);
       });
   }, [popup, targetLang, nativeLang]);
 
   const requestExplanation = async () => {
-    if (!popup?.context) return;
+    if (!popup?.context || !targetLang) return;
     const requestPopup = popup;
+    const requestContext = popup.context;
     const id = ++explanationRequestIdRef.current;
     setExplanationLoading(true);
     setExplanationError('');
     try {
       const result = await explainSelection(
         requestPopup.phrase,
-        requestPopup.context,
+        requestContext,
         nativeLang,
         targetLang,
       );

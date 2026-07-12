@@ -27,7 +27,13 @@ function parseJob(raw) {
       language: parsed.language,
       attempt: Number(parsed.attempt || 1),
     };
-  } catch {
+  } catch (error) {
+    logger.warn({
+      event: 'transcript_queue_payload_rejected',
+      operation: 'parse-transcript-job',
+      payloadLength: String(raw || '').length,
+      err: error,
+    }, 'Malformed transcript queue payload rejected');
     return null;
   }
 }

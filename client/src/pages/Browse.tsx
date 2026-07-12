@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.browse');
 // ---------------------------------------------------------------------------
 // pages/Browse.tsx -- YouTube-like browse page with trending grid + search
 // ---------------------------------------------------------------------------
 
+import '../styles/browse.css';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -51,7 +54,7 @@ export default function Browse() {
         filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
-        console.error('Failed to fetch trending videos:', err);
+        runtimeLog.error('Failed to fetch trending videos:', err);
         if (!cancelled) setError('Failed to load videos. Please try again.');
       })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -60,7 +63,7 @@ export default function Browse() {
       .then((data) => {
         if (!cancelled) setLessons(data.filter((l) => l.videoCount > 0));
       })
-      .catch((err) => console.error('Failed to fetch lessons:', err))
+      .catch((err) => runtimeLog.error('Failed to fetch lessons:', err))
       .finally(() => { if (!cancelled) setLessonsLoading(false); });
 
     return () => { cancelled = true; };
@@ -82,7 +85,7 @@ export default function Browse() {
         filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
-        console.error('Search failed:', err);
+        runtimeLog.error('Search failed:', err);
         setError('Search failed. Please try again.');
       })
       .finally(() => setLoading(false));
@@ -104,7 +107,7 @@ export default function Browse() {
         filterUnplayableVideos(v, setVideos);
       })
       .catch((err) => {
-        console.error('Failed to fetch trending videos:', err);
+        runtimeLog.error('Failed to fetch trending videos:', err);
         setError('Failed to load videos. Please try again.');
       })
       .finally(() => setLoading(false));

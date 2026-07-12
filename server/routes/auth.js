@@ -7,34 +7,43 @@ import {
   comparePassword,
   signToken,
   verifyToken,
+  isSessionActive,
+  revokeSession,
   authMiddleware,
   COOKIE_OPTIONS,
+  COOKIE_CLEAR_OPTIONS,
 } from '../auth.js';
 import { validate } from '../lib/validate.js';
+import {
+  assertProfileAccess,
+  attachProfileSession,
+  forgetProfile,
+  listProfileAccounts,
+} from '../lib/profileSessions.js';
+import { serializeAuthUser } from '../lib/authResponse.js';
 
 const signupSchema = z.object({
   username: z.string().min(1, 'Username is required').max(40, 'Username must be 40 characters or fewer').trim(),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   display_name: z.string().trim().optional(),
-});
+}).strict();
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Username is required').trim(),
   password: z.string().min(1, 'Password is required'),
-});
+}).strict();
 
 const restoreSessionSchema = z.object({
   token: z.string().min(1, 'token is required'),
-});
+}).strict();
 
 const settingsSchema = z.object({
   native_language: z.string().optional(),
   target_language: z.string().optional(),
   daily_new_limit: z.number().optional(),
   daily_word_goal: z.number().int().min(1).max(50).optional(),
-  account_type: z.enum(['student', 'teacher']).optional(),
   cefr_level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).nullable().optional(),
-});
+}).strict();
 
 const router = Router();
 
@@ -67,28 +76,17 @@ router.post('/api/signup', signupLimiter, validate({ body: signupSchema }), asyn
     const result = await pool.query(
       `INSERT INTO users (username, password_hash, display_name)
        VALUES ($1, $2, $3)
-       RETURNING id, username, display_name, created_at, native_language, target_language, daily_word_goal, total_xp, account_type, cefr_level`,
+       RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit, daily_word_goal, total_xp, account_type, cefr_level`,
       [username, passwordHash, display_name || null],
     );
 
     const user = result.rows[0];
-    const token = signToken(user.id);
+    const token = await signToken(user.id);
 
     res.cookie('token', token, COOKIE_OPTIONS);
+    await attachProfileSession(req, res, user.id);
 
-    return res.status(201).json({
-      token,
-      id: user.id,
-      username: user.username,
-      display_name: user.display_name,
-      created_at: user.created_at,
-      native_language: user.native_language,
-      target_language: user.target_language,
-      daily_word_goal: user.daily_word_goal,
-      total_xp: user.total_xp,
-      account_type: user.account_type,
-      cefr_level: user.cefr_level ?? null,
-    });
+    return res.status(201).json(serializeAuthUser(user, token));
   } catch (err) {
     // Unique constraint violation on username
     if (err.code === '23505') {
@@ -109,7 +107,7 @@ router.post('/api/login', loginLimiter, validate({ body: loginSchema }), async (
     const { username, password } = req.body;
 
     const result = await pool.query(
-      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, daily_word_goal, total_xp, account_type, cefr_level FROM users WHERE LOWER(username::text) = LOWER($1::text)',
+      'SELECT id, username, password_hash, display_name, created_at, native_language, target_language, daily_new_limit, daily_word_goal, total_xp, account_type, cefr_level FROM users WHERE LOWER(username::text) = LOWER($1::text)',
       [username],
     );
 
@@ -125,23 +123,12 @@ router.post('/api/login', loginLimiter, validate({ body: loginSchema }), async (
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    const token = signToken(user.id);
+    const token = await signToken(user.id);
 
     res.cookie('token', token, COOKIE_OPTIONS);
+    await attachProfileSession(req, res, user.id);
 
-    return res.json({
-      token,
-      id: user.id,
-      username: user.username,
-      display_name: user.display_name,
-      created_at: user.created_at,
-      native_language: user.native_language,
-      target_language: user.target_language,
-      daily_word_goal: user.daily_word_goal,
-      total_xp: user.total_xp,
-      account_type: user.account_type,
-      cefr_level: user.cefr_level ?? null,
-    });
+    return res.json(serializeAuthUser(user, token));
   } catch (err) {
     req.log.error({ err }, 'Login error');
     return res.status(500).json({ error: 'Internal server error' });
@@ -155,7 +142,7 @@ router.post('/api/login', loginLimiter, validate({ body: loginSchema }), async (
 router.post('/api/session/restore', validate({ body: restoreSessionSchema }), async (req, res) => {
   try {
     const decoded = verifyToken(req.body.token);
-    if (!decoded?.userId) {
+    if (!decoded?.userId || !await isSessionActive(decoded)) {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
@@ -169,23 +156,11 @@ router.post('/api/session/restore', validate({ body: restoreSessionSchema }), as
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const token = signToken(user.id);
+    await revokeSession(decoded.sessionId, decoded.userId);
+    const token = await signToken(user.id);
     res.cookie('token', token, COOKIE_OPTIONS);
 
-    return res.json({
-      id: user.id,
-      username: user.username,
-      display_name: user.display_name,
-      created_at: user.created_at,
-      native_language: user.native_language,
-      target_language: user.target_language,
-      daily_new_limit: user.daily_new_limit,
-      daily_word_goal: user.daily_word_goal,
-      total_xp: user.total_xp,
-      account_type: user.account_type,
-      cefr_level: user.cefr_level ?? null,
-      token,
-    });
+    return res.json(serializeAuthUser(user, token));
   } catch (err) {
     req.log.error({ err }, 'Restore session error');
     return res.status(500).json({ error: 'Internal server error' });
@@ -194,12 +169,12 @@ router.post('/api/session/restore', validate({ body: restoreSessionSchema }), as
 
 /**
  * POST /api/session/export
- * Issue a fresh JWT for the current authenticated user so the client can save it locally
- * for fast account switching on this device.
+ * Rotate the current native/extension bearer session.
  */
 router.post('/api/session/export', authMiddleware, async (req, res) => {
   try {
-    const token = signToken(req.userId);
+    await revokeSession(req.sessionId, req.userId);
+    const token = await signToken(req.userId);
     res.cookie('token', token, COOKIE_OPTIONS);
     return res.json({ token });
   } catch (err) {
@@ -208,12 +183,57 @@ router.post('/api/session/export', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/api/session/accounts', async (req, res) => {
+  try {
+    return res.json({ accounts: await listProfileAccounts(req) });
+  } catch (err) {
+    req.log.error({ err }, 'List profile sessions error');
+    return res.status(500).json({ error: 'Failed to list profiles' });
+  }
+});
+
+router.post('/api/session/switch', validate({ body: z.object({ userId: z.string().uuid() }) }), async (req, res) => {
+  try {
+    if (!await assertProfileAccess(req, req.body.userId)) {
+      return res.status(403).json({ error: 'Profile is not available on this device' });
+    }
+    const { rows } = await pool.query(
+      'SELECT id, username, display_name, created_at, native_language, target_language, daily_new_limit, daily_word_goal, total_xp, account_type, cefr_level FROM users WHERE id = $1',
+      [req.body.userId],
+    );
+    const user = rows[0];
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const token = await signToken(user.id);
+    res.cookie('token', token, COOKIE_OPTIONS);
+    return res.json(serializeAuthUser(user));
+  } catch (err) {
+    req.log.error({ err }, 'Switch profile session error');
+    return res.status(500).json({ error: 'Failed to switch profile' });
+  }
+});
+
+router.delete('/api/session/accounts/:userId', async (req, res) => {
+  try {
+    if (!/^[0-9a-f-]{36}$/i.test(req.params.userId)) return res.status(400).json({ error: 'Invalid user ID' });
+    await forgetProfile(req, req.params.userId);
+    return res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, 'Forget profile session error');
+    return res.status(500).json({ error: 'Failed to forget profile' });
+  }
+});
+
 /**
  * POST /api/logout
  * Clear the token cookie.
  */
-router.post('/api/logout', (_req, res) => {
-  res.clearCookie('token', COOKIE_OPTIONS);
+router.post('/api/logout', async (req, res) => {
+  const rawToken = req.cookies?.token || req.headers.authorization?.replace(/^Bearer\s+/i, '');
+  const decoded = rawToken ? verifyToken(rawToken) : null;
+  if (decoded?.sessionId && decoded?.userId) {
+    await revokeSession(decoded.sessionId, decoded.userId);
+  }
+  res.clearCookie('token', COOKIE_CLEAR_OPTIONS);
 
   return res.json({ message: 'Logged out' });
 });
@@ -235,19 +255,7 @@ router.get('/api/me', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    return res.json({
-      id: user.id,
-      username: user.username,
-      display_name: user.display_name,
-      created_at: user.created_at,
-      native_language: user.native_language,
-      target_language: user.target_language,
-      daily_new_limit: user.daily_new_limit,
-      daily_word_goal: user.daily_word_goal,
-      total_xp: user.total_xp,
-      account_type: user.account_type,
-      cefr_level: user.cefr_level ?? null,
-    });
+    return res.json(serializeAuthUser(user));
   } catch (err) {
     req.log.error({ err }, 'Get current user error');
     return res.status(500).json({ error: 'Internal server error' });
@@ -260,7 +268,7 @@ router.get('/api/me', authMiddleware, async (req, res) => {
  */
 router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema }), async (req, res) => {
   try {
-    const { native_language, target_language, daily_new_limit, daily_word_goal, account_type, cefr_level } = req.body;
+    const { native_language, target_language, daily_new_limit, daily_word_goal, cefr_level } = req.body;
 
     // Build SET clauses and params dynamically
     const sets = ['native_language = $1', 'target_language = $2'];
@@ -275,11 +283,6 @@ router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema
     if (daily_word_goal != null) {
       sets.push(`daily_word_goal = $${idx}`);
       params.push(daily_word_goal);
-      idx++;
-    }
-    if (account_type) {
-      sets.push(`account_type = $${idx}`);
-      params.push(account_type);
       idx++;
     }
 
@@ -301,19 +304,7 @@ router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema
       return res.status(404).json({ error: 'User not found' });
     }
 
-    return res.json({
-      id: user.id,
-      username: user.username,
-      display_name: user.display_name,
-      created_at: user.created_at,
-      native_language: user.native_language,
-      target_language: user.target_language,
-      daily_new_limit: user.daily_new_limit,
-      daily_word_goal: user.daily_word_goal,
-      total_xp: user.total_xp,
-      account_type: user.account_type,
-      cefr_level: user.cefr_level ?? null,
-    });
+    return res.json(serializeAuthUser(user));
   } catch (err) {
     req.log.error({ err }, 'Update settings error');
     return res.status(500).json({ error: 'Internal server error' });

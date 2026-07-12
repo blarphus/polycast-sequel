@@ -1,0 +1,458 @@
+{
+  "generatedAt": "2026-07-12T14:57:47.749Z",
+  "totals": {
+    "occurrences": 56,
+    "uniqueCodes": 53,
+    "incompleteOccurrences": 0
+  },
+  "entries": [
+    {
+      "code": "audio_session_configuration_fallback",
+      "file": "ios/Polycast/Sources/Core/AudioPlayer.swift",
+      "line": 27,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "audiobook_audio_session_fallback",
+      "file": "ios/Polycast/Sources/Core/AudiobookPlayer.swift",
+      "line": 53,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "call_signal_target_unavailable",
+      "file": "server/socket/signaling.js",
+      "line": 54,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "caption_language_track_fallback",
+      "file": "cf-worker/src/handlers/transcript.js",
+      "line": 46,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "channel_page_playability_filter_fallback",
+      "file": "ios/Polycast/Sources/Features/Browse/ChannelDetailView.swift",
+      "line": 187,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "channel_playability_filter_fallback",
+      "file": "ios/Polycast/Sources/Features/Browse/ChannelDetailView.swift",
+      "line": 144,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "daily_goal_storage_repaired",
+      "file": "client/src/utils/dailyGoal.ts",
+      "line": 28,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "declared_page_language_fallback",
+      "file": "extension/background.js",
+      "line": 951,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "dictionary_forms_display_fallback",
+      "file": "client/src/pages/Dictionary.tsx",
+      "line": 111,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "epub_chapter_cache_miss_fallback",
+      "file": "ios/Polycast/Sources/Core/BookLibrary.swift",
+      "line": 74,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "epub_sentence_segmenter_fallback",
+      "file": "client/src/utils/epub.ts",
+      "line": 113,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "extension_offline_login_used",
+      "file": "extension/background.js",
+      "line": 604,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "extension_offline_status_used",
+      "file": "extension/background.js",
+      "line": 666,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "fallback_header_invalid",
+      "file": "client/src/api/core.ts",
+      "line": 59,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "fallback_header_invalid",
+      "file": "ios/Polycast/Sources/Core/APIClient.swift",
+      "line": 128,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "group_call_degraded",
+      "file": "client/src/hooks/useGroupCall.ts",
+      "line": 68,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "group_call_join_fallback",
+      "file": "server/socket/groupCall.js",
+      "line": 145,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "highlight_dom_mutation_fallback",
+      "file": "extension/content/pageHighlights.js",
+      "line": 227,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "highlight_range_lookup_fallback",
+      "file": "extension/content/pageHighlights.js",
+      "line": 376,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "language_display_name_fallback",
+      "file": "extension/content/shared.js",
+      "line": 172,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "lesson_playability_filter_fallback",
+      "file": "ios/Polycast/Sources/Features/Browse/LessonDetailView.swift",
+      "line": 61,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "local_video_directory_restore_fallback",
+      "file": "client/src/utils/localVideoStore.ts",
+      "line": 65,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "login_error_payload_fallback",
+      "file": "extension/background.js",
+      "line": 620,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "network_retry_used",
+      "file": "ios/Polycast/Sources/Core/APIClient.swift",
+      "line": 197,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "offline_daily_goal_used",
+      "file": "extension/background.js",
+      "line": 839,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "offline_dictionary_storage_repaired",
+      "file": "client/src/api/offlineDictionary.ts",
+      "line": 100,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "offline_dictionary_used",
+      "file": "client/src/api/core.ts",
+      "line": 70,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "offline_profile_storage_repaired",
+      "file": "client/src/api/offlineDictionary.ts",
+      "line": 58,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "page_language_unavailable",
+      "file": "extension/background.js",
+      "line": 966,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "pixabay_provider_unconfigured",
+      "file": "server/lib/imageSearch.js",
+      "line": 9,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "pixabay_provider_unconfigured",
+      "file": "server/lib/imageSearch.js",
+      "line": 15,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "popup_language_name_fallback",
+      "file": "extension/popup/popup.js",
+      "line": 62,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "PRACTICE_IMAGE_UNAVAILABLE",
+      "file": "server/services/learningSessionService.js",
+      "line": 335,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "PRACTICE_SENTENCE_FALLBACK",
+      "file": "server/services/learningSessionService.js",
+      "line": 328,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "PRACTICE_SENTENCE_FALLBACK",
+      "file": "server/services/learningSessionService.js",
+      "line": 350,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "PRACTICE_VIDEO_POOL_FALLBACK",
+      "file": "server/services/learningSessionService.js",
+      "line": 297,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "recall_forms_parser_fallback",
+      "file": "extension/content/pageHighlights.js",
+      "line": 139,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "region_detection_fallback",
+      "file": "client/src/api/videos.ts",
+      "line": 73,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "selection_popup_unavailable",
+      "file": "extension/background/activation.js",
+      "line": 109,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "selection_top_frame_fallback",
+      "file": "extension/background/activation.js",
+      "line": 93,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "session_token_refresh_fallback",
+      "file": "ios/Polycast/Sources/App/SessionStore.swift",
+      "line": 166,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "speech_audio_unavailable",
+      "file": "ios/Polycast/Sources/Core/AudioPlayer.swift",
+      "line": 86,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "speech_error_payload_fallback",
+      "file": "client/src/utils/aiSpeech.ts",
+      "line": 77,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "speech_preload_fallback",
+      "file": "ios/Polycast/Sources/Core/AudioPlayer.swift",
+      "line": 164,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "stage_sentence_generation_fallback",
+      "file": "server/lib/srsUpdate.js",
+      "line": 140,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "transcript_language_name_fallback",
+      "file": "client/src/components/TranscriptPanel.tsx",
+      "line": 42,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "transcript_worker_fallback",
+      "file": "server/routes/videos.js",
+      "line": 101,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "tts_openai_fallback_used",
+      "file": "server/routes/dictionary/mediaRoutes.js",
+      "line": 49,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "tts_provider_fallback",
+      "file": "client/src/components/TtsFallbackToast.tsx",
+      "line": 33,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "widget_cached_snapshot_fallback",
+      "file": "ios/Polycast/Sources/App/SessionStore.swift",
+      "line": 202,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "wild_recall_catalog_fallback",
+      "file": "extension/background.js",
+      "line": 1047,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "wild_recall_offline_unavailable",
+      "file": "extension/background.js",
+      "line": 1023,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "wild_recall_preparation_fallback",
+      "file": "extension/background.js",
+      "line": 1089,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "word_audio_preload_fallback",
+      "file": "ios/Polycast/Sources/Core/AudioPlayer.swift",
+      "line": 144,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "word_audio_unavailable",
+      "file": "ios/Polycast/Sources/Core/AudioPlayer.swift",
+      "line": 68,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "youtube_caption_bridge_retry",
+      "file": "extension/content/youtube-page.js",
+      "line": 64,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    }
+  ]
+}

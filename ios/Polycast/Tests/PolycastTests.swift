@@ -50,6 +50,32 @@ final class PolycastTests: XCTestCase {
         XCTAssertNil(client.authorizedRequest(for: externalURL).value(forHTTPHeaderField: "Authorization"))
     }
 
+    @MainActor
+    func testUnauthorizedResponseInvalidatesSessionOnceWithVisibleDiagnostic() async {
+        let client = APIClient.shared
+        let previousToken = client.token
+        defer { client.token = previousToken }
+        client.token = "expired-test-token"
+
+        let notification = expectation(
+            forNotification: APIClient.sessionExpiredNotification,
+            object: client
+        ) { event in
+            event.userInfo?["path"] as? String == "/dictionary/words"
+        }
+
+        client.invalidateSessionAfterUnauthorizedResponse(path: "/dictionary/words")
+        client.invalidateSessionAfterUnauthorizedResponse(path: "/progression")
+        await fulfillment(of: [notification], timeout: 2)
+
+        XCTAssertNil(client.token)
+        XCTAssertEqual(FallbackNoticeCenter.shared.notice?.code, "session_expired")
+        XCTAssertEqual(FallbackNoticeCenter.shared.notice?.severity, "error")
+        XCTAssertEqual(FallbackNoticeCenter.shared.notice?.source, "ios.api")
+        XCTAssertEqual(FallbackNoticeCenter.shared.notice?.operation, "invalidate-session")
+        XCTAssertTrue(FallbackNoticeCenter.shared.notice?.detail?.contains("status=401") == true)
+    }
+
     func testReaderPaginationProducesOrderedFixedPagesWithoutLosingText() {
         let sentences = (1...80).map {
             "Sentence \($0) contains enough words to exercise the mobile reader pagination."
@@ -174,27 +200,23 @@ final class PolycastTests: XCTestCase {
         XCTAssertEqual(studyQueueCounts(cards: [updated][...]), StudyQueueCounts(new: 1, learning: 0, review: 0))
     }
 
-    func testStudyQueueSpacesNewCardsThroughReviews() {
-        let reviewedAt = "2026-06-10T15:00:00Z"
-        let reviews = (1...100).map { index in
-            makeSRSCard(id: "review-\(index)", srsInterval: 86_400, lastReviewedAt: reviewedAt)
-        }
-        let newCards = (1...20).map { index in
-            makeSRSCard(id: "new-\(index)")
-        }
+    func testCanonicalSRSGoldenFixtures() {
+        for fixture in GeneratedSRSContract.goldenFixtures {
+            let card = makeSRSCard(
+                srsInterval: fixture.card.srsInterval,
+                lastReviewedAt: fixture.card.srsInterval > 0 ? "2026-06-01T00:00:00Z" : nil,
+                learningStep: fixture.card.learningStep
+            ).withSRSContractState(fixture.card)
+            let updated = applyAnswerLocally(card: card, answer: fixture.answer)
 
-        let queue = interleavedStudyQueue(reviews + newCards)
-
-        XCTAssertEqual(queue.prefix(6).map(\.id), [
-            "review-1",
-            "review-2",
-            "review-3",
-            "review-4",
-            "review-5",
-            "new-1",
-        ])
-        XCTAssertEqual(queue[11].id, "new-2")
-        XCTAssertEqual(queue[119].id, "new-20")
+            XCTAssertEqual(updated.srsInterval, fixture.expected.srsInterval, fixture.name)
+            XCTAssertEqual(updated.easeFactor, fixture.expected.easeFactor, accuracy: 0.000_001, fixture.name)
+            XCTAssertEqual(updated.learningStep, fixture.expected.learningStep, fixture.name)
+            XCTAssertEqual(getNextDueSeconds(card: card, answer: fixture.answer), fixture.expected.dueSeconds, fixture.name)
+            XCTAssertEqual(updated.correctCount, fixture.expected.correctDelta, fixture.name)
+            XCTAssertEqual(updated.incorrectCount, fixture.expected.incorrectDelta, fixture.name)
+            XCTAssertEqual(updated.promptStage, fixture.expected.promptStage, fixture.name)
+        }
     }
 
     func testFailingRelearningCardAgainKeepsOneRedCard() {
@@ -259,6 +281,53 @@ final class PolycastTests: XCTestCase {
 
         XCTAssertEqual(lookup.isExisting, true)
         XCTAssertEqual(lookup.savedWordId, "saved-1")
+    }
+
+    func testCanonicalAuthFixturesDecodeAndRequiredFieldsFailClosed() throws {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let session = try decoder.decode(AuthResponse.self, from: Data(apiGoldenAuthSessionJSON.utf8))
+        XCTAssertEqual(session.id, "11111111-1111-4111-8111-111111111111")
+        XCTAssertEqual(session.user.dailyNewLimit, 5)
+        XCTAssertEqual(session.user.accountType, "student")
+
+        let missingRequired = apiGoldenAuthUserJSON.replacingOccurrences(of: "\"total_xp\":120,", with: "")
+        XCTAssertThrowsError(try decoder.decode(AuthUser.self, from: Data(missingRequired.utf8)))
+    }
+
+    func testCanonicalFallbackTranscriptSocketAndExtensionFixturesDecode() throws {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let fallback = try decoder.decode(APIContractFallbackDiagnostic.self, from: Data(apiGoldenFallbackDiagnosticJSON.utf8))
+        let transcript = try decoder.decode(APIContractTranscriptResponse.self, from: Data(apiGoldenTranscriptResponseJSON.utf8))
+        let signal = try decoder.decode(APIContractGroupCallSignal.self, from: Data(apiGoldenGroupCallSignalJSON.utf8))
+        let callSignal = try decoder.decode(APIContractCallSignal.self, from: Data(apiGoldenCallSignalJSON.utf8))
+        let extensionMessage = try decoder.decode(APIContractExtensionMessage.self, from: Data(apiGoldenExtensionMessageJSON.utf8))
+
+        XCTAssertEqual(fallback.correlationId, "contract-correlation-1")
+        XCTAssertEqual(transcript.segments.first?.words.last?.offset, 450)
+        XCTAssertEqual(signal.roomId, "22222222-2222-4222-8222-222222222222")
+        XCTAssertEqual(callSignal.callId, "55555555-5555-4555-8555-555555555555")
+        XCTAssertEqual(extensionMessage.hostname, "example.test")
+
+        let missingDuration = apiGoldenTranscriptResponseJSON.replacingOccurrences(of: "\"duration\":900,", with: "")
+        XCTAssertThrowsError(try decoder.decode(APIContractTranscriptResponse.self, from: Data(missingDuration.utf8)))
+    }
+
+    func testCanonicalTranscriptAndTokenizationFixtures() {
+        for fixture in GeneratedTranscriptFixtures.contract.tokenization {
+            let actual = tokenize(fixture.input)
+            XCTAssertEqual(actual.map(\.text), fixture.tokens.map(\.text), fixture.name)
+            XCTAssertEqual(actual.map(\.isWord), fixture.tokens.map(\.isWord), fixture.name)
+            XCTAssertEqual(actual.map(\.text).joined(), fixture.input, fixture.name)
+        }
+
+        for fixture in GeneratedTranscriptFixtures.contract.srt {
+            let actual = SRTParser.parse(fixture.input)
+            XCTAssertEqual(actual.map(\.text), fixture.segments.map(\.text), fixture.name)
+            XCTAssertEqual(actual.map(\.offset), fixture.segments.map(\.offset), fixture.name)
+            XCTAssertEqual(actual.map(\.duration), fixture.segments.map(\.duration), fixture.name)
+        }
     }
 
     private func makeSRSCard(
@@ -497,31 +566,14 @@ final class PolycastTests: XCTestCase {
         XCTAssertEqual(tokens.map(\.text).joined(), "como si fuera una tarta para ver")
     }
 
-    func testVideoOwnerIncludesChannelIdentityAndLargestAvatar() {
-        let json: [String: Any] = [
-            "videoOwnerRenderer": [
-                "title": ["runs": [["text": "Ter"]]],
-                "navigationEndpoint": [
-                    "browseEndpoint": [
-                        "browseId": "UCCNgRIfWQKZyPkNvHEzPh7Q",
-                        "canonicalBaseUrl": "/@Ter",
-                    ],
-                ],
-                "thumbnail": [
-                    "thumbnails": [
-                        ["url": "https://example.com/small.jpg", "width": 48],
-                        ["url": "https://example.com/large.jpg", "width": 176],
-                    ],
-                ],
-            ],
-        ]
+    func testRelatedContentContractPreservesChannelIdentity() throws {
+        let data = #"{"channelName":"Ter","channelHandle":"Ter","channelID":"UCCNgRIfWQKZyPkNvHEzPh7Q","channelAvatarURL":"https://example.com/large.jpg","videos":[]}"#.data(using: .utf8)!
+        let content = try JSONDecoder().decode(RelatedContent.self, from: data)
 
-        let owner = TranscriptWorkerClient.findVideoOwner(json)
-
-        XCTAssertEqual(owner?.name, "Ter")
-        XCTAssertEqual(owner?.handle, "Ter")
-        XCTAssertEqual(owner?.id, "UCCNgRIfWQKZyPkNvHEzPh7Q")
-        XCTAssertEqual(owner?.avatarURL, "https://example.com/large.jpg")
+        XCTAssertEqual(content.channelName, "Ter")
+        XCTAssertEqual(content.channelHandle, "Ter")
+        XCTAssertEqual(content.channelID, "UCCNgRIfWQKZyPkNvHEzPh7Q")
+        XCTAssertEqual(content.channelAvatarURL, "https://example.com/large.jpg")
     }
 
     func testWatchChannelUsesCanonicalCuratedHandle() {
@@ -574,6 +626,40 @@ private extension SavedWord {
             easeFactor: easeFactor,
             learningStep: learningStep,
             promptStage: stage,
+            imageUrl: imageUrl,
+            lemma: lemma,
+            forms: forms,
+            priority: priority,
+            imageTerm: imageTerm,
+            queuePosition: queuePosition,
+            introducedDate: introducedDate,
+            relearningDate: relearningDate,
+            stageSentences: stageSentences
+        )
+    }
+
+    func withSRSContractState(_ state: SRSContractState) -> SavedWord {
+        SavedWord(
+            id: id,
+            word: word,
+            translation: translation,
+            definition: definition,
+            targetLanguage: targetLanguage,
+            sentenceContext: sentenceContext,
+            createdAt: createdAt,
+            frequency: frequency,
+            frequencyCount: frequencyCount,
+            exampleSentence: exampleSentence,
+            sentenceTranslation: sentenceTranslation,
+            partOfSpeech: partOfSpeech,
+            srsInterval: state.srsInterval,
+            dueAt: dueAt,
+            lastReviewedAt: lastReviewedAt,
+            correctCount: correctCount,
+            incorrectCount: incorrectCount,
+            easeFactor: state.easeFactor,
+            learningStep: state.learningStep,
+            promptStage: state.promptStage,
             imageUrl: imageUrl,
             lemma: lemma,
             forms: forms,

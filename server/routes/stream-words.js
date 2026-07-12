@@ -234,9 +234,14 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, valid
 
     let added = 0;
     let skipped = 0;
+    const fallbackNotices = [];
 
     for (const w of wordsToAdd) {
-      const imageUrl = w.image_url !== null ? w.image_url : await fetchWordImage(w.image_term || w.translation || w.word);
+      const imageUrl = w.image_url !== null ? w.image_url : await fetchWordImage(
+        w.image_term || w.translation || w.word,
+        null,
+        (diagnostic) => fallbackNotices.push(diagnostic),
+      );
       const { rowCount } = await pool.query(
         `INSERT INTO saved_words
            (user_id, word, translation, definition, target_language, part_of_speech,
@@ -264,7 +269,7 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, valid
       [req.userId, req.params.postId],
     );
 
-    return res.json({ added, skipped });
+    return res.json({ added, skipped, fallback_notices: fallbackNotices });
   } catch (err) {
     req.log.error({ err }, 'POST /api/stream/posts/:postId/add-to-dictionary error');
     return res.status(500).json({ error: err.message || 'Failed to add words to dictionary' });

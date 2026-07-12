@@ -97,7 +97,7 @@ struct ReaderFontChoice: Identifiable, Equatable {
             return .systemFont(ofSize: size, weight: bold ? .semibold : .regular)
         }
         if let font = UIFont(name: name, size: size) { return font }
-        print("[Polycast] Reader font \"\(name)\" is unavailable; using the system font instead.")
+        PolycastLog.runtime.error("[Polycast] Reader font \"\(name)\" is unavailable; using the system font instead.")
         return .systemFont(ofSize: size, weight: bold ? .semibold : .regular)
     }
 }

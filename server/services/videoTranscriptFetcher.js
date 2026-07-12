@@ -7,17 +7,17 @@ import {
   YoutubeTranscriptVideoUnavailableError,
 } from 'youtube-transcript-plus';
 import logger from '../logger.js';
+import { normalizeFallbackDiagnostic } from '../lib/fallbackDiagnostics.js';
+import { fetchTimedTranscript } from './mediaWorkerService.js';
 
 const YOUTUBE_TRANSCRIPT_REQUEST_TIMEOUT_MS =
   Number(process.env.YOUTUBE_TRANSCRIPT_REQUEST_TIMEOUT_MS || 20000);
 const YOUTUBE_TRANSCRIPT_USER_AGENT = process.env.YOUTUBE_TRANSCRIPT_USER_AGENT ||
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-const INNERTUBE_API_KEY = process.env.INNERTUBE_API_KEY || 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
+const INNERTUBE_API_KEY = process.env.INNERTUBE_API_KEY || '';
 const VCYON_API_KEY = process.env.VCYON_API_KEY || '';
 const VCYON_BASE_URL = 'https://api.vcyon.com/v1/youtube/transcript';
-const CF_TRANSCRIPT_WORKER_URL = process.env.CF_TRANSCRIPT_WORKER_URL || '';
-const CF_TRANSCRIPT_WORKER_SECRET = process.env.CF_TRANSCRIPT_WORKER_SECRET || '';
 
 export class TranscriptFetchError extends Error {
   constructor(message, code, transient = false) {
@@ -125,73 +125,18 @@ function parseTranscriptJson3(json3) {
 }
 
 async function fetchViaCfWorker(youtubeId, language, onProgress) {
-  if (!CF_TRANSCRIPT_WORKER_URL || !CF_TRANSCRIPT_WORKER_SECRET) {
-    throw new TranscriptFetchError('CF Worker not configured.', 'TRANSIENT_FETCH_ERROR', true);
-  }
-
-  const url = `${CF_TRANSCRIPT_WORKER_URL}?videoId=${youtubeId}&lang=${language}`;
-
-  let data;
   try {
-    const res = await fetchWithTimeout({
-      url,
-      headers: {
-        'Authorization': `Bearer ${CF_TRANSCRIPT_WORKER_SECRET}`,
-        'Accept': 'application/json',
-      },
-    });
-
     if (onProgress) onProgress(50);
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      logger.error('[cf-worker] HTTP %d: %s', res.status, body.slice(0, 200));
-      if (res.status === 404) {
-        throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
-      }
-      if (res.status === 401) {
-        throw new TranscriptFetchError('CF Worker auth misconfigured.', 'TRANSIENT_FETCH_ERROR', true);
-      }
-      const code = res.status === 429 ? 'BLOCKED_OR_RATE_LIMITED' : 'TRANSIENT_FETCH_ERROR';
-      throw new TranscriptFetchError(`CF Worker returned ${res.status}`, code, true);
+    const data = await fetchTimedTranscript(youtubeId, language, { userId: 'transcript-queue' });
+    if (data.segments.length === 0) {
+      throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
     }
-
-    data = await res.json();
+    if (onProgress) onProgress(80);
+    return { segments: data.segments, source: 'cf_worker', fallback_notices: data.fallback_notices || [] };
   } catch (err) {
     if (err instanceof TranscriptFetchError) throw err;
-    if (err?.name === 'AbortError') {
-      throw new TranscriptFetchError('CF Worker request timed out.', 'TRANSIENT_FETCH_ERROR', true);
-    }
     throw new TranscriptFetchError(`CF Worker request failed: ${err.message}`, 'TRANSIENT_FETCH_ERROR', true);
   }
-
-  if (!data?.success || !data?.segments || data.segments.length === 0) {
-    throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
-  }
-
-  const segments = [];
-  for (const seg of data.segments) {
-    const text = String(seg.text || '').replace(/\s+/g, ' ').trim();
-    if (!text) continue;
-
-    const startSeconds = Number(seg.start);
-    const durSeconds = Number(seg.dur);
-    if (!Number.isFinite(startSeconds) || !Number.isFinite(durSeconds)) continue;
-
-    segments.push({
-      text,
-      offset: Math.max(0, Math.round(startSeconds * 1000)),
-      duration: Math.max(0, Math.round(durSeconds * 1000)),
-    });
-  }
-
-  if (segments.length === 0) {
-    throw new TranscriptFetchError('No YouTube captions available for this video/language.', 'NO_CAPTIONS', false);
-  }
-
-  if (onProgress) onProgress(80);
-
-  return { segments, source: 'cf_worker' };
 }
 
 async function fetchViaVcyon(youtubeId, language, onProgress) {
@@ -262,6 +207,9 @@ async function fetchViaVcyon(youtubeId, language, onProgress) {
 }
 
 async function fetchViaInnertubeDirect(youtubeId, language, onProgress) {
+  if (!INNERTUBE_API_KEY) {
+    throw new TranscriptFetchError('InnerTube provider not configured.', 'TRANSIENT_FETCH_ERROR', true);
+  }
   // Step 1: Player API — get caption tracks
   const playerUrl = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_API_KEY}`;
   const playerBody = JSON.stringify({
@@ -379,40 +327,46 @@ async function fetchViaTranscriptPlus(youtubeId, language, onProgress) {
   }
 }
 
-export async function fetchYouTubeTranscript(youtubeId, language = 'en', onProgress) {
+export async function fetchYouTubeTranscript(youtubeId, language = 'en', onProgress, { skipWorker = false } = {}) {
   const normalizedLang = (language || 'en').trim().toLowerCase();
+  const attempts = [
+    ['youtubei', fetchViaTranscriptPlus],
+    ['innertube', fetchViaInnertubeDirect],
+    ...(skipWorker ? [] : [['cf_worker', fetchViaCfWorker]]),
+    ['vcyon', fetchViaVcyon],
+  ];
+  const errors = [];
+  const fallbackNotices = [];
 
-  try {
-    return await Promise.any([
-      fetchViaCfWorker(youtubeId, normalizedLang, onProgress),
-      fetchViaVcyon(youtubeId, normalizedLang, onProgress),
-      fetchViaInnertubeDirect(youtubeId, normalizedLang, onProgress),
-      fetchViaTranscriptPlus(youtubeId, normalizedLang, onProgress),
-    ]);
-  } catch (aggregateErr) {
-    // Promise.any rejects with AggregateError when ALL promises reject
-    const errors = aggregateErr.errors || [];
-    logger.error(
-      '[transcript] All methods failed for %s: %s',
-      youtubeId,
-      errors.map((e) => e.message).join('; '),
-    );
-
-    // If ANY method had a transient error, throw transient so the queue retries.
-    // Only throw NO_CAPTIONS when ALL methods agree it's non-transient.
-    const transientErr = errors.find(
-      (e) => e instanceof TranscriptFetchError && e.transient,
-    );
-    if (transientErr) throw transientErr;
-
-    // All errors are non-transient — throw the first one (e.g. NO_CAPTIONS)
-    const firstFetchErr = errors.find((e) => e instanceof TranscriptFetchError);
-    if (firstFetchErr) throw firstFetchErr;
-
-    throw errors[0] || new TranscriptFetchError(
-      'All transcript methods failed.',
-      'TRANSIENT_FETCH_ERROR',
-      true,
-    );
+  for (const [provider, fetcher] of attempts) {
+    try {
+      const result = await fetcher(youtubeId, normalizedLang, onProgress);
+      return { ...result, fallback_notices: fallbackNotices };
+    } catch (error) {
+      errors.push(error);
+      const diagnostic = normalizeFallbackDiagnostic({
+        code: 'transcript_provider_failed',
+        severity: 'warning',
+        title: 'Transcript provider fallback used',
+        message: `${provider} could not supply captions; Polycast is trying the next configured provider.`,
+        source: 'server.transcript',
+        operation: 'fetch-youtube-transcript',
+        detail: `videoId=${youtubeId}; language=${normalizedLang}; reason=${error?.message || 'unknown error'}`,
+      });
+      fallbackNotices.push(diagnostic);
+      logger.warn({ fallback: diagnostic, provider, videoId: youtubeId }, 'Transcript provider fallback used');
+    }
   }
+
+  logger.error({
+    videoId: youtubeId,
+    language: normalizedLang,
+    errors: errors.map((error) => ({ code: error?.code, transient: error?.transient, message: error?.message })),
+  }, 'All transcript providers failed');
+
+  const transientError = errors.find((error) => error instanceof TranscriptFetchError && error.transient);
+  if (transientError) throw transientError;
+  const fetchError = errors.find((error) => error instanceof TranscriptFetchError);
+  if (fetchError) throw fetchError;
+  throw errors[0] || new TranscriptFetchError('All transcript methods failed.', 'TRANSIENT_FETCH_ERROR', true);
 }

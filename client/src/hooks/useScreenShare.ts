@@ -3,6 +3,19 @@
 // ---------------------------------------------------------------------------
 
 import { useRef, useState, useEffect, useCallback } from 'react';
+import { logRuntimeDiagnostic } from '../utils/runtimeDiagnostics';
+
+function reportScreenShareFailure(operation: string, error: unknown) {
+  logRuntimeDiagnostic({
+    code: 'screen_share_pipeline_failed',
+    severity: 'error',
+    source: 'web.call',
+    operation,
+    message: 'Screen sharing could not update the active call media pipeline.',
+    detail: error,
+    visible: true,
+  });
+}
 
 export function useScreenShare(
   streamRef: React.RefObject<MediaStream | null>,
@@ -27,17 +40,13 @@ export function useScreenShare(
       const videoSender = senders.find(s => s.track?.kind === 'video');
       const originalVideoTrack = stream.getVideoTracks()[0] ?? null;
       if (videoSender) {
-        videoSender.replaceTrack(originalVideoTrack).catch(err => {
-          console.error('[screenShare] Failed to restore video track:', err);
-        });
+        videoSender.replaceTrack(originalVideoTrack).catch(error => reportScreenShareFailure('restore-video-track', error));
       }
 
       const audioSender = senders.find(s => s.track?.kind === 'audio');
       const originalAudioTrack = stream.getAudioTracks()[0] ?? null;
       if (audioSender && originalAudioTrack) {
-        audioSender.replaceTrack(originalAudioTrack).catch(err => {
-          console.error('[screenShare] Failed to restore audio track:', err);
-        });
+        audioSender.replaceTrack(originalAudioTrack).catch(error => reportScreenShareFailure('restore-audio-track', error));
       }
     }
 
@@ -52,14 +61,15 @@ export function useScreenShare(
     let screenStream: MediaStream;
     try {
       screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-    } catch (err) {
-      console.error('[screenShare] getDisplayMedia cancelled or failed:', err);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      reportScreenShareFailure('request-display-media', error);
       return;
     }
 
     const pc = pcRef.current;
     if (!pc) {
-      console.error('[screenShare] No peer connection available');
+      reportScreenShareFailure('replace-call-media', 'No active peer connection was available');
       screenStream.getTracks().forEach(t => t.stop());
       return;
     }
@@ -71,18 +81,14 @@ export function useScreenShare(
     if (screenVideoTrack) {
       const videoSender = senders.find(s => s.track?.kind === 'video');
       if (videoSender) {
-        videoSender.replaceTrack(screenVideoTrack).catch(err => {
-          console.error('[screenShare] Failed to replace video track:', err);
-        });
+        videoSender.replaceTrack(screenVideoTrack).catch(error => reportScreenShareFailure('share-video-track', error));
       }
     }
 
     if (screenAudioTrack) {
       const audioSender = senders.find(s => s.track?.kind === 'audio');
       if (audioSender) {
-        audioSender.replaceTrack(screenAudioTrack).catch(err => {
-          console.error('[screenShare] Failed to replace audio track:', err);
-        });
+        audioSender.replaceTrack(screenAudioTrack).catch(error => reportScreenShareFailure('share-audio-track', error));
       }
     }
 

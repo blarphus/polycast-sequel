@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  dependency-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run check:dependency-policy
+      - run: npm run sbom
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-sboms
+          path: artifacts/sbom/*.cdx.json
+
+  javascript:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: [client, server, extension, cf-worker]
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+      - run: npm ci
+      - run: npm run check
+
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+        working-directory: server
+      - run: createdb postgresql://postgres:postgres@127.0.0.1:5432/polycast_fresh
+      - run: createdb postgresql://postgres:postgres@127.0.0.1:5432/polycast_legacy
+      - run: bash scripts/check-database.sh
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/polycast_fresh
+          LEGACY_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/polycast_legacy
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: bash scripts/check-xcodegen.sh
+      - run: xcodebuild -project ios/Polycast.xcodeproj -scheme Polycast -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -derivedDataPath /tmp/polycast-ci-derived-data test CODE_SIGNING_ALLOWED=NO

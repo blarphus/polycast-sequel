@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.onboarding');
 // ---------------------------------------------------------------------------
 // pages/Onboarding.tsx -- Post-signup language selection (required)
 // ---------------------------------------------------------------------------
@@ -6,10 +8,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LANGUAGES } from '../components/classwork/languages';
+import { PLACEMENT_LANGUAGE_CODES } from '../generated/languages';
 import PlacementTest from '../components/PlacementTest';
 import { toErrorMessage } from '../utils/errors';
 
-const PLACEMENT_LANGUAGES = ['en', 'es', 'pt'];
 
 export default function Onboarding() {
   const { user, updateSettings } = useAuth();
@@ -18,7 +20,6 @@ export default function Onboarding() {
   const [phase, setPhase] = useState<'setup' | 'placement'>('setup');
   const [nativeLang, setNativeLang] = useState(user?.native_language || '');
   const [targetLang, setTargetLang] = useState(user?.target_language || '');
-  const [accountType, setAccountType] = useState<'student' | 'teacher'>(user?.account_type || 'student');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -42,15 +43,15 @@ export default function Onboarding() {
 
     setSaving(true);
     try {
-      await updateSettings(nativeLang, targetLang, undefined, accountType);
+      await updateSettings(nativeLang, targetLang);
 
-      if (PLACEMENT_LANGUAGES.includes(targetLang)) {
+      if (PLACEMENT_LANGUAGE_CODES.includes(targetLang as typeof PLACEMENT_LANGUAGE_CODES[number])) {
         setPhase('placement');
       } else {
         navigate('/', { replace: true });
       }
     } catch (err: unknown) {
-      console.error('Onboarding: save failed:', err);
+      runtimeLog.error('Onboarding: save failed:', err);
       setError(toErrorMessage(err));
     } finally {
       setSaving(false);
@@ -61,7 +62,7 @@ export default function Onboarding() {
     try {
       await updateSettings(nativeLang, targetLang, undefined, undefined, level);
     } catch (err) {
-      console.error('Onboarding: save cefr_level failed:', err);
+      runtimeLog.error('Onboarding: save cefr_level failed:', err);
     }
     navigate('/', { replace: true });
   };
@@ -85,26 +86,6 @@ export default function Onboarding() {
         <p className="auth-subtitle">Let's set up your languages</p>
 
         {error && <div className="auth-error">{error}</div>}
-
-        <div className="theme-toggle-row">
-          <span className="form-label" style={{ marginBottom: 0 }}>Account type</span>
-          <div className="theme-toggle">
-            <button
-              className={`theme-toggle-option${accountType === 'student' ? ' active' : ''}`}
-              onClick={() => setAccountType('student')}
-              type="button"
-            >
-              Student
-            </button>
-            <button
-              className={`theme-toggle-option${accountType === 'teacher' ? ' active' : ''}`}
-              onClick={() => setAccountType('teacher')}
-              type="button"
-            >
-              Teacher
-            </button>
-          </div>
-        </div>
 
         <label className="form-label">Native Language</label>
         <select

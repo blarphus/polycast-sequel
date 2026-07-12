@@ -15,6 +15,7 @@ import type { CallRole } from '../contexts/CallProvider';
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
 import TranscriptPanel from '../components/TranscriptPanel';
 import { useSavedWords } from '../hooks/useSavedWords';
+import '../styles/call.css';
 
 export default function Call() {
   const { peerId } = useParams<{ peerId: string }>();

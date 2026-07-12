@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.classwork.lessontab');
 // ---------------------------------------------------------------------------
 // components/classwork/LessonTab.tsx — Lesson post creation tab
 // ---------------------------------------------------------------------------
@@ -78,7 +80,7 @@ export default function LessonTab({
     try {
       await onSubmit({ title, lesson_items: validItems });
     } catch (err: any) {
-      console.error('Create lesson post failed:', err);
+      runtimeLog.error('Create lesson post failed:', err);
       setError(toErrorMessage(err));
     } finally {
       setSubmitting(false);

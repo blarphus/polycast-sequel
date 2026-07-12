@@ -22,11 +22,6 @@ export interface EnrichedWord {
   }>;
 }
 
-export function getNewToday() {
-  const params = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-  return request<SavedWord[]>(`/dictionary/new-today?${params}`, { cacheTtlMs: 15_000 });
-}
-
 export function lookupWord(word: string, sentence: string, nativeLang: string, targetLang?: string, isNative?: boolean) {
   const params = new URLSearchParams({ word, sentence, nativeLang });
   if (targetLang) params.set('targetLang', targetLang);
@@ -173,6 +168,7 @@ export interface SavedWord {
   queue_position: number | null;
   introduced_date: string | null;
   relearning_date: string | null;
+  stage_sentences?: Array<{ stage: number; example: string; translation: string }>;
   shared_entry_id?: string | null;
 }
 
@@ -215,9 +211,11 @@ export interface DictionaryWordGroupPage {
   page: number;
   totalGroups: number;
   totalPages: number;
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
-export function getDictionaryWordGroups(page: number, limit: number, search: string, sort: DictionarySortMode) {
+export function getDictionaryWordGroups(page: number, cursor: string | null, limit: number, search: string, sort: DictionarySortMode) {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
@@ -225,6 +223,7 @@ export function getDictionaryWordGroups(page: number, limit: number, search: str
     sort,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
+  if (cursor) params.set('cursor', cursor);
   return request<DictionaryWordGroupPage>(`/dictionary/word-groups?${params}`, { cacheTtlMs: 30_000 });
 }
 

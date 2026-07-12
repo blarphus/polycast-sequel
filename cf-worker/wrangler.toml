@@ -5,6 +5,12 @@ compatibility_date = "2024-09-23"
 [ai]
 binding = "AI"
 
+[[kv_namespaces]]
+binding = "AUTH_REPLAY"
+
+[vars]
+ALLOWED_ORIGINS = "https://polycast-sequel.onrender.com"
+
 [placement]
 mode = "smart"
 

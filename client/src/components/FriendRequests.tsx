@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.friendrequests');
 import { useState, useEffect, useCallback } from 'react';
 import { getPendingRequests, acceptFriendRequest, rejectFriendRequest, FriendRequest } from '../api';
 import { socket } from '../socket';
@@ -19,7 +21,7 @@ export default function FriendRequests({ onAccepted }: Props) {
       const data = await getPendingRequests();
       setRequests(data);
     } catch (err) {
-      console.error('Failed to load friend requests:', err);
+      runtimeLog.error('Failed to load friend requests:', err);
       setError(toErrorMessage(err));
     } finally {
       setLoading(false);
@@ -50,7 +52,7 @@ export default function FriendRequests({ onAccepted }: Props) {
       setRequests((prev) => prev.filter((r) => r.id !== id));
       onAccepted?.();
     } catch (err) {
-      console.error('Failed to accept request:', err);
+      runtimeLog.error('Failed to accept request:', err);
       setActionError(toErrorMessage(err));
     } finally {
       setBusy(null);
@@ -63,7 +65,7 @@ export default function FriendRequests({ onAccepted }: Props) {
       await rejectFriendRequest(id);
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
-      console.error('Failed to reject request:', err);
+      runtimeLog.error('Failed to reject request:', err);
       setActionError(toErrorMessage(err));
     } finally {
       setBusy(null);

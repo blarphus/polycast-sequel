@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.bottomtoolbar');
 // ---------------------------------------------------------------------------
 // components/BottomToolbar.tsx -- Sidebar / bottom navigation bar
 // ---------------------------------------------------------------------------
@@ -68,7 +70,7 @@ export default function BottomToolbar() {
         }
       })
       .catch((err) => {
-        console.error('Failed to fetch pending classwork count:', err);
+        runtimeLog.error('Failed to fetch pending classwork count:', err);
         if (!cancelled) setPendingError(true);
       });
     return () => { cancelled = true; };

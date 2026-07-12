@@ -32,8 +32,11 @@ let dailyGoalSnapshot = { goal: 5, added: 0, remaining: 5, complete: false, over
     if (res && res.targetLanguage) {
       targetLanguage = res.targetLanguage.toLowerCase();
     }
-  } catch {
-    // Extension context invalidated — will work after page refresh
+  } catch (err) {
+    showFallbackToast(
+      'Target language fallback used',
+      err?.message || 'The extension could not load your target language; page detection will be used until refresh.',
+    );
   }
 })();
 
@@ -41,8 +44,11 @@ let dailyGoalSnapshot = { goal: 5, added: 0, remaining: 5, complete: false, over
   try {
     const res = await chrome.runtime.sendMessage({ type: 'GET_DAILY_GOAL' });
     if (res?.snapshot) dailyGoalSnapshot = res.snapshot;
-  } catch {
-    // Extension context invalidated — will work after page refresh
+  } catch (err) {
+    showFallbackToast(
+      'Daily goal fallback used',
+      err?.message || 'The extension could not load your goal; the visible default goal will be used until refresh.',
+    );
   }
 })();
 
@@ -75,18 +81,68 @@ function captionContext() {
   return recentCaptions.join(' ').trim();
 }
 
-function showFallbackToast(title, message) {
+function showFallbackToast(title, message, diagnostic = {}) {
   const existing = document.querySelector('.pc-fallback-toast');
   if (existing) existing.remove();
   const toast = document.createElement('div');
   toast.className = 'pc-fallback-toast';
   toast.setAttribute('role', 'status');
-  toast.innerHTML = `<strong>${title}</strong><span>${message}</span>`;
+  const heading = document.createElement('strong');
+  heading.textContent = String(title || 'Fallback used');
+  const detail = document.createElement('span');
+  detail.textContent = String(message || 'Polycast used a fallback path.');
+  const technical = document.createElement('small');
+  const reference = diagnostic.correlationId ? ` · ref ${diagnostic.correlationId}` : '';
+  technical.textContent = `${diagnostic.code || 'fallback_used'} · ${diagnostic.source || 'extension.content'}/${diagnostic.operation || 'unknown'}${reference}`;
+  toast.append(heading, detail);
+  if (diagnostic.detail) {
+    const diagnosticDetail = document.createElement('small');
+    diagnosticDetail.textContent = String(diagnostic.detail);
+    toast.appendChild(diagnosticDetail);
+  }
+  toast.appendChild(technical);
+  console.warn('[polycast:fallback]', { ...diagnostic, title, message });
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 7000);
 }
 
+function validateInboundContentMessage(msg, acceptedTypes = null) {
+  if (!msg || typeof msg !== 'object' || Array.isArray(msg) || typeof msg.type !== 'string') return false;
+  if (acceptedTypes && !acceptedTypes.includes(msg.type)) return false;
+  let serialized;
+  try { serialized = JSON.stringify(msg); } catch { return false; }
+  if (serialized.length > 1_000_000) return false;
+  if (msg.type === 'WORDS_UPDATED' && (!Array.isArray(msg.savedWords) || msg.savedWords.length > 50_000)) return false;
+  if (msg.type === 'TARGET_LANGUAGE_UPDATED' && msg.targetLanguage != null && typeof msg.targetLanguage !== 'string') return false;
+  if (msg.type === 'DAILY_GOAL_UPDATED' && (!msg.snapshot || typeof msg.snapshot !== 'object')) return false;
+  if (msg.type === 'POLYCAST_FALLBACK_NOTICE') {
+    const diagnostic = msg.diagnostic || msg;
+    if (typeof diagnostic.code !== 'string' || typeof diagnostic.title !== 'string' || typeof diagnostic.message !== 'string') return false;
+  }
+  return true;
+}
+
+globalThis.PolycastContent = {
+  ...(globalThis.PolycastContent || {}),
+  validateInboundMessage: validateInboundContentMessage,
+};
+
 chrome.runtime.onMessage.addListener((msg) => {
+  const accepted = ['WORDS_UPDATED', 'TARGET_LANGUAGE_UPDATED', 'DAILY_GOAL_UPDATED', 'POLYCAST_FALLBACK_NOTICE'];
+  if (!validateInboundContentMessage(msg, accepted)) {
+    if (msg?.type && accepted.includes(msg.type)) {
+      showFallbackToast('Extension update rejected', 'An invalid content update was rejected before it could change this page.', {
+        code: 'content_message_rejected',
+        severity: 'error',
+        source: 'extension.content',
+        operation: 'validate-inbound-message',
+        correlationId: crypto.randomUUID(),
+        occurredAt: new Date().toISOString(),
+        detail: `type=${String(msg.type)}`,
+      });
+    }
+    return;
+  }
   if (msg.type === 'WORDS_UPDATED') {
     savedWordsSet = new Set();
     void refreshCaptionSavedWords();
@@ -98,7 +154,12 @@ chrome.runtime.onMessage.addListener((msg) => {
       completed: !!msg.justCompleted,
     });
   } else if (msg.type === 'POLYCAST_FALLBACK_NOTICE') {
-    showFallbackToast(msg.title || 'Fallback used', msg.message || 'A local fallback was used.');
+    const diagnostic = msg.diagnostic || msg;
+    showFallbackToast(
+      diagnostic.title || 'Fallback used',
+      diagnostic.message || 'A local fallback was used.',
+      diagnostic,
+    );
   }
 });
 
@@ -106,7 +167,13 @@ function languageName(code) {
   if (!code) return 'Detecting language';
   try {
     return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) || code.toUpperCase();
-  } catch {
+  } catch (error) {
+    showFallbackToast('Language name fallback used', 'The browser could not localize this language code, so Polycast is showing the raw code.', {
+      code: 'language_display_name_fallback',
+      source: 'extension.content',
+      operation: 'format-language-name',
+      detail: error?.message || String(error),
+    });
     return code.toUpperCase();
   }
 }
@@ -198,24 +265,9 @@ function showConfetti() {
 }
 
 // ---- Tokenization ---------------------------------------------------------
-
-function tokenize(text) {
-  return text.match(/([\p{L}\p{M}\d']+|[.,!?;:]+|\s+)/gu) || [];
-}
-
-function isWordToken(token) {
-  return /^[\p{L}\p{M}\d']+$/u.test(token);
-}
+const { tokenize, isWordToken } = globalThis.PolycastTextTokens;
 
 // ---- Escape HTML ----------------------------------------------------------
-
-// UNUSED since the popup moved to shared/wordPopupCore.js (which has its own
-// escapeHtml). FLAGGED FOR DELETION in a future audit.
-// function escapeHtml(str) {
-//   const div = document.createElement('div');
-//   div.textContent = str;
-//   return div.innerHTML;
-// }
 
 // ---- Caption cleaning -----------------------------------------------------
 // Strip YouTube's bracketed annotation cues ([Music], [música], [risadas],
@@ -325,7 +377,17 @@ function resumeIfWePaused() {
     }
     const video = pcHoverPauseVideo || document.querySelector('video');
     if (video) {
-      video.play().catch(() => {});
+      video.play().catch((err) => showFallbackToast(
+        'Video resume fallback used',
+        'The browser blocked automatic resume; press play to continue.',
+        {
+          code: 'video_resume_blocked',
+          source: 'extension.content',
+          operation: 'resume-video-after-lookup',
+          correlationId: crypto.randomUUID(),
+          detail: err?.message || 'play() was rejected',
+        },
+      ));
     }
     pcHoverPauseVideo = null;
     pcPausedByHover = false;
@@ -410,7 +472,19 @@ function selfHealHighlight(word, res) {
         showFallbackToast('Local form fallback', 'This form is highlighted locally, but server persistence failed.');
       }
     })
-    .catch((err) => console.debug('[Polycast] could not persist form:', err.message));
+    .catch((err) => showFallbackToast(
+      'Local form fallback',
+      'This form is highlighted locally, but server persistence failed.',
+      {
+        code: 'word_form_persistence_failed',
+        severity: 'warning',
+        source: 'extension.content',
+        operation: 'persist-word-form',
+        correlationId: crypto.randomUUID(),
+        occurredAt: new Date().toISOString(),
+        detail: err?.message || String(err),
+      },
+    ));
 }
 
 function openWordPopup({

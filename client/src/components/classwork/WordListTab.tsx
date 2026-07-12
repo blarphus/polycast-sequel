@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.classwork.wordlisttab');
 import { useState } from 'react';
 import * as api from '../../api';
 import type { StreamPostWord, WordOverride } from '../../api';
@@ -92,7 +94,7 @@ export default function WordListTab({
               }))
             : prev);
         } catch (err) {
-          console.error('Batch translate failed:', err);
+          runtimeLog.error('Batch translate failed:', err);
         } finally {
           setTranslating(false);
         }
@@ -128,7 +130,7 @@ export default function WordListTab({
       }
       setLookedUp(true);
     } catch (err: any) {
-      console.error('lookupPostWords failed:', err);
+      runtimeLog.error('lookupPostWords failed:', err);
       setLookupError(toErrorMessage(err));
     } finally {
       setLooking(false);
@@ -157,7 +159,7 @@ export default function WordListTab({
         target_language: targetLang,
       });
     } catch (err: any) {
-      console.error('Create word list post failed:', err);
+      runtimeLog.error('Create word list post failed:', err);
       setSubmitError(toErrorMessage(err));
     } finally {
       setSubmitting(false);
@@ -305,7 +307,7 @@ export default function WordListTab({
                       ? prev.map((p, j) => j === idx ? { ...p, example_sentence } : p)
                       : prev);
                   } catch (err) {
-                    console.error('Failed to generate example sentence:', err);
+                    runtimeLog.error('Failed to generate example sentence:', err);
                   }
                 }
               }}

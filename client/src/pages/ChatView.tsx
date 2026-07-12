@@ -1,3 +1,4 @@
+import '../styles/chat.css';
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -64,7 +65,7 @@ export default function ChatView() {
         friendName={friendName}
         friendOnline={friendOnline}
         onBack={() => navigate('/chats')}
-        onCall={() => navigate(`/call/${friendId}?role=caller&name=${encodeURIComponent(friendName)}`)}
+        onCall={() => navigate(`/call/${friendId}?role=caller&name=${encodeURIComponent(friendName || 'Call')}`)}
       />
       <ChatMessageList
         currentUserId={user?.id}

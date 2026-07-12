@@ -40,10 +40,10 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
             try session.setActive(true)
         } catch {
-            print("[Polycast] WebRTC: audio session config error: \(error)")
+            PolycastLog.runtime.error("[Polycast] WebRTC: audio session config error: \(error)")
         }
     }
 
@@ -114,7 +114,7 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
     private func startCapture(capturer: RTCCameraVideoCapturer) {
         guard let device = RTCCameraVideoCapturer.captureDevices().first(where: { $0.position == .front })
                 ?? RTCCameraVideoCapturer.captureDevices().first else {
-            print("[Polycast] WebRTC: no camera device found")
+            PolycastLog.runtime.error("[Polycast] WebRTC: no camera device found")
             return
         }
 
@@ -123,7 +123,7 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
 
         capturer.startCapture(with: device, format: format, fps: Int(fps)) { error in
             if let error {
-                print("[Polycast] WebRTC: capture start error: \(error)")
+                PolycastLog.runtime.error("[Polycast] WebRTC: capture start error: \(error)")
             }
         }
     }
@@ -223,7 +223,7 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
     func addIceCandidate(_ candidate: RTCIceCandidate) {
         peerConnection?.add(candidate) { error in
             if let error {
-                print("[Polycast] WebRTC: failed to add ICE candidate: \(error)")
+                PolycastLog.runtime.error("[Polycast] WebRTC: failed to add ICE candidate: \(error)")
             }
         }
     }
@@ -233,7 +233,7 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
     /// Share the app's own screen (in-app ReplayKit capture; pauses when the
     /// app is backgrounded). Frames are pushed into the existing video source,
     /// so the peer needs no renegotiation.
-    func startScreenShare(completion: @escaping (Error?) -> Void) {
+    func startScreenShare(completion: @escaping @Sendable (Error?) -> Void) {
         guard let videoSource = localVideoSource else {
             completion(WebRTCError.noPeerConnection)
             return
@@ -244,7 +244,7 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
 
         RPScreenRecorder.shared().startCapture(handler: { [weak self] sampleBuffer, type, error in
             if let error {
-                print("[Polycast] WebRTC: screen capture frame error: \(error)")
+                PolycastLog.runtime.error("[Polycast] WebRTC: screen capture frame error: \(error)")
                 return
             }
             guard type == .video,
@@ -277,7 +277,7 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
         screenCapturer = nil
         RPScreenRecorder.shared().stopCapture { error in
             if let error {
-                print("[Polycast] WebRTC: stop screen capture error: \(error)")
+                PolycastLog.runtime.error("[Polycast] WebRTC: stop screen capture error: \(error)")
             }
         }
         if let capturer = videoCapturer {
@@ -301,7 +301,7 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
             do {
                 try engine.start()
             } catch {
-                print("[Polycast] WebRTC: audio engine resume error: \(error)")
+                PolycastLog.runtime.error("[Polycast] WebRTC: audio engine resume error: \(error)")
             }
         }
         return isMuted
@@ -332,12 +332,12 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
 
         // Target: 16kHz, 16-bit signed integer, mono
         guard let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16000, channels: 1, interleaved: true) else {
-            print("[Polycast] WebRTC: failed to create target audio format")
+            PolycastLog.runtime.error("[Polycast] WebRTC: failed to create target audio format")
             return
         }
 
         guard let converter = AVAudioConverter(from: hardwareFormat, to: targetFormat) else {
-            print("[Polycast] WebRTC: failed to create audio converter")
+            PolycastLog.runtime.error("[Polycast] WebRTC: failed to create audio converter")
             return
         }
         self.audioConverter = converter
@@ -350,13 +350,17 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
             guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCapacity) else { return }
 
             var error: NSError?
+            // AVAudioConverter consumes this synchronously during `convert`.
+            // The explicit wrapper documents that narrow lifetime while
+            // satisfying the SDK's @Sendable input-block signature.
+            let input = SendableAudioBuffer(buffer)
             converter.convert(to: convertedBuffer, error: &error) { _, outStatus in
                 outStatus.pointee = .haveData
-                return buffer
+                return input.value
             }
 
             if let error {
-                print("[Polycast] WebRTC: audio conversion error: \(error)")
+                PolycastLog.runtime.error("[Polycast] WebRTC: audio conversion error: \(error)")
                 return
             }
 
@@ -374,7 +378,7 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
                 engine.pause()
             }
         } catch {
-            print("[Polycast] WebRTC: audio engine start error: \(error)")
+            PolycastLog.runtime.error("[Polycast] WebRTC: audio engine start error: \(error)")
         }
     }
 
@@ -401,10 +405,14 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
         localVideoSource = nil
         hasVideoTrack = false
 
-        // removeTrack can throw if connection already closed — this is cleanup
-        try? peerConnection?.close()
+        peerConnection?.close()
         peerConnection = nil
     }
+}
+
+private struct SendableAudioBuffer: @unchecked Sendable {
+    let value: AVAudioPCMBuffer
+    init(_ value: AVAudioPCMBuffer) { self.value = value }
 }
 
 // MARK: - RTCPeerConnectionDelegate

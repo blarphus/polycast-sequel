@@ -4,7 +4,10 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 test('context menu installation is serialized across lifecycle events', async () => {
-  const source = await readFile(new URL('../background.js', import.meta.url), 'utf8');
+  const generated = await readFile(new URL('../generated/messageContract.js', import.meta.url), 'utf8');
+  const router = await readFile(new URL('../background/messageRouter.js', import.meta.url), 'utf8');
+  const activation = await readFile(new URL('../background/activation.js', import.meta.url), 'utf8');
+  const source = `${generated}\n${router}\n${activation}\n${await readFile(new URL('../background.js', import.meta.url), 'utf8')}`;
   const installedListeners = [];
   const startupListeners = [];
   const menuIds = new Set();
@@ -37,6 +40,7 @@ test('context menu installation is serialized across lifecycle events', async ()
       },
     },
     runtime: {
+      id: 'polycast-test-extension',
       get lastError() { return lastError; },
       onInstalled: event(installedListeners),
       onStartup: event(startupListeners),
@@ -70,10 +74,31 @@ test('context menu installation is serialized across lifecycle events', async ()
     JSON.parse(JSON.stringify(context.buildDailyGoalSnapshot(5, 6))),
     { goal: 5, added: 6, remaining: 0, complete: true, overGoal: 1, bonusXp: 0 },
   );
+  assert.throws(
+    () => context.validateRuntimeMessage({ type: 'LOGIN', username: 'u', password: 'p' }, { tab: { id: 1 } }),
+    /only accepted from the extension popup/,
+  );
+  assert.throws(
+    () => context.validateRuntimeMessage({ type: 'MATCH_PAGE_TOKENS', tokens: Array(1501).fill('word') }),
+    /at most 1500 entries/,
+  );
+  assert.throws(
+    () => context.validateRuntimeMessage({ type: 'NOT_A_REAL_MESSAGE' }),
+    /Unknown extension message type/,
+  );
+  assert.throws(
+    () => context.validateRuntimeMessage({ type: 'GET_STATUS' }, { id: 'different-extension' }),
+    /sender is not this extension/,
+  );
+  const apiFixtures = JSON.parse(await readFile(new URL('../../contracts/api-v1.fixtures.json', import.meta.url), 'utf8'));
+  assert.doesNotThrow(() => context.validateRuntimeMessage(apiFixtures.extensionMessage));
 });
 
 test('large saved dictionaries are indexed once and page matching stays bounded', async () => {
-  const source = await readFile(new URL('../background.js', import.meta.url), 'utf8');
+  const generated = await readFile(new URL('../generated/messageContract.js', import.meta.url), 'utf8');
+  const router = await readFile(new URL('../background/messageRouter.js', import.meta.url), 'utf8');
+  const activation = await readFile(new URL('../background/activation.js', import.meta.url), 'utf8');
+  const source = `${generated}\n${router}\n${activation}\n${await readFile(new URL('../background.js', import.meta.url), 'utf8')}`;
   const event = () => ({ addListener: () => {} });
   const chrome = {
     contextMenus: { onClicked: event(), removeAll: (cb) => cb(), create: (_opts, cb) => cb() },
@@ -105,4 +130,61 @@ test('large saved dictionaries are indexed once and page matching stays bounded'
   assert.equal(result.matches.length, 600);
   assert.ok(indexMs < 750, `25k-word index took ${indexMs.toFixed(1)}ms`);
   assert.ok(matchMs < 50, `1200-token match took ${matchMs.toFixed(1)}ms`);
+});
+
+test('an authenticated 401 clears account state and broadcasts one detailed expiration diagnostic', async () => {
+  const generated = await readFile(new URL('../generated/messageContract.js', import.meta.url), 'utf8');
+  const router = await readFile(new URL('../background/messageRouter.js', import.meta.url), 'utf8');
+  const activation = await readFile(new URL('../background/activation.js', import.meta.url), 'utf8');
+  const source = `${generated}\n${router}\n${activation}\n${await readFile(new URL('../background.js', import.meta.url), 'utf8')}`;
+  const stored = {
+    authToken: 'expired-token', user: { id: 'user-1' }, savedWords: ['hola'],
+    wildRecallCatalog: [{ id: 'word-1' }], wildRecallChallenge: { id: 'challenge-1' },
+    progression: { totalXp: 12 }, offlineMode: false,
+  };
+  const tabMessages = [];
+  const warnings = [];
+  const event = () => ({ addListener: () => {} });
+  const chrome = {
+    contextMenus: { onClicked: event(), removeAll: (cb) => cb(), create: (_opts, cb) => cb() },
+    runtime: { id: 'polycast-test-extension', lastError: undefined, onInstalled: event(), onStartup: event(), onMessage: event() },
+    storage: { local: {
+      async get(keys) {
+        const names = Array.isArray(keys) ? keys : [keys];
+        return Object.fromEntries(names.filter((key) => key in stored).map((key) => [key, stored[key]]));
+      },
+      async set(values) { Object.assign(stored, values); },
+      async remove(keys) { for (const key of Array.isArray(keys) ? keys : [keys]) delete stored[key]; },
+    } },
+    tabs: {
+      query: async () => [{ id: 7 }],
+      sendMessage: async (tabId, message) => { tabMessages.push({ tabId, message }); },
+      create: async () => {},
+    },
+  };
+  const context = {
+    chrome,
+    console: { ...console, warn: (...args) => warnings.push(args) },
+    crypto,
+    fetch: async () => new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { 'Content-Type': 'application/json' },
+    }),
+    URLSearchParams, Intl, Date, setTimeout, clearTimeout, Map, Set,
+  };
+  vm.runInNewContext(source, context);
+
+  const results = await Promise.allSettled([
+    context.apiFetch('/api/me'), context.apiFetch('/api/dictionary/words'),
+  ]);
+  assert.ok(results.every((result) => result.status === 'rejected'));
+  assert.equal(stored.authToken, undefined);
+  assert.equal(stored.user, undefined);
+  assert.equal(stored.wildRecallCatalog, undefined);
+  const notices = tabMessages.filter(({ message }) => message.type === 'POLYCAST_FALLBACK_NOTICE');
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].message.diagnostic.code, 'extension_session_expired');
+  assert.equal(notices[0].message.diagnostic.severity, 'error');
+  assert.match(notices[0].message.diagnostic.detail, /status=401; path=\/api\//);
+  assert.ok(notices[0].message.diagnostic.correlationId);
+  assert.equal(warnings.filter((args) => args[0] === '[polycast:fallback]').length, 1);
 });

@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from './scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.utils.playabilityfilter');
 import { checkVideoPlayability, TrendingVideo } from '../api';
 
 export function filterUnplayableVideos(
@@ -13,5 +15,5 @@ export function filterUnplayableVideos(
         setVideos((prev) => prev.filter((v) => !blocked.has(v.youtube_id) && !shorts.has(v.youtube_id)));
       }
     })
-    .catch((err) => console.error('Playability check failed:', err));
+    .catch((err) => runtimeLog.error('Playability check failed:', err));
 }

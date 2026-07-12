@@ -12,7 +12,7 @@ final class VoIPPushManager: NSObject, @unchecked Sendable {
     private var currentCallUUID: UUID?
 
     private override init() {
-        let config = CXProviderConfiguration(localizedName: "Polycast")
+        let config = CXProviderConfiguration()
         config.supportsVideo = true
         config.maximumCallsPerCallGroup = 1
         config.maximumCallGroups = 1
@@ -41,7 +41,7 @@ final class VoIPPushManager: NSObject, @unchecked Sendable {
                     bundleId: bundleId
                 )
             } catch {
-                print("[Polycast] Failed to register VoIP token: \(error)")
+                PolycastLog.runtime.error("[Polycast] Failed to register VoIP token: \(error)")
             }
         }
     }
@@ -53,7 +53,7 @@ final class VoIPPushManager: NSObject, @unchecked Sendable {
             do {
                 try await APIClient.shared.unregisterIOSVoIPToken(deviceToken: token)
             } catch {
-                print("[Polycast] Failed to unregister VoIP token: \(error)")
+                PolycastLog.runtime.error("[Polycast] Failed to unregister VoIP token: \(error)")
             }
         }
     }
@@ -82,7 +82,7 @@ final class VoIPPushManager: NSObject, @unchecked Sendable {
             APIClient.shared.token = tokenStore.load()
         }
         guard APIClient.shared.token != nil else {
-            print("[Polycast] VoIP push received but no saved auth token was available")
+            PolycastLog.runtime.error("[Polycast] VoIP push received but no saved auth token was available")
             return
         }
         SocketClient.shared.connect()
@@ -92,12 +92,13 @@ final class VoIPPushManager: NSObject, @unchecked Sendable {
     }
 
     private func handleIncomingPush(_ payload: PKPushPayload, completion: @escaping () -> Void) {
+        let completionBox = SendableCompletion(completion)
         guard let dict = payload.dictionaryPayload as? [String: Any],
               let callId = dict["callId"] as? String,
               let callerId = dict["callerId"] as? String,
               let callerUsername = dict["callerUsername"] as? String else {
-            print("[Polycast] Invalid incoming VoIP payload: \(payload.dictionaryPayload)")
-            completion()
+            PolycastLog.runtime.error("[Polycast] Invalid incoming VoIP payload: \(payload.dictionaryPayload)")
+            completionBox.call()
             return
         }
 
@@ -129,11 +130,16 @@ final class VoIPPushManager: NSObject, @unchecked Sendable {
 
         provider.reportNewIncomingCall(with: callUUID, update: update) { error in
             if let error {
-                print("[Polycast] Failed to report incoming call: \(error)")
+                PolycastLog.runtime.error("[Polycast] Failed to report incoming call: \(error)")
             }
-            completion()
+            completionBox.call()
         }
     }
+}
+
+private struct SendableCompletion: @unchecked Sendable {
+    let call: () -> Void
+    init(_ call: @escaping () -> Void) { self.call = call }
 }
 
 extension VoIPPushManager: PKPushRegistryDelegate {

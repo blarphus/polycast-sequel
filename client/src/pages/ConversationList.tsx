@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.conversationlist');
 // ---------------------------------------------------------------------------
 // pages/ConversationList.tsx -- WhatsApp-style conversation list (replaces Home)
 // ---------------------------------------------------------------------------
 
+import '../styles/chat.css';
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -27,7 +30,7 @@ export default function ConversationList() {
       const data = await getConversations();
       setConversations(data);
     } catch (err) {
-      console.error('Failed to load conversations:', err);
+      runtimeLog.error('Failed to load conversations:', err);
       setError(toErrorMessage(err));
     } finally {
       setLoading(false);
@@ -110,7 +113,7 @@ export default function ConversationList() {
       await logout();
       navigate('/login');
     } catch (err) {
-      console.error('Logout error:', err);
+      runtimeLog.error('Logout error:', err);
     }
   };
 

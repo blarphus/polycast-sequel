@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.students');
 // ---------------------------------------------------------------------------
 // pages/Students.tsx -- Teacher's classroom roster + student search
 // ---------------------------------------------------------------------------
 
+import '../styles/students.css';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -64,7 +67,7 @@ export default function Students() {
         setAddedIds(new Set(students.map((s) => s.id)));
       })
       .catch((err) => {
-        console.error('Failed to load classroom students:', err);
+        runtimeLog.error('Failed to load classroom students:', err);
         setError('Failed to load students');
       })
       .finally(() => setLoading(false));
@@ -85,7 +88,7 @@ export default function Students() {
         const results = await api.searchUsers(query, 'student');
         setSearchResults(results);
       } catch (err) {
-        console.error('Student search failed:', err);
+        runtimeLog.error('Student search failed:', err);
       }
     }, 300);
   }, []);
@@ -99,7 +102,7 @@ export default function Students() {
       const updated = await api.getClassroomStudents(activeClassroomId);
       setRoster(updated);
     } catch (err) {
-      console.error('Failed to add student:', err);
+      runtimeLog.error('Failed to add student:', err);
       setError('Failed to add student');
     }
   };
@@ -115,7 +118,7 @@ export default function Students() {
         return next;
       });
     } catch (err) {
-      console.error('Failed to remove student:', err);
+      runtimeLog.error('Failed to remove student:', err);
       setError('Failed to remove student');
     }
   };

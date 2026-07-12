@@ -7,9 +7,11 @@ import type { TranscriptSegment } from '../api';
 /**
  * Parse an SRT timestamp (HH:MM:SS,mmm) into milliseconds.
  */
-function parseTimestamp(ts: string): number {
-  const [time, ms] = ts.split(',');
+function parseTimestamp(ts: string): number | null {
+  const [time, ms] = ts.replace('.', ',').split(',');
   const [h, m, s] = time.split(':').map(Number);
+  const values = [h, m, s, Number(ms)];
+  if (values.some((value) => !Number.isFinite(value))) return null;
   return h * 3600000 + m * 60000 + s * 1000 + Number(ms);
 }
 
@@ -28,12 +30,13 @@ export function parseSrt(content: string): TranscriptSegment[] {
     // Line 0: sequence number (skip)
     // Line 1: timestamp range
     const timeMatch = lines[1].match(
-      /(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})/,
+      /(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/,
     );
     if (!timeMatch) continue;
 
     const start = parseTimestamp(timeMatch[1]);
     const end = parseTimestamp(timeMatch[2]);
+    if (start === null || end === null) continue;
     // Lines 2+: subtitle text
     const text = lines.slice(2).join(' ').replace(/<[^>]+>/g, '').trim();
     if (!text) continue;
@@ -41,7 +44,7 @@ export function parseSrt(content: string): TranscriptSegment[] {
     segments.push({
       text,
       offset: start,
-      duration: end - start,
+      duration: Math.max(end - start, 1),
     });
   }
 

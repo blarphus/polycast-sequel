@@ -34,6 +34,13 @@ const siteHighlightDetailEl = document.getElementById('site-highlight-detail');
 const siteHighlightButtons = [...document.querySelectorAll('[data-highlight-override]')];
 let activePageStatus = null;
 
+for (const language of globalThis.PolycastLanguageContract?.languages || []) {
+  const option = document.createElement('option');
+  option.value = language.code;
+  option.textContent = language.name;
+  targetLanguageSelect.appendChild(option);
+}
+
 function consumeRuntimeError() {
   return chrome.runtime.lastError?.message || '';
 }
@@ -50,7 +57,19 @@ function langName(code) {
   try {
     const names = new Intl.DisplayNames(['en'], { type: 'language' });
     return names.of(code) || code;
-  } catch {
+  } catch (error) {
+    console.warn('[polycast:fallback]', {
+      code: 'popup_language_name_fallback',
+      severity: 'warning',
+      title: 'Language name fallback used',
+      message: 'The browser could not localize this language code, so the popup is showing the raw code.',
+      source: 'extension.popup',
+      operation: 'format-language-name',
+      correlationId: crypto.randomUUID(),
+      occurredAt: new Date().toISOString(),
+      detail: error?.message || String(error),
+    });
+    setSettingsMessage(`Language name fallback used (${code}): ${error?.message || String(error)}`, true);
     return code;
   }
 }
@@ -81,11 +100,35 @@ chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
   }
   if (res && res.loggedIn && res.user) {
     showStatus(res.user, res.savedWordCount || 0, res.dailyGoal, res.progression);
-    if (res.diagnostic || res.error) setSettingsMessage(res.diagnostic || `Status fallback used: ${res.error}`, true);
+    if (res.diagnostic || res.error) {
+      const diagnostic = res.diagnostic;
+      setSettingsMessage(
+        diagnostic
+          ? `${diagnostic.title}: ${diagnostic.message} · ${diagnostic.code} · ${diagnostic.correlationId}${diagnostic.detail ? ` · ${diagnostic.detail}` : ''}`
+          : `Status fallback used: ${res.error}`,
+        true,
+      );
+    }
     loadPageHighlightStatus();
   } else {
     showView(loginView);
+    if (res?.diagnostic) {
+      const diagnostic = res.diagnostic;
+      loginError.textContent = `${diagnostic.title}: ${diagnostic.message} · ${diagnostic.code} · ${diagnostic.correlationId}${diagnostic.detail ? ` · ${diagnostic.detail}` : ''}`;
+      loginError.classList.remove('hidden');
+    }
   }
+});
+
+chrome.storage.local.get('lastFallbackDiagnostic', ({ lastFallbackDiagnostic: diagnostic }) => {
+  if (!diagnostic) return;
+  const text = `${diagnostic.title}: ${diagnostic.message} · ${diagnostic.code} · ${diagnostic.source}/${diagnostic.operation} · ref ${diagnostic.correlationId}${diagnostic.detail ? ` · ${diagnostic.detail}` : ''}`;
+  if (!statusView.classList.contains('hidden')) setSettingsMessage(text, true);
+  else {
+    loginError.textContent = text;
+    loginError.classList.remove('hidden');
+  }
+  chrome.action?.setBadgeText({ text: '' });
 });
 
 chrome.runtime.sendMessage({ type: 'GET_API_BASE' }, (res) => {
@@ -144,6 +187,10 @@ function showStatus(user, wordCount, dailyGoal, progression) {
 function renderPageHighlightStatus(status) {
   activePageStatus = status;
   siteHighlightButtons.forEach((button) => button.classList.toggle('selected', button.dataset.highlightOverride === status.override));
+  if (status.activationRequired) {
+    siteHighlightDetailEl.textContent = `Not active on ${status.hostname} · choose Auto or On to grant access`;
+    return;
+  }
   if (!status.detectedLanguage) {
     siteHighlightDetailEl.textContent = 'Language unavailable · automatic highlights off';
     return;
@@ -158,13 +205,32 @@ function loadPageHighlightStatus() {
       siteHighlightDetailEl.textContent = 'Page status unavailable';
       return;
     }
-    chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_PAGE_HIGHLIGHT_STATUS' }, (status) => {
+    const activeTab = tabs[0];
+    chrome.tabs.sendMessage(activeTab.id, { type: 'GET_PAGE_HIGHLIGHT_STATUS' }, (status) => {
       const error = consumeRuntimeError();
       if (error || !status) {
-        siteHighlightDetailEl.textContent = 'Page status unavailable';
+        try {
+          const url = new URL(activeTab.url || '');
+          if (['http:', 'https:'].includes(url.protocol)) {
+            renderPageHighlightStatus({
+              hostname: url.hostname,
+              pageUrl: url.href,
+              tabId: activeTab.id,
+              override: 'off',
+              enabled: false,
+              detectedLanguage: '',
+              targetLanguage: null,
+              activationRequired: true,
+            });
+            return;
+          }
+        } catch (parseError) {
+          setSettingsMessage(`Page activation diagnostic · popup_page_url_invalid · ${crypto.randomUUID()} · ${parseError?.message || String(parseError)}`, true);
+        }
+        siteHighlightDetailEl.textContent = 'Page status unavailable on this browser page';
         return;
       }
-      renderPageHighlightStatus({ ...status, tabId: tabs[0].id });
+      renderPageHighlightStatus({ ...status, pageUrl: activeTab.url || '', tabId: activeTab.id });
     });
   });
 }
@@ -220,19 +286,53 @@ dailyGoalInputEl.addEventListener('change', () => {
 siteHighlightButtons.forEach((button) => button.addEventListener('click', () => {
   if (!activePageStatus?.hostname || !activePageStatus?.tabId) return;
   siteHighlightButtons.forEach((item) => { item.disabled = true; });
-  chrome.runtime.sendMessage({
-    type: 'SET_SITE_HIGHLIGHT_OVERRIDE',
-    hostname: activePageStatus.hostname,
-    tabId: activePageStatus.tabId,
-    override: button.dataset.highlightOverride,
-  }, (result) => {
+  const applyOverride = () => chrome.runtime.sendMessage({
+      type: 'SET_SITE_HIGHLIGHT_OVERRIDE',
+      hostname: activePageStatus.hostname,
+      pageUrl: activePageStatus.pageUrl || '',
+      tabId: activePageStatus.tabId,
+      override: button.dataset.highlightOverride,
+    }, (result) => {
     siteHighlightButtons.forEach((item) => { item.disabled = false; });
     const error = consumeRuntimeError();
     if (error || result?.error) {
-      setSettingsMessage(`Highlight setting fallback used: ${error || result.error}`, true);
+      const diagnostic = result?.diagnostic;
+      setSettingsMessage(diagnostic
+        ? `${diagnostic.title}: ${diagnostic.message} · ${diagnostic.code} · ${diagnostic.correlationId}${diagnostic.detail ? ` · ${diagnostic.detail}` : ''}`
+        : `Highlight setting fallback used: ${error || result.error}`, true);
       return;
     }
-    renderPageHighlightStatus({ ...activePageStatus, override: result.override, enabled: result.override === 'on' || (result.override === 'auto' && activePageStatus.detectedLanguage === activePageStatus.targetLanguage) });
+    renderPageHighlightStatus({ ...activePageStatus, activationRequired: false, override: result.override, enabled: result.override === 'on' || (result.override === 'auto' && activePageStatus.detectedLanguage === activePageStatus.targetLanguage) });
+  });
+
+  if (!activePageStatus.activationRequired || button.dataset.highlightOverride === 'off') {
+    applyOverride();
+    return;
+  }
+  let pattern;
+  try {
+    pattern = `${new URL(activePageStatus.pageUrl).origin}/*`;
+  } catch (error) {
+    siteHighlightButtons.forEach((item) => { item.disabled = false; });
+    setSettingsMessage(`Site permission request rejected · popup_site_url_invalid · ${crypto.randomUUID()} · ${error?.message || String(error)}`, true);
+    return;
+  }
+  chrome.permissions.request({ origins: [pattern] }, (granted) => {
+    const error = consumeRuntimeError();
+    if (!granted || error) {
+      siteHighlightButtons.forEach((item) => { item.disabled = false; });
+      const correlationId = crypto.randomUUID();
+      console.warn('[polycast:fallback]', {
+        code: 'site_activation_permission_denied', severity: 'warning',
+        title: 'Site activation permission not granted',
+        message: `Polycast remains inactive on ${activePageStatus.hostname} because site access was not granted.`,
+        source: 'extension.popup', operation: 'request-site-permission', correlationId,
+        occurredAt: new Date().toISOString(), detail: error || `origin=${pattern}`,
+      });
+      setSettingsMessage(`Site activation permission not granted · site_activation_permission_denied · ${correlationId} · ${error || pattern}`, true);
+      return;
+    }
+    applyOverride();
   });
 }));
 

@@ -4,6 +4,7 @@ import { authMiddleware } from '../auth.js';
 import pool from '../db.js';
 import { validTimeZone } from '../lib/srsUpdate.js';
 import { validate } from '../lib/validate.js';
+import { asyncHandler } from '../lib/httpErrors.js';
 import {
   answerVocabularyExercise,
   completeLearningSession,
@@ -28,18 +29,14 @@ const answerBody = z.object({
 });
 const completionBody = z.object({ timeZone: z.string().max(100).optional() });
 
-router.post('/api/learning-sessions', authMiddleware, validate({ body: createSessionBody }), async (req, res) => {
-  try {
-    const result = await createLearningSession(pool, req.userId, {
-      ...req.body,
-      timeZone: validTimeZone(req.body.timeZone),
-    });
-    return res.status(201).json(result);
-  } catch (err) {
-    req.log.error({ err }, 'Create learning session error');
-    return res.status(err.status || 500).json({ error: err.message || 'Failed to create learning session' });
-  }
-});
+router.post('/api/learning-sessions', authMiddleware, validate({ body: createSessionBody }), asyncHandler(async (req, res) => {
+  const result = await createLearningSession(pool, req.userId, {
+    ...req.body,
+    timeZone: validTimeZone(req.body.timeZone),
+    correlationId: req.id,
+  });
+  return res.status(201).json(result);
+}));
 
 router.post('/api/learning-sessions/:id/answers', authMiddleware, validate({ params: sessionParam, body: answerBody }), async (req, res) => {
   try {

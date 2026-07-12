@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "algorithmVersion": "srs-v1",
+  "maxPromptStage": 20,
+  "learningStepsSeconds": [60, 600],
+  "graduatingIntervalSeconds": 86400,
+  "minimumReviewIntervalSeconds": 86400,
+  "minimumEaseFactor": 1.3,
+  "queues": ["new", "learning", "review"],
+  "stageColors": {
+    "new": "blue",
+    "learning": "red",
+    "review": "green"
+  }
+}

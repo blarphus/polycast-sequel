@@ -1,4 +1,3 @@
-import { extract } from '@extractus/article-extractor';
 import redisClient from '../redis.js';
 import { truncateAtSentence } from './rssParser.js';
 
@@ -82,6 +81,9 @@ export async function extractAndCacheRawArticle({ lang, index, link }) {
     throw new Error('Article link is missing');
   }
 
+  // Article extraction brings a full DOM/parser stack. Keep it off the server
+  // cold-start path and load it only after a cache miss requires extraction.
+  const { extract } = await import('@extractus/article-extractor');
   const extracted = await extract(link, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Polycast/1.0)' },
   });

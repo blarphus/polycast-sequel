@@ -95,8 +95,13 @@ function requestApnsPush(config, deviceToken, payload) {
       try {
         const parsed = JSON.parse(responseBody);
         if (parsed.reason) reason = parsed.reason;
-      } catch {
-        // Keep fallback reason.
+      } catch (error) {
+        logger.warn({
+          event: 'apns_error_payload_fallback',
+          statusCode,
+          responseLength: responseBody.length,
+          err: error,
+        }, 'APNs returned a non-JSON error; using the HTTP status fallback reason');
       }
       resolve({ ok: false, reason, statusCode });
     });

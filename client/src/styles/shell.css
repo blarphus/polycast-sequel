@@ -1,0 +1,343 @@
+/* ==========================================================================
+   Incoming Call Modal
+   ========================================================================== */
+
+.incoming-call-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  animation: fadeIn 0.25s ease;
+}
+
+.incoming-call-modal {
+  text-align: center;
+  background: var(--bg-surface);
+  padding: 2.5rem 2.5rem 2rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  min-width: 320px;
+  animation: slideUp 0.3s ease;
+}
+
+.incoming-call-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 1rem;
+  border-radius: 50%;
+  background: var(--accent-light);
+  color: var(--accent);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.incoming-call-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.incoming-call-caller {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.incoming-call-username {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 1.75rem;
+}
+
+.incoming-call-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* ---- Animations ---------------------------------------------------------- */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(108, 99, 255, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 12px rgba(108, 99, 255, 0);
+  }
+}
+
+/* ==========================================================================
+   Bottom Toolbar
+   ========================================================================== */
+
+.bottom-toolbar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  width: clamp(310px, 50vw, 480px);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 25px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  overflow: visible;
+}
+
+.toolbar-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.65rem 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 25px;
+  transition: background var(--transition), color var(--transition);
+}
+
+.toolbar-tab:hover {
+  color: var(--text-secondary);
+}
+
+.toolbar-tab--red.active {
+  background: rgba(108, 99, 255, 0.1);
+  color: #6c63ff;
+}
+
+.toolbar-tab--green.active {
+  background: rgba(34, 165, 94, 0.1);
+  color: #22a55e;
+}
+
+.toolbar-tab--purple.active {
+  background: rgba(108, 99, 255, 0.1);
+  color: #6c63ff;
+}
+
+.toolbar-tab--blue.active {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.toolbar-tab--orange.active {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.toolbar-tab--yellow.active {
+  background: rgba(234, 179, 8, 0.1);
+  color: #ca8a04;
+}
+
+.toolbar-tab--teal.active {
+  background: rgba(20, 184, 166, 0.1);
+  color: #14b8a6;
+}
+
+.toolbar-tab--settings.active {
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--text-secondary);
+}
+
+.toolbar-tab--profile.active {
+  background: rgba(168, 85, 247, 0.12);
+  color: #8b5cf6;
+}
+
+.toolbar-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+}
+
+.toolbar-tab-icon-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.toolbar-badge {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.sidebar-brand {
+  display: none;
+}
+
+.sidebar-account-popover {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(100% + 10px);
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-lg);
+  z-index: 2;
+}
+
+.sidebar-account-popover-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.7rem;
+}
+
+.sidebar-account-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sidebar-account-subtitle {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.sidebar-account-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sidebar-account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sidebar-account-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-primary);
+}
+
+.sidebar-account-item.active {
+  border-color: var(--accent);
+}
+
+.sidebar-account-main {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+.sidebar-account-name {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.sidebar-account-meta {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.sidebar-account-remove {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidebar-account-remove:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.sidebar-account-error {
+  margin-top: 0.7rem;
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+
+.sidebar-account-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}

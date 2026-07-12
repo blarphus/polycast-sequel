@@ -26,7 +26,9 @@ export async function dedupeWordImages(words) {
 
   for (const word of words) {
     if (word.image_url && usedUrls.has(word.image_url)) {
-      const alt = await fetchWordImage(word.image_term || word.word, usedUrls);
+      const alt = await fetchWordImage(word.image_term || word.word, usedUrls, (diagnostic) => {
+        word.fallback_notices = [...(word.fallback_notices || []), diagnostic];
+      });
       word.image_url = alt;
     }
     if (word.image_url) usedUrls.add(word.image_url);
@@ -105,18 +107,4 @@ export async function enrichAndInsertWords(client, postId, words, nativeLang, ta
      VALUES ${values.join(', ')}`,
     params,
   );
-}
-
-export async function lookupWordsForPost(words, nativeLang, targetLang) {
-  const results = await mapWithConcurrency(
-    words,
-    async (word, i) => {
-      const trimmed = word.trim();
-      const enriched = await lookupWordPreview(trimmed, nativeLang, targetLang);
-      return { id: `preview-${i}`, word: trimmed, position: i, ...enriched };
-    },
-  );
-
-  await dedupeWordImages(results);
-  return results;
 }

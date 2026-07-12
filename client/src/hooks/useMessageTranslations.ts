@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.hooks.usemessagetranslations');
 import { useCallback, useState } from 'react';
 import { translateSentence } from '../api';
 
@@ -18,7 +20,7 @@ export function useMessageTranslations({ nativeLang, targetLang }: UseMessageTra
       const { translation } = await translateSentence(body, targetLang || '', nativeLang);
       setTranslations((prev) => new Map(prev).set(messageId, translation));
     } catch (err) {
-      console.error('Failed to translate message:', err);
+      runtimeLog.error('Failed to translate message:', err);
     } finally {
       setTranslating((prev) => {
         const next = new Set(prev);

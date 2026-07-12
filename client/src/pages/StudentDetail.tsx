@@ -2,6 +2,7 @@
 // pages/StudentDetail.tsx -- Teacher view of a student's progress & stats
 // ---------------------------------------------------------------------------
 
+import '../styles/students.css';
 import { useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import * as api from '../api';

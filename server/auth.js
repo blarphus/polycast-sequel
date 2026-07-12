@@ -4,12 +4,16 @@ import pool from './db.js';
 import { getUserById } from './lib/userQueries.js';
 import logger from './logger.js';
 
-if (!process.env.JWT_SECRET) {
-  logger.warn('JWT_SECRET not set — using insecure dev-secret (development only)');
+const isExplicitDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
+if (!process.env.JWT_SECRET && !isExplicitDevelopment) {
+  throw new Error('JWT_SECRET must be configured outside explicit development/test environments');
 }
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+if (!process.env.JWT_SECRET) {
+  logger.warn('JWT_SECRET not set — using an insecure development-only secret');
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'polycast-explicit-development-only-secret';
 const SALT_ROUNDS = 12;
-const DEFAULT_SESSION_TTL_DAYS = 365;
+const DEFAULT_SESSION_TTL_DAYS = 1;
 const configuredSessionTtlDays = Number.parseInt(process.env.SESSION_TTL_DAYS || '', 10);
 const SESSION_TTL_DAYS = Number.isFinite(configuredSessionTtlDays) && configuredSessionTtlDays > 0
   ? configuredSessionTtlDays
@@ -22,12 +26,23 @@ const COOKIE_OPTIONS = {
   sameSite: 'lax',
   maxAge: SESSION_TTL_MS,
 };
+const COOKIE_CLEAR_OPTIONS = {
+  httpOnly: COOKIE_OPTIONS.httpOnly,
+  secure: COOKIE_OPTIONS.secure,
+  sameSite: COOKIE_OPTIONS.sameSite,
+};
 
 /**
  * Sign a JWT for the given user ID with the configured session expiry.
  */
-export function signToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: `${SESSION_TTL_DAYS}d` });
+export async function signToken(userId) {
+  const { rows } = await pool.query(
+    `INSERT INTO auth_sessions (user_id, expires_at)
+     VALUES ($1, NOW() + ($2 || ' days')::interval)
+     RETURNING id`,
+    [userId, String(SESSION_TTL_DAYS)],
+  );
+  return jwt.sign({ userId, sessionId: rows[0].id }, JWT_SECRET, { expiresIn: `${SESSION_TTL_DAYS}d` });
 }
 
 /**
@@ -42,33 +57,56 @@ export function verifyToken(token) {
   }
 }
 
+export async function isSessionActive(decoded) {
+  if (!decoded?.userId || !decoded?.sessionId) return false;
+  const { rowCount } = await pool.query(
+    `UPDATE auth_sessions SET last_used_at = NOW()
+     WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL AND expires_at > NOW()`,
+    [decoded.sessionId, decoded.userId],
+  );
+  return rowCount === 1;
+}
+
+export async function revokeSession(sessionId, userId) {
+  if (!sessionId || !userId) return;
+  await pool.query(
+    'UPDATE auth_sessions SET revoked_at = NOW() WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL',
+    [sessionId, userId],
+  );
+}
+
 /**
  * Express middleware that reads the 'token' cookie, verifies it,
  * attaches req.userId, and responds 401 if invalid.
  */
-export function authMiddleware(req, res, next) {
-  let token = req.cookies?.token;
+export async function authMiddleware(req, res, next) {
+  try {
+    let token = req.cookies?.token;
 
   // Bearer token fallback for Chrome extension
-  if (!token) {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.slice(7);
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.slice(7);
+      }
     }
+
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const decoded = verifyToken(token);
+
+    if (!decoded || !await isSessionActive(decoded)) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    req.userId = decoded.userId;
+    req.sessionId = decoded.sessionId;
+    return next();
+  } catch (err) {
+    return next(err);
   }
-
-  if (!token) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-
-  const decoded = verifyToken(token);
-
-  if (!decoded) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-
-  req.userId = decoded.userId;
-  next();
 }
 
 /**
@@ -98,4 +136,4 @@ export async function requireTeacher(req, res, next) {
   next();
 }
 
-export { COOKIE_OPTIONS };
+export { COOKIE_OPTIONS, COOKIE_CLEAR_OPTIONS };

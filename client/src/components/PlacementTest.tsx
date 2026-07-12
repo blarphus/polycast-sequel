@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.placementtest');
 // ---------------------------------------------------------------------------
 // components/PlacementTest.tsx -- CEFR vocabulary placement test
 // ---------------------------------------------------------------------------
 
+import '../styles/placement.css';
 import { useState, useEffect, useCallback } from 'react';
 import { getPlacementWords } from '../api';
 import { toErrorMessage } from '../utils/errors';
@@ -46,7 +49,7 @@ export default function PlacementTest({ language, onComplete }: Props) {
       const data = await getPlacementWords(language, level);
       setWords(data.words);
     } catch (err) {
-      console.error('PlacementTest: fetch failed:', err);
+      runtimeLog.error('PlacementTest: fetch failed:', err);
       setError(toErrorMessage(err));
     } finally {
       setLoading(false);

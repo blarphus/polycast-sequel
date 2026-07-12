@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.localwatch');
 // ---------------------------------------------------------------------------
 // pages/LocalWatch.tsx — Watch a local video with synced SRT transcript
 // ---------------------------------------------------------------------------
 
+import '../styles/localVideos.css';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -52,7 +55,7 @@ export default function LocalWatch() {
             await loadFromDirHandle(handle);
             entry = getLocalVideo(decodedFilename);
           } catch (err) {
-            console.error('Failed to restore directory:', err);
+            runtimeLog.error('Failed to restore directory:', err);
           }
         }
       }

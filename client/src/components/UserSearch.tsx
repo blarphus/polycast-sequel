@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.components.usersearch');
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { searchUsers, UserResult, getFriends, getPendingRequests, sendFriendRequest, Friend, FriendRequest } from '../api';
@@ -49,7 +51,7 @@ export default function UserSearch({ initialQuery = '' }: UserSearchProps) {
         }
         setFriendMap(map);
       })
-      .catch((err) => console.error('Failed to load friendship data:', err));
+      .catch((err) => runtimeLog.error('Failed to load friendship data:', err));
     return () => { cancelled = true; };
   }, []);
 
@@ -123,7 +125,7 @@ export default function UserSearch({ initialQuery = '' }: UserSearchProps) {
       await sendFriendRequest(userId);
       setFriendMap((prev) => ({ ...prev, [userId]: 'pending_sent' }));
     } catch (err) {
-      console.error('Failed to send friend request:', err);
+      runtimeLog.error('Failed to send friend request:', err);
     } finally {
       setSendingTo(null);
     }

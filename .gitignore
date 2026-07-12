@@ -19,3 +19,4 @@ AuthKey_*.p8
 
 # Test image output dumps
 server/scripts/img-out*/
+artifacts/sbom/

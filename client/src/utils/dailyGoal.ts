@@ -1,3 +1,5 @@
+import { emitFallbackDiagnostic } from './fallbackDiagnostics';
+
 export const DEFAULT_DAILY_WORD_GOAL = 5;
 export const DAILY_GOAL_EVENT = 'polycast:daily-word-goal';
 
@@ -21,7 +23,14 @@ function readProgress(): number {
   try {
     const value = JSON.parse(window.localStorage.getItem(PROGRESS_KEY) || '{}') as { date?: string; count?: number };
     return value.date === todayKey() ? Math.max(0, Number(value.count) || 0) : 0;
-  } catch {
+  } catch (error) {
+    emitFallbackDiagnostic({
+      code: 'daily_goal_storage_repaired',
+      severity: 'warning',
+      title: 'Daily goal progress repaired',
+      message: 'Stored daily-goal progress was malformed, so today\'s local counter was reset to zero.',
+      detail: error instanceof Error ? error.message : String(error),
+    }, { source: 'web.daily-goal', operation: 'read-local-progress' });
     return 0;
   }
 }
@@ -71,10 +80,4 @@ export function recordDailyWordAdded() {
   writeProgress(before.added + 1);
   const after = getDailyGoalSnapshot();
   emit(after, true, !before.complete && after.complete);
-}
-
-export function setDailyWordGoal(goal: number) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(GOAL_KEY, String(Math.max(1, Math.round(goal))));
-  emit(getDailyGoalSnapshot());
 }

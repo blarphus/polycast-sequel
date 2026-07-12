@@ -1,16 +1,19 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.groupcall');
 // ---------------------------------------------------------------------------
-// pages/GroupCall.tsx — Group video call page with mesh WebRTC
+// pages/GroupCall.tsx — Group video call page. Thin view over the app-level
+// group-call session (contexts/GroupCallProvider.tsx): mounting joins the
+// room if needed; unmounting does NOT leave, so the call survives navigation.
 // ---------------------------------------------------------------------------
 
+import '../styles/groupCall.css';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useGroupCall } from '../hooks/useGroupCall';
-import { useMediaToggles } from '../hooks/useMediaToggles';
+import { useActiveGroupCall } from '../contexts/GroupCallProvider';
 import CallControls, { PhoneOffIcon } from '../components/CallControls';
 import { MutedSpeakerIcon } from '../components/icons';
 import socket from '../socket';
-import { TranscriptionService } from '../transcription';
 import TranscriptPanel from '../components/TranscriptPanel';
 import { useTranscriptEntries } from '../hooks/useTranscriptEntries';
 import { useSavedWords } from '../hooks/useSavedWords';
@@ -25,39 +28,34 @@ export default function GroupCall() {
     remoteStreams,
     participants,
     callStatus,
+    activeSpeakerId,
     streamReady,
-    join,
-    leave,
+    isMuted,
+    isCameraOff,
+    toggleMute,
+    toggleCamera,
+    joinRoom,
+    leaveRoom,
     peersRef,
-  } = useGroupCall(postId!);
+  } = useActiveGroupCall();
 
-  const { isMuted, isCameraOff, toggleMute, toggleCamera } = useMediaToggles(localStreamRef);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [transcriptOpen, setTranscriptOpen] = useState(true);
-  const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
-  const transcriptionRef = useRef<TranscriptionService | null>(null);
 
-  const handleToggleMute = useCallback(() => {
-    toggleMute();
-    const audioTrack = localStreamRef.current?.getAudioTracks()[0];
-    transcriptionRef.current?.setMuted(audioTrack ? !audioTrack.enabled : false);
-  }, [toggleMute, localStreamRef]);
-
-  // Transcription state
+  // Transcription display state (outgoing transcription lives in the provider)
   const [liveSubtitle, setLiveSubtitle] = useState<{ text: string; userId: string; lang?: string } | null>(null);
   const subtitleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeSpeakerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { transcriptEntries, onTranscriptEntry } = useTranscriptEntries(user?.native_language);
   const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = useSavedWords();
 
   // Local video ref
   const localVideoRef = useRef<HTMLVideoElement>(null);
 
-  // Auto-join on mount
+  // Join on mount (leaves any other active group room first, inside the provider)
   useEffect(() => {
-    join();
-  }, [join]);
+    joinRoom(postId!);
+  }, [joinRoom, postId]);
 
   // Attach local stream to video element
   useEffect(() => {
@@ -66,74 +64,65 @@ export default function GroupCall() {
     }
   }, [streamReady, localStreamRef]);
 
+  // Transcript socket events (subtitle overlay + transcript panel entries)
   useEffect(() => {
-    if (callStatus !== 'connected' || !localStreamRef.current) return undefined;
-    if (transcriptionRef.current) return undefined;
-
-    const service = new TranscriptionService(postId!);
-    transcriptionRef.current = service;
-    service.start(localStreamRef.current);
-
-    return () => {
-      if (transcriptionRef.current === service) {
-        service.stop();
-        transcriptionRef.current = null;
-      }
-    };
-  }, [callStatus, localStreamRef, postId]);
-
-  // Transcript socket events
-  useEffect(() => {
-    const onTranscript = ({ text, userId, lang }: { text: string; userId: string; lang?: string }) => {
+    const onTranscript = ({ text, userId, lang, roomId }: { text: string; userId: string; lang?: string; roomId?: string | null }) => {
+      if (roomId !== postId) return;
       if (!text) {
         setLiveSubtitle(null);
         return;
       }
       setLiveSubtitle({ text, userId, lang });
-      setActiveSpeakerId(userId);
-      if (activeSpeakerTimerRef.current) clearTimeout(activeSpeakerTimerRef.current);
-      activeSpeakerTimerRef.current = setTimeout(() => setActiveSpeakerId(null), 1800);
       if (subtitleTimerRef.current) clearTimeout(subtitleTimerRef.current);
       subtitleTimerRef.current = setTimeout(() => setLiveSubtitle(null), 5000);
     };
 
     socket.on('transcript', onTranscript);
-    socket.on('transcript:entry', onTranscriptEntry);
+    const onRoomTranscriptEntry = (entry: Parameters<typeof onTranscriptEntry>[0] & { roomId?: string | null }) => {
+      if (entry.roomId !== postId) return;
+      onTranscriptEntry(entry);
+    };
+    socket.on('transcript:entry', onRoomTranscriptEntry);
 
     return () => {
       socket.off('transcript', onTranscript);
-      socket.off('transcript:entry', onTranscriptEntry);
+      socket.off('transcript:entry', onRoomTranscriptEntry);
       if (subtitleTimerRef.current) clearTimeout(subtitleTimerRef.current);
-      if (activeSpeakerTimerRef.current) clearTimeout(activeSpeakerTimerRef.current);
     };
-  }, [onTranscriptEntry]);
+  }, [onTranscriptEntry, postId]);
+
+  // Stop screen share: kill the presentation stream and put the camera track
+  // back on every peer connection.
+  const stopScreenShare = useCallback(() => {
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current = null;
+    setIsScreenSharing(false);
+    if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+
+    const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
+    if (cameraTrack) {
+      for (const [, entry] of peersRef.current) {
+        const sender = entry.pc.getSenders().find((s) => s.track?.kind === 'video');
+        if (sender) {
+          sender.replaceTrack(cameraTrack).catch((err) => {
+            runtimeLog.error('[group-call] Failed to restore camera track after screen share:', err);
+          });
+        }
+      }
+    }
+  }, [localStreamRef, peersRef]);
 
   // Leave and navigate back
   const handleLeave = useCallback(() => {
-    transcriptionRef.current?.stop();
-    transcriptionRef.current = null;
-    screenStreamRef.current?.getTracks().forEach((track) => track.stop());
-    screenStreamRef.current = null;
-    leave();
+    if (screenStreamRef.current) stopScreenShare();
+    leaveRoom();
     navigate(-1);
-  }, [leave, navigate]);
+  }, [leaveRoom, navigate, stopScreenShare]);
 
   // Screen share — replace video track on all peer connections
   const toggleScreenShare = useCallback(async () => {
     if (isScreenSharing) {
-      // Stop screen share, restore camera
-      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
-      screenStreamRef.current = null;
-      setIsScreenSharing(false);
-      if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-
-      const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
-      if (cameraTrack) {
-        for (const [, entry] of peersRef.current) {
-          const sender = entry.pc.getSenders().find((s) => s.track?.kind === 'video');
-          if (sender) await sender.replaceTrack(cameraTrack);
-        }
-      }
+      stopScreenShare();
     } else {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
@@ -150,29 +139,14 @@ export default function GroupCall() {
         }
 
         // Restore camera when user stops sharing via browser UI
-        screenTrack.onended = async () => {
-          setIsScreenSharing(false);
-          screenStreamRef.current = null;
-          if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-          const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
-          if (cameraTrack) {
-            for (const [, entry] of peersRef.current) {
-              const sender = entry.pc.getSenders().find((s) => s.track?.kind === 'video');
-              if (sender) {
-                try {
-                  await sender.replaceTrack(cameraTrack);
-                } catch (err) {
-                  console.error('[group-call] Failed to restore camera track after screen share:', err);
-                }
-              }
-            }
-          }
+        screenTrack.onended = () => {
+          stopScreenShare();
         };
       } catch (err) {
-        console.error('[group-call] Screen share failed:', err);
+        runtimeLog.error('[group-call] Screen share failed:', err);
       }
     }
-  }, [isScreenSharing, peersRef, localStreamRef]);
+  }, [isScreenSharing, peersRef, stopScreenShare]);
 
   // A participant can join after sharing starts; make sure their newly-created
   // sender receives the presentation track instead of the camera track.
@@ -182,14 +156,23 @@ export default function GroupCall() {
     for (const [, entry] of peersRef.current) {
       const sender = entry.pc.getSenders().find((candidate) => candidate.track?.kind === 'video');
       if (sender && sender.track !== screenTrack) {
-        sender.replaceTrack(screenTrack).catch((err) => console.error('[group-call] Failed to share with new participant:', err));
+        sender.replaceTrack(screenTrack).catch((err) => runtimeLog.error('[group-call] Failed to share with new participant:', err));
       }
     }
   }, [isScreenSharing, participants, peersRef]);
 
-  useEffect(() => () => {
-    screenStreamRef.current?.getTracks().forEach((track) => track.stop());
+  // Page unmount: the call itself keeps going (provider owns it), but screen
+  // share is a page-level feature — stop it and restore the camera track.
+  useEffect(() => {
+    const stopSharing = stopScreenShareRef;
+    return () => {
+      if (screenStreamRef.current) stopSharing.current();
+    };
   }, []);
+  const stopScreenShareRef = useRef(stopScreenShare);
+  useEffect(() => {
+    stopScreenShareRef.current = stopScreenShare;
+  }, [stopScreenShare]);
 
   // Build participant list for display (remote + self)
   const totalParticipants = 1 + remoteStreams.size;
@@ -271,7 +254,7 @@ export default function GroupCall() {
         isMuted={isMuted}
         isCameraOff={isCameraOff}
         isScreenSharing={isScreenSharing}
-        onToggleMute={handleToggleMute}
+        onToggleMute={toggleMute}
         onToggleCamera={toggleCamera}
         onToggleScreenShare={toggleScreenShare}
         primaryAction={{

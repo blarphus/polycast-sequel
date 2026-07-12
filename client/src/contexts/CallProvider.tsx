@@ -1,3 +1,5 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.contexts.callprovider');
 // ---------------------------------------------------------------------------
 // contexts/CallProvider.tsx -- App-level 1:1 call session state.
 //
@@ -37,6 +39,9 @@ import {
   playCallDeclinedSound,
 } from '../utils/sounds';
 import type { TranscriptEntry } from '../components/TranscriptPanel';
+import type { CallSignal, SocketEnvelope } from '../generated/apiContract';
+import { emitFallbackDiagnostic, type FallbackDiagnostic } from '../utils/fallbackDiagnostics';
+import { logRuntimeDiagnostic } from '../utils/runtimeDiagnostics';
 
 export type CallRole = 'caller' | 'callee';
 
@@ -53,15 +58,26 @@ interface CallParams {
   displayName: string;
 }
 
-interface SignalOffer {
-  callId?: string;
+interface SignalOffer extends CallSignal {
   offer: RTCSessionDescriptionInit;
-  fromUserId: string;
 }
 
-interface SignalIce {
-  callId?: string;
+interface SignalIce extends CallSignal {
   candidate: RTCIceCandidateInit | null;
+}
+
+interface SignalAnswer extends CallSignal { answer: RTCSessionDescriptionInit }
+
+function callSocketEnvelope(): SocketEnvelope {
+  return { correlationId: crypto.randomUUID(), occurredAt: new Date().toISOString() };
+}
+
+export function validCallSignal(value: unknown): value is CallSignal {
+  if (!value || typeof value !== 'object') return false;
+  const signal = value as Partial<CallSignal>;
+  return typeof signal.callId === 'string' && typeof signal.fromUserId === 'string'
+    && typeof signal.correlationId === 'string' && signal.correlationId.length > 0
+    && typeof signal.occurredAt === 'string' && Number.isFinite(Date.parse(signal.occurredAt));
 }
 
 /** Map a server ended_reason to a user-facing status message. */
@@ -262,9 +278,9 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     setCallStatus('Connecting...');
     try {
       const offer = await createOffer(pc, stream);
-      socket.emit('signal:offer', { callId, peerId, offer });
+      socket.emit('signal:offer', { callId, peerId, offer, ...callSocketEnvelope() });
     } catch (err) {
-      console.error('[call] Error creating offer:', err);
+      logRuntimeDiagnostic({ code: 'call_offer_creation_failed', source: 'web.call', operation: 'create-offer', message: 'The local call offer could not be created.', detail: err });
       setCallStatus('Failed to create call offer');
     }
   }, [streamRef]);
@@ -284,10 +300,11 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     try {
       const answer = await createAnswer(pc, data.offer, stream);
       await flushPendingIce();
-      socket.emit('signal:answer', { callId, peerId, answer });
+      if (!callId) throw new Error('The accepted call does not have a call ID');
+      socket.emit('signal:answer', { callId, peerId, answer, ...callSocketEnvelope() });
       setCallStatus('');
     } catch (err) {
-      console.error('[call] Error creating answer:', err);
+      logRuntimeDiagnostic({ code: 'call_answer_creation_failed', source: 'web.call', operation: 'create-answer', message: 'The local call answer could not be created.', detail: err });
       setCallStatus('Failed to answer call');
     }
   }, [flushPendingIce, setCallId, streamRef]);
@@ -324,23 +341,35 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     };
 
     const onSignalOffer = (data: SignalOffer) => {
+      if (!validCallSignal(data) || !data.offer) {
+        emitFallbackDiagnostic({ code: 'call_signal_contract_rejected', severity: 'error', title: 'Call signal rejected', message: 'An incoming call offer did not match the generated realtime contract.', detail: 'requiredFields=callId,fromUserId,correlationId,occurredAt,offer' }, { source: 'web.call', operation: 'signal:offer' });
+        return;
+      }
       if (role !== 'callee' || !matchesCall(data.callId)) return;
       void answerOffer(data);
     };
 
-    const onSignalAnswer = async (data: { callId?: string; answer: RTCSessionDescriptionInit }) => {
+    const onSignalAnswer = async (data: SignalAnswer) => {
+      if (!validCallSignal(data) || !data.answer) {
+        emitFallbackDiagnostic({ code: 'call_signal_contract_rejected', severity: 'error', title: 'Call signal rejected', message: 'An incoming call answer did not match the generated realtime contract.', detail: 'requiredFields=callId,fromUserId,correlationId,occurredAt,answer' }, { source: 'web.call', operation: 'signal:answer' });
+        return;
+      }
       if (role !== 'caller' || !matchesCall(data.callId) || !pcRef.current) return;
       try {
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.answer));
         await flushPendingIce();
         setCallStatus('');
       } catch (err) {
-        console.error('[call] Error setting remote answer:', err);
+        logRuntimeDiagnostic({ code: 'call_remote_answer_failed', source: 'web.call', operation: 'apply-remote-answer', message: 'The remote call answer could not be applied.', detail: err, correlationId: data.correlationId });
         setCallStatus('Failed to connect call');
       }
     };
 
     const onIceCandidate = (data: SignalIce) => {
+      if (!validCallSignal(data)) {
+        emitFallbackDiagnostic({ code: 'call_signal_contract_rejected', severity: 'error', title: 'Call signal rejected', message: 'An incoming network candidate did not match the generated realtime contract.', detail: 'requiredFields=callId,fromUserId,correlationId,occurredAt,candidate' }, { source: 'web.call', operation: 'signal:ice-candidate' });
+        return;
+      }
       if (!matchesCall(data.callId)) return;
       const pc = pcRef.current;
       if (!pc || !data.candidate) return;
@@ -372,8 +401,12 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
 
     const onCallError = (data: { callId?: string; message: string }) => {
       if (!matchesCall(data.callId)) return;
-      console.error('[call] call:error:', data.message);
+      logRuntimeDiagnostic({ code: 'call_server_error', source: 'web.call', operation: 'call:error', message: data.message, detail: `callId=${data.callId || 'unknown'}` });
       finishCallLocally(data.message);
+    };
+
+    const onCallDiagnostic = (diagnostic: FallbackDiagnostic) => {
+      emitFallbackDiagnostic(diagnostic, { source: 'server.call-signaling', operation: diagnostic.operation || 'realtime-signaling' });
     };
 
     socket.on('call:ringing', onCallRinging);
@@ -383,6 +416,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     socket.on('call:cancelled', onCallCancelled);
     socket.on('call:busy', onCallBusy);
     socket.on('call:error', onCallError);
+    socket.on('call:diagnostic', onCallDiagnostic);
     socket.on('signal:offer', onSignalOffer);
     socket.on('signal:answer', onSignalAnswer);
     socket.on('signal:ice-candidate', onIceCandidate);
@@ -395,6 +429,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
       socket.off('call:cancelled', onCallCancelled);
       socket.off('call:busy', onCallBusy);
       socket.off('call:error', onCallError);
+      socket.off('call:diagnostic', onCallDiagnostic);
       socket.off('signal:offer', onSignalOffer);
       socket.off('signal:answer', onSignalAnswer);
       socket.off('signal:ice-candidate', onIceCandidate);
@@ -441,7 +476,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
           setTurnWarning('TURN relay is not configured. This call may fail on restrictive networks.');
         }
       } catch (err) {
-        console.error('[call] Failed to fetch ICE servers:', err);
+        runtimeLog.error('[call] Failed to fetch ICE servers:', err);
         setCallStatus(err instanceof Error ? err.message : 'Failed to load ICE servers');
         return;
       }
@@ -463,11 +498,12 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
         },
         (candidate) => {
           const callId = activeCallIdRef.current;
-          if (candidate && peerId) {
+          if (candidate && peerId && callId) {
             socket.emit('signal:ice-candidate', {
               callId,
               peerId,
               candidate: candidate.toJSON(),
+              ...callSocketEnvelope(),
             });
           }
         },

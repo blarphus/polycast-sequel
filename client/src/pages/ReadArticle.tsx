@@ -1,7 +1,10 @@
+import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+const runtimeLog = createScopedRuntimeLogger('web.pages.readarticle');
 // ---------------------------------------------------------------------------
 // pages/ReadArticle.tsx -- In-app news article reader with CEFR level switching
 // ---------------------------------------------------------------------------
 
+import '../styles/read.css';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -137,7 +140,7 @@ export default function ReadArticle() {
       if (err instanceof Error && err.name === 'AbortError') {
         return;
       }
-      console.error('Failed to fetch article:', err);
+      runtimeLog.error('Failed to fetch article:', err);
       setError(toErrorMessage(err));
       setBodyLoading(false);
     }
