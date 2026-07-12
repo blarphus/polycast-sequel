@@ -4,7 +4,7 @@ The baseline is the executed audit snapshot in `AUDIT_REPORT.md`; current values
 
 | Measure | Audit baseline | Current | Result |
 | --- | ---: | ---: | --- |
-| Tracked/source scale | 503 tracked files, ~87,000 source lines | 498 inventoried first-party files, 79,443 lines | ~8.7% fewer lines despite adding contracts, tests, CI, security docs, and audit gates |
+| Tracked/source scale | 503 tracked files, ~87,000 source lines | 498 inventoried first-party files, 79,440 lines | ~8.7% fewer lines despite adding contracts, tests, CI, security docs, and audit gates |
 | Unresolved zero-caller candidates | Named candidates across web/server/Swift | 0 | All original and newly discovered candidates deleted or dynamically/test-owned with a recorded reason |
 | Unresolved oversized extraction candidates | Multiple 850–1,800-line mixed owners | 0 | 37 larger cohesive survivors reviewed with explicit retention reasons |
 | Initial web JavaScript | 645.79 kB / 184.04 kB gzip entry | 215.85 kB / 65.96 kB gzip initial chunk | ~66% smaller raw and ~64% smaller gzip; no Vite oversized-entry warning |
@@ -23,4 +23,4 @@ The baseline is the executed audit snapshot in `AUDIT_REPORT.md`; current values
 
 The increased file count within some feature directories is intentional decomposition: large mixed files became smaller ownership units. Overall first-party LOC and installed dependency size decreased while contracts, tests, migration/security gates, and documentation increased.
 
-The final release proof ran `npm run check` successfully in the working tree, including eight hermetic iOS UI tests, then ran `npm run setup` and `npm run check:fast` successfully in a sanitized isolated Git workspace under the pinned Node version. Production-only credential rotation/deployment checks are tracked separately and are not represented as locally green.
+The final release proof ran `npm run check` successfully in the working tree, including eight hermetic iOS UI tests, then ran `npm run setup` and `npm run check:fast` successfully in a sanitized isolated Git workspace under the pinned Node version. Render deployment `dep-d99qp88k1i2s73ekbnjg` is live and passed exact-origin, correlation, role-elevation, token-rotation/revocation, startup, migration, and cleanup verification. Cloudflare Worker rotation/deployment remains tracked separately and is not represented as green.

@@ -10,10 +10,10 @@ The findings and measurements below preserve the original 2026-07-11 baseline. T
 
 | Status | Count | Scope |
 |---|---:|---|
-| Acceptance-complete | 22 | AUD-003 through AUD-024, including pipeline simplification, decomposition, pruning, fallback visibility, and the clean-workspace release proof |
-| Locally implemented; production evidence pending | 2 | AUD-001 Worker secret rotation/KV/deploy evidence and AUD-002 production trust/session verification |
+| Acceptance-complete | 23 | AUD-002 through AUD-024, including production trust/session verification, pipeline simplification, decomposition, pruning, fallback visibility, and the clean-workspace release proof |
+| Locally implemented; production evidence pending | 1 | AUD-001 Worker OAuth authorization, secret rotation, replay-KV provisioning, deploy, and rejection/replay/log evidence |
 
-The final local root gate passed contracts, fallback and logging policy, source/tool inventories, web, server, extension, Worker, fresh and legacy PostgreSQL migrations, integration benchmarks, Xcode generation, and iOS unit/UI tests. A separate sanitized workspace passed pinned clean installs and the credential-free non-iOS gate. See `docs/OPTIMIZATION_METRICS.md`, `docs/PIPELINE_AUDIT.md`, and `docs/CODE_INVENTORY.md` for the measured result and disposition evidence.
+The final local root gate passed contracts, fallback and logging policy, source/tool inventories, web, server, extension, Worker, fresh and legacy PostgreSQL migrations, integration benchmarks, Xcode generation, and iOS unit/UI tests. A separate sanitized workspace passed pinned clean installs and the credential-free non-iOS gate. Render deployment `dep-d99qp88k1i2s73ekbnjg` then proved production origins, correlation, role boundaries, session rotation/revocation, and clean temporary-account teardown. See `docs/OPTIMIZATION_METRICS.md`, `docs/PIPELINE_AUDIT.md`, and `docs/CODE_INVENTORY.md` for measured and disposition evidence.
 
 ## Executive assessment
 
@@ -446,4 +446,4 @@ Rules for the target state:
 
 ## Validation notes
 
-The baseline findings are retained as dated evidence and therefore describe the pre-remediation tree in the present tense. Production source was subsequently refactored according to the specifications above; the live completion state is authoritative in `IMPLEMENTATION_CHECKLIST.md`. Dependency advisory counts in the baseline are historical, while the current release gate and SBOM policy enforce the remediated state. Timing and memory figures are local regression signals, not production service-level measurements. AUD-001 and AUD-002 remain visibly open because production credential rotation, deployment, and environment verification cannot be truthfully inferred from local tests.
+The baseline findings are retained as dated evidence and therefore describe the pre-remediation tree in the present tense. Production source was subsequently refactored according to the specifications above; the live completion state is authoritative in `IMPLEMENTATION_CHECKLIST.md`. Dependency advisory counts in the baseline are historical, while the current release gate and SBOM policy enforce the remediated state. Timing and memory figures are local regression signals, not production service-level measurements. AUD-001 remains visibly open: a private Render probe showed the live Worker returns `403 Unauthorized` to the new scoped token, proving the Worker deployment/rotation is still required.
