@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { configuredOrigins, PRODUCTION_CLIENT_ORIGIN } from './origins.js';
 
-test('production origins fail closed to the exact deployed app and configured extension', () => {
+test('production origins fail closed to the exact deployed app and an optional exact extension', () => {
   assert.deepEqual(configuredOrigins({ NODE_ENV: 'production', EXTENSION_ORIGIN: 'chrome-extension://extension-id' }), [
     PRODUCTION_CLIENT_ORIGIN,
     'chrome-extension://extension-id',
   ]);
-  assert.throws(() => configuredOrigins({ NODE_ENV: 'production' }), /EXTENSION_ORIGIN/);
+  assert.deepEqual(configuredOrigins({ NODE_ENV: 'production' }), [PRODUCTION_CLIENT_ORIGIN]);
 });
 
 test('an explicit production client origin replaces the known deployment default', () => {

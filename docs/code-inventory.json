@@ -2,7 +2,7 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 498,
-    "lines": 79443,
+    "lines": 79440,
     "declarations": 2233,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 37,
@@ -17344,7 +17344,7 @@
     },
     {
       "file": "server/lib/origins.js",
-      "lines": 13,
+      "lines": 10,
       "responsibility": "server domain/integration",
       "sideEffects": [],
       "testCoverage": [
