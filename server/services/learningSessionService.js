@@ -93,7 +93,9 @@ Return JSON only: {"sentence":"..."}`;
 
   const raw = await callGemini(prompt, {
     thinkingConfig: { thinkingBudget: 0 },
-    maxOutputTokens: 120,
+    // Keep this aligned with the established flashcard example generator.
+    // A 120-token cap can cut off even a short JSON response before its closing brace.
+    maxOutputTokens: 400,
     responseMimeType: 'application/json',
   });
   const parsed = parseGeminiJson(raw, 'Practice sentence generation');
