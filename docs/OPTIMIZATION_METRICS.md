@@ -4,13 +4,13 @@ The baseline is the executed audit snapshot in `AUDIT_REPORT.md`; current values
 
 | Measure | Audit baseline | Current | Result |
 | --- | ---: | ---: | --- |
-| Tracked/source scale | 503 tracked files, ~87,000 source lines | 496 inventoried first-party files, 79,418 lines | ~8.7% fewer lines despite adding contracts, tests, CI, security docs, and audit gates |
+| Tracked/source scale | 503 tracked files, ~87,000 source lines | 498 inventoried first-party files, 79,443 lines | ~8.7% fewer lines despite adding contracts, tests, CI, security docs, and audit gates |
 | Unresolved zero-caller candidates | Named candidates across web/server/Swift | 0 | All original and newly discovered candidates deleted or dynamically/test-owned with a recorded reason |
 | Unresolved oversized extraction candidates | Multiple 850–1,800-line mixed owners | 0 | 37 larger cohesive survivors reviewed with explicit retention reasons |
 | Initial web JavaScript | 645.79 kB / 184.04 kB gzip entry | 215.85 kB / 65.96 kB gzip initial chunk | ~66% smaller raw and ~64% smaller gzip; no Vite oversized-entry warning |
 | Initial web CSS | 44,853 bytes at the pre-CSS-split checkpoint | 31,232 bytes | 30% smaller; call CSS is a 13.62 kB lazy chunk |
 | Web tests | 43 tests / 9 files | 55 tests / 16 files | +12 tests and seven suites; all pass |
-| Server tests | 47 tests, manual invocation required | 83 discovered tests (79 pass, four integration-only skips) | Service tests are included by the package script; all local unit tests pass |
+| Server tests | 47 tests, manual invocation required | 86 discovered tests (82 pass, four integration-only skips) | Service tests are included by the package script; all local unit tests pass |
 | Extension tests | 4 tests, no package script | 9 tests | Package-owned suite covers activation, hostile UI, session expiry, indexing, performance, and contracts |
 | Worker tests | No executed suite recorded | 11 tests | Auth, expiry, replay, quota, bounds, provider alternate, and timeout paths pass |
 | Installed Node dependencies | ~546 MB | ~332 MB (`client` 104 MB, `server` 42 MB, Worker 186 MB) | ~214 MB / 39% reduction; unused 200+ MB ML tree removed |

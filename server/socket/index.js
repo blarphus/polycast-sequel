@@ -11,6 +11,7 @@ import pool from '../db.js';
 import redisClient from '../redis.js';
 import logger from '../logger.js';
 import { setSocketServer } from './serverState.js';
+import { configuredOrigins } from '../lib/origins.js';
 
 
 /**
@@ -21,10 +22,7 @@ import { setSocketServer } from './serverState.js';
  * @returns {Server} The Socket.IO server instance
  */
 export function setupSocket(server) {
-  const allowedOrigins = [
-    process.env.CLIENT_ORIGIN || 'http://localhost:5173',
-    process.env.EXTENSION_ORIGIN,
-  ].filter(Boolean);
+  const allowedOrigins = configuredOrigins();
 
   const io = new Server(server, {
     cors: {

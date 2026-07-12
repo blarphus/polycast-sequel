@@ -1,8 +1,8 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 496,
-    "lines": 79418,
+    "files": 498,
+    "lines": 79443,
     "declarations": 2233,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 37,
@@ -201,6 +201,7 @@
         "extension/test/activation.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/httpErrors.test.js",
+        "server/lib/origins.test.js",
         "server/services/dictionaryMediaService.test.js",
         "server/test/apnsVoip.test.js",
         "server/test/auth.integration.test.js",
@@ -5022,6 +5023,7 @@
         "client/src/test/groupCallProvider.test.tsx",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "ios/Polycast/UITests/ReaderPopupUITests.swift",
+        "server/lib/origins.test.js",
         "server/test/auth.integration.test.js",
         "server/test/correlation.test.js"
       ],
@@ -5038,11 +5040,12 @@
         },
         {
           "name": "app",
-          "callers": 64,
+          "callers": 65,
           "testReferences": [
             "client/src/test/groupCallProvider.test.tsx",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "ios/Polycast/UITests/ReaderPopupUITests.swift",
+            "server/lib/origins.test.js",
             "server/test/auth.integration.test.js",
             "server/test/correlation.test.js"
           ],
@@ -15827,7 +15830,7 @@
     },
     {
       "file": "server/app.js",
-      "lines": 126,
+      "lines": 116,
       "responsibility": "application support",
       "sideEffects": [
         "logging"
@@ -15848,6 +15851,7 @@
         "ios/Polycast/UITests/ReaderPopupUITests.swift",
         "server/lib/httpErrors.test.js",
         "server/lib/normalizeWordFields.test.js",
+        "server/lib/origins.test.js",
         "server/lib/srsUpdate.test.js",
         "server/test/apnsVoip.test.js",
         "server/test/auth.integration.test.js",
@@ -15856,12 +15860,6 @@
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
-        {
-          "name": "configuredOrigins",
-          "callers": 1,
-          "testReferences": [],
-          "disposition": "retain"
-        },
         {
           "name": "createApp",
           "callers": 4,
@@ -17343,6 +17341,37 @@
           "disposition": "retain"
         }
       ]
+    },
+    {
+      "file": "server/lib/origins.js",
+      "lines": 13,
+      "responsibility": "server domain/integration",
+      "sideEffects": [],
+      "testCoverage": [
+        "server/lib/origins.test.js"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "configuredOrigins",
+          "callers": 9,
+          "testReferences": [
+            "server/lib/origins.test.js"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "server/lib/origins.test.js",
+      "lines": 24,
+      "responsibility": "test",
+      "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
     },
     {
       "file": "server/lib/profileSessions.js",
@@ -21190,7 +21219,7 @@
     },
     {
       "file": "server/socket/index.js",
-      "lines": 111,
+      "lines": 109,
       "responsibility": "application support",
       "sideEffects": [
         "logging"

@@ -28,17 +28,7 @@ import videosRoutes from './routes/videos.js';
 import voicePracticeRoutes from './routes/voicePractice.js';
 import { fallbackDiagnosticsMiddleware } from './lib/fallbackDiagnostics.js';
 import { errorResponse } from './lib/httpErrors.js';
-
-export function configuredOrigins() {
-  const origins = [
-    process.env.CLIENT_ORIGIN || 'http://localhost:5173',
-    process.env.EXTENSION_ORIGIN,
-  ].filter(Boolean);
-  if (process.env.NODE_ENV === 'production' && !process.env.EXTENSION_ORIGIN) {
-    throw new Error('EXTENSION_ORIGIN must be configured in production');
-  }
-  return origins;
-}
+import { configuredOrigins } from './lib/origins.js';
 
 export function createApp({ clientDist = path.resolve('client/dist') } = {}) {
   const app = express();

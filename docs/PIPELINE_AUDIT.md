@@ -4,7 +4,7 @@ This ledger records the post-refactor owner, intentional primary path, bounded a
 
 ## Authentication and profile sessions
 
-- Owners: server auth/profile-session services; web `AuthProvider`; iOS `SessionStore`; extension background session store.
+- Owners: server auth/profile-session services and one shared HTTP/Socket.IO origin policy; web `AuthProvider`; iOS `SessionStore`; extension background session store.
 - Primary: credential exchange → revocable server session → platform token store → `/me` restore → explicit logout/revoke.
 - Alternates: authenticated 401 performs one deduplicated teardown. Anonymous startup probing is not classified as session expiry. Cached extension status is explicitly offline.
 - Diagnostics: `session_expired`, `extension_session_expired`, and cached/offline status codes carry the request correlation ID; credentials are redacted.
