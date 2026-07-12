@@ -69,6 +69,11 @@ function ensureFreshPracticeSentence(sentence, word) {
   return blankSentence(clean, word) ? clean : null;
 }
 
+function fallbackReason(error) {
+  const message = error instanceof Error ? error.message : String(error || 'Unknown error');
+  return message.replace(/\s+/g, ' ').trim().slice(0, 240) || 'Unknown error';
+}
+
 async function generatePracticeSentence(word, targetLanguage, nativeLanguage) {
   const sources = sourceSentencesFor(word);
   const prompt = `Write one NEW, short sentence for a vocabulary exercise in ${targetLanguage || 'the target language'}.
@@ -301,21 +306,24 @@ export async function createLearningSession(pool, userId, { kind, sourceVideoId 
     })),
   );
   let sentenceFallbackAdded = false;
+  const sentenceFailures = [];
   for (let index = 0; index < sentenceResults.length; index += 1) {
     const result = sentenceResults[index];
     if (result.status === 'fulfilled') {
       generatedSentences.set(result.value.wordId, result.value.sentence);
       continue;
     }
-    logger.warn('Practice sentence generation failed for "%s": %s', contextWords[index].word, result.reason?.message || result.reason);
-    if (!sentenceFallbackAdded) {
-      sentenceFallbackAdded = true;
-      diagnostics.push({
-        code: 'PRACTICE_SENTENCE_FALLBACK',
-        title: 'Practice fallback used',
-        message: 'A new practice sentence could not be generated, so that item was replaced with a meaning question.',
-      });
-    }
+    const reason = fallbackReason(result.reason);
+    logger.warn('Practice sentence generation failed for "%s": %s', contextWords[index].word, reason);
+    sentenceFailures.push(`“${contextWords[index].word}”: ${reason}`);
+  }
+  if (sentenceFailures.length) {
+    sentenceFallbackAdded = true;
+    diagnostics.push({
+      code: 'PRACTICE_SENTENCE_FALLBACK',
+      title: 'Practice fallback used',
+      message: `A new practice sentence could not be generated, so that item was replaced with a meaning question. Reason: ${sentenceFailures.join(' · ')}`,
+    });
   }
   if (contextWords.some((word) => !word.image_url)) {
     diagnostics.push({
@@ -336,7 +344,7 @@ export async function createLearningSession(pool, userId, { kind, sourceVideoId 
         diagnostics.push({
           code: 'PRACTICE_SENTENCE_FALLBACK',
           title: 'Practice fallback used',
-          message: 'A new practice sentence could not be generated, so that item was replaced with a meaning question.',
+          message: 'A new practice sentence could not be used, so that item was replaced with a meaning question. Reason: the generated sentence did not contain the expected saved word.',
         });
       }
     }
@@ -535,4 +543,4 @@ export async function completeLearningSession(pool, userId, sessionId, timeZone)
   }
 }
 
-export const __test = { blankSentence, ensureFreshPracticeSentence, makeExercise, normalize, parseForms, responseIsCorrect };
+export const __test = { blankSentence, ensureFreshPracticeSentence, fallbackReason, makeExercise, normalize, parseForms, responseIsCorrect };

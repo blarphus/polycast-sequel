@@ -31,6 +31,13 @@ test('context blanks accept the generated sentence and never reuse the saved sou
   assert.equal(exercise.prompt.imageUrl, '/image/abatir');
 });
 
+test('practice fallbacks retain the backend failure reason for the learner', () => {
+  assert.equal(
+    __test.fallbackReason(new Error('Gemini request failed (503): temporarily unavailable\ntry again')),
+    'Gemini request failed (503): temporarily unavailable try again',
+  );
+});
+
 test('choice and pair answers are deterministic after generation', () => {
   const choice = __test.makeExercise('meaning_choice', words[0], words, 'es');
   assert.equal(__test.responseIsCorrect(choice.answer, { optionId: choice.answer.optionId }), true);
