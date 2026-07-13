@@ -440,6 +440,46 @@ try {
      WHERE shared.id = mapped.shared_id
   `, [catalog.id]);
 
+  const { rows: [savedWordBackfill] } = await client.query(`
+    SELECT COUNT(*)::int AS total,
+           COUNT(*) FILTER (WHERE lemma_id IS NOT NULL)::int AS lemma_linked,
+           COUNT(*) FILTER (WHERE lemma_frequency_rank IS NOT NULL)::int AS ranked,
+           COUNT(*) FILTER (WHERE BTRIM(COALESCE(definition, '')) <> '' AND sense_id IS NOT NULL)::int AS defined_sense_linked,
+           COUNT(*) FILTER (WHERE BTRIM(COALESCE(definition, '')) <> '')::int AS defined_total,
+           COUNT(*) FILTER (WHERE rank_version_id = $1)::int AS catalog_version_linked
+      FROM saved_words
+     WHERE target_language = ANY($2)
+  `, [catalog.id, FREQUENCY_LANGUAGES]);
+  const { rows: [sharedEntryBackfill] } = await client.query(`
+    SELECT COUNT(*)::int AS total,
+           COUNT(*) FILTER (WHERE lemma_id IS NOT NULL)::int AS lemma_linked,
+           COUNT(*) FILTER (WHERE lemma_frequency_rank IS NOT NULL)::int AS ranked,
+           COUNT(*) FILTER (WHERE BTRIM(COALESCE(definition, '')) <> '' AND sense_id IS NOT NULL)::int AS defined_sense_linked,
+           COUNT(*) FILTER (WHERE BTRIM(COALESCE(definition, '')) <> '')::int AS defined_total,
+           COUNT(*) FILTER (WHERE rank_version_id = $1)::int AS catalog_version_linked
+      FROM shared_dictionary_entries
+     WHERE target_language = ANY($2)
+  `, [catalog.id, FREQUENCY_LANGUAGES]);
+  const backfill = { savedWords: savedWordBackfill, sharedEntries: sharedEntryBackfill };
+  const incompleteBackfills = Object.entries(backfill).filter(([, summary]) =>
+    summary.lemma_linked !== summary.total
+    || summary.ranked !== summary.total
+    || summary.catalog_version_linked !== summary.total
+    || summary.defined_sense_linked !== summary.defined_total
+  );
+  if (incompleteBackfills.length) {
+    const diagnostic = {
+      code: 'catalog_backfill_verification_failed',
+      severity: 'error',
+      pipeline: 'catalog_build',
+      stage: 'existing-entry-backfill-verification',
+      catalogVersion: version,
+      detail: backfill,
+    };
+    console.error(JSON.stringify(diagnostic));
+    throw new Error(`Catalog backfill verification failed: ${JSON.stringify(backfill)}`);
+  }
+
   if (activate) {
     await client.query(
       `UPDATE frequency_catalog_versions SET status = 'retired' WHERE status = 'active'`,
@@ -466,6 +506,7 @@ try {
     status: activate ? 'active' : 'retired',
     scoreCount,
     sourceCount: manifest.length,
+    backfill,
     diagnostics,
   }));
 } catch (error) {
