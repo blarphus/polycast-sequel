@@ -135,6 +135,49 @@
   border-radius: 999px;
 }
 
+.dict-frequency-order-btn,
+.dict-lookup-btn {
+  flex-shrink: 0;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font);
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.dict-frequency-order-btn {
+  min-height: 36px;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.dict-lookup-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1.3rem;
+}
+
+.dict-frequency-order-btn:hover,
+.dict-lookup-btn:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.dict-frequency-order-btn:active,
+.dict-lookup-btn:active {
+  transform: translateY(0) scale(0.97);
+}
+
 .dict-list {
   display: flex;
   flex-direction: column;

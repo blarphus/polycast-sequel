@@ -2,7 +2,7 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 510,
-    "lines": 82171,
+    "lines": 82173,
     "declarations": 2280,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
@@ -1817,6 +1817,35 @@
       "symbols": []
     },
     {
+      "file": "client/src/components/FallbackToast.tsx",
+      "lines": 67,
+      "responsibility": "web component UI",
+      "sideEffects": [],
+      "testCoverage": [
+        "client/src/test/ttsFallbackToast.test.tsx",
+        "extension/test/fallback-toast.test.mjs",
+        "extension/test/page-highlights.test.mjs"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "languageName",
+          "callers": 21,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "FallbackToast",
+          "callers": 3,
+          "testReferences": [
+            "client/src/test/ttsFallbackToast.test.tsx"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
       "file": "client/src/components/FloatingCallTile.tsx",
       "lines": 181,
       "responsibility": "web component UI",
@@ -1894,7 +1923,7 @@
     },
     {
       "file": "client/src/components/ImagePicker.tsx",
-      "lines": 258,
+      "lines": 259,
       "responsibility": "web component UI",
       "sideEffects": [
         "UI"
@@ -2079,33 +2108,6 @@
       ]
     },
     {
-      "file": "client/src/components/TtsFallbackToast.tsx",
-      "lines": 67,
-      "responsibility": "web component UI",
-      "sideEffects": [],
-      "testCoverage": [
-        "client/src/test/ttsFallbackToast.test.tsx"
-      ],
-      "disposition": "intentionally standalone",
-      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
-      "symbols": [
-        {
-          "name": "languageName",
-          "callers": 21,
-          "testReferences": [],
-          "disposition": "retain"
-        },
-        {
-          "name": "TtsFallbackToast",
-          "callers": 3,
-          "testReferences": [
-            "client/src/test/ttsFallbackToast.test.tsx"
-          ],
-          "disposition": "retain"
-        }
-      ]
-    },
-    {
       "file": "client/src/components/UserSearch.tsx",
       "lines": 206,
       "responsibility": "web component UI",
@@ -2124,7 +2126,7 @@
     },
     {
       "file": "client/src/components/WordLookupModal.tsx",
-      "lines": 190,
+      "lines": 191,
       "responsibility": "web component UI",
       "sideEffects": [],
       "testCoverage": [],
@@ -12119,7 +12121,7 @@
         },
         {
           "name": "lookup",
-          "callers": 187,
+          "callers": 186,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts",
             "extension/test/background.test.mjs",

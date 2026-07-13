@@ -1,4 +1,5 @@
 import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+import '../styles/settings.css';
 const runtimeLog = createScopedRuntimeLogger('web.components.imagepicker');
 // ---------------------------------------------------------------------------
 // components/ImagePicker.tsx -- Modal for searching & picking a word image

@@ -1,4 +1,5 @@
 import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+import '../styles/settings.css';
 const runtimeLog = createScopedRuntimeLogger('web.components.wordlookupmodal');
 // ---------------------------------------------------------------------------
 // components/WordLookupModal.tsx -- Look up words via Wiktionary DB and save them

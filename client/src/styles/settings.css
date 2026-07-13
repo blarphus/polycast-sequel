@@ -2,33 +2,6 @@
    Word Lookup Modal
    ========================================================================== */
 
-.dict-lookup-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: var(--accent);
-  color: #fff;
-  font-size: 1.3rem;
-  font-weight: 700;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background var(--transition), transform var(--transition);
-}
-
-.dict-lookup-btn:hover {
-  background: var(--accent-hover);
-  transform: scale(1.08);
-}
-
-.dict-lookup-btn:active {
-  transform: scale(0.95);
-}
-
 .lookup-overlay {
   position: fixed;
   inset: 0;

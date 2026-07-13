@@ -11,7 +11,7 @@ import IncomingCall from './components/IncomingCall';
 import PhraseTranslator from './components/PhraseTranslator';
 import BottomToolbar from './components/BottomToolbar';
 import ErrorBoundary from './components/ErrorBoundary';
-import TtsFallbackToast from './components/TtsFallbackToast';
+import FallbackToast from './components/FallbackToast';
 import DailyGoalCelebration from './components/DailyGoalCelebration';
 import { CallProvider } from './contexts/CallProvider';
 import { GroupCallProvider } from './contexts/GroupCallProvider';
@@ -129,7 +129,7 @@ export default function App() {
       <GroupCallProvider>
       {/* Global incoming-call modal (only when authenticated) */}
       <AuthenticatedShell />
-      <TtsFallbackToast />
+      <FallbackToast />
       <DailyGoalCelebration />
       {/* Mini call tile while a 1:1 call is active off the call page */}
       <FloatingCallTile />

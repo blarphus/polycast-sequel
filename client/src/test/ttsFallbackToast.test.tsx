@@ -1,11 +1,11 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import TtsFallbackToast from '../components/TtsFallbackToast';
+import FallbackToast from '../components/FallbackToast';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-describe('TtsFallbackToast', () => {
+describe('FallbackToast', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -15,7 +15,7 @@ describe('TtsFallbackToast', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
-    act(() => root.render(<TtsFallbackToast />));
+    act(() => root.render(<FallbackToast />));
 
     act(() => {
       window.dispatchEvent(new CustomEvent('polycast:tts-fallback', {
@@ -41,7 +41,7 @@ describe('TtsFallbackToast', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
-    act(() => root.render(<TtsFallbackToast />));
+    act(() => root.render(<FallbackToast />));
 
     act(() => {
       window.dispatchEvent(new CustomEvent('polycast:fallback', {

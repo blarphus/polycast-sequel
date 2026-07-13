@@ -387,7 +387,7 @@ export default function Dictionary() {
               <option value="due">Due soonest</option>
             </select>
             <span className="dict-count">{totalGroups} word{totalGroups !== 1 ? 's' : ''}</span>
-            <button className="dict-lookup-btn" onClick={() => { void rebuildQueue(); }} title="Rebuild frequency order">
+            <button className="dict-frequency-order-btn" onClick={() => { void rebuildQueue(); }} title="Rebuild frequency order">
               Frequency order
             </button>
             {user?.native_language && user?.target_language && (

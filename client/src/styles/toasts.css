@@ -1,0 +1,107 @@
+/* Global success/error/fallback notices. These components are mounted by App,
+   so their styles must stay in the eagerly loaded stylesheet graph. */
+
+.dict-toast,
+.fallback-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-surface);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  font-size: 0.88rem;
+  font-weight: 600;
+  animation: global-toast-in 0.25s ease;
+}
+
+.dict-toast {
+  z-index: 900;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+}
+
+.dict-toast--done {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.dict-toast--error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.fallback-toast {
+  z-index: 910;
+  gap: 0.65rem;
+  width: max-content;
+  max-width: min(92vw, 620px);
+  padding: 0.75rem 1rem;
+  border: 1.5px solid #d97706;
+  color: #b45309;
+}
+
+.fallback-toast > span:first-child {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.fallback-toast-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.fallback-toast-body > span,
+.fallback-toast-body small {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.fallback-toast-detail,
+.fallback-toast-body small {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.82;
+}
+
+.dict-toast--hiding {
+  animation: global-toast-out 0.3s ease forwards;
+}
+
+.dict-toast .loading-spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+@keyframes global-toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes global-toast-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+}
+
+@media (max-width: 640px) {
+  .fallback-toast {
+    top: 10px;
+    align-items: flex-start;
+    width: calc(100vw - 20px);
+    max-width: none;
+    border-radius: 16px;
+  }
+}

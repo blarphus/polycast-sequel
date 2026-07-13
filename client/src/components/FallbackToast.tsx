@@ -13,7 +13,7 @@ function languageName(languageCode?: string) {
   return LANGUAGE_NAMES[base] || languageCode || 'this language';
 }
 
-export default function TtsFallbackToast() {
+export default function FallbackToast() {
   const [notice, setNotice] = useState<FallbackDiagnostic | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -53,7 +53,7 @@ export default function TtsFallbackToast() {
   if (!notice) return null;
 
   return (
-    <div className="tts-fallback-toast" role="status">
+    <div className="fallback-toast" role="status" aria-live="polite">
       <span aria-hidden="true">!</span>
       <span className="fallback-toast-body">
         <strong>{notice.title}</strong>
