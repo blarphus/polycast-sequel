@@ -18,10 +18,12 @@ try {
     `INSERT INTO wiktionary (lang, key, word, pos, senses, forms, translations)
      VALUES
        ('en', 'the', 'the', 'article', $1::jsonb, ARRAY['the'], '[]'::jsonb),
-       ('en', 'run', 'run', 'verb', $2::jsonb, ARRAY['run', 'runs', 'running', 'ran'], '[]'::jsonb)`,
+       ('en', 'run', 'run', 'verb', $2::jsonb, ARRAY['run', 'runs', 'running', 'ran'], '[]'::jsonb),
+       ('en', 'sprint', 'sprint', 'verb', $3::jsonb, ARRAY['sprint', 'sprints'], '[]'::jsonb)`,
     [
       JSON.stringify([{ id: `en-the-${suffix}`, glosses: ['definite article'] }]),
       JSON.stringify([{ id: `en-run-${suffix}`, glosses: ['move quickly'] }]),
+      JSON.stringify([{ id: `en-run-${suffix}`, glosses: ['dash quickly'] }]),
     ],
   );
   await pool.query(
@@ -73,6 +75,13 @@ try {
       WHERE dl.language = 'en' AND dl.lemma_key IN ('the', 'run') AND ds.provisional`,
   );
   assert.equal(duplicates.count, 0);
+  const { rows: [collidingSourceIds] } = await pool.query(
+    `SELECT COUNT(*)::int AS count, COUNT(DISTINCT source_sense_id)::int AS distinct_count
+       FROM dictionary_senses
+      WHERE source = 'wiktionary' AND definition IN ('move quickly', 'dash quickly')`,
+  );
+  assert.equal(collidingSourceIds.count, 2);
+  assert.equal(collidingSourceIds.distinct_count, 2);
   console.log(JSON.stringify({
     event: 'catalog_backfill_smoke_passed',
     catalogVersion,

@@ -210,12 +210,10 @@ try {
 
   await client.query(
     `INSERT INTO dictionary_lemmas (language, lemma_key, canonical_lemma, provenance)
-     SELECT lang, LOWER(BTRIM(word)), MIN(BTRIM(word)), jsonb_build_object('source', 'wiktionary')
+     SELECT lang, LOWER(BTRIM(key)), BTRIM(word), jsonb_build_object('source', 'wiktionary')
        FROM wiktionary
-      WHERE lang = ANY($1) AND BTRIM(word) <> ''
-      GROUP BY lang, LOWER(BTRIM(word))
-     ON CONFLICT (language, lemma_key) DO UPDATE SET
-       canonical_lemma = EXCLUDED.canonical_lemma, updated_at = NOW()`,
+      WHERE lang = ANY($1) AND BTRIM(key) <> '' AND BTRIM(word) <> ''
+     ON CONFLICT (language, lemma_key) DO NOTHING`,
     [FREQUENCY_LANGUAGES],
   );
 
@@ -227,12 +225,11 @@ try {
     SELECT l.id, w.pos, gloss.value,
            encode(digest(LOWER(REGEXP_REPLACE(BTRIM(gloss.value), '\\s+', ' ', 'g')), 'sha256'), 'hex'),
            'wiktionary',
-           COALESCE(NULLIF(sense.value->>'id', ''),
-             CONCAT('wiktionary:', w.lang, ':', w.key, ':', w.pos, ':', sense.ordinality, ':', gloss.ordinality)),
+           CONCAT('wiktionary:', w.id, ':', sense.ordinality, ':', gloss.ordinality),
            ((sense.ordinality - 1) * 1000 + gloss.ordinality)::int,
            jsonb_build_object('wiktionaryRowId', w.id, 'senseIndex', sense.ordinality - 1)
       FROM wiktionary w
-      JOIN dictionary_lemmas l ON l.language = w.lang AND l.lemma_key = LOWER(BTRIM(w.word))
+      JOIN dictionary_lemmas l ON l.language = w.lang AND l.lemma_key = LOWER(BTRIM(w.key))
       CROSS JOIN LATERAL jsonb_array_elements(w.senses) WITH ORDINALITY sense(value, ordinality)
       CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE(sense.value->'glosses', '[]'::jsonb)) WITH ORDINALITY gloss(value, ordinality)
      WHERE w.lang = ANY($1) AND BTRIM(gloss.value) <> ''
