@@ -19,12 +19,14 @@ try {
      VALUES
        ('es', 'el', 'el', 'article', $1::jsonb, ARRAY['el'], '[]'::jsonb),
        ('es', 'correr', 'correr', 'verb', $2::jsonb, ARRAY['correr', 'corriendo', 'corrió'], '[]'::jsonb),
-       ('es', 'correr', 'correr', 'verb', $3::jsonb, ARRAY['correr'], '[]'::jsonb)
+       ('es', 'correr', 'correr', 'verb', $3::jsonb, ARRAY['correr'], '[]'::jsonb),
+       ('es', '¿ ?', '¿ ?', 'symbol', $4::jsonb, ARRAY['¿ ?'], '[]'::jsonb)
      RETURNING id`,
     [
       JSON.stringify([{ glosses: ['definite article'] }]),
       JSON.stringify([{ glosses: ['move quickly'] }]),
       JSON.stringify([{ glosses: ['dash quickly'] }]),
+      JSON.stringify([{ glosses: ['opening and closing question marks'] }]),
     ],
   );
   await pool.query(
@@ -78,8 +80,8 @@ try {
       WHERE v.version = $1 AND csr.wiktionary_id = ANY($2::int[])`,
     [catalogVersion, sourceRows.map((row) => row.id)],
   );
-  assert.equal(compactCounts.count, 3);
-  assert.equal(compactCounts.distinct_count, 3);
+  assert.equal(compactCounts.count, 4);
+  assert.equal(compactCounts.distinct_count, 4);
 
   const { rows: [progress] } = await pool.query(
     `SELECT status, current_language, current_phase

@@ -500,6 +500,28 @@ try {
   }
   await client.query('ANALYZE compact_lemma_rankings');
 
+  // Wiktionary's stored lookup key intentionally preserves a small number of
+  // compatibility characters that PostgreSQL's unaccent() expands (for
+  // example smart quotes, inverted punctuation, œ, and ℆). Keep those rows on
+  // a tiny exact-lemma side path so the indexed common path stays fast without
+  // dropping any dictionary senses.
+  await client.query(`
+    CREATE TEMP TABLE catalog_wiktionary_key_exceptions ON COMMIT DROP AS
+    SELECT id AS wiktionary_id, LOWER(BTRIM(word)) AS lemma_key
+      FROM wiktionary
+     WHERE lang = 'es' AND BTRIM(word) <> ''
+       AND key IS DISTINCT FROM unaccent(LOWER(BTRIM(word)))
+  `);
+  await client.query(`
+    CREATE UNIQUE INDEX catalog_wiktionary_key_exceptions_id
+      ON catalog_wiktionary_key_exceptions (wiktionary_id)
+  `);
+  await client.query(`
+    CREATE INDEX catalog_wiktionary_key_exceptions_lemma
+      ON catalog_wiktionary_key_exceptions (lemma_key)
+  `);
+  await client.query('ANALYZE catalog_wiktionary_key_exceptions');
+
   let senseCompleted = 0;
   let lastLemmaRank = 0;
   await reportProgress({
@@ -521,28 +543,50 @@ try {
            FROM compact_lemma_rankings
           WHERE catalog_version_id = $1 AND language = 'es'
             AND lemma_rank > $2 AND lemma_rank <= $3
-       ), expanded AS (
+       ), indexed_expanded AS (
          SELECT w.id AS wiktionary_id,
                 (sense.ordinality - 1)::int AS sense_index,
                 (gloss.ordinality - 1)::int AS gloss_index,
-                selected.lemma_rank,
-                ROW_NUMBER() OVER (
-                  PARTITION BY selected.lemma_key
-                  ORDER BY w.id, sense.ordinality, gloss.ordinality
-                )::int AS sense_order
+                selected.lemma_key,
+                selected.lemma_rank
            FROM selected
            JOIN wiktionary w ON w.lang = 'es' AND w.key = unaccent(selected.lemma_key)
                             AND LOWER(BTRIM(w.word)) = selected.lemma_key
            CROSS JOIN LATERAL jsonb_array_elements(w.senses) WITH ORDINALITY sense(value, ordinality)
            CROSS JOIN LATERAL jsonb_array_elements_text(
              COALESCE(sense.value->'glosses', '[]'::jsonb)
+          ) WITH ORDINALITY gloss(value, ordinality)
+          WHERE BTRIM(gloss.value) <> ''
+       ), exception_expanded AS (
+         SELECT w.id AS wiktionary_id,
+                (sense.ordinality - 1)::int AS sense_index,
+                (gloss.ordinality - 1)::int AS gloss_index,
+                selected.lemma_key,
+                selected.lemma_rank
+           FROM selected
+           JOIN catalog_wiktionary_key_exceptions exception
+             ON exception.lemma_key = selected.lemma_key
+           JOIN wiktionary w ON w.id = exception.wiktionary_id
+           CROSS JOIN LATERAL jsonb_array_elements(w.senses) WITH ORDINALITY sense(value, ordinality)
+           CROSS JOIN LATERAL jsonb_array_elements_text(
+             COALESCE(sense.value->'glosses', '[]'::jsonb)
            ) WITH ORDINALITY gloss(value, ordinality)
           WHERE BTRIM(gloss.value) <> ''
+       ), expanded AS (
+         SELECT * FROM indexed_expanded
+         UNION ALL
+         SELECT * FROM exception_expanded
+       ), ordered AS (
+         SELECT *, ROW_NUMBER() OVER (
+           PARTITION BY lemma_key
+           ORDER BY wiktionary_id, sense_index, gloss_index
+         )::int AS sense_order
+           FROM expanded
        ), numbered AS (
            SELECT *, ($4::int + ROW_NUMBER() OVER (
              ORDER BY lemma_rank, wiktionary_id, sense_index, gloss_index
            ))::int AS sense_rank
-           FROM expanded
+           FROM ordered
        ), inserted AS (
          INSERT INTO compact_sense_rankings (
            catalog_version_id, wiktionary_id, sense_index,
