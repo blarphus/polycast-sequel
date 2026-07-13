@@ -19,6 +19,16 @@ try {
       to_regclass('public.profile_sessions') IS NOT NULL AS profile_sessions,
       to_regclass('public.user_schedule_state') IS NOT NULL AS user_schedule_state,
       to_regclass('public.idempotency_requests') IS NOT NULL AS idempotency_requests,
+      to_regclass('public.compact_lemma_rankings') IS NOT NULL AS compact_lemma_rankings,
+      to_regclass('public.compact_sense_rankings') IS NOT NULL AS compact_sense_rankings,
+      to_regclass('public.frequency_catalog_build_runs') IS NOT NULL AS catalog_progress,
+      to_regclass('public.dictionary_lemmas') IS NULL AS legacy_lemmas_removed,
+      to_regclass('public.dictionary_senses') IS NULL AS legacy_senses_removed,
+      NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+         WHERE table_schema = 'public' AND table_name = 'saved_words'
+           AND column_name IN ('lemma_id', 'sense_id')
+      ) AS legacy_saved_word_ids_removed,
       to_regclass('public.schema_migrations') IS NOT NULL AS schema_migrations,
       (SELECT COUNT(*)::int FROM schema_migrations) AS migration_count
   `);

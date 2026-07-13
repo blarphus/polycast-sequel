@@ -55,10 +55,14 @@ try {
       to_regclass('public.auth_sessions') IS NOT NULL AS auth_sessions,
       to_regclass('public.profile_sessions') IS NOT NULL AS profile_sessions,
       to_regclass('public.user_schedule_state') IS NOT NULL AS user_schedule_state,
-      to_regclass('public.idempotency_requests') IS NOT NULL AS idempotency_requests
+      to_regclass('public.idempotency_requests') IS NOT NULL AS idempotency_requests,
+      to_regclass('public.compact_sense_rankings') IS NOT NULL AS compact_sense_rankings,
+      to_regclass('public.dictionary_senses') IS NULL AS legacy_senses_removed
     FROM schema_migrations
   `);
-  if (state.migration_count !== expectedMigrationCount || !state.auth_sessions || !state.profile_sessions || !state.user_schedule_state || !state.idempotency_requests) {
+  if (state.migration_count !== expectedMigrationCount || !state.auth_sessions || !state.profile_sessions
+      || !state.user_schedule_state || !state.idempotency_requests || !state.compact_sense_rankings
+      || !state.legacy_senses_removed) {
     throw new Error(`Legacy upgrade invariants failed: ${JSON.stringify(state)}`);
   }
   console.log(JSON.stringify({ event: 'legacy_migration_smoke_passed', ...state }));

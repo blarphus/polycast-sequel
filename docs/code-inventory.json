@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 510,
-    "lines": 82282,
-    "declarations": 2280,
+    "files": 511,
+    "lines": 82326,
+    "declarations": 2281,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 39,
     "zeroCallerCandidates": 1
@@ -8877,7 +8877,7 @@
         },
         {
           "name": "Word",
-          "callers": 59,
+          "callers": 58,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -9950,7 +9950,7 @@
         },
         {
           "name": "data",
-          "callers": 881,
+          "callers": 880,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -18373,7 +18373,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18396,7 +18396,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18419,7 +18419,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18448,7 +18448,7 @@
         },
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18471,7 +18471,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18494,7 +18494,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18517,7 +18517,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18540,7 +18540,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18563,7 +18563,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18586,7 +18586,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18609,7 +18609,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18632,7 +18632,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18655,7 +18655,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18679,7 +18679,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18703,7 +18703,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18726,7 +18726,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18749,7 +18749,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18772,7 +18772,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18795,7 +18795,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18818,7 +18818,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18841,7 +18841,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18864,7 +18864,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18888,7 +18888,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18911,7 +18911,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18934,7 +18934,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18957,7 +18957,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18980,7 +18980,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19003,7 +19003,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19026,7 +19026,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19049,7 +19049,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19072,7 +19072,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19095,7 +19095,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19118,7 +19118,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19141,7 +19141,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19164,7 +19164,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19187,7 +19187,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19210,7 +19210,30 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 100,
+          "callers": 101,
+          "testReferences": [
+            "ios/Polycast/UITests/PolycastUITests.swift"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "server/migrations/038-remove-legacy-frequency-catalog.js",
+      "lines": 30,
+      "responsibility": "application support",
+      "sideEffects": [
+        "database"
+      ],
+      "testCoverage": [
+        "ios/Polycast/UITests/PolycastUITests.swift"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "up",
+          "callers": 101,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -20107,7 +20130,7 @@
     },
     {
       "file": "server/scripts/legacyMigrationSmoke.js",
-      "lines": 68,
+      "lines": 72,
       "responsibility": "application support",
       "sideEffects": [
         "database",
@@ -20120,7 +20143,7 @@
     },
     {
       "file": "server/scripts/migrationSmoke.js",
-      "lines": 34,
+      "lines": 44,
       "responsibility": "application support",
       "sideEffects": [
         "database",

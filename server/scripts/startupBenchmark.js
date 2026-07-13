@@ -20,14 +20,14 @@ assert.deepEqual(frequency.frequencyCacheStats().loadedLanguages, [], 'server im
 
 const beforeFirstLookup = process.memoryUsage().rss;
 const lookupStarted = performance.now();
-const knownFrequency = frequency.applyCorpusFrequency('hello', 'en', null);
+const knownFrequency = frequency.applyCorpusFrequency('hola', 'es', null);
 const firstLookupMs = performance.now() - lookupStarted;
 const firstLookupRssDeltaMb = (process.memoryUsage().rss - beforeFirstLookup) / 1024 / 1024;
 const stats = frequency.frequencyCacheStats();
 
 assert.equal(typeof knownFrequency.zipf, 'number');
-assert.deepEqual(stats.loadedLanguages, ['en']);
-assert.ok(stats.entryCount > 10_000 && stats.entryCount <= 100_000, `unexpected English frequency entry count: ${stats.entryCount}`);
+assert.deepEqual(stats.loadedLanguages, ['es']);
+assert.ok(stats.entryCount > 10_000 && stats.entryCount <= 100_000, `unexpected Spanish frequency entry count: ${stats.entryCount}`);
 assert.ok(appImportMs < 1_500, `app module import exceeded 1500ms: ${appImportMs.toFixed(1)}ms`);
 assert.ok(appRssDeltaMb < 100, `app module import exceeded 100MB RSS: ${appRssDeltaMb.toFixed(1)}MB`);
 assert.ok(frequencyImportMs < 100, `frequency module import exceeded 100ms: ${frequencyImportMs.toFixed(1)}ms`);

@@ -2,17 +2,19 @@ import { readFileSync } from 'fs';
 import logger from '../logger.js';
 
 // ---------------------------------------------------------------------------
-// Word frequency from wordfreq's blended Zipf data.
+// Legacy migration-only Spanish frequency helper.
 //
-// data/frequency/<lang>.txt holds "word zipf" per line, where Zipf = log10(occurrences
-// per billion words) — wordfreq blends subtitles, Wikipedia, news, web, etc. per language.
+// data/frequency/es.txt holds "word zipf" per line, where Zipf = log10(occurrences
+// per billion words) — wordfreq blends subtitles, Wikipedia, news, web, etc.
 // Regenerate with scripts/exportWordfreq.py. Frequency is computed at the LEMMA level: a
 // word's frequency is the sum of the per-billion frequencies of all its inflected forms, so
 // e.g. "encajar" reflects encaja + encajó + encajamos + … and is identical no matter which
 // conjugation the learner clicked.
 // ---------------------------------------------------------------------------
 
-const FREQ_LANGS = ['en', 'es', 'pt', 'fr', 'de', 'ja'];
+// Migration 023 imports this helper, so the file cannot be deleted without breaking
+// fresh-database replay. Current runtime ranking lives in frequencyCatalog.js.
+const FREQ_LANGS = ['es'];
 const supportedLanguages = new Set(FREQ_LANGS);
 
 const langMaps = new Map(); // lang -> Map(word -> zipf)
@@ -92,7 +94,7 @@ function parseForms(forms) {
  * frequency reflects its whole paradigm and is stable regardless of which form was clicked.
  *
  * @param {string} word           the surface word that was looked up
- * @param {string} targetLang     language of the word (e.g. "es", "pt", "en")
+ * @param {string} targetLang     language of the word (Spanish is the retained source)
  * @param {number|null} currentFrequency  Gemini's 1-10 estimate, kept if the word isn't in the corpus
  * @param {{ lemma?: string|null, forms?: string|string[]|null }} [opts]
  * @returns {{ frequency: number|null, frequency_count: number|null, zipf: number|null }}
@@ -109,8 +111,6 @@ export function applyCorpusFrequency(word, targetLang, currentFrequency, { lemma
     if (!s || typeof s !== 'string') return;
     const lower = s.toLowerCase().trim();
     if (lower) tokens.add(lower);
-    // English verb lemmas are stored as "to fit"; the corpus has "fit".
-    if (lower.startsWith('to ')) tokens.add(lower.slice(3));
   };
   add(word);
   add(lemma);
