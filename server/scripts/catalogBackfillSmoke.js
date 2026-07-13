@@ -84,13 +84,19 @@ try {
   assert.equal(compactCounts.distinct_count, 4);
 
   const { rows: [progress] } = await pool.query(
-    `SELECT status, current_language, current_phase
-       FROM frequency_catalog_build_runs WHERE version = $1`,
+    `SELECT run.status, run.current_language, run.current_phase, run.completed_at,
+            version.activated_at
+       FROM frequency_catalog_build_runs run
+       JOIN frequency_catalog_versions version ON version.id = run.catalog_version_id
+      WHERE run.version = $1`,
     [catalogVersion],
   );
   assert.equal(progress.status, 'succeeded');
   assert.equal(progress.current_language, 'es');
   assert.equal(progress.current_phase, 'activation');
+  assert.ok(Math.abs(
+    new Date(progress.completed_at).getTime() - new Date(progress.activated_at).getTime(),
+  ) < 5_000);
 
   console.log(JSON.stringify({
     event: 'compact_spanish_catalog_backfill_smoke_passed',

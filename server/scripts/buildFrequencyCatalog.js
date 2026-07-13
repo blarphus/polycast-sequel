@@ -900,7 +900,8 @@ try {
   await client.query(
     `UPDATE frequency_catalog_versions
         SET status = $2, source_manifest = $3::jsonb, diagnostics = $4::jsonb,
-            built_at = NOW(), activated_at = CASE WHEN $2 = 'active' THEN NOW() ELSE NULL END
+            built_at = clock_timestamp(),
+            activated_at = CASE WHEN $2 = 'active' THEN clock_timestamp() ELSE NULL END
       WHERE id = $1`,
     [catalog.id, activate ? 'active' : 'retired', JSON.stringify(manifest), JSON.stringify(diagnostics)],
   );
