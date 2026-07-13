@@ -141,7 +141,7 @@ export async function up(client) {
   // Account type column
   await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type VARCHAR(10) DEFAULT 'student';`);
 
-  // CEFR proficiency level used by reading and practice personalization.
+  // CEFR placement level
   await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS cefr_level VARCHAR(2) DEFAULT NULL;`);
   await client.query(`UPDATE users SET account_type = 'teacher' WHERE account_type IS NULL;`);
 
