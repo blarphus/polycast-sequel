@@ -2,7 +2,7 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 515,
-    "lines": 82770,
+    "lines": 82807,
     "declarations": 2288,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
@@ -1756,7 +1756,7 @@
     },
     {
       "file": "client/src/components/ComicReader.tsx",
-      "lines": 174,
+      "lines": 211,
       "responsibility": "web component UI",
       "sideEffects": [
         "UI"
@@ -4638,7 +4638,7 @@
         },
         {
           "name": "next",
-          "callers": 240,
+          "callers": 242,
           "testReferences": [
             "client/src/test/srs.test.ts",
             "client/src/test/watchTranscript.test.ts",
@@ -10725,7 +10725,7 @@
         },
         {
           "name": "disconnect",
-          "callers": 35,
+          "callers": 36,
           "testReferences": [
             "extension/test/popup-performance.test.mjs"
           ],
@@ -12824,7 +12824,7 @@
         },
         {
           "name": "height",
-          "callers": 250,
+          "callers": 251,
           "testReferences": [
             "extension/test/popup-performance.test.mjs",
             "extension/test/selection.test.mjs",
@@ -14104,7 +14104,7 @@
         },
         {
           "name": "content",
-          "callers": 145,
+          "callers": 146,
           "testReferences": [
             "client/src/test/epub.test.ts",
             "client/src/test/groupCallProvider.test.tsx",

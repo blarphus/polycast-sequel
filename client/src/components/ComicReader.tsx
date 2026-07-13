@@ -22,8 +22,11 @@ function cleanLookupWord(word: string): string {
 
 export default function ComicReader({ bookId, comic, nativeLanguage, savedWords, onBack }: ComicReaderProps) {
   const [pageIndex, setPageIndex] = useState(0);
+  const [zoom, setZoom] = useState(1);
+  const [viewportHeight, setViewportHeight] = useState(0);
   const [popup, setPopup] = useState<PopupState | null>(null);
   const touchStartX = useRef<number | null>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   const pageUrls = useMemo(
     () => comic.pages.map((page) => URL.createObjectURL(new Blob([page.image as BlobPart], { type: page.mimeType }))),
@@ -31,6 +34,15 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
   );
 
   useEffect(() => () => pageUrls.forEach((url) => URL.revokeObjectURL(url)), [pageUrls]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return undefined;
+    const observer = new ResizeObserver(() => setViewportHeight(viewport.clientHeight));
+    observer.observe(viewport);
+    setViewportHeight(viewport.clientHeight);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,6 +81,10 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
   }, [goNext, goPrev]);
 
   const page = comic.pages[pageIndex];
+  const changeZoom = (next: number) => {
+    setPopup(null);
+    setZoom(Math.min(3, Math.max(0.75, next)));
+  };
 
   return (
     <div className="epub-reader comic-reader">
@@ -77,7 +93,14 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
           <ChevronLeftIcon size={20} />
         </button>
         <div className="epub-topbar-title" title={comic.title}>{comic.title}</div>
-        <div className="comic-reader-format">CBZ preview</div>
+        <div className="comic-topbar-actions">
+          <div className="comic-zoom-controls" aria-label="Comic zoom controls">
+            <button type="button" onClick={() => changeZoom(zoom - 0.25)} disabled={zoom <= 0.75} aria-label="Zoom out">−</button>
+            <button type="button" onClick={() => changeZoom(1)} aria-label="Reset zoom to fit page">{Math.round(zoom * 100)}%</button>
+            <button type="button" onClick={() => changeZoom(zoom + 0.25)} disabled={zoom >= 3} aria-label="Zoom in">+</button>
+          </div>
+          <div className="comic-reader-format">CBZ preview</div>
+        </div>
       </header>
 
       <div className="comic-prototype-notice" role="status">
@@ -91,6 +114,12 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
 
         <div
           className="comic-viewport"
+          ref={viewportRef}
+          onWheel={(event) => {
+            if (!event.ctrlKey && !event.metaKey) return;
+            event.preventDefault();
+            changeZoom(zoom + (event.deltaY < 0 ? 0.25 : -0.25));
+          }}
           onTouchStart={(event) => { touchStartX.current = event.changedTouches[0].clientX; }}
           onTouchEnd={(event) => {
             if (touchStartX.current == null) return;
@@ -100,9 +129,16 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
             else if (delta > 40) goPrev();
           }}
         >
-          <div className="comic-page-frame" style={{ aspectRatio: `${page.width} / ${page.height}` }}>
-            <img className="comic-page-image" src={pageUrls[pageIndex]} alt={`Page ${pageIndex + 1} of ${comic.title}`} />
-            <div className="comic-word-map" aria-label="Clickable dialogue text">
+          <div className="comic-page-scroll-content">
+            <div
+              className="comic-page-frame"
+              style={{
+                aspectRatio: `${page.width} / ${page.height}`,
+                height: viewportHeight ? `${Math.max(100, (viewportHeight - 32) * zoom)}px` : undefined,
+              }}
+            >
+              <img className="comic-page-image" src={pageUrls[pageIndex]} alt={`Page ${pageIndex + 1} of ${comic.title}`} />
+              <div className="comic-word-map" aria-label="Clickable dialogue text">
               {page.lines.map((textLine, lineIndex) => {
                 const words = textLine.text.split(/\s+/).filter(Boolean);
                 const totalWeight = words.reduce((sum, word) => sum + Math.max(1, cleanLookupWord(word).length), 0);
@@ -139,6 +175,7 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
         </div>
