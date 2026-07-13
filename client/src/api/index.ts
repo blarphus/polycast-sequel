@@ -1,6 +1,5 @@
 export * from './core';
 export * from './auth';
-export * from './placement';
 export * from './rtc';
 export * from './users';
 export * from './friends';

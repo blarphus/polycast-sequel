@@ -191,12 +191,11 @@ function renderPageHighlightStatus(status) {
     siteHighlightDetailEl.textContent = `Not active on ${status.hostname} · choose Auto or On to grant access`;
     return;
   }
-  if (!status.detectedLanguage) {
-    siteHighlightDetailEl.textContent = 'Language unavailable · automatic highlights off';
+  if (!status.enabled) {
+    siteHighlightDetailEl.textContent = 'Highlights off for this site';
     return;
   }
-  const source = status.detectionSource === 'captions' ? 'captions' : 'page';
-  siteHighlightDetailEl.textContent = `${langName(status.detectedLanguage)} ${source} · highlights ${status.enabled ? 'on' : 'off'}`;
+  siteHighlightDetailEl.textContent = 'Highlights on · language checked in context when clicked';
 }
 
 function loadPageHighlightStatus() {
@@ -218,8 +217,8 @@ function loadPageHighlightStatus() {
               tabId: activeTab.id,
               override: 'off',
               enabled: false,
-              detectedLanguage: '',
               targetLanguage: null,
+              validationMode: 'click-context',
               activationRequired: true,
             });
             return;
@@ -302,7 +301,7 @@ siteHighlightButtons.forEach((button) => button.addEventListener('click', () => 
         : `Highlight setting fallback used: ${error || result.error}`, true);
       return;
     }
-    renderPageHighlightStatus({ ...activePageStatus, activationRequired: false, override: result.override, enabled: result.override === 'on' || (result.override === 'auto' && activePageStatus.detectedLanguage === activePageStatus.targetLanguage) });
+    renderPageHighlightStatus({ ...activePageStatus, activationRequired: false, override: result.override, enabled: result.override !== 'off', validationMode: 'click-context' });
   });
 
   if (!activePageStatus.activationRequired || button.dataset.highlightOverride === 'off') {

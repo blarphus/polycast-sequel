@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-13T13:12:36.062Z",
+  "generatedAt": "2026-07-13T14:32:19.342Z",
   "totals": {
-    "occurrences": 62,
-    "uniqueCodes": 59,
+    "occurrences": 60,
+    "uniqueCodes": 57,
     "incompleteOccurrences": 0
   },
   "entries": [
@@ -58,14 +58,6 @@
       "code": "daily_goal_storage_repaired",
       "file": "client/src/utils/dailyGoal.ts",
       "line": 28,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "declared_page_language_fallback",
-      "file": "extension/background.js",
-      "line": 976,
       "structured": true,
       "logged": true,
       "visible": true
@@ -185,7 +177,7 @@
     {
       "code": "highlight_dom_mutation_fallback",
       "file": "extension/content/pageHighlights.js",
-      "line": 227,
+      "line": 221,
       "structured": true,
       "logged": true,
       "visible": true
@@ -193,7 +185,7 @@
     {
       "code": "highlight_range_lookup_fallback",
       "file": "extension/content/pageHighlights.js",
-      "line": 376,
+      "line": 353,
       "structured": true,
       "logged": true,
       "visible": true
@@ -279,14 +271,6 @@
       "visible": true
     },
     {
-      "code": "page_language_unavailable",
-      "file": "extension/background.js",
-      "line": 991,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
       "code": "pixabay_provider_unconfigured",
       "file": "server/lib/imageSearch.js",
       "line": 9,
@@ -345,7 +329,7 @@
     {
       "code": "recall_forms_parser_fallback",
       "file": "extension/content/pageHighlights.js",
-      "line": 139,
+      "line": 133,
       "structured": true,
       "logged": true,
       "visible": true
@@ -457,7 +441,7 @@
     {
       "code": "wild_recall_catalog_fallback",
       "file": "extension/background.js",
-      "line": 1072,
+      "line": 1015,
       "structured": true,
       "logged": true,
       "visible": true
@@ -465,7 +449,7 @@
     {
       "code": "wild_recall_offline_unavailable",
       "file": "extension/background.js",
-      "line": 1048,
+      "line": 991,
       "structured": true,
       "logged": true,
       "visible": true
@@ -473,7 +457,7 @@
     {
       "code": "wild_recall_preparation_fallback",
       "file": "extension/background.js",
-      "line": 1114,
+      "line": 1057,
       "structured": true,
       "logged": true,
       "visible": true

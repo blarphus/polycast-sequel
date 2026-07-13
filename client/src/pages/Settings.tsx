@@ -10,8 +10,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { LANGUAGES } from '../components/classwork/languages';
-import { PLACEMENT_LANGUAGE_CODES } from '../generated/languages';
-import PlacementTest from '../components/PlacementTest';
 import { ChevronLeftIcon } from '../components/icons';
 import { toErrorMessage } from '../utils/errors';
 
@@ -26,26 +24,12 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
-  const [showPlacement, setShowPlacement] = useState(false);
 
   useEffect(() => {
     setNativeLang(user?.native_language || '');
     setTargetLang(user?.target_language || '');
     setDailyNewLimit(user?.daily_new_limit ?? 5);
   }, [user]);
-
-  const canTakePlacement = PLACEMENT_LANGUAGE_CODES.includes((user?.target_language || '') as typeof PLACEMENT_LANGUAGE_CODES[number]);
-
-  const handlePlacementComplete = async (level: string) => {
-    try {
-      await updateSettings(nativeLang || null, targetLang || null, undefined, undefined, level);
-      setSaved(true);
-    } catch (err) {
-      runtimeLog.error('Settings: save cefr_level failed:', err);
-      setError(toErrorMessage(err));
-    }
-    setShowPlacement(false);
-  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -61,18 +45,6 @@ export default function Settings() {
       setSaving(false);
     }
   };
-
-  if (showPlacement && user?.target_language) {
-    return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <h1 className="auth-title">Placement Test</h1>
-          <p className="auth-subtitle">Let's assess your vocabulary level</p>
-          <PlacementTest language={user.target_language} onComplete={handlePlacementComplete} />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="auth-page">
@@ -144,21 +116,6 @@ export default function Settings() {
             View live progress
           </button>
         </div>
-
-        {canTakePlacement && (
-          <div className="theme-toggle-row">
-            <span className="form-label" style={{ marginBottom: 0 }}>
-              CEFR Level{user?.cefr_level ? `: ${user.cefr_level}` : ''}
-            </span>
-            <button
-              className="btn btn-small"
-              onClick={() => setShowPlacement(true)}
-              type="button"
-            >
-              {user?.cefr_level ? 'Retake Test' : 'Take Test'}
-            </button>
-          </div>
-        )}
 
         {error && <div className="auth-error">{error}</div>}
         {saved && <div className="settings-success">Settings saved!</div>}

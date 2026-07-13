@@ -13,7 +13,6 @@
     "ADD_WORD_FORM": { "strings": { "form": 500, "savedWordId": 200 }, "required": ["form"] },
     "REMOVE_WORD": { "strings": { "word": 500, "savedWordId": 200 } },
     "MATCH_PAGE_TOKENS": { "arrays": { "tokens": 1500 }, "required": ["tokens"] },
-    "DETECT_PAGE_LANGUAGE": { "strings": { "sample": 15000, "declaredLanguage": 100 } },
     "GET_PAGE_HIGHLIGHT_CONFIG": { "strings": { "hostname": 253 }, "required": ["hostname"] },
     "SET_SITE_HIGHLIGHT_OVERRIDE": { "strings": { "hostname": 253, "override": 10, "pageUrl": 2048 }, "numbers": ["tabId"], "required": ["hostname", "override"] },
     "MAYBE_ARM_WILD_RECALL": { "arrays": { "wordIds": 1500 } },

@@ -8,8 +8,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LANGUAGES } from '../components/classwork/languages';
-import { PLACEMENT_LANGUAGE_CODES } from '../generated/languages';
-import PlacementTest from '../components/PlacementTest';
 import { toErrorMessage } from '../utils/errors';
 
 
@@ -17,7 +15,6 @@ export default function Onboarding() {
   const { user, updateSettings } = useAuth();
   const navigate = useNavigate();
 
-  const [phase, setPhase] = useState<'setup' | 'placement'>('setup');
   const [nativeLang, setNativeLang] = useState(user?.native_language || '');
   const [targetLang, setTargetLang] = useState(user?.target_language || '');
   const [saving, setSaving] = useState(false);
@@ -44,12 +41,7 @@ export default function Onboarding() {
     setSaving(true);
     try {
       await updateSettings(nativeLang, targetLang);
-
-      if (PLACEMENT_LANGUAGE_CODES.includes(targetLang as typeof PLACEMENT_LANGUAGE_CODES[number])) {
-        setPhase('placement');
-      } else {
-        navigate('/', { replace: true });
-      }
+      navigate('/', { replace: true });
     } catch (err: unknown) {
       runtimeLog.error('Onboarding: save failed:', err);
       setError(toErrorMessage(err));
@@ -57,27 +49,6 @@ export default function Onboarding() {
       setSaving(false);
     }
   };
-
-  const handlePlacementComplete = async (level: string) => {
-    try {
-      await updateSettings(nativeLang, targetLang, undefined, undefined, level);
-    } catch (err) {
-      runtimeLog.error('Onboarding: save cefr_level failed:', err);
-    }
-    navigate('/', { replace: true });
-  };
-
-  if (phase === 'placement') {
-    return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <h1 className="auth-title">Placement Test</h1>
-          <p className="auth-subtitle">Let's assess your vocabulary level</p>
-          <PlacementTest language={targetLang} onComplete={handlePlacementComplete} />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="auth-page">

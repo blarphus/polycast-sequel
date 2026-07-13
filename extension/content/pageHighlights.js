@@ -7,6 +7,10 @@
   const MAX_HIGHLIGHT_RANGES = 750;
   const FALLBACK_SPAN_LIMIT = 250;
   const TOKEN_CHUNK = 1200;
+  // Temporary product pause: retain the Wild Recall implementation so it can
+  // be restored deliberately, but do not sample, arm, or render shimmering
+  // page cues while this flag is false.
+  const WILD_RECALL_PAGE_CUES_ENABLED = false;
   const BLOCK_SELECTOR = 'p,li,h1,h2,h3,h4,h5,h6,blockquote,figcaption,td,th,[role="article"],[role="main"]';
   const SKIP_SELECTOR = [
     'script', 'style', 'noscript', 'textarea', 'input', 'select', 'option',
@@ -22,9 +26,6 @@
   let enabled = false;
   let targetLanguage = '';
   let override = 'auto';
-  let detectedLanguage = '';
-  let detectionSource = '';
-  let mediaLanguage = '';
   let observer = null;
   let blockObserver = null;
   let drainScheduled = false;
@@ -35,7 +36,7 @@
   let matchedRangeCapShown = false;
   let domMutationFallbackShown = false;
   let rangeLookupFallbackShown = false;
-  const recallSampledForPage = Math.random() < 0.15;
+  const recallSampledForPage = WILD_RECALL_PAGE_CUES_ENABLED && Math.random() < 0.15;
 
   function baseLanguage(value) {
     return String(value || '').toLocaleLowerCase().split(/[-_]/)[0];
@@ -74,18 +75,6 @@
     });
   }
 
-  function samplePageText() {
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    let sample = '';
-    while (walker.nextNode() && sample.length < 12000) {
-      const node = walker.currentNode;
-      if (!node.parentElement || node.parentElement.closest(SKIP_SELECTOR)) continue;
-      const value = String(node.nodeValue || '').replace(/\s+/g, ' ').trim();
-      if (value) sample += `${value} `;
-    }
-    return sample.slice(0, 12000);
-  }
-
   function unwrapFallbackSpans() {
     document.querySelectorAll('.pc-page-saved-word').forEach((span) => {
       span.replaceWith(document.createTextNode(span.textContent || ''));
@@ -105,6 +94,11 @@
   }
 
   function updateRecallIndicator() {
+    if (!WILD_RECALL_PAGE_CUES_ENABLED) {
+      recallIndicator?.remove();
+      recallIndicator = null;
+      return;
+    }
     const connected = recallEntry?.span?.isConnected || recallEntry?.range?.startContainer?.isConnected;
     if (!recallEntry || !connected) {
       recallIndicator?.remove();
@@ -147,7 +141,7 @@
 
   function selectRecallRange() {
     recallEntry = null;
-    if (!recallChallenge) {
+    if (!WILD_RECALL_PAGE_CUES_ENABLED || !recallChallenge) {
       updateRecallIndicator();
       return;
     }
@@ -157,7 +151,7 @@
   }
 
   async function maybeArmRecall(candidateIds) {
-    if (!recallSampledForPage || recallRequestStarted || recallChallenge || !candidateIds.length) return;
+    if (!WILD_RECALL_PAGE_CUES_ENABLED || !recallSampledForPage || recallRequestStarted || recallChallenge || !candidateIds.length) return;
     recallRequestStarted = true;
     try {
       const result = await chrome.runtime.sendMessage({ type: 'MAYBE_ARM_WILD_RECALL', wordIds: candidateIds });
@@ -326,32 +320,15 @@
     observedBlocks = new WeakSet();
   }
 
-  async function resolveLanguageGate(forcedOverride = null) {
+  async function resolveHighlightState(forcedOverride = null) {
     stopObservers();
     const config = await chrome.runtime.sendMessage({ type: 'GET_PAGE_HIGHLIGHT_CONFIG', hostname: location.hostname });
     targetLanguage = baseLanguage(config?.targetLanguage);
     override = forcedOverride || config?.override || 'auto';
-    let detection;
-    if (mediaLanguage) {
-      detection = { language: mediaLanguage, reliable: true, source: 'captions' };
-    } else {
-      detection = await chrome.runtime.sendMessage({
-        type: 'DETECT_PAGE_LANGUAGE',
-        sample: samplePageText(),
-        declaredLanguage: document.documentElement.lang,
-      });
-    }
-    detectedLanguage = baseLanguage(detection?.language);
-    detectionSource = detection?.source || '';
-    enabled = override === 'on' || (override === 'auto' && !!targetLanguage && detectedLanguage === targetLanguage);
-    if (override === 'off') enabled = false;
-    if (detection?.diagnostic) {
-      showDiagnostic(
-        detection.diagnostic.title || 'Language detection fallback',
-        detection.diagnostic.message || String(detection.diagnostic),
-        detection.diagnostic,
-      );
-    }
+    // Page-wide language detection is intentionally bypassed. Saved-word
+    // highlighting may run on any enabled site; the clicked word and its
+    // sentence are validated against targetLanguage by the lookup pipeline.
+    enabled = override !== 'off';
     if (enabled) {
       startObservers();
       const cue = await chrome.runtime.sendMessage({ type: 'CLAIM_PAGE_CUE' });
@@ -400,7 +377,7 @@
       || entry.range.startContainer?.parentElement?.textContent || entry.token).replace(/\s+/g, ' ').trim();
     const helpers = globalThis.PolycastContent || {};
     const popupStartedAt = performance.now();
-    if (recallChallenge && recallEntry === entry && typeof helpers.openRecallWordPopup === 'function') {
+    if (WILD_RECALL_PAGE_CUES_ENABLED && recallChallenge && recallEntry === entry && typeof helpers.openRecallWordPopup === 'function') {
       helpers.openRecallWordPopup({ challenge: recallChallenge, word: entry.token, sentence, anchorRect });
     } else if (typeof helpers.openWordPopup === 'function') {
       helpers.openWordPopup({ word: entry.token, sentence, context: sentence, anchorRect });
@@ -410,11 +387,6 @@
 
   window.addEventListener('scroll', updateRecallIndicator, { passive: true });
   window.addEventListener('resize', updateRecallIndicator);
-  document.addEventListener('pc-polycast-page-language', (event) => {
-    mediaLanguage = baseLanguage(event.detail);
-    void resolveLanguageGate();
-  });
-
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     const acceptedTypes = ['WORDS_UPDATED', 'WILD_RECALL_UPDATED', 'POLYCAST_FALLBACK_NOTICE', 'SITE_HIGHLIGHT_OVERRIDE_UPDATED', 'GET_PAGE_HIGHLIGHT_STATUS'];
     const validateMessage = globalThis.PolycastContent?.validateInboundMessage;
@@ -426,9 +398,9 @@
       );
       return false;
     }
-    if (msg.type === 'WORDS_UPDATED') void resolveLanguageGate();
+    if (msg.type === 'WORDS_UPDATED') void resolveHighlightState();
     if (msg.type === 'WILD_RECALL_UPDATED') {
-      recallChallenge = msg.challenge || null;
+      recallChallenge = WILD_RECALL_PAGE_CUES_ENABLED ? (msg.challenge || null) : null;
       selectRecallRange();
       if (msg.diagnostic) showDiagnostic(
         msg.diagnostic.title || 'Wild Recall fallback',
@@ -440,18 +412,18 @@
       const diagnostic = msg.diagnostic || msg;
       showDiagnostic(diagnostic.title || 'Fallback used', diagnostic.message || 'An alternate path was used.', diagnostic);
     }
-    if (msg.type === 'SITE_HIGHLIGHT_OVERRIDE_UPDATED') void resolveLanguageGate(msg.override);
+    if (msg.type === 'SITE_HIGHLIGHT_OVERRIDE_UPDATED') void resolveHighlightState(msg.override);
     if (msg.type === 'GET_PAGE_HIGHLIGHT_STATUS') {
-      sendResponse({ hostname: location.hostname, enabled, override, detectedLanguage, detectionSource, targetLanguage });
+      sendResponse({ hostname: location.hostname, enabled, override, targetLanguage, validationMode: 'click-context' });
     }
     return false;
   });
 
   globalThis.PolycastContent = {
     ...(globalThis.PolycastContent || {}),
-    addPageHighlights() { void resolveLanguageGate(); },
+    addPageHighlights() { void resolveHighlightState(); },
   };
 
   if (supportsCssHighlights) CSS.highlights.set('polycast-saved', savedHighlight);
-  void resolveLanguageGate().catch((err) => showDiagnostic('Page highlight fallback', `Highlight initialization fallback used: ${err.message}`));
+  void resolveHighlightState().catch((err) => showDiagnostic('Page highlight fallback', `Highlight initialization fallback used: ${err.message}`));
 })();

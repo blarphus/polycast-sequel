@@ -16,7 +16,6 @@ import homeRoutes from './routes/home.js';
 import iceServersRoutes from './routes/iceServers.js';
 import messagesRoutes from './routes/messages.js';
 import newsRoutes from './routes/news.js';
-import placementRoutes from './routes/placement.js';
 import practiceRoutes from './routes/practice.js';
 import progressionRoutes from './routes/progression.js';
 import streamPostsRoutes from './routes/stream-posts.js';
@@ -83,7 +82,6 @@ export function createApp({ clientDist = path.resolve('client/dist') } = {}) {
     videosRoutes,
     templatesRoutes,
     groupClassRoutes,
-    placementRoutes,
     newsRoutes,
     homeRoutes,
     progressionRoutes,

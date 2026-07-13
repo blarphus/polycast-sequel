@@ -943,63 +943,6 @@ async function handleMessage(msg, sender = {}) {
       return { matches, revision: savedTokenRevision };
     }
 
-    case 'DETECT_PAGE_LANGUAGE': {
-      let tabLanguage = '';
-      const detectionFailures = [];
-      if (sender.tab?.id) {
-        try {
-          tabLanguage = await chrome.tabs.detectLanguage(sender.tab.id);
-        } catch (error) {
-          detectionFailures.push(`tab-detector=${error?.message || String(error)}`);
-        }
-      }
-      let textDetection = null;
-      const sample = String(msg.sample || '').slice(0, 15000);
-      if (sample.length >= 80) {
-        try {
-          textDetection = await chrome.i18n.detectLanguage(sample);
-        } catch (error) {
-          detectionFailures.push(`text-detector=${error?.message || String(error)}`);
-        }
-      }
-      const topText = textDetection?.languages?.[0] || null;
-      const textReliable = !!(textDetection?.isReliable && topText && topText.language !== 'und' && topText.percentage >= 55);
-      if (textReliable) {
-        return { language: topText.language, reliable: true, percentage: topText.percentage, source: 'chrome-text' };
-      }
-      if (tabLanguage && tabLanguage !== 'und') {
-        return { language: tabLanguage, reliable: true, percentage: null, source: 'chrome-tab' };
-      }
-      const declared = String(msg.declaredLanguage || '').split(/[-_]/)[0].toLocaleLowerCase();
-      if (declared) {
-        const diagnostic = makeFallbackDiagnostic({
-          code: 'declared_page_language_fallback',
-          title: 'Declared page language fallback used',
-          message: `Chrome could not reliably detect this page, so its declared language (${declared}) was used.`,
-          operation: 'detect-page-language',
-          detail: detectionFailures.join('; ') || 'Chrome detection returned an unreliable result.',
-        });
-        return {
-          language: declared,
-          reliable: false,
-          percentage: null,
-          source: 'declared-fallback',
-          diagnostic,
-        };
-      }
-      const diagnostic = makeFallbackDiagnostic({
-        code: 'page_language_unavailable',
-        title: 'Page language unavailable',
-        message: 'Chrome could not determine this page language, so automatic highlights are off.',
-        operation: 'detect-page-language',
-        detail: detectionFailures.join('; ') || 'Chrome detection returned an unreliable result and the page declares no language.',
-      });
-      return {
-        language: '', reliable: false, percentage: null, source: 'unavailable',
-        diagnostic,
-      };
-    }
-
     case 'GET_PAGE_HIGHLIGHT_CONFIG': {
       const hostname = String(msg.hostname || '').toLocaleLowerCase();
       const stored = await chrome.storage.local.get(['user', SITE_HIGHLIGHT_OVERRIDES_KEY]);

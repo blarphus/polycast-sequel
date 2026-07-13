@@ -1,8 +1,8 @@
 {
   "generatedAt": "deterministic-from-runtime-registration",
   "summary": {
-    "apiRoutes": 141,
-    "extensionMessages": 28,
+    "apiRoutes": 140,
+    "extensionMessages": 27,
     "socketRegistrations": 12
   },
   "routes": [
@@ -324,10 +324,6 @@
     },
     {
       "method": "GET",
-      "path": "/api/placement-test"
-    },
-    {
-      "method": "GET",
       "path": "/api/practice/drill-sessions"
     },
     {
@@ -581,7 +577,6 @@
     "CAPTION_LANGUAGE_DETECTED",
     "CLAIM_PAGE_CUE",
     "CLICK_WILD_RECALL",
-    "DETECT_PAGE_LANGUAGE",
     "EXPLAIN_WORD",
     "GET_API_BASE",
     "GET_DAILY_GOAL",
