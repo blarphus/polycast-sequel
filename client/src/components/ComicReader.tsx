@@ -203,6 +203,7 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
           onSaveWord={savedWords.addWord}
           onRemoveWord={savedWords.removeWord}
           onOptimisticSave={savedWords.addOptimistic}
+          isNative={comic.language.toLowerCase() === nativeLanguage.toLowerCase()}
         />
       )}
     </div>
