@@ -5,7 +5,7 @@ const runtimeLog = createScopedRuntimeLogger('web.pages.onboarding');
 // ---------------------------------------------------------------------------
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LANGUAGES } from '../components/classwork/languages';
 import { toErrorMessage } from '../utils/errors';
@@ -22,8 +22,7 @@ export default function Onboarding() {
 
   // If user already has languages set, send them home
   if (user?.native_language && user?.target_language) {
-    navigate('/', { replace: true });
-    return null;
+    return <Navigate to="/learn" replace />;
   }
 
   const handleSubmit = async () => {
@@ -41,7 +40,7 @@ export default function Onboarding() {
     setSaving(true);
     try {
       await updateSettings(nativeLang, targetLang);
-      navigate('/', { replace: true });
+      navigate('/learn', { replace: true });
     } catch (err: unknown) {
       runtimeLog.error('Onboarding: save failed:', err);
       setError(toErrorMessage(err));
