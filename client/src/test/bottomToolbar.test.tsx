@@ -3,6 +3,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import BottomToolbar from '../components/BottomToolbar';
+import shellStyles from '../styles/shell.css?raw';
+import studentsStyles from '../styles/students.css?raw';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -77,5 +79,15 @@ describe('BottomToolbar', () => {
     expect(expandedLabels).toContain('Social');
     expect(expandedLabels).toContain('Watch');
     expect(expandedLabels).toContain('Settings');
+  });
+});
+
+describe('responsive navigation style ownership', () => {
+  it('keeps desktop sidebar rules in the globally loaded shell stylesheet', () => {
+    expect(shellStyles).toContain('@media (min-width: 481px)');
+    expect(shellStyles).toMatch(/@media \(min-width: 481px\)[\s\S]*?\.bottom-toolbar\s*\{[\s\S]*?left:\s*0;/);
+    expect(shellStyles).toContain('html.sidebar-visible #root');
+    expect(studentsStyles).not.toContain('.bottom-toolbar');
+    expect(studentsStyles).not.toContain('.sidebar-in-progress');
   });
 });
