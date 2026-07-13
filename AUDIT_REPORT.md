@@ -6,14 +6,14 @@
 
 ## Implementation closure status
 
-The findings and measurements below preserve the original 2026-07-11 baseline. The remediation was completed locally on 2026-07-12 and is tracked requirement-by-requirement in `IMPLEMENTATION_CHECKLIST.md`.
+The findings and measurements below preserve the original 2026-07-11 baseline. The remediation and production verification were completed on 2026-07-12 and are tracked requirement-by-requirement in `IMPLEMENTATION_CHECKLIST.md`.
 
 | Status | Count | Scope |
 |---|---:|---|
-| Acceptance-complete | 23 | AUD-002 through AUD-024, including production trust/session verification, pipeline simplification, decomposition, pruning, fallback visibility, and the clean-workspace release proof |
-| Locally implemented; production evidence pending | 1 | AUD-001 Worker OAuth authorization, secret rotation, replay-KV provisioning, deploy, and rejection/replay/log evidence |
+| Acceptance-complete | 24 | AUD-001 through AUD-024, including production Worker/server trust verification, pipeline simplification, decomposition, pruning, fallback visibility, and the clean-workspace release proof |
+| Locally implemented; production evidence pending | 0 | None |
 
-The final local root gate passed contracts, fallback and logging policy, source/tool inventories, web, server, extension, Worker, fresh and legacy PostgreSQL migrations, integration benchmarks, Xcode generation, and iOS unit/UI tests. A separate sanitized workspace passed pinned clean installs and the credential-free non-iOS gate. Render deployment `dep-d99qp88k1i2s73ekbnjg` then proved production origins, correlation, role boundaries, session rotation/revocation, and clean temporary-account teardown. See `docs/OPTIMIZATION_METRICS.md`, `docs/PIPELINE_AUDIT.md`, and `docs/CODE_INVENTORY.md` for measured and disposition evidence.
+The final local root gate passed contracts, fallback and logging policy, source/tool inventories, web, server, extension, Worker, fresh and legacy PostgreSQL migrations, integration benchmarks, Xcode generation, and iOS unit/UI tests. A separate sanitized workspace passed pinned clean installs and the credential-free non-iOS gate. Render deployment `dep-d99qp88k1i2s73ekbnjg` proved production origins, correlation, role boundaries, session rotation/revocation, and clean temporary-account teardown. Cloudflare Worker version `fe2cf46b-db1d-451e-bc73-3dded236280c`, replay KV `f1b0aeb956644a4ea16e83f97de3f35c`, and exact audited Render deployment `dep-d9a4k7beo5us739e8ghg` then proved rotated HMAC success plus replay, scope, signature, and legacy-bearer rejection with structured correlated diagnostics. See `docs/OPTIMIZATION_METRICS.md`, `docs/PIPELINE_AUDIT.md`, and `docs/CODE_INVENTORY.md` for measured and disposition evidence.
 
 ## Executive assessment
 
@@ -446,4 +446,4 @@ Rules for the target state:
 
 ## Validation notes
 
-The baseline findings are retained as dated evidence and therefore describe the pre-remediation tree in the present tense. Production source was subsequently refactored according to the specifications above; the live completion state is authoritative in `IMPLEMENTATION_CHECKLIST.md`. Dependency advisory counts in the baseline are historical, while the current release gate and SBOM policy enforce the remediated state. Timing and memory figures are local regression signals, not production service-level measurements. AUD-001 remains visibly open: a private Render probe showed the live Worker returns `403 Unauthorized` to the new scoped token, proving the Worker deployment/rotation is still required.
+The baseline findings are retained as dated evidence and therefore describe the pre-remediation tree in the present tense. Production source was subsequently refactored according to the specifications above; the live completion state is authoritative in `IMPLEMENTATION_CHECKLIST.md`. Dependency advisory counts in the baseline are historical, while the current release gate and SBOM policy enforce the remediated state. Timing and memory figures are local regression signals, not production service-level measurements. AUD-001 is closed with the rotated Worker/server secret, provisioned replay KV, exact audited Render deployment, and live structured success/rejection/replay evidence recorded in the checklist.

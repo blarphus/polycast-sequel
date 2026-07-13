@@ -7,6 +7,7 @@ binding = "AI"
 
 [[kv_namespaces]]
 binding = "AUTH_REPLAY"
+id = "f1b0aeb956644a4ea16e83f97de3f35c"
 
 [vars]
 ALLOWED_ORIGINS = "https://polycast-sequel.onrender.com"
