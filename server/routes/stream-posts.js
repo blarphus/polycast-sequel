@@ -11,6 +11,7 @@ import {
   listLegacyTeacherIdsForStudent,
 } from '../services/classroomService.js';
 import { WORD_COUNT_JOIN, COMPLETION_COUNT_JOIN } from '../lib/streamPostQueries.js';
+import { supportedLanguageSchema } from '../lib/languagePolicy.js';
 
 const router = Router();
 
@@ -22,7 +23,7 @@ const createPostBody = z.object({
   body: z.string().optional(),
   attachments: z.array(z.any()).optional(),
   words: z.array(z.any()).optional(),
-  target_language: z.string().optional(),
+  target_language: supportedLanguageSchema.optional(),
   lesson_items: z.array(z.any()).optional(),
   topic_id: z.string().uuid().nullable().optional(),
   scheduled_at: z.string().optional(),

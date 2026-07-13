@@ -47,6 +47,9 @@ export function createDictionaryStudyRoutes({ service = dictionaryStudyService }
     await service.reorder(req.userId, req.body.items);
     return res.status(204).end();
   }));
+  router.post('/api/dictionary/queue-rebuild', authMiddleware, asyncHandler(async (req, res) => {
+    return res.json(await service.rebuildFrequencyOrder(req.userId));
+  }));
   router.get('/api/dictionary/calendar', authMiddleware, validate({ query: calendarQuery }), asyncHandler(async (req, res) => {
     const { year, month, timeZone } = req.query;
     return res.json(await service.calendar(req.userId, year, month, validTimeZone(timeZone)));

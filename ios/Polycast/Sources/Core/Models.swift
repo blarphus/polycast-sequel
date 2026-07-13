@@ -261,6 +261,15 @@ struct SavedWord: Codable, Identifiable, Hashable {
     let introducedDate: String?
     let relearningDate: String?
     let stageSentences: [StageSentence]?
+    var lemmaId: String? = nil
+    var senseId: String? = nil
+    var rankVersionId: String? = nil
+    var lemmaFrequencyRank: Int? = nil
+    var senseRank: Int? = nil
+    var lemmaOccurrencesPerBillion: Int? = nil
+    var frequencyConfidence: String? = nil
+    var frequencySources: [FrequencySource]? = nil
+    var rankingDiagnostics: [RankingDiagnostic]? = nil
 }
 
 struct SavedWordResponse: Codable {
@@ -294,6 +303,15 @@ struct SavedWordResponse: Codable {
     let introducedDate: String?
     let relearningDate: String?
     let stageSentences: [StageSentence]?
+    let lemmaId: String?
+    let senseId: String?
+    let rankVersionId: String?
+    let lemmaFrequencyRank: Int?
+    let senseRank: Int?
+    let lemmaOccurrencesPerBillion: Int?
+    let frequencyConfidence: String?
+    let frequencySources: [FrequencySource]?
+    let rankingDiagnostics: [RankingDiagnostic]?
 
     var value: SavedWord {
         SavedWord(
@@ -325,7 +343,16 @@ struct SavedWordResponse: Codable {
             queuePosition: queuePosition,
             introducedDate: introducedDate,
             relearningDate: relearningDate,
-            stageSentences: stageSentences
+            stageSentences: stageSentences,
+            lemmaId: lemmaId,
+            senseId: senseId,
+            rankVersionId: rankVersionId,
+            lemmaFrequencyRank: lemmaFrequencyRank,
+            senseRank: senseRank,
+            lemmaOccurrencesPerBillion: lemmaOccurrencesPerBillion,
+            frequencyConfidence: frequencyConfidence,
+            frequencySources: frequencySources,
+            rankingDiagnostics: rankingDiagnostics
         )
     }
 }
@@ -377,6 +404,33 @@ struct EnrichResponse: Codable {
     let lemma: String?
     let forms: String?
     let imageTerm: String?
+    let lemmaId: String?
+    let senseId: String?
+    let rankVersionId: String?
+    let rankVersion: String?
+    let lemmaFrequencyRank: Int?
+    let senseOrder: Int?
+    let senseRank: Int?
+    let lemmaOccurrencesPerBillion: Int?
+    let frequencyConfidence: String?
+    let frequencyPercentile: Double?
+    let frequencySources: [FrequencySource]?
+}
+
+struct FrequencySource: Codable, Hashable {
+    let id: String?
+    let rank: Int?
+    let weight: Double?
+    let value: Double?
+}
+
+struct RankingDiagnostic: Codable, Hashable {
+    let code: String
+    let severity: String
+    let title: String
+    let message: String
+    let detail: String?
+    let correlationId: String?
 }
 
 // MARK: - Reader (explain / translate)

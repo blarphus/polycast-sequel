@@ -76,7 +76,7 @@ async function insertBatch(pool, lang, rows) {
       ? JSON.stringify(row.translations)
       : null;
 
-    placeholders.push(`($${idx}, $${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4}, $${idx + 5}, $${idx + 6})`);
+    placeholders.push(`($${idx}, $${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4}, $${idx + 5}, $${idx + 6}, $${idx + 7})`);
     values.push(
       lang,
       row.key,
@@ -85,12 +85,13 @@ async function insertBatch(pool, lang, rows) {
       JSON.stringify(row.senses),
       forms,
       translations,
+      row.id || row.source_entry_id || `${lang}:${row.key}:${row.pos}`,
     );
-    idx += 7;
+    idx += 8;
   }
 
   await pool.query(
-    `INSERT INTO wiktionary (lang, key, word, pos, senses, forms, translations) VALUES ${placeholders.join(', ')}`,
+    `INSERT INTO wiktionary (lang, key, word, pos, senses, forms, translations, source_entry_id) VALUES ${placeholders.join(', ')}`,
     values,
   );
 }

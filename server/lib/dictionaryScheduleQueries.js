@@ -5,26 +5,55 @@ export async function ensureCardsScheduled(db, userId, timeZone = 'UTC') {
        FROM users
        WHERE id = $1
      ),
-     ranked AS (
+     existing AS (
        SELECT
          sw.id,
-         ROW_NUMBER() OVER (
-           ORDER BY
-             CASE
-               WHEN sw.srs_interval = 0
-                AND sw.learning_step IS NULL
-                AND sw.last_reviewed_at IS NULL THEN 0
-               ELSE 1
-             END ASC,
-             sw.frequency_count DESC NULLS LAST,
-             sw.frequency DESC NULLS LAST,
-             sw.created_at ASC,
-             sw.id ASC
-         ) - 1 AS new_position
+         ROW_NUMBER() OVER (ORDER BY sw.queue_position, sw.created_at, sw.id) - 1 AS stable_index
        FROM saved_words sw
        CROSS JOIN prefs p
        WHERE sw.user_id = $1
          AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND sw.queue_position IS NOT NULL
+     ),
+     pending AS (
+       SELECT sw.id,
+              (
+                SELECT COUNT(*) FROM saved_words placed
+                CROSS JOIN prefs p2
+                WHERE placed.user_id = $1
+                  AND placed.target_language IS NOT DISTINCT FROM p2.target_language
+                  AND placed.queue_position IS NOT NULL
+                  AND (
+                    placed.priority::int > sw.priority::int
+                    OR (placed.priority = sw.priority AND placed.sense_rank IS NOT NULL AND sw.sense_rank IS NULL)
+                    OR (placed.priority = sw.priority AND placed.sense_rank < sw.sense_rank)
+                  )
+              )::bigint AS anchor,
+              sw.priority, sw.sense_rank, sw.lemma_frequency_rank, sw.created_at
+       FROM saved_words sw
+       CROSS JOIN prefs p
+       WHERE sw.user_id = $1
+         AND sw.target_language IS NOT DISTINCT FROM p.target_language
+         AND sw.queue_position IS NULL
+     ),
+     combined AS (
+       SELECT id, stable_index * 2 + 1 AS slot, 0 AS pending_order,
+              FALSE AS priority, NULL::bigint AS sense_rank, NULL::int AS lemma_frequency_rank,
+              NULL::timestamptz AS created_at
+       FROM existing
+       UNION ALL
+       SELECT id, anchor * 2 AS slot, 1 AS pending_order,
+              priority, sense_rank, lemma_frequency_rank, created_at
+       FROM pending
+     ),
+     ranked AS (
+       SELECT id,
+              ROW_NUMBER() OVER (
+                ORDER BY slot, pending_order, priority DESC,
+                         sense_rank ASC NULLS LAST, lemma_frequency_rank ASC NULLS LAST,
+                         created_at ASC NULLS LAST, id
+              ) - 1 AS new_position
+       FROM combined
      )
      UPDATE saved_words sw
      SET queue_position = ranked.new_position

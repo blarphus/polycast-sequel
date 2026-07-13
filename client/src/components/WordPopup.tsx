@@ -153,6 +153,14 @@ export default function WordPopup(props: WordPopupProps) {
             forms: enriched.forms || null,
             image_term: enriched.image_term,
             shared_entry_id: enriched.shared_entry_id || null,
+            lemma_id: enriched.lemma_id || null,
+            sense_id: enriched.sense_id || null,
+            rank_version_id: enriched.rank_version_id || null,
+            lemma_frequency_rank: enriched.lemma_frequency_rank ?? null,
+            sense_rank: enriched.sense_rank ?? null,
+            lemma_occurrences_per_billion: enriched.lemma_occurrences_per_billion ?? null,
+            frequency_confidence: enriched.frequency_confidence ?? null,
+            frequency_sources: enriched.frequency_sources || [],
           });
         });
       };

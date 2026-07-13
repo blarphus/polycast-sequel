@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import pool from '../db.js';
-import { migrate } from '../migrate.js';
+import { getMigrationManifest, migrate } from '../migrate.js';
 
 if (process.argv.includes('--help')) {
   console.log('Usage: DATABASE_URL=... node server/scripts/legacyMigrationSmoke.js\nBuilds the legacy v30 schema, upgrades it, and checks invariants. Use only with a disposable database.');
@@ -18,6 +18,7 @@ const legacyFiles = fs.readdirSync(migrationsDirectory)
   .sort();
 
 try {
+  const expectedMigrationCount = getMigrationManifest().length;
   await pool.query(`
     CREATE TABLE schema_migrations (
       version INTEGER PRIMARY KEY,
@@ -57,7 +58,7 @@ try {
       to_regclass('public.idempotency_requests') IS NOT NULL AS idempotency_requests
     FROM schema_migrations
   `);
-  if (state.migration_count !== 35 || !state.auth_sessions || !state.profile_sessions || !state.user_schedule_state || !state.idempotency_requests) {
+  if (state.migration_count !== expectedMigrationCount || !state.auth_sessions || !state.profile_sessions || !state.user_schedule_state || !state.idempotency_requests) {
     throw new Error(`Legacy upgrade invariants failed: ${JSON.stringify(state)}`);
   }
   console.log(JSON.stringify({ event: 'legacy_migration_smoke_passed', ...state }));

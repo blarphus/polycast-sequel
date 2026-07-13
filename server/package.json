@@ -10,7 +10,10 @@
     "test": "NODE_ENV=test JWT_SECRET=polycast-test-secret node --test test/*.test.js lib/*.test.js services/*.test.js",
     "test:integration": "NODE_ENV=test JWT_SECRET=polycast-test-secret node --test test/*.integration.test.js",
     "test:migrations": "NODE_ENV=test JWT_SECRET=polycast-test-secret node scripts/migrationSmoke.js",
+    "test:catalog-backfill": "NODE_ENV=test JWT_SECRET=polycast-test-secret node scripts/catalogBackfillSmoke.js",
     "benchmark:startup": "NODE_ENV=test JWT_SECRET=polycast-test-secret node scripts/startupBenchmark.js",
+    "catalog:build": "node scripts/buildFrequencyCatalog.js",
+    "languages:purge-unsupported": "node scripts/purgeUnsupportedLanguages.js",
     "check": "npm test && npm audit"
   },
   "dependencies": {

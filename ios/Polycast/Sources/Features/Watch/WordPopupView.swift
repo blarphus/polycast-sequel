@@ -586,7 +586,15 @@ struct WordPopupView: View {
                     lemma: enriched.lemma,
                     forms: enriched.forms,
                     surfaceForm: savedSurface,
-                    imageTerm: enriched.imageTerm
+                    imageTerm: enriched.imageTerm,
+                    lemmaId: enriched.lemmaId,
+                    senseId: enriched.senseId,
+                    rankVersionId: enriched.rankVersionId,
+                    lemmaFrequencyRank: enriched.lemmaFrequencyRank,
+                    senseRank: enriched.senseRank,
+                    lemmaOccurrencesPerBillion: enriched.lemmaOccurrencesPerBillion,
+                    frequencyConfidence: enriched.frequencyConfidence,
+                    frequencySources: enriched.frequencySources
                 )
                 wordStore.remove(id: tempId)
                 wordStore.insert(savedWord)

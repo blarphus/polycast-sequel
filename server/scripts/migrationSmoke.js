@@ -1,5 +1,5 @@
 import pool from '../db.js';
-import { migrate } from '../migrate.js';
+import { getMigrationManifest, migrate } from '../migrate.js';
 
 if (process.argv.includes('--help')) {
   console.log('Usage: DATABASE_URL=... node server/scripts/migrationSmoke.js\nApplies all migrations to a disposable database and checks schema invariants.');
@@ -9,6 +9,7 @@ if (process.argv.includes('--help')) {
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for migration smoke testing');
 
 try {
+  const expectedMigrationCount = getMigrationManifest().length;
   await migrate(pool);
   const { rows } = await pool.query(`
     SELECT
@@ -23,7 +24,7 @@ try {
   `);
   const result = rows[0];
   const missing = Object.entries(result).filter(([key, value]) => key !== 'migration_count' && value !== true);
-  if (missing.length > 0 || result.migration_count !== 35) {
+  if (missing.length > 0 || result.migration_count !== expectedMigrationCount) {
     throw new Error(`Migration invariants failed: ${JSON.stringify(result)}`);
   }
   console.log(JSON.stringify({ event: 'migration_smoke_passed', ...result }));

@@ -114,7 +114,7 @@ export function createDictionarySemanticRoutes({
   router.post('/api/dictionary/enrich', authMiddleware, validate({ body: enrichBody }), asyncHandler(async (req, res) => {
     const { word, sentence, nativeLang, targetLang, senseIndex, definition, part_of_speech, definition_source, matched_gloss } = req.body;
     return res.json(await enrich(word, sentence, nativeLang, targetLang, senseIndex ?? null, {
-      definition, part_of_speech, definition_source, matched_gloss,
+      definition, part_of_speech, definition_source, matched_gloss, correlationId: req.id,
     }));
   }));
 

@@ -12,7 +12,7 @@ import { formatDate } from '../utils/dateFormat';
 import { renderTildeHighlight } from '../utils/tildeMarkup';
 import WordLookupModal from '../components/WordLookupModal';
 import ImagePicker from '../components/ImagePicker';
-import { getDictionaryWordGroups, proxyImageUrl } from '../api';
+import { getDictionaryWordGroups, proxyImageUrl, rebuildFrequencyQueue } from '../api';
 import type { DictionarySortMode, DictionaryWordGroup, SavedWord } from '../api';
 import { SearchIcon, SearchMinusIcon, BookPlusIcon, ChevronDownIcon, TrashIcon, GripVerticalIcon } from '../components/icons';
 import { FrequencyDots, FREQUENCY_DOT_COLORS } from '../components/FrequencyDots';
@@ -350,6 +350,12 @@ export default function Dictionary() {
 
   const isQueueMode = sort === 'queue';
 
+  const rebuildQueue = async () => {
+    if (!window.confirm('Replace the current manual queue order with priority-first frequency order?')) return;
+    await rebuildFrequencyQueue();
+    await loadPage();
+  };
+
   return (
     <div className="dict-page" style={QUEUE_TINT_STYLES}>
       <main className="dict-main">
@@ -381,6 +387,9 @@ export default function Dictionary() {
               <option value="due">Due soonest</option>
             </select>
             <span className="dict-count">{totalGroups} word{totalGroups !== 1 ? 's' : ''}</span>
+            <button className="dict-lookup-btn" onClick={() => { void rebuildQueue(); }} title="Rebuild frequency order">
+              Frequency order
+            </button>
             {user?.native_language && user?.target_language && (
               <button
                 className="dict-lookup-btn"
@@ -536,6 +545,31 @@ export default function Dictionary() {
                                       </span>
                                     </div>
                                   )}
+                                  <div className="dict-field">
+                                    <span className="dict-field-label">Frequency rank</span>
+                                    <span className="dict-field-value text-muted">
+                                      {w.lemma_frequency_rank != null ? `Lemma #${w.lemma_frequency_rank.toLocaleString()}` : 'Unranked tail'}
+                                      {w.sense_rank != null ? ` · Sense list #${w.sense_rank.toLocaleString()}` : ''}
+                                      {w.frequency_confidence ? ` · ${w.frequency_confidence} confidence` : ''}
+                                    </span>
+                                  </div>
+                                  {Array.isArray(w.frequency_sources) && w.frequency_sources.length > 0 && (
+                                    <div className="dict-field">
+                                      <span className="dict-field-label">Frequency sources</span>
+                                      <span className="dict-field-value text-muted">
+                                        {w.frequency_sources.map((source) => String(source.id || 'unknown')).join(', ')}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {Array.isArray(w.ranking_diagnostics) && w.ranking_diagnostics.map((diagnostic) => (
+                                    <div className="dict-field" key={`${w.id}-${diagnostic.code}`} role="status">
+                                      <span className="dict-field-label">Ranking fallback</span>
+                                      <span className="dict-field-value text-muted">
+                                        {diagnostic.title}: {diagnostic.message} · {diagnostic.code}
+                                        {diagnostic.detail ? ` · ${diagnostic.detail}` : ''}
+                                      </span>
+                                    </div>
+                                  ))}
                                   <button className="dict-remove-btn" onClick={async () => {
                                     await removeWord(w.id);
                                     await loadPage();

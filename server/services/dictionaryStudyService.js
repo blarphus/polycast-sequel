@@ -100,6 +100,25 @@ export function createDictionaryStudyService({
         client.release();
       }
     },
+    async rebuildFrequencyOrder(userId) {
+      const { rowCount } = await db.query(
+        `WITH ranked AS (
+           SELECT id,
+                  ROW_NUMBER() OVER (
+                    ORDER BY priority DESC, sense_rank ASC NULLS LAST,
+                             lemma_frequency_rank ASC NULLS LAST, created_at, id
+                  ) - 1 AS position
+             FROM saved_words
+            WHERE user_id = $1
+         )
+         UPDATE saved_words sw
+            SET queue_position = ranked.position
+           FROM ranked
+          WHERE sw.id = ranked.id`,
+        [userId],
+      );
+      return { reordered: rowCount ?? 0 };
+    },
     review(userId, wordId, { answer, timeZone, learningSessionId, idempotencyKey }) {
       return idempotentMutation(db, {
         userId,

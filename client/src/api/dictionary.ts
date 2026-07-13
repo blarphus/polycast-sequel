@@ -7,6 +7,17 @@ export interface EnrichedWord {
   part_of_speech: string | null;
   frequency: number | null;
   frequency_count: number | null;
+  lemma_id?: string | null;
+  sense_id?: string | null;
+  rank_version_id?: string | null;
+  rank_version?: string | null;
+  lemma_frequency_rank?: number | null;
+  sense_order?: number | null;
+  sense_rank?: number | null;
+  lemma_occurrences_per_billion?: number | null;
+  frequency_confidence?: 'high' | 'medium' | 'low' | 'unavailable' | null;
+  frequency_percentile?: number | null;
+  frequency_sources?: Array<Record<string, unknown>>;
   example_sentence: string | null;
   sentence_translation: string | null;
   image_url: string | null;
@@ -136,6 +147,14 @@ export interface SaveWordData {
   forms?: string | null;
   image_term?: string | null;
   shared_entry_id?: string | null;
+  lemma_id?: string | null;
+  sense_id?: string | null;
+  rank_version_id?: string | null;
+  lemma_frequency_rank?: number | null;
+  sense_rank?: number | null;
+  lemma_occurrences_per_billion?: number | null;
+  frequency_confidence?: 'high' | 'medium' | 'low' | 'unavailable' | null;
+  frequency_sources?: Array<Record<string, unknown>>;
 }
 
 export interface SavedWord {
@@ -170,6 +189,22 @@ export interface SavedWord {
   relearning_date: string | null;
   stage_sentences?: Array<{ stage: number; example: string; translation: string }>;
   shared_entry_id?: string | null;
+  lemma_id?: string | null;
+  sense_id?: string | null;
+  rank_version_id?: string | null;
+  lemma_frequency_rank?: number | null;
+  sense_rank?: number | null;
+  lemma_occurrences_per_billion?: number | null;
+  frequency_confidence?: 'high' | 'medium' | 'low' | 'unavailable' | null;
+  frequency_sources?: Array<Record<string, unknown>> | null;
+  ranking_diagnostics?: Array<{
+    code: string;
+    severity: string;
+    title: string;
+    message: string;
+    detail?: string;
+    correlationId?: string;
+  }>;
 }
 
 export interface SavedWordSaveResult extends SavedWord {
@@ -271,6 +306,10 @@ export function reorderQueue(items: Array<{ id: string; queue_position: number }
     method: 'PATCH',
     body: { items },
   });
+}
+
+export function rebuildFrequencyQueue() {
+  return request<{ reordered: number }>('/dictionary/queue-rebuild', { method: 'POST' });
 }
 
 export interface CalendarDayCount {

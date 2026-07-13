@@ -21,6 +21,7 @@ import {
   listProfileAccounts,
 } from '../lib/profileSessions.js';
 import { serializeAuthUser } from '../lib/authResponse.js';
+import { supportedLanguageSchema } from '../lib/languagePolicy.js';
 
 const signupSchema = z.object({
   username: z.string().min(1, 'Username is required').max(40, 'Username must be 40 characters or fewer').trim(),
@@ -38,8 +39,8 @@ const restoreSessionSchema = z.object({
 }).strict();
 
 const settingsSchema = z.object({
-  native_language: z.string().optional(),
-  target_language: z.string().optional(),
+  native_language: supportedLanguageSchema.optional(),
+  target_language: supportedLanguageSchema.optional(),
   daily_new_limit: z.number().optional(),
   daily_word_goal: z.number().int().min(1).max(50).optional(),
   cefr_level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).nullable().optional(),

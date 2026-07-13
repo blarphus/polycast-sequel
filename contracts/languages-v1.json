@@ -7,11 +7,6 @@
     { "code": "pt", "name": "Brazilian Portuguese", "placement": true },
     { "code": "fr", "name": "French", "placement": false },
     { "code": "de", "name": "German", "placement": false },
-    { "code": "it", "name": "Italian", "placement": false },
-    { "code": "ja", "name": "Japanese", "placement": false },
-    { "code": "ko", "name": "Korean", "placement": false },
-    { "code": "zh", "name": "Chinese", "placement": false },
-    { "code": "ar", "name": "Arabic", "placement": false },
-    { "code": "ru", "name": "Russian", "placement": false }
+    { "code": "ja", "name": "Japanese", "placement": false }
   ]
 }

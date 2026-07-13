@@ -1,7 +1,8 @@
 const NEW_TODAY_ORDER_BY = `
   sw.queue_position ASC NULLS LAST,
-  sw.frequency_count DESC NULLS LAST,
-  sw.frequency DESC NULLS LAST,
+  sw.priority DESC,
+  sw.sense_rank ASC NULLS LAST,
+  sw.lemma_frequency_rank ASC NULLS LAST,
   sw.created_at ASC,
   sw.id ASC
 `;
@@ -12,8 +13,8 @@ const DUE_QUEUE_ORDER_BY = `
        ELSE 2 END,
   due_at ASC NULLS LAST,
   CASE WHEN due_at IS NULL AND priority = true THEN 0 ELSE 1 END ASC,
-  frequency_count DESC NULLS LAST,
-  frequency DESC NULLS LAST,
+  sense_rank ASC NULLS LAST,
+  lemma_frequency_rank ASC NULLS LAST,
   created_at ASC
 `;
 

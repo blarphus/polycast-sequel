@@ -22,6 +22,7 @@ struct DictionaryView: View {
     @State private var editingWord: SavedWord?
     @State private var deletingWord: SavedWord?
     @State private var groupedWords: [WordGroup] = []
+    @State private var confirmingFrequencyRebuild = false
 
     private var words: [SavedWord] { wordStore.words }
     private var loading: Bool { wordStore.loading }
@@ -88,6 +89,25 @@ struct DictionaryView: View {
                 if let word = deletingWord {
                     Text("Are you sure you want to delete \"\(word.word)\"?")
                 }
+            }
+            .confirmationDialog(
+                "Replace manual queue order?",
+                isPresented: $confirmingFrequencyRebuild,
+                titleVisibility: .visible
+            ) {
+                Button("Rebuild Frequency Order", role: .destructive) {
+                    Task {
+                        do {
+                            _ = try await APIClient.shared.rebuildFrequencyQueue()
+                            await wordStore.load(showLoading: false)
+                        } catch {
+                            wordStore.error = error.localizedDescription
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Priority words will come first, followed by saved catalog rank. Existing manual order will be replaced only this once.")
             }
             .overlay {
                 if loading {
@@ -183,6 +203,10 @@ struct DictionaryView: View {
                     ForEach(DictionarySortMode.allCases, id: \.self) { mode in
                         Text(mode.rawValue).tag(mode)
                     }
+                }
+                Divider()
+                Button("Rebuild Frequency Order", systemImage: "arrow.triangle.2.circlepath") {
+                    confirmingFrequencyRebuild = true
                 }
             } label: {
                 Label("Sort", systemImage: "arrow.up.arrow.down")
@@ -329,6 +353,29 @@ struct DictionaryView: View {
                 Text(sentenceTranslation)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 6) {
+                Text(word.lemmaFrequencyRank.map { "Lemma #\($0)" } ?? "Unranked tail")
+                if let senseRank = word.senseRank { Text("· Sense #\(senseRank)") }
+                if let confidence = word.frequencyConfidence { Text("· \(confidence) confidence") }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            if let sources = word.frequencySources, !sources.isEmpty {
+                Text("Frequency sources: \(sources.compactMap(\.id).joined(separator: ", "))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let diagnostics = word.rankingDiagnostics {
+                ForEach(Array(diagnostics.enumerated()), id: \.offset) { _, diagnostic in
+                    Text("\(diagnostic.title): \(diagnostic.message) · \(diagnostic.code)\(diagnostic.detail.map { " · \($0)" } ?? "")")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .accessibilityLabel("Ranking fallback: \(diagnostic.title). \(diagnostic.message). Code \(diagnostic.code)")
+                }
             }
 
             if let url = APIClient.proxyImageURL(word.imageUrl) {

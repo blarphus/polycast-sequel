@@ -16,6 +16,7 @@ import {
   removeStudentFromClassroom,
   updateClassroom,
 } from '../services/classroomService.js';
+import { supportedLanguageSchema } from '../lib/languagePolicy.js';
 
 const router = Router();
 
@@ -27,16 +28,16 @@ const createClassroomBody = z.object({
   section: z.string().trim().optional().or(z.literal('')),
   subject: z.string().trim().optional().or(z.literal('')),
   room: z.string().trim().optional().or(z.literal('')),
-  target_language: z.string().trim().optional().or(z.literal('')),
-  native_language: z.string().trim().optional().or(z.literal('')),
+  target_language: supportedLanguageSchema.optional().or(z.literal('')),
+  native_language: supportedLanguageSchema.optional().or(z.literal('')),
 });
 const updateClassroomBody = z.object({
   name: z.string().trim().optional(),
   section: z.string().trim().optional().nullable(),
   subject: z.string().trim().optional().nullable(),
   room: z.string().trim().optional().nullable(),
-  target_language: z.string().trim().optional().nullable(),
-  native_language: z.string().trim().optional().nullable(),
+  target_language: supportedLanguageSchema.optional().nullable(),
+  native_language: supportedLanguageSchema.optional().nullable(),
   needs_setup: z.boolean().optional(),
 });
 const createTopicBody = z.object({

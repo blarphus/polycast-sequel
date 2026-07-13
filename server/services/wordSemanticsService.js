@@ -3,7 +3,6 @@ import {
   enrichWord,
   fetchWiktSenses,
   fetchWiktTranslations,
-  persistGeminiFallbackSense,
 } from '../enrichWord.js';
 import pool from '../db.js';
 import { fetchUserSavedSensesForWord } from '../lib/dictionaryQueries.js';
@@ -373,15 +372,6 @@ ${senseInstruction}
       sense_index = idx;
       matched_gloss = wiktSenses[idx].gloss;
     }
-    // idx === -1 or invalid: Gemini says no sense matches — use its own definition
-    if (sense_index === null && parsed.definition && parsed.part_of_speech && targetLang) {
-      persistGeminiFallbackSense({ word, lang: targetLang, pos: parsed.part_of_speech, definition: parsed.definition });
-    }
-  }
-
-  // No wiktionary senses at all — persist Gemini's definition
-  if (!hasSenses && parsed.definition && parsed.part_of_speech && targetLang) {
-    persistGeminiFallbackSense({ word, lang: targetLang, pos: parsed.part_of_speech, definition: parsed.definition });
   }
 
   return {

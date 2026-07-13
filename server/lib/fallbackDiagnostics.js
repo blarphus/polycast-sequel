@@ -18,10 +18,35 @@ export function normalizeFallbackDiagnostic(input = {}, context = {}) {
     message: redact(input.message || 'Polycast used an alternate path.'),
     source: String(input.source || context.source || 'server.unknown').slice(0, 120),
     operation: String(input.operation || context.operation || 'unknown').slice(0, 120),
+    pipeline: String(input.pipeline || context.pipeline || input.operation || context.operation || 'unknown').slice(0, 120),
+    stage: String(input.stage || context.stage || 'fallback').slice(0, 120),
+    ...(input.language || context.language ? { language: String(input.language || context.language).slice(0, 20) } : {}),
+    ...(input.entityType || context.entityType ? { entityType: String(input.entityType || context.entityType).slice(0, 80) } : {}),
+    ...(input.entityId || context.entityId ? { entityId: String(input.entityId || context.entityId).slice(0, 200) } : {}),
+    ...(input.selectedAction || context.selectedAction ? { selectedAction: String(input.selectedAction || context.selectedAction).slice(0, 160) } : {}),
+    ...(input.catalogVersion || context.catalogVersion ? { catalogVersion: String(input.catalogVersion || context.catalogVersion).slice(0, 120) } : {}),
     correlationId: String(input.correlationId || context.correlationId || crypto.randomUUID()),
     occurredAt: input.occurredAt || new Date().toISOString(),
     ...(input.detail ? { detail: redact(input.detail) } : {}),
   };
+}
+
+export async function persistFallbackDiagnostic(db, input, context = {}) {
+  const diagnostic = normalizeFallbackDiagnostic(input, context);
+  await db.query(
+    `INSERT INTO fallback_diagnostics (
+       correlation_id, code, severity, pipeline, stage, source, operation,
+       language, entity_type, entity_id, selected_action, message, detail, metadata, occurred_at
+     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15)`,
+    [
+      diagnostic.correlationId, diagnostic.code, diagnostic.severity,
+      diagnostic.pipeline, diagnostic.stage, diagnostic.source, diagnostic.operation,
+      diagnostic.language || null, diagnostic.entityType || null, diagnostic.entityId || null,
+      diagnostic.selectedAction || null, diagnostic.message, diagnostic.detail || null,
+      JSON.stringify({ catalogVersion: diagnostic.catalogVersion || null }), diagnostic.occurredAt,
+    ],
+  );
+  return diagnostic;
 }
 
 export function fallbackDiagnosticsMiddleware(req, res, next) {

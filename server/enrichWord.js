@@ -4,7 +4,7 @@
  * and the stream route (POST /api/stream/posts) at word-list creation time.
  */
 
-import { applyCorpusFrequency } from './lib/wordFrequency.js';
+import { catalogEntryToWordFields, lookupFrequencyCatalog, persistProvisionalSense } from './lib/frequencyCatalog.js';
 import { normalizeLemma, normalizeForms } from './lib/normalizeWordFields.js';
 import { callGemini, callGeminiVision, parseGeminiJson } from './lib/gemini.js';
 import { searchAllImages } from './lib/imageSearch.js';
@@ -16,62 +16,8 @@ import logger from './logger.js';
 import pool from './db.js';
 
 
-function parseFrequency(str) {
-  if (!str) return null;
-  const n = parseInt(str, 10);
-  if (isNaN(n)) {
-    logger.error('Gemini enrich returned non-numeric frequency: %s', str);
-    return null;
-  }
-  return n;
-}
-
 function accentFoldKey(word) {
   return word.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
-
-/**
- * Persist a Gemini-generated fallback definition into the wiktionary table
- * so future lookups can use it directly. Fire-and-forget.
- */
-export function persistGeminiFallbackSense({ word, lang, pos, definition }) {
-  if (!word || !lang || !pos || !definition) return;
-
-  const key = accentFoldKey(word);
-  const newSense = JSON.stringify([{ glosses: [definition], source: 'gemini' }]);
-  const glossCheck = JSON.stringify([definition]);
-
-  (async () => {
-    // Try UPDATE: append to existing row if gloss not already present
-    const { rowCount } = await pool.query(
-      `UPDATE wiktionary
-       SET senses = senses || $4::jsonb
-       WHERE lang = $1 AND key = $2 AND pos = $3
-         AND NOT EXISTS (
-           SELECT 1 FROM jsonb_array_elements(senses) AS s
-           WHERE s->'glosses' @> $5::jsonb
-         )`,
-      [lang, key, pos, newSense, glossCheck]
-    );
-    if (rowCount > 0) { logger.info('[wikt-persist] Appended sense: %s/%s/%s', lang, word, pos); return; }
-
-    // rowCount=0 → either row exists with duplicate gloss, or no row at all
-    const { rows } = await pool.query(
-      'SELECT id FROM wiktionary WHERE lang = $1 AND key = $2 AND pos = $3 LIMIT 1',
-      [lang, key, pos]
-    );
-    if (rows.length > 0) return; // duplicate, skip
-
-    // No row — INSERT new one
-    await pool.query(
-      `INSERT INTO wiktionary (lang, key, word, pos, senses, forms, translations)
-       VALUES ($1, $2, $3, $4, $5::jsonb, NULL, NULL)`,
-      [lang, key, word, pos, newSense]
-    );
-    logger.info('[wikt-persist] Inserted new row: %s/%s/%s', lang, word, pos);
-  })().catch(err => {
-    logger.error({ err }, '[wikt-persist] Failed for %s/%s', lang, word);
-  });
 }
 
 async function queryWiktionary(word, lang) {
@@ -224,12 +170,6 @@ export async function fetchWiktTranslations(word, nativeLang) {
 // Shared field descriptions used by all enrichment prompts
 const FIELD_TRANSLATION = (nativeLang) =>
   `- TRANSLATION: The word translated into ${nativeLang}. Just the word(s), nothing else.`;
-const FIELD_FREQUENCY = `- FREQUENCY: An integer 1-10 rating how common this word is for a language learner:
-  1-2: Rare/specialized words most learners won't encounter
-  3-4: Uncommon words that appear in specific contexts
-  5-6: Moderately common words useful for intermediate learners
-  7-8: Common everyday words important for conversation
-  9-10: Essential high-frequency words (top 500 most used)`;
 export const FIELD_IMAGE_TERM = `- IMAGE_TERM: A short English stock-photo search term for a flashcard image of this word in the sense used. Always English. Guidelines:
   - Prefer the SIMPLEST term that works — usually just the plain English translation ("baile" → "dance", "perro" → "dog", "montañoso" → "mountain"). A broad term finds better, more varied photos, so do NOT add needless specificity (use "dance", not "couple dancing salsa").
   - Add detail ONLY when the sense needs pinning down ("banco" money → "bank building"; "bat" sport → "baseball bat").
@@ -395,7 +335,7 @@ Target word: ${word}`;
  * @param {string} opts.sentence
  * @param {string} opts.nativeLang
  * @param {string|null} opts.targetLang
- * @param {string} opts.fieldNames - e.g. "TRANSLATION // FREQUENCY // ..."
+ * @param {string} opts.fieldNames - e.g. "TRANSLATION // IMAGE_TERM // LEMMA"
  * @param {string} opts.extraFieldDescs - path-specific field description lines
  * @param {string} opts.contextLine - extra context after the header (e.g. definition for Path C)
  * @param {string} opts.senseListBlock - sense list block for Path A (empty for others)
@@ -409,7 +349,7 @@ Respond in EXACTLY this format (${fieldNames.split('//').length} parts separated
 ${fieldNames}
 
 ${FIELD_TRANSLATION(nativeLang)}
-${extraFieldDescs}${FIELD_FREQUENCY}
+${extraFieldDescs}
 ${FIELD_IMAGE_TERM}
 ${FIELD_LEMMA}`;
 }
@@ -493,7 +433,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
     const prompt = buildEnrichPrompt({
       word, sentence, nativeLang, targetLang,
-      fieldNames: 'TRANSLATION // FREQUENCY // IMAGE_TERM // LEMMA',
+      fieldNames: 'TRANSLATION // IMAGE_TERM // LEMMA',
       extraFieldDescs: '',
       contextLine: `The word means: "${definition}" (${part_of_speech || 'unknown POS'}).`,
       senseListBlock: '',
@@ -503,14 +443,13 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     const _t2 = Date.now();
     logger.info('[enrich-timing] %s — Gemini (definition hint): %dms', word, _t2 - _t1);
     const parts = raw.split('//').map((s) => s.trim());
-    if (parts.length < 4) {
-      throw new Error(`Gemini enrich returned ${parts.length} parts instead of 4 for the definition-hint path`);
+    if (parts.length < 3) {
+      throw new Error(`Gemini enrich returned ${parts.length} parts instead of 3 for the definition-hint path`);
     }
 
     translation = parts[0] || '';
-    frequency = parseFrequency(parts[1]);
-    geminiImageTerm = parts[2]?.trim() || null;
-    lemma = parts[3]?.trim() || null;
+    geminiImageTerm = parts[1]?.trim() || null;
+    lemma = parts[2]?.trim() || null;
   }
 
   // Path C: senseIndex pre-identified by /lookup — use directly, skip sense-picking
@@ -526,7 +465,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
     const prompt = buildEnrichPrompt({
       word, sentence, nativeLang, targetLang,
-      fieldNames: 'TRANSLATION // FREQUENCY // IMAGE_TERM // LEMMA',
+      fieldNames: 'TRANSLATION // IMAGE_TERM // LEMMA',
       extraFieldDescs: '',
       contextLine: `The word means: "${definition}" (${part_of_speech || 'unknown POS'}).`,
       senseListBlock: '',
@@ -536,14 +475,13 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     const _t2 = Date.now();
     logger.info('[enrich-timing] %s — Gemini (Path C): %dms', word, _t2 - _t1);
     const parts = raw.split('//').map((s) => s.trim());
-    if (parts.length < 4) {
-      throw new Error(`Gemini enrich returned ${parts.length} parts instead of 4 for Path C`);
+    if (parts.length < 3) {
+      throw new Error(`Gemini enrich returned ${parts.length} parts instead of 3 for Path C`);
     }
 
     translation = parts[0] || '';
-    frequency = parseFrequency(parts[1]);
-    geminiImageTerm = parts[2]?.trim() || null;
-    lemma = parts[3]?.trim() || null;
+    geminiImageTerm = parts[1]?.trim() || null;
+    lemma = parts[2]?.trim() || null;
   } else if (translation === undefined && hasSenseIndex && (wiktSenses.length === 0 || senseIndex >= wiktSenses.length)) {
     throw new Error(`Sense index ${senseIndex} is invalid for ${wiktSenses.length} available senses`);
   }
@@ -556,7 +494,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
 
       const prompt = buildEnrichPrompt({
         word, sentence, nativeLang, targetLang,
-        fieldNames: 'TRANSLATION // SENSE_INDEX // FREQUENCY // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA',
+        fieldNames: 'TRANSLATION // SENSE_INDEX // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA',
         extraFieldDescs: `- SENSE_INDEX: The integer index (0-${wiktSenses.length - 1}) of the sense that best matches how "${word}" is used in the sentence. If NONE of the senses match, return -1.\n- FALLBACK_DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown. Used when SENSE_INDEX is -1.\n`,
         contextLine: '',
         senseListBlock: `\nHere are the dictionary senses for "${word}":\n${senseList}\n`,
@@ -567,8 +505,8 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       logger.info('[enrich-timing] %s — Gemini (Path A): %dms', word, _t2 - _t1);
 
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 6) {
-        throw new Error(`Gemini enrich returned ${parts.length} parts instead of 6 for the Wiktionary path`);
+      if (parts.length < 5) {
+        throw new Error(`Gemini enrich returned ${parts.length} parts instead of 5 for the Wiktionary path`);
       }
 
       translation = parts[0] || '';
@@ -582,26 +520,32 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
         matchedGloss = definition;
       } else {
         // No matching sense — use Gemini's fallback definition
-        definition = parts[4]?.trim() || '';
+        definition = parts[3]?.trim() || '';
         definitionSource = 'gemini';
         logger.info('[enrich] %s — no Wiktionary sense matched (index=%s), using Gemini fallback: "%s"', word, parts[1], definition);
         fallback_notices.push({
+          code: 'gemini_definition_fallback_used',
+          severity: 'warning',
           title: 'Gemini fallback used',
           message: `No Wiktionary sense matched "${word}" in context, so Polycast used Gemini's definition.`,
+          source: 'server.enrichment',
+          operation: 'resolve-word-definition',
+          pipeline: 'dictionary_enrichment',
+          stage: 'wiktionary-sense-match',
+          language: targetLang,
+          selectedAction: 'use-gemini-context-definition',
+          correlationId: options.correlationId,
+          detail: `word=${word}; requestedSenseIndex=${parts[1]}; availableSenseCount=${wiktSenses.length}`,
         });
-        if (definition && targetLang) {
-          persistGeminiFallbackSense({ word, lang: targetLang, pos: wiktSenses[0]?.pos || 'unknown', definition });
-        }
       }
 
-      frequency = parseFrequency(parts[2]);
-      geminiImageTerm = parts[3]?.trim() || null;
-      lemma = parts[5]?.trim() || null;
+      geminiImageTerm = parts[2]?.trim() || null;
+      lemma = parts[4]?.trim() || null;
     } else {
       // Path B: No Wiktionary senses — full Gemini generation
       const prompt = buildEnrichPrompt({
         word, sentence, nativeLang, targetLang,
-        fieldNames: 'TRANSLATION // DEFINITION // PART_OF_SPEECH // FREQUENCY // IMAGE_TERM // LEMMA',
+        fieldNames: 'TRANSLATION // DEFINITION // PART_OF_SPEECH // IMAGE_TERM // LEMMA',
         extraFieldDescs: `- DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.\n- PART_OF_SPEECH: One of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle. Lowercase English.\n`,
         contextLine: '',
         senseListBlock: '',
@@ -612,24 +556,30 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       logger.info('[enrich-timing] %s — Gemini (Path B): %dms', word, _t2 - _t1);
 
       const parts = raw.split('//').map((s) => s.trim());
-      if (parts.length < 6) {
-        throw new Error(`Gemini enrich returned ${parts.length} parts instead of 6 for the direct generation path`);
+      if (parts.length < 5) {
+        throw new Error(`Gemini enrich returned ${parts.length} parts instead of 5 for the direct generation path`);
       }
       translation = parts[0] || '';
       definition = parts[1] || '';
       part_of_speech = parts[2] || null;
       definitionSource = 'gemini';
       fallback_notices.push({
+        code: 'gemini_dictionary_entry_fallback_used',
+        severity: 'warning',
         title: 'Gemini fallback used',
         message: `No Wiktionary definition was available for "${word}", so Polycast used Gemini.`,
+        source: 'server.enrichment',
+        operation: 'generate-word-definition',
+        pipeline: 'dictionary_enrichment',
+        stage: 'wiktionary-entry-miss',
+        language: targetLang,
+        selectedAction: 'use-gemini-generated-entry',
+        correlationId: options.correlationId,
+        detail: `word=${word}; wiktionarySenseCount=0`,
       });
-      frequency = parseFrequency(parts[3]);
-      geminiImageTerm = parts[4]?.trim() || null;
-      lemma = parts[5]?.trim() || null;
+      geminiImageTerm = parts[3]?.trim() || null;
+      lemma = parts[4]?.trim() || null;
 
-      if (definition && part_of_speech && targetLang) {
-        persistGeminiFallbackSense({ word, lang: targetLang, pos: part_of_speech, definition });
-      }
     }
   } // end if (translation === undefined) — Path A/B
 
@@ -657,12 +607,29 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     : null;
   lemma = normalizeLemma(lemma, part_of_speech, targetLang) || wiktResolvedLemma;
 
-  // Lemma-level corpus frequency from wordfreq's blended Zipf data: sum the per-billion
-  // frequencies of every inflected form so the value reflects the whole paradigm and is the
-  // same no matter which conjugation was clicked. frequency_count = occurrences per billion.
-  const corpusFreq = applyCorpusFrequency(word, targetLang, frequency, { lemma, forms });
-  frequency = corpusFreq.frequency;
-  const frequency_count = corpusFreq.frequency_count;
+  // Read the immutable catalog built offline. Runtime requests never rescan corpora or rerank.
+  let catalogLookup = await lookupFrequencyCatalog({
+    language: targetLang,
+    lemma: lemma || word,
+    partOfSpeech: part_of_speech,
+    definition,
+    correlationId: options.correlationId,
+  });
+  fallback_notices.push(...catalogLookup.diagnostics);
+  if (!catalogLookup.entry?.sense_id && definition && targetLang) {
+    const provisional = await persistProvisionalSense({
+      language: targetLang,
+      lemma: lemma || word,
+      partOfSpeech: part_of_speech,
+      definition,
+      correlationId: options.correlationId,
+    });
+    fallback_notices.push(...provisional.diagnostics);
+    if (provisional.entry) catalogLookup = provisional;
+  }
+  const ranking = catalogEntryToWordFields(catalogLookup.entry);
+  frequency = ranking.frequency ?? null;
+  const frequency_count = ranking.frequency_count ?? null;
 
   const cacheWord = lemma || word;
   const cachedBeforeImage = await getCached(definition, part_of_speech, cacheWord);
@@ -791,6 +758,7 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     part_of_speech,
     frequency,
     frequency_count,
+    ...ranking,
     example_sentence,
     sentence_translation,
     image_url,

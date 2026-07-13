@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-12T15:02:50.418Z",
+  "generatedAt": "2026-07-13T04:34:01.411Z",
   "totals": {
-    "occurrences": 56,
-    "uniqueCodes": 53,
+    "occurrences": 62,
+    "uniqueCodes": 58,
     "incompleteOccurrences": 0
   },
   "entries": [
@@ -65,7 +65,7 @@
     {
       "code": "declared_page_language_fallback",
       "file": "extension/background.js",
-      "line": 951,
+      "line": 980,
       "structured": true,
       "logged": true,
       "visible": true
@@ -95,9 +95,17 @@
       "visible": true
     },
     {
+      "code": "extension_offline_dictionary_save_used",
+      "file": "extension/background.js",
+      "line": 843,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
       "code": "extension_offline_login_used",
       "file": "extension/background.js",
-      "line": 604,
+      "line": 616,
       "structured": true,
       "logged": true,
       "visible": true
@@ -105,7 +113,7 @@
     {
       "code": "extension_offline_status_used",
       "file": "extension/background.js",
-      "line": 666,
+      "line": 678,
       "structured": true,
       "logged": true,
       "visible": true
@@ -122,6 +130,30 @@
       "code": "fallback_header_invalid",
       "file": "ios/Polycast/Sources/Core/APIClient.swift",
       "line": 128,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "frequency_catalog_entry_unavailable",
+      "file": "server/lib/frequencyCatalog.js",
+      "line": 69,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "gemini_definition_fallback_used",
+      "file": "server/enrichWord.js",
+      "line": 527,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "gemini_dictionary_entry_fallback_used",
+      "file": "server/enrichWord.js",
+      "line": 567,
       "structured": true,
       "logged": true,
       "visible": true
@@ -185,7 +217,7 @@
     {
       "code": "login_error_payload_fallback",
       "file": "extension/background.js",
-      "line": 620,
+      "line": 632,
       "structured": true,
       "logged": true,
       "visible": true
@@ -201,7 +233,7 @@
     {
       "code": "offline_daily_goal_used",
       "file": "extension/background.js",
-      "line": 839,
+      "line": 868,
       "structured": true,
       "logged": true,
       "visible": true
@@ -223,6 +255,22 @@
       "visible": true
     },
     {
+      "code": "offline_frequency_rank_unavailable",
+      "file": "client/src/api/offlineDictionary.ts",
+      "line": 271,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "offline_frequency_rank_unavailable",
+      "file": "client/src/api/offlineDictionary.ts",
+      "line": 375,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
       "code": "offline_profile_storage_repaired",
       "file": "client/src/api/offlineDictionary.ts",
       "line": 58,
@@ -233,7 +281,7 @@
     {
       "code": "page_language_unavailable",
       "file": "extension/background.js",
-      "line": 966,
+      "line": 995,
       "structured": true,
       "logged": true,
       "visible": true
@@ -393,7 +441,7 @@
     {
       "code": "tts_provider_fallback",
       "file": "client/src/components/TtsFallbackToast.tsx",
-      "line": 33,
+      "line": 31,
       "structured": true,
       "logged": true,
       "visible": true
@@ -409,7 +457,7 @@
     {
       "code": "wild_recall_catalog_fallback",
       "file": "extension/background.js",
-      "line": 1047,
+      "line": 1076,
       "structured": true,
       "logged": true,
       "visible": true
@@ -417,7 +465,7 @@
     {
       "code": "wild_recall_offline_unavailable",
       "file": "extension/background.js",
-      "line": 1023,
+      "line": 1052,
       "structured": true,
       "logged": true,
       "visible": true
@@ -425,7 +473,7 @@
     {
       "code": "wild_recall_preparation_fallback",
       "file": "extension/background.js",
-      "line": 1089,
+      "line": 1118,
       "structured": true,
       "logged": true,
       "visible": true

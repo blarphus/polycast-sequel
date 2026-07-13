@@ -1,7 +1,7 @@
 {
   "generatedAt": "deterministic-from-runtime-registration",
   "summary": {
-    "apiRoutes": 139,
+    "apiRoutes": 140,
     "extensionMessages": 28,
     "socketRegistrations": 12
   },
@@ -125,6 +125,10 @@
     {
       "method": "GET",
       "path": "/api/dictionary/new-today"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dictionary/queue-rebuild"
     },
     {
       "method": "PATCH",

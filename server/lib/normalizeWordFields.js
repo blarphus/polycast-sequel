@@ -64,9 +64,15 @@ export function mergeForm(forms, form) {
  * Normalize a lemma value: prefix English verbs with "to ", nullify empty.
  */
 export function normalizeLemma(lemma, partOfSpeech, targetLang) {
-  let normalized = lemma?.trim() || null;
+  let normalized = lemma?.trim().normalize('NFC') || null;
+  // Store the citation form itself. English prompts historically returned "to go";
+  // the canonical dictionary lemma is "go", just as Spanish stores "ir".
   if (normalized && partOfSpeech === 'verb' && (targetLang === 'en' || targetLang?.startsWith('en-'))) {
-    if (!normalized.startsWith('to ')) normalized = 'to ' + normalized;
+    normalized = normalized.replace(/^to\s+/i, '').trim() || null;
   }
   return normalized;
+}
+
+export function canonicalLemmaKey(lemma) {
+  return String(lemma || '').trim().normalize('NFC').toLocaleLowerCase();
 }

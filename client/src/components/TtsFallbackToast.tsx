@@ -5,9 +5,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
   de: 'German',
   fr: 'French',
   ja: 'Japanese',
-  ko: 'Korean',
   pt: 'Portuguese',
-  zh: 'Chinese',
 };
 
 function languageName(languageCode?: string) {

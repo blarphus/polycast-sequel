@@ -37,15 +37,8 @@ export async function migrate(pool) {
 
   // 3. Discover migration files
   const migrationsDir = path.join(__dirname, 'migrations');
-  const files = fs.readdirSync(migrationsDir)
-    .filter((f) => f.endsWith('.js') && /^\d{3}-/.test(f))
-    .sort();
-  const manifest = files.map((file) => ({
-    file,
-    version: parseInt(file.slice(0, 3), 10),
-    checksum: crypto.createHash('sha256').update(fs.readFileSync(path.join(migrationsDir, file))).digest('hex'),
-  }));
-  validateMigrationManifest(manifest);
+  const manifest = getMigrationManifest();
+  const files = manifest.map((entry) => entry.file);
 
   for (const row of appliedRows) {
     const current = manifest.find((entry) => entry.version === row.version);
@@ -124,6 +117,20 @@ export async function migrate(pool) {
   } else {
     logger.info(`${ranCount} migration(s) applied successfully`);
   }
+}
+
+export function getMigrationManifest() {
+  const migrationsDir = path.join(__dirname, 'migrations');
+  const files = fs.readdirSync(migrationsDir)
+    .filter((file) => file.endsWith('.js') && /^\d{3}-/.test(file))
+    .sort();
+  const manifest = files.map((file) => ({
+    file,
+    version: parseInt(file.slice(0, 3), 10),
+    checksum: crypto.createHash('sha256').update(fs.readFileSync(path.join(migrationsDir, file))).digest('hex'),
+  }));
+  validateMigrationManifest(manifest);
+  return manifest;
 }
 
 export function validateMigrationManifest(manifest) {

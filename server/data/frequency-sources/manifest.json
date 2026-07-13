@@ -1,0 +1,49 @@
+{
+  "sources": [
+    {
+      "id": "tubelex-en-lemma-2025",
+      "language": "en",
+      "path": "server/data/frequency-sources/tubelex-en-lemma-pos.tsv.xz",
+      "compression": "xz",
+      "delimiter": "tab",
+      "lemmaColumn": "word",
+      "valueColumn": "count",
+      "preAggregated": true,
+      "maxEntries": 200000,
+      "weight": 1.5,
+      "required": true,
+      "license": "BSD-3-Clause; see TUBELEX-LICENSE.txt",
+      "citation": "Nohejl et al., COLING 2025"
+    },
+    {
+      "id": "tubelex-es-lemma-2025",
+      "language": "es",
+      "path": "server/data/frequency-sources/tubelex-es-lemma-pos.tsv.xz",
+      "compression": "xz",
+      "delimiter": "tab",
+      "lemmaColumn": "word",
+      "valueColumn": "count",
+      "preAggregated": true,
+      "maxEntries": 200000,
+      "weight": 1.5,
+      "required": true,
+      "license": "BSD-3-Clause; see TUBELEX-LICENSE.txt",
+      "citation": "Nohejl et al., COLING 2025"
+    },
+    {
+      "id": "tubelex-ja-unidic31-base-2025",
+      "language": "ja",
+      "path": "server/data/frequency-sources/tubelex-ja-310-base-pos.tsv.xz",
+      "compression": "xz",
+      "delimiter": "tab",
+      "lemmaColumn": "word",
+      "valueColumn": "count",
+      "preAggregated": true,
+      "maxEntries": 200000,
+      "weight": 1.5,
+      "required": true,
+      "license": "BSD-3-Clause; see TUBELEX-LICENSE.txt",
+      "citation": "Nohejl et al., COLING 2025"
+    }
+  ]
+}

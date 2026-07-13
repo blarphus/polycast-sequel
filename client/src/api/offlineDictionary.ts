@@ -259,6 +259,20 @@ function toSavedWord(data: SaveWordData): SavedWord {
     created_at: now,
     frequency: data.frequency ?? null,
     frequency_count: data.frequency_count ?? null,
+    lemma_id: data.lemma_id ?? null,
+    sense_id: data.sense_id ?? null,
+    rank_version_id: data.rank_version_id ?? null,
+    lemma_frequency_rank: data.lemma_frequency_rank ?? null,
+    sense_rank: data.sense_rank ?? null,
+    lemma_occurrences_per_billion: data.lemma_occurrences_per_billion ?? null,
+    frequency_confidence: data.frequency_confidence ?? 'unavailable',
+    frequency_sources: data.frequency_sources ?? [],
+    ranking_diagnostics: data.sense_rank == null ? [{
+      code: 'offline_frequency_rank_unavailable',
+      severity: 'warning',
+      title: 'Saved ranking unavailable offline',
+      message: 'This entry was saved offline without a catalog rank. The warning remains visible until the server resolves it during synchronization.',
+    }] : [],
     example_sentence: data.example_sentence || data.sentence_context || null,
     sentence_translation: data.sentence_translation || null,
     part_of_speech: data.part_of_speech || null,
@@ -346,12 +360,25 @@ function dictionaryGroups(searchParams: URLSearchParams) {
 function saveWord(data: SaveWordData) {
   const words = readWords();
   const targetLanguage = data.target_language || getOfflineUser().target_language || null;
-  const existing = words.find((word) =>
-    word.word.toLowerCase() === data.word.toLowerCase() &&
-    word.target_language === targetLanguage &&
-    word.definition === (data.definition || basicDefinition(data.word, data.sentence_context)));
+  const existing = words.find((word) => {
+    const sameSense = data.sense_id
+      ? word.sense_id === data.sense_id
+      : word.word.toLowerCase() === data.word.toLowerCase()
+        && word.definition === (data.definition || basicDefinition(data.word, data.sentence_context));
+    return sameSense && word.target_language === targetLanguage;
+  });
 
   if (existing) return { ...existing, _created: false };
+
+  if (data.sense_rank == null) {
+    emitFallbackDiagnostic({
+      code: 'offline_frequency_rank_unavailable',
+      severity: 'warning',
+      title: 'Saved ranking unavailable offline',
+      message: 'This entry is being saved without a server catalog rank and will remain visibly marked until synchronization resolves it.',
+      detail: `language=${targetLanguage || 'unknown'}; word=${data.word}`,
+    }, { source: 'web.offline-dictionary', operation: 'save-word' });
+  }
 
   const saved = toSavedWord({ ...data, target_language: targetLanguage || undefined });
   const nextWords = normalizeOfflineNewCards([saved, ...words]);

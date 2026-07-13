@@ -6,6 +6,7 @@ import { validTimeZone } from '../../lib/srsUpdate.js';
 import { asyncHandler } from '../../lib/httpErrors.js';
 import { setFallbackDiagnosticHeader } from '../../lib/fallbackDiagnostics.js';
 import { dictionaryWordService } from '../../services/dictionaryWordService.js';
+import { supportedLanguageSchema } from '../../lib/languagePolicy.js';
 
 const uuidParam = z.object({ id: z.string().uuid('Invalid ID') });
 const listWordsQuery = z.object({
@@ -24,13 +25,18 @@ const updateWordBody = z.object({
 });
 const saveWordBody = z.object({
   word: z.string().min(1, 'word is required'),
-  translation: z.string().optional(), definition: z.string().optional(), target_language: z.string().optional(),
+  translation: z.string().optional(), definition: z.string().optional(), target_language: supportedLanguageSchema.optional(),
   sentence_context: z.string().optional(), frequency: z.number().nullable().optional(),
   frequency_count: z.number().nullable().optional(), example_sentence: z.string().nullable().optional(),
   sentence_translation: z.string().nullable().optional(), part_of_speech: z.string().nullable().optional(),
   image_url: z.string().nullable().optional(), lemma: z.string().nullable().optional(),
   forms: z.string().nullable().optional(), surface_form: z.string().nullable().optional(),
   image_term: z.string().nullable().optional(), shared_entry_id: z.string().uuid().nullable().optional(),
+  lemma_id: z.string().uuid().nullable().optional(), sense_id: z.string().uuid().nullable().optional(),
+  rank_version_id: z.string().uuid().nullable().optional(), lemma_frequency_rank: z.number().int().nullable().optional(),
+  sense_rank: z.number().int().nullable().optional(), lemma_occurrences_per_billion: z.number().nullable().optional(),
+  frequency_confidence: z.enum(['high', 'medium', 'low', 'unavailable']).nullable().optional(),
+  frequency_sources: z.array(z.record(z.string(), z.unknown())).optional(),
   timeZone: z.string().max(100).optional(),
 });
 const addFormBody = z.object({ form: z.string().min(1, 'form is required') });

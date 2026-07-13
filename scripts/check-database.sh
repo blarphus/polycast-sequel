@@ -47,4 +47,5 @@ fi
 
 (cd "$ROOT/server" && DATABASE_URL="$FRESH_URL" NODE_ENV=test JWT_SECRET=polycast-test-secret npm run test:migrations)
 (cd "$ROOT/server" && DATABASE_URL="$FRESH_URL" NODE_ENV=test JWT_SECRET=polycast-test-secret npm run test:integration)
+(cd "$ROOT/server" && DATABASE_URL="$FRESH_URL" NODE_ENV=test JWT_SECRET=polycast-test-secret npm run test:catalog-backfill)
 (cd "$ROOT/server" && DATABASE_URL="$LEGACY_URL" NODE_ENV=test JWT_SECRET=polycast-test-secret node scripts/legacyMigrationSmoke.js)

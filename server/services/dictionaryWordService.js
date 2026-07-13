@@ -1,5 +1,6 @@
 import pool from '../db.js';
-import { mergeForm } from '../lib/normalizeWordFields.js';
+import { mergeForm, normalizeLemma } from '../lib/normalizeWordFields.js';
+import { catalogEntryToWordFields, lookupFrequencyCatalog, persistProvisionalSense } from '../lib/frequencyCatalog.js';
 import { awardWordSaveXp } from '../lib/progression.js';
 import { NotFoundError, ValidationError } from '../lib/httpErrors.js';
 import { refreshDictionarySchedule } from './dictionaryScheduleService.js';
@@ -8,6 +9,8 @@ export function createDictionaryWordService({
   db = pool,
   refreshSchedule = refreshDictionarySchedule,
   awardSaveXp = awardWordSaveXp,
+  resolveCatalog = lookupFrequencyCatalog,
+  createProvisionalSense = persistProvisionalSense,
 } = {}) {
   return {
     async list(userId, targetLanguage) {
@@ -25,8 +28,34 @@ export function createDictionaryWordService({
         word, translation, definition, target_language, sentence_context, frequency, frequency_count,
         example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, surface_form,
         image_term, shared_entry_id,
+        lemma_id, sense_id, rank_version_id, lemma_frequency_rank, sense_rank,
+        lemma_occurrences_per_billion, frequency_confidence, frequency_sources,
       } = input;
-      const mergedForms = surface_form ? mergeForm(forms, surface_form) : (forms || null);
+      const canonicalWord = normalizeLemma(lemma || word, part_of_speech, target_language) || String(word).trim().normalize('NFC');
+      let mergedForms = mergeForm(forms, surface_form || word);
+      const diagnostics = [];
+      let catalogFields = {
+        lemma_id, sense_id, rank_version_id, lemma_frequency_rank, sense_rank,
+        lemma_occurrences_per_billion, frequency_confidence,
+        frequency_sources: frequency_sources || [], frequency, frequency_count,
+      };
+      if (target_language) {
+        const resolved = await resolveCatalog({
+          db, language: target_language, lemma: canonicalWord,
+          partOfSpeech: part_of_speech, definition, correlationId,
+        });
+        diagnostics.push(...resolved.diagnostics);
+        let catalogEntry = resolved.entry;
+        if (!catalogEntry?.sense_id && definition) {
+          const provisional = await createProvisionalSense({
+            db, language: target_language, lemma: canonicalWord,
+            partOfSpeech: part_of_speech, definition, correlationId,
+          });
+          diagnostics.push(...provisional.diagnostics);
+          catalogEntry = provisional.entry || catalogEntry;
+        }
+        if (catalogEntry) catalogFields = { ...catalogFields, ...catalogEntryToWordFields(catalogEntry) };
+      }
       const refreshWord = async (id) => {
         const schedule = await refreshSchedule({ db, userId, timeZone, options: { force: true }, correlationId });
         const { rows } = await db.query('SELECT * FROM saved_words WHERE id = $1 AND user_id = $2', [id, userId]);
@@ -34,9 +63,11 @@ export function createDictionaryWordService({
       };
 
       const { rows: existing } = await db.query(
-        `SELECT * FROM saved_words WHERE user_id = $1 AND word = $2
-         AND target_language IS NOT DISTINCT FROM $3 AND definition = $4`,
-        [userId, word, target_language || null, definition || ''],
+        `SELECT * FROM saved_words WHERE user_id = $1
+         AND target_language IS NOT DISTINCT FROM $2
+         AND (($3::uuid IS NOT NULL AND sense_id = $3)
+           OR ($3::uuid IS NULL AND word = $4 AND definition = $5))`,
+        [userId, target_language || null, catalogFields.sense_id || null, canonicalWord, definition || ''],
       );
       if (existing.length) {
         let row = existing[0];
@@ -52,17 +83,49 @@ export function createDictionaryWordService({
           }
         }
         const scheduled = await refreshWord(row.id);
-        return { status: 200, body: { ...scheduled.word, created: false, _created: false }, diagnostic: scheduled.diagnostic };
+        return {
+          status: 200,
+          body: {
+            ...scheduled.word, created: false, _created: false,
+            ...(diagnostics.length ? { fallback_notices: diagnostics } : {}),
+          },
+          diagnostic: scheduled.diagnostic,
+        };
       }
 
       const { rows } = await db.query(
-        `INSERT INTO saved_words (user_id, word, translation, definition, target_language, sentence_context, frequency, example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, frequency_count, image_term, shared_entry_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
-        [userId, word, translation || '', definition || '', target_language || null, sentence_context || null, frequency || null, example_sentence || null, sentence_translation || null, part_of_speech || null, image_url || null, lemma || null, mergedForms, frequency_count ?? null, image_term || null, shared_entry_id || null],
+        `INSERT INTO saved_words (
+           user_id, word, translation, definition, target_language, sentence_context,
+           frequency, example_sentence, sentence_translation, part_of_speech, image_url,
+           lemma, forms, frequency_count, image_term, shared_entry_id,
+           lemma_id, sense_id, rank_version_id, lemma_frequency_rank, sense_rank,
+           lemma_occurrences_per_billion, frequency_confidence, frequency_sources, ranking_diagnostics
+         ) VALUES (
+           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+           $17, $18, $19, $20, $21, $22, $23, $24::jsonb, $25::jsonb
+         ) RETURNING *`,
+        [
+          userId, canonicalWord, translation || '', definition || '', target_language || null,
+          sentence_context || null, catalogFields.frequency ?? null, example_sentence || null,
+          sentence_translation || null, part_of_speech || null, image_url || null,
+          canonicalWord, mergedForms, catalogFields.frequency_count ?? null, image_term || null,
+          shared_entry_id || null, catalogFields.lemma_id || null, catalogFields.sense_id || null,
+          catalogFields.rank_version_id || null, catalogFields.lemma_frequency_rank ?? null,
+          catalogFields.sense_rank ?? null, catalogFields.lemma_occurrences_per_billion ?? null,
+          catalogFields.frequency_confidence || null, JSON.stringify(catalogFields.frequency_sources || []),
+          JSON.stringify(diagnostics),
+        ],
       );
       const scheduled = await refreshWord(rows[0].id);
       const reward = await awardSaveXp(db, userId, scheduled.word, timeZone);
-      return { status: 201, body: { ...scheduled.word, created: true, _created: true, ...reward }, diagnostic: scheduled.diagnostic };
+      return {
+        status: 201,
+        body: {
+          ...scheduled.word, created: true, _created: true, ...reward,
+          ...(diagnostics.length ? { fallback_notices: diagnostics } : {}),
+        },
+        diagnostic: scheduled.diagnostic,
+      };
     },
 
     async update(userId, id, input) {

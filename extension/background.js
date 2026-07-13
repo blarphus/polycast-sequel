@@ -120,7 +120,7 @@ function installContextMenus() {
 chrome.runtime.onInstalled.addListener(installContextMenus);
 chrome.runtime.onStartup.addListener(installContextMenus);
 
-function makeFallbackDiagnostic({ code, title, message, source = 'extension.background', operation, detail, severity = 'warning', correlationId, occurredAt }) {
+function makeFallbackDiagnostic({ code, title, message, source = 'extension.background', operation, pipeline, stage, language, selectedAction, detail, severity = 'warning', correlationId, occurredAt }) {
   return {
     code,
     severity,
@@ -128,6 +128,10 @@ function makeFallbackDiagnostic({ code, title, message, source = 'extension.back
     message,
     source,
     operation,
+    pipeline: pipeline || operation,
+    stage: stage || 'fallback',
+    ...(language ? { language } : {}),
+    ...(selectedAction ? { selectedAction } : {}),
     correlationId: correlationId || crypto.randomUUID(),
     occurredAt: occurredAt || new Date().toISOString(),
     ...(detail ? { detail } : {}),
@@ -404,6 +408,14 @@ function makeOfflineSavedWord({ word, sentence, user, definition, translation })
     created_at: now,
     frequency: null,
     frequency_count: null,
+    lemma_id: null,
+    sense_id: null,
+    rank_version_id: null,
+    lemma_frequency_rank: null,
+    sense_rank: null,
+    lemma_occurrences_per_billion: null,
+    frequency_confidence: 'unavailable',
+    frequency_sources: [],
     example_sentence: sentence || null,
     sentence_translation: null,
     part_of_speech: null,
@@ -795,6 +807,14 @@ async function handleMessage(msg, sender = {}) {
             surface_form: msg.word,
             image_term: enriched.image_term,
             shared_entry_id: enriched.shared_entry_id || null,
+            lemma_id: enriched.lemma_id || null,
+            sense_id: enriched.sense_id || null,
+            rank_version_id: enriched.rank_version_id || null,
+            lemma_frequency_rank: enriched.lemma_frequency_rank ?? null,
+            sense_rank: enriched.sense_rank ?? null,
+            lemma_occurrences_per_billion: enriched.lemma_occurrences_per_billion ?? null,
+            frequency_confidence: enriched.frequency_confidence || null,
+            frequency_sources: enriched.frequency_sources || [],
           },
         });
 
@@ -812,13 +832,22 @@ async function handleMessage(msg, sender = {}) {
         return {
           success: true, saved, dailyGoal, awardedXp: saved.awardedXp || 0,
           progression: saved.progression || null,
-          fallback_notices: enriched.fallback_notices || [],
+          fallback_notices: [...(enriched.fallback_notices || []), ...(saved.fallback_notices || [])],
         };
       } catch (err) {
         if (isSessionExpiredError(err)) throw err;
+        const diagnostic = await broadcastFallbackNotice(
+          'Offline dictionary save fallback used',
+          'The server save failed, so the word was stored locally without a catalog rank. This remains visible until synchronization succeeds.',
+          {
+            code: 'extension_offline_dictionary_save_used',
+            operation: 'save-word',
+            detail: `language=${user.target_language || 'unknown'}; word=${msg.word}; reason=${err?.message || String(err)}`,
+          },
+        );
         const saved = await saveOfflineWord(msg.word, msg.sentence);
         const dailyGoal = saved._created ? await recordDailyGoalWord() : await getDailyGoalSnapshot();
-        return { success: true, saved, dailyGoal, offline: true, warning: err.message };
+        return { success: true, saved, dailyGoal, offline: true, warning: err.message, diagnostic, fallback_notices: [diagnostic] };
       }
     }
 

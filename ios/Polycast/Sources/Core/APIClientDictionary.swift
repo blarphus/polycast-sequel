@@ -175,7 +175,15 @@ extension APIClient {
         lemma: String? = nil,
         forms: String? = nil,
         surfaceForm: String? = nil,
-        imageTerm: String? = nil
+        imageTerm: String? = nil,
+        lemmaId: String? = nil,
+        senseId: String? = nil,
+        rankVersionId: String? = nil,
+        lemmaFrequencyRank: Int? = nil,
+        senseRank: Int? = nil,
+        lemmaOccurrencesPerBillion: Int? = nil,
+        frequencyConfidence: String? = nil,
+        frequencySources: [FrequencySource]? = nil
     ) async throws -> SavedWord {
         var body: [String: Any] = [
             "word": word,
@@ -195,6 +203,15 @@ extension APIClient {
         if let forms { body["forms"] = forms }
         if let surfaceForm { body["surface_form"] = surfaceForm }
         if let imageTerm { body["image_term"] = imageTerm }
+        if let lemmaId { body["lemma_id"] = lemmaId }
+        if let senseId { body["sense_id"] = senseId }
+        if let rankVersionId { body["rank_version_id"] = rankVersionId }
+        if let lemmaFrequencyRank { body["lemma_frequency_rank"] = lemmaFrequencyRank }
+        if let senseRank { body["sense_rank"] = senseRank }
+        if let lemmaOccurrencesPerBillion { body["lemma_occurrences_per_billion"] = lemmaOccurrencesPerBillion }
+        if let frequencyConfidence { body["frequency_confidence"] = frequencyConfidence }
+        if let frequencySources, let encoded = try? JSONEncoder().encode(frequencySources),
+           let json = try? JSONSerialization.jsonObject(with: encoded) { body["frequency_sources"] = json }
 
         let response: SavedWordResponse = try await request("/dictionary/words", method: "POST", body: body)
         if response.created == true {
@@ -203,6 +220,12 @@ extension APIClient {
             }
         }
         return response.value
+    }
+
+    func rebuildFrequencyQueue() async throws -> Int {
+        struct Response: Codable { let reordered: Int }
+        let response: Response = try await request("/dictionary/queue-rebuild", method: "POST")
+        return response.reordered
     }
 
     /// Append a surface form to an already-saved word's inflection list so the
