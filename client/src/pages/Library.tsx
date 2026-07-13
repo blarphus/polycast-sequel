@@ -1,7 +1,7 @@
 import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
 const runtimeLog = createScopedRuntimeLogger('web.pages.library');
 // ---------------------------------------------------------------------------
-// pages/Library.tsx -- EPUB library: upload + open books (stored on-device).
+// pages/Library.tsx -- EPUB + prototype CBZ library (stored on-device).
 // ---------------------------------------------------------------------------
 
 import '../styles/epub.css';
@@ -32,6 +32,9 @@ function BookCard({ book, onOpen, onDelete }: { book: BookMeta; onOpen: () => vo
       <div className="epub-card-meta">
         <div className="epub-card-title" title={book.title}>{book.title}</div>
         <div className="epub-card-author" title={book.author}>{book.author}</div>
+        {book.format === 'comic' && (
+          <div className="epub-card-format">CBZ preview · {book.pageCount ?? 2} pages</div>
+        )}
       </div>
       <button
         className="epub-card-delete"
@@ -62,8 +65,8 @@ export default function Library() {
       }
       if (files.length === 1 && lastId) navigate(`/books/${lastId}`);
     } catch (err) {
-      runtimeLog.error('Failed to import EPUB:', err);
-      setUploadError(err instanceof Error ? err.message : 'Could not import that EPUB.');
+      runtimeLog.error('Failed to import book:', err);
+      setUploadError(err instanceof Error ? err.message : 'Could not import that book.');
     } finally {
       setBusy(false);
       if (fileInput.current) fileInput.current.value = '';
@@ -80,16 +83,16 @@ export default function Library() {
       <div className="epub-library-header">
         <div>
           <h1 className="epub-library-title">Books</h1>
-          <p className="epub-library-subtitle">Read EPUBs and tap any word to look it up.</p>
+          <p className="epub-library-subtitle">Read EPUBs or the two-page CBZ preview and tap any mapped word to look it up.</p>
         </div>
         <button className="epub-upload-btn" onClick={() => fileInput.current?.click()} disabled={busy}>
           <PlusIcon size={18} />
-          {busy ? 'Importing…' : 'Upload EPUB'}
+          {busy ? 'Importing…' : 'Upload book'}
         </button>
         <input
           ref={fileInput}
           type="file"
-          accept=".epub,application/epub+zip"
+          accept=".epub,.cbz,application/epub+zip,application/vnd.comicbook+zip,application/zip"
           multiple
           style={{ display: 'none' }}
           onChange={(e) => void handleFiles(e.target.files)}
@@ -106,7 +109,7 @@ export default function Library() {
           <BookOpenIcon size={48} />
           <p>Your library is empty.</p>
           <button className="epub-upload-btn" onClick={() => fileInput.current?.click()} disabled={busy}>
-            <PlusIcon size={18} /> Upload your first EPUB
+            <PlusIcon size={18} /> Upload your first book
           </button>
         </div>
       ) : (

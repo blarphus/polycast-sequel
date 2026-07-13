@@ -1,12 +1,12 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 511,
-    "lines": 82185,
-    "declarations": 2281,
+    "files": 515,
+    "lines": 82770,
+    "declarations": 2288,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
-    "zeroCallerCandidates": 1
+    "zeroCallerCandidates": 2
   },
   "files": [
     {
@@ -1755,6 +1755,31 @@
       ]
     },
     {
+      "file": "client/src/components/ComicReader.tsx",
+      "lines": 174,
+      "responsibility": "web component UI",
+      "sideEffects": [
+        "UI"
+      ],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "cleanLookupWord",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "ComicReader",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
       "file": "client/src/components/ConjugationDrill.tsx",
       "lines": 264,
       "responsibility": "web component UI",
@@ -2158,7 +2183,7 @@
       "symbols": [
         {
           "name": "WordPopup",
-          "callers": 31,
+          "callers": 34,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -2757,13 +2782,13 @@
         },
         {
           "name": "ChevronRightIcon",
-          "callers": 10,
+          "callers": 12,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "ChevronLeftIcon",
-          "callers": 31,
+          "callers": 34,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -3372,7 +3397,7 @@
     },
     {
       "file": "client/src/hooks/useBooks.ts",
-      "lines": 54,
+      "lines": 75,
       "responsibility": "application support",
       "sideEffects": [],
       "testCoverage": [],
@@ -3658,7 +3683,7 @@
         },
         {
           "name": "useSavedWords",
-          "callers": 35,
+          "callers": 38,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -4469,7 +4494,7 @@
     },
     {
       "file": "client/src/pages/Library.tsx",
-      "lines": 127,
+      "lines": 130,
       "responsibility": "web route UI",
       "sideEffects": [],
       "testCoverage": [],
@@ -4484,7 +4509,7 @@
         },
         {
           "name": "Library",
-          "callers": 5,
+          "callers": 6,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -4613,7 +4638,7 @@
         },
         {
           "name": "next",
-          "callers": 239,
+          "callers": 240,
           "testReferences": [
             "client/src/test/srs.test.ts",
             "client/src/test/watchTranscript.test.ts",
@@ -4670,7 +4695,7 @@
     },
     {
       "file": "client/src/pages/Reader.tsx",
-      "lines": 464,
+      "lines": 483,
       "responsibility": "web route UI",
       "sideEffects": [
         "UI"
@@ -5030,6 +5055,16 @@
       "symbols": []
     },
     {
+      "file": "client/src/test/cbz.test.ts",
+      "lines": 46,
+      "responsibility": "test",
+      "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
       "file": "client/src/test/dailyGoal.test.ts",
       "lines": 41,
       "responsibility": "test",
@@ -5252,7 +5287,7 @@
       "symbols": [
         {
           "name": "card",
-          "callers": 829,
+          "callers": 830,
           "testReferences": [
             "client/src/test/srs.test.ts",
             "ios/Polycast/Tests/PolycastTests.swift",
@@ -5433,7 +5468,7 @@
     },
     {
       "file": "client/src/utils/bookStore.ts",
-      "lines": 80,
+      "lines": 98,
       "responsibility": "application support",
       "sideEffects": [
         "persistence"
@@ -5462,13 +5497,19 @@
         },
         {
           "name": "getBookData",
-          "callers": 2,
+          "callers": 0,
+          "testReferences": [],
+          "disposition": "delete-review"
+        },
+        {
+          "name": "getStoredBook",
+          "callers": 3,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "addBook",
-          "callers": 2,
+          "callers": 3,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -5480,14 +5521,47 @@
         },
         {
           "name": "getProgress",
-          "callers": 2,
+          "callers": 4,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "setProgress",
-          "callers": 7,
+          "callers": 9,
           "testReferences": [],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "client/src/utils/cbz.ts",
+      "lines": 111,
+      "responsibility": "application support",
+      "sideEffects": [],
+      "testCoverage": [
+        "client/src/test/cbz.test.ts"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "joinChunks",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "matchingDefinition",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "parseCbzPrototype",
+          "callers": 2,
+          "testReferences": [
+            "client/src/test/cbz.test.ts"
+          ],
           "disposition": "retain"
         }
       ]
@@ -5516,6 +5590,23 @@
         {
           "name": "JOIN_WINDOW_MS",
           "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "client/src/utils/comicPrototypeManifest.ts",
+      "lines": 193,
+      "responsibility": "application support",
+      "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "SUPERGIRL_CBZ_PROTOTYPE",
+          "callers": 10,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -5944,7 +6035,7 @@
         },
         {
           "name": "emitFallbackDiagnostic",
-          "callers": 39,
+          "callers": 41,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -8036,6 +8127,7 @@
       "responsibility": "application support",
       "sideEffects": [],
       "testCoverage": [
+        "client/src/test/cbz.test.ts",
         "client/src/test/epub.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "extension/test/background.test.mjs",
@@ -8053,8 +8145,9 @@
         },
         {
           "name": "application",
-          "callers": 47,
+          "callers": 49,
           "testReferences": [
+            "client/src/test/cbz.test.ts",
             "client/src/test/epub.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/background.test.mjs",
@@ -8419,7 +8512,7 @@
         },
         {
           "name": "savedWords",
-          "callers": 74,
+          "callers": 83,
           "testReferences": [
             "extension/test/background.test.mjs"
           ],
@@ -9189,7 +9282,7 @@
       "symbols": [
         {
           "name": "BookMeta",
-          "callers": 16,
+          "callers": 17,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -9319,7 +9412,7 @@
         },
         {
           "name": "progress",
-          "callers": 170,
+          "callers": 173,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx"
@@ -9328,7 +9421,7 @@
         },
         {
           "name": "setProgress",
-          "callers": 7,
+          "callers": 9,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -9937,6 +10030,7 @@
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
+        "client/src/test/cbz.test.ts",
         "client/src/test/dailyGoal.test.ts",
         "client/src/test/epub.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
@@ -9972,7 +10066,7 @@
         },
         {
           "name": "data",
-          "callers": 877,
+          "callers": 884,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -9986,9 +10080,10 @@
         },
         {
           "name": "string",
-          "callers": 1788,
+          "callers": 1807,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
+            "client/src/test/cbz.test.ts",
             "client/src/test/dailyGoal.test.ts",
             "client/src/test/epub.test.ts",
             "client/src/test/groupCallLifecycle.test.tsx",
@@ -10011,6 +10106,7 @@
           "name": "decode",
           "callers": 33,
           "testReferences": [
+            "client/src/test/cbz.test.ts",
             "ios/Polycast/Tests/PolycastTests.swift"
           ],
           "disposition": "retain"
@@ -10660,7 +10756,7 @@
         },
         {
           "name": "on",
-          "callers": 275,
+          "callers": 276,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -10891,6 +10987,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/cbz.test.ts",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/sessionExpiration.test.tsx"
       ],
@@ -10905,8 +11002,9 @@
         },
         {
           "name": "start",
-          "callers": 182,
+          "callers": 183,
           "testReferences": [
+            "client/src/test/cbz.test.ts",
             "client/src/test/groupCallProvider.test.tsx"
           ],
           "disposition": "retain"
@@ -10990,6 +11088,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/cbz.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
         "server/test/auth.integration.test.js",
@@ -11142,6 +11241,7 @@
           "name": "close",
           "callers": 54,
           "testReferences": [
+            "client/src/test/cbz.test.ts",
             "server/test/auth.integration.test.js",
             "server/test/correlation.test.js"
           ],
@@ -12312,6 +12412,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/cbz.test.ts",
         "client/src/test/runtimeDiagnostics.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift"
       ],
@@ -12351,7 +12452,9 @@
         {
           "name": "enqueue",
           "callers": 3,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/cbz.test.ts"
+          ],
           "disposition": "retain"
         },
         {
@@ -12721,7 +12824,7 @@
         },
         {
           "name": "height",
-          "callers": 236,
+          "callers": 250,
           "testReferences": [
             "extension/test/popup-performance.test.mjs",
             "extension/test/selection.test.mjs",
@@ -13664,6 +13767,7 @@
       ],
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
+        "client/src/test/cbz.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/sessionExpiration.test.tsx",
@@ -13749,6 +13853,7 @@
           "name": "close",
           "callers": 54,
           "testReferences": [
+            "client/src/test/cbz.test.ts",
             "server/test/auth.integration.test.js",
             "server/test/correlation.test.js"
           ],
@@ -13821,7 +13926,7 @@
         },
         {
           "name": "width",
-          "callers": 255,
+          "callers": 269,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "extension/test/popup-performance.test.mjs",
@@ -16060,6 +16165,7 @@
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
         "client/src/test/catalogProgress.test.tsx",
+        "client/src/test/cbz.test.ts",
         "client/src/test/epub.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
@@ -17060,7 +17166,7 @@
       "symbols": [
         {
           "name": "wait",
-          "callers": 4,
+          "callers": 7,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "ios/Polycast/UITests/ReaderPopupUITests.swift"
@@ -18428,7 +18534,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18451,7 +18557,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18474,7 +18580,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18503,7 +18609,7 @@
         },
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18526,7 +18632,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18549,7 +18655,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18572,7 +18678,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18595,7 +18701,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18618,7 +18724,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18641,7 +18747,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18664,7 +18770,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18687,7 +18793,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18710,7 +18816,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18734,7 +18840,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18758,7 +18864,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18781,7 +18887,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18804,7 +18910,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18827,7 +18933,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18850,7 +18956,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18873,7 +18979,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18896,7 +19002,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18919,7 +19025,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18943,7 +19049,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18966,7 +19072,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18989,7 +19095,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19012,7 +19118,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19035,7 +19141,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19058,7 +19164,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19081,7 +19187,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19104,7 +19210,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19127,7 +19233,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19150,7 +19256,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19173,7 +19279,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19196,7 +19302,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19219,7 +19325,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19242,7 +19348,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19265,7 +19371,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19288,7 +19394,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19311,7 +19417,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 102,
+          "callers": 104,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],

@@ -16,10 +16,12 @@ import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
 import TokenizedText from '../components/TokenizedText';
 import WordPopup from '../components/WordPopup';
+import ComicReader from '../components/ComicReader';
 import { PopupState } from '../textTokens';
 import { ChevronLeftIcon, ChevronRightIcon, BookOpenIcon, CloseIcon, TypeIcon, SunIcon, MoonIcon } from '../components/icons';
 import { parseEpub, imageObjectUrl, type ParsedEpub } from '../utils/epub';
-import { getBookData, getProgress, setProgress } from '../utils/bookStore';
+import { getStoredBook, getProgress, setProgress } from '../utils/bookStore';
+import type { ComicDocument } from '../utils/cbz';
 import { READER_FONTS, fontStack, loadReaderPrefs, saveReaderPrefs, type ReaderTheme } from '../utils/readerPrefs';
 
 const GAP = 48;
@@ -33,10 +35,12 @@ export default function Reader() {
   const { user } = useAuth();
 
   const [book, setBook] = useState<ParsedEpub | null>(null);
-  const bookLanguage = book?.language || user?.target_language || null;
-  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = useSavedWords({
+  const [comic, setComic] = useState<ComicDocument | null>(null);
+  const bookLanguage = comic?.language || book?.language || user?.target_language || null;
+  const savedWordControls = useSavedWords({
     targetLanguage: bookLanguage,
   });
+  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = savedWordControls;
   const [loadError, setLoadError] = useState('');
   const [chapterIndex, setChapterIndex] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
@@ -71,11 +75,15 @@ export default function Reader() {
     let cancelled = false;
     (async () => {
       try {
-        const bytes = await getBookData(bookId);
-        if (!bytes) { if (!cancelled) setLoadError('Book not found.'); return; }
-        const parsed = parseEpub(bytes);
+        const stored = await getStoredBook(bookId);
+        if (!stored) { if (!cancelled) setLoadError('Book not found.'); return; }
         const progress = await getProgress(bookId);
         if (cancelled) return;
+        if (stored.format === 'comic') {
+          setComic(stored.comic);
+          return;
+        }
+        const parsed = parseEpub(stored.bytes);
         if (progress) {
           setChapterIndex(Math.min(progress.chapterIndex, parsed.chapters.length - 1));
           pendingPageTargetRef.current = progress.pageIndex;
@@ -266,6 +274,17 @@ export default function Reader() {
         <p>{loadError}</p>
         <button className="epub-upload-btn" onClick={() => navigate('/books')}>Back to library</button>
       </div>
+    );
+  }
+  if (comic && bookId) {
+    return (
+      <ComicReader
+        bookId={bookId}
+        comic={comic}
+        nativeLanguage={user?.native_language || null}
+        savedWords={savedWordControls}
+        onBack={() => navigate('/books')}
+      />
     );
   }
   if (!book) {

@@ -1,14 +1,18 @@
 // ---------------------------------------------------------------------------
-// utils/bookStore.ts -- On-device EPUB library (IndexedDB).
+// utils/bookStore.ts -- On-device book library (IndexedDB).
 //
 // EPUB bytes are too large for localStorage (~5MB cap), so books live in
 // IndexedDB. Light metadata + cover are in the `books` store (for a fast
-// library grid); the raw epub bytes are in `data`; reading position in
+// library grid); EPUB bytes or compact comic documents are in `data`; reading position in
 // `progress`. Per-device only — no server sync.
 // ---------------------------------------------------------------------------
 
+import type { ComicDocument } from './cbz';
+
 const DB_NAME = 'polycast-books';
 const DB_VERSION = 1;
+
+export type BookFormat = 'epub' | 'comic';
 
 export interface BookMeta {
   id: string;
@@ -16,6 +20,9 @@ export interface BookMeta {
   author: string;
   cover: Blob | null;
   addedAt: number;
+  format?: BookFormat;
+  pageCount?: number;
+  notice?: string;
 }
 
 export interface BookProgress {
@@ -23,6 +30,10 @@ export interface BookProgress {
   chapterIndex: number;
   pageIndex: number;
 }
+
+export type StoredBookData =
+  | { id: string; format?: 'epub'; bytes: Uint8Array }
+  | { id: string; format: 'comic'; comic: ComicDocument };
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -54,13 +65,20 @@ export function listBooks(): Promise<BookMeta[]> {
 }
 
 export function getBookData(id: string): Promise<Uint8Array | null> {
-  return tx<{ id: string; bytes: Uint8Array } | undefined>('data', 'readonly', (s) => s.get(id))
-    .then((row) => row?.bytes ?? null);
+  return getStoredBook(id).then((row) => (row && row.format !== 'comic' ? row.bytes : null));
 }
 
-export async function addBook(meta: BookMeta, bytes: Uint8Array): Promise<void> {
+export function getStoredBook(id: string): Promise<StoredBookData | null> {
+  return tx<StoredBookData | undefined>('data', 'readonly', (s) => s.get(id))
+    .then((row) => row ?? null);
+}
+
+export async function addBook(meta: BookMeta, data: Uint8Array | ComicDocument): Promise<void> {
   await tx('books', 'readwrite', (s) => s.put(meta));
-  await tx('data', 'readwrite', (s) => s.put({ id: meta.id, bytes }));
+  const row: StoredBookData = data instanceof Uint8Array
+    ? { id: meta.id, format: 'epub', bytes: data }
+    : { id: meta.id, format: 'comic', comic: data };
+  await tx('data', 'readwrite', (s) => s.put(row));
 }
 
 export async function deleteBook(id: string): Promise<void> {
