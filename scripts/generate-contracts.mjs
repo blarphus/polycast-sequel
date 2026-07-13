@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { createHash } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -448,18 +448,52 @@ const outputs = new Map([
   [path.join(root, 'extension/generated/transcriptFixtures.js'), transcriptFixturesExtensionBody],
 ]);
 
+async function writeFileAtomic(outputPath, content) {
+  const temporaryPath = `${outputPath}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporaryPath, content);
+    await rename(temporaryPath, outputPath);
+  } finally {
+    await unlink(temporaryPath).catch((error) => {
+      if (error?.code === 'ENOENT') return;
+      console.info(JSON.stringify({
+        event: 'generated_contract_temp_cleanup_fallback',
+        severity: 'warning',
+        source: 'scripts.generate-contracts',
+        operation: 'cleanup-temporary-output',
+        path: path.relative(root, temporaryPath),
+        detail: error?.message || String(error),
+      }));
+    });
+  }
+}
+
+async function readGeneratedOutput(outputPath) {
+  try {
+    return await readFile(outputPath, 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') return '';
+    throw error;
+  }
+}
+
 const check = process.argv.includes('--check');
 let drift = false;
 for (const [outputPath, content] of outputs) {
   if (check) {
-    const current = await readFile(outputPath, 'utf8').catch(() => '');
+    const current = await readGeneratedOutput(outputPath);
     if (current !== content) {
       console.error(`Generated contract drift: ${path.relative(root, outputPath)}`);
       drift = true;
     }
   } else {
-    await writeFile(outputPath, content);
-    console.log(`Generated ${path.relative(root, outputPath)}`);
+    const current = await readGeneratedOutput(outputPath);
+    if (current === content) {
+      console.log(`Current ${path.relative(root, outputPath)}`);
+      continue;
+    }
+    await writeFileAtomic(outputPath, content);
+    console.log(`Generated ${path.relative(root, outputPath)} atomically`);
   }
 }
 if (drift) process.exitCode = 1;

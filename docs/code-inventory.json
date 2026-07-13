@@ -2,8 +2,8 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 510,
-    "lines": 82137,
-    "declarations": 2278,
+    "lines": 82171,
+    "declarations": 2280,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 1
@@ -5405,7 +5405,7 @@
         },
         {
           "name": "cleanup",
-          "callers": 23,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -13997,7 +13997,7 @@
         },
         {
           "name": "content",
-          "callers": 142,
+          "callers": 145,
           "testReferences": [
             "client/src/test/epub.test.ts",
             "client/src/test/groupCallProvider.test.tsx",
@@ -15866,7 +15866,7 @@
     },
     {
       "file": "scripts/generate-contracts.mjs",
-      "lines": 466,
+      "lines": 500,
       "responsibility": "tooling",
       "sideEffects": [
         "persistence",
@@ -15893,6 +15893,18 @@
         {
           "name": "assertContract",
           "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "writeFileAtomic",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "readGeneratedOutput",
+          "callers": 2,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -21948,7 +21960,7 @@
         },
         {
           "name": "cleanup",
-          "callers": 23,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         }
