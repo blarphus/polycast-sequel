@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-13T15:03:24.454Z",
+  "generatedAt": "2026-07-13T15:52:34.916Z",
   "totals": {
-    "occurrences": 60,
-    "uniqueCodes": 57,
+    "occurrences": 61,
+    "uniqueCodes": 58,
     "incompleteOccurrences": 0
   },
   "entries": [
@@ -177,7 +177,7 @@
     {
       "code": "highlight_dom_mutation_fallback",
       "file": "extension/content/pageHighlights.js",
-      "line": 221,
+      "line": 236,
       "structured": true,
       "logged": true,
       "visible": true
@@ -185,7 +185,7 @@
     {
       "code": "highlight_range_lookup_fallback",
       "file": "extension/content/pageHighlights.js",
-      "line": 353,
+      "line": 370,
       "structured": true,
       "logged": true,
       "visible": true
@@ -193,7 +193,7 @@
     {
       "code": "language_display_name_fallback",
       "file": "extension/content/shared.js",
-      "line": 172,
+      "line": 186,
       "structured": true,
       "logged": true,
       "visible": true
@@ -271,6 +271,14 @@
       "visible": true
     },
     {
+      "code": "page_highlight_runtime_fallback",
+      "file": "extension/content/pageHighlights.js",
+      "line": 82,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
       "code": "pixabay_provider_unconfigured",
       "file": "server/lib/imageSearch.js",
       "line": 9,
@@ -329,7 +337,7 @@
     {
       "code": "recall_forms_parser_fallback",
       "file": "extension/content/pageHighlights.js",
-      "line": 133,
+      "line": 148,
       "structured": true,
       "logged": true,
       "visible": true

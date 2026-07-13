@@ -36,6 +36,8 @@
   let matchedRangeCapShown = false;
   let domMutationFallbackShown = false;
   let rangeLookupFallbackShown = false;
+  let extensionContextInvalidated = false;
+  let extensionContextInvalidatedShown = false;
   const recallSampledForPage = WILD_RECALL_PAGE_CUES_ENABLED && Math.random() < 0.15;
 
   function baseLanguage(value) {
@@ -43,35 +45,48 @@
   }
 
   function showDiagnostic(title, message, metadata = {}) {
-    if (!message) return;
-    document.querySelector('.pc-fallback-toast')?.remove();
-    const toast = document.createElement('div');
-    toast.className = 'pc-fallback-toast';
-    const heading = document.createElement('strong');
-    heading.textContent = title;
-    const detail = document.createElement('span');
-    detail.textContent = message;
-    const reference = document.createElement('small');
-    reference.textContent = [
-      metadata.code || 'extension_fallback_used',
-      metadata.source || 'extension.page-highlights',
-      metadata.operation || 'highlight-page',
-      metadata.correlationId || crypto.randomUUID(),
-      metadata.detail || '',
-    ].filter(Boolean).join(' · ');
-    toast.append(heading, detail, reference);
-    document.body.append(toast);
-    window.setTimeout(() => toast.remove(), 8000);
-    console.warn('[polycast:fallback]', {
-      code: metadata.code || 'extension_fallback_used',
-      severity: metadata.severity || 'warning',
-      title,
-      message,
-      source: metadata.source || 'extension.page-highlights',
-      operation: metadata.operation || 'highlight-page',
-      correlationId: metadata.correlationId || crypto.randomUUID(),
-      occurredAt: metadata.occurredAt || new Date().toISOString(),
-      ...(metadata.detail ? { detail: metadata.detail } : {}),
+    globalThis.PolycastContent?.showFallbackToast?.(title, message, {
+      source: 'extension.page-highlights',
+      operation: 'highlight-page',
+      ...metadata,
+    });
+  }
+
+  function isExtensionContextInvalidated(error) {
+    return /extension context invalidated/i.test(error?.message || String(error || ''));
+  }
+
+  function handleHighlightFailure(operation, error, messagePrefix) {
+    if (isExtensionContextInvalidated(error)) {
+      extensionContextInvalidated = true;
+      enabled = false;
+      stopObservers();
+      if (extensionContextInvalidatedShown) return;
+      extensionContextInvalidatedShown = true;
+      showDiagnostic(
+        'Polycast extension was reloaded',
+        'This tab stopped its stale Polycast tasks. Refresh the page once to attach the updated extension.',
+        {
+          code: 'extension_context_invalidated',
+          severity: 'warning',
+          operation,
+          selectedAction: 'stop-stale-content-script',
+          detail: error?.message || String(error),
+        },
+      );
+      return;
+    }
+    showDiagnostic(
+      'Page highlight fallback',
+      `${messagePrefix}: ${error?.message || String(error)}`,
+      { code: 'page_highlight_runtime_fallback', operation, detail: error?.message || String(error) },
+    );
+  }
+
+  function refreshHighlightState(forcedOverride = null, operation = 'refresh-highlight-state') {
+    if (extensionContextInvalidated) return;
+    void resolveHighlightState(forcedOverride).catch((error) => {
+      handleHighlightFailure(operation, error, 'Highlight configuration fallback used');
     });
   }
 
@@ -166,7 +181,7 @@
         );
       }
     } catch (err) {
-      showDiagnostic('Wild Recall fallback', `Wild Recall preparation fallback used: ${err.message}`);
+      handleHighlightFailure('prepare-wild-recall', err, 'Wild Recall preparation fallback used');
     }
   }
 
@@ -250,12 +265,13 @@
       if (supportsCssHighlights) addCssRanges(occurrences, matchMap);
       else addFallbackSpans(occurrences, matchMap);
     } catch (err) {
-      showDiagnostic('Page highlight fallback', `Saved-word matching fallback used: ${err.message}`);
+      handleHighlightFailure('match-saved-page-words', err, 'Saved-word matching fallback used');
     }
   }
 
   function drain(deadline) {
     drainScheduled = false;
+    if (extensionContextInvalidated) return;
     const nodes = [];
     const started = performance.now();
     while (pendingNodes.length && nodes.length < 120 && performance.now() - started < 8 && (!deadline || deadline.timeRemaining() > 1)) {
@@ -266,7 +282,7 @@
   }
 
   function scheduleDrain() {
-    if (!enabled || drainScheduled || !pendingNodes.length || document.hidden) return;
+    if (extensionContextInvalidated || !enabled || drainScheduled || !pendingNodes.length || document.hidden) return;
     drainScheduled = true;
     if (typeof requestIdleCallback === 'function') requestIdleCallback(drain, { timeout: 120 });
     else window.setTimeout(() => drain({ timeRemaining: () => 8 }), 0);
@@ -321,6 +337,7 @@
   }
 
   async function resolveHighlightState(forcedOverride = null) {
+    if (extensionContextInvalidated) return;
     stopObservers();
     const config = await chrome.runtime.sendMessage({ type: 'GET_PAGE_HIGHLIGHT_CONFIG', hostname: location.hostname });
     targetLanguage = baseLanguage(config?.targetLanguage);
@@ -398,7 +415,7 @@
       );
       return false;
     }
-    if (msg.type === 'WORDS_UPDATED') void resolveHighlightState();
+    if (msg.type === 'WORDS_UPDATED') refreshHighlightState(null, 'words-updated');
     if (msg.type === 'WILD_RECALL_UPDATED') {
       recallChallenge = WILD_RECALL_PAGE_CUES_ENABLED ? (msg.challenge || null) : null;
       selectRecallRange();
@@ -412,7 +429,7 @@
       const diagnostic = msg.diagnostic || msg;
       showDiagnostic(diagnostic.title || 'Fallback used', diagnostic.message || 'An alternate path was used.', diagnostic);
     }
-    if (msg.type === 'SITE_HIGHLIGHT_OVERRIDE_UPDATED') void resolveHighlightState(msg.override);
+    if (msg.type === 'SITE_HIGHLIGHT_OVERRIDE_UPDATED') refreshHighlightState(msg.override, 'site-highlight-override-updated');
     if (msg.type === 'GET_PAGE_HIGHLIGHT_STATUS') {
       sendResponse({ hostname: location.hostname, enabled, override, targetLanguage, validationMode: 'click-context' });
     }
@@ -421,9 +438,9 @@
 
   globalThis.PolycastContent = {
     ...(globalThis.PolycastContent || {}),
-    addPageHighlights() { void resolveHighlightState(); },
+    addPageHighlights() { refreshHighlightState(null, 'add-page-highlights'); },
   };
 
   if (supportsCssHighlights) CSS.highlights.set('polycast-saved', savedHighlight);
-  void resolveHighlightState().catch((err) => showDiagnostic('Page highlight fallback', `Highlight initialization fallback used: ${err.message}`));
+  refreshHighlightState(null, 'initialize-page-highlights');
 })();

@@ -82,26 +82,39 @@ function captionContext() {
 }
 
 function showFallbackToast(title, message, diagnostic = {}) {
+  const structuredDiagnostic = {
+    code: diagnostic.code || 'extension_content_fallback_used',
+    severity: diagnostic.severity || 'warning',
+    title: String(title || diagnostic.title || 'Fallback used'),
+    message: String(message || diagnostic.message || 'Polycast used a fallback path.'),
+    source: diagnostic.source || 'extension.content',
+    operation: diagnostic.operation || 'content-script-operation',
+    pipeline: diagnostic.pipeline || diagnostic.operation || 'content-script-operation',
+    stage: diagnostic.stage || 'fallback',
+    correlationId: diagnostic.correlationId || crypto.randomUUID(),
+    occurredAt: diagnostic.occurredAt || new Date().toISOString(),
+    ...(diagnostic.selectedAction ? { selectedAction: diagnostic.selectedAction } : {}),
+    ...(diagnostic.detail ? { detail: diagnostic.detail } : {}),
+  };
   const existing = document.querySelector('.pc-fallback-toast');
   if (existing) existing.remove();
   const toast = document.createElement('div');
   toast.className = 'pc-fallback-toast';
   toast.setAttribute('role', 'status');
   const heading = document.createElement('strong');
-  heading.textContent = String(title || 'Fallback used');
+  heading.textContent = structuredDiagnostic.title;
   const detail = document.createElement('span');
-  detail.textContent = String(message || 'Polycast used a fallback path.');
+  detail.textContent = structuredDiagnostic.message;
   const technical = document.createElement('small');
-  const reference = diagnostic.correlationId ? ` · ref ${diagnostic.correlationId}` : '';
-  technical.textContent = `${diagnostic.code || 'fallback_used'} · ${diagnostic.source || 'extension.content'}/${diagnostic.operation || 'unknown'}${reference}`;
+  technical.textContent = `${structuredDiagnostic.code} · ${structuredDiagnostic.source}/${structuredDiagnostic.operation} · ref ${structuredDiagnostic.correlationId}`;
   toast.append(heading, detail);
-  if (diagnostic.detail) {
+  if (structuredDiagnostic.detail) {
     const diagnosticDetail = document.createElement('small');
-    diagnosticDetail.textContent = String(diagnostic.detail);
+    diagnosticDetail.textContent = String(structuredDiagnostic.detail);
     toast.appendChild(diagnosticDetail);
   }
   toast.appendChild(technical);
-  console.warn('[polycast:fallback]', { ...diagnostic, title, message });
+  console.info('[polycast:fallback]', structuredDiagnostic);
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 7000);
 }
@@ -124,6 +137,7 @@ function validateInboundContentMessage(msg, acceptedTypes = null) {
 
 globalThis.PolycastContent = {
   ...(globalThis.PolycastContent || {}),
+  showFallbackToast,
   validateInboundMessage: validateInboundContentMessage,
 };
 

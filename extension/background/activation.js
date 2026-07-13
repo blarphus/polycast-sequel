@@ -96,7 +96,7 @@
             operation: 'open-selection-popup',
             detail: `frameId=${info.frameId}; reason=${frameError?.message || 'content script unavailable'}`,
           });
-          console.warn('[polycast:fallback]', diagnostic);
+          console.info('[polycast:fallback]', diagnostic);
           await surfaceBackgroundDiagnostic(diagnostic);
           return chrome.tabs.sendMessage(tab.id, message)
             .then((response) => {
@@ -113,7 +113,7 @@
                 detail: error?.message || 'content script unavailable',
                 severity: 'error',
               });
-              console.warn('[polycast:fallback]', unavailableDiagnostic);
+              console.info('[polycast:fallback]', unavailableDiagnostic);
               void surfaceBackgroundDiagnostic(unavailableDiagnostic);
             });
         });

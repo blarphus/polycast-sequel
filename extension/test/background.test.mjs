@@ -183,7 +183,7 @@ test('an authenticated 401 clears account state and broadcasts one detailed expi
     progression: { totalXp: 12 }, offlineMode: false,
   };
   const tabMessages = [];
-  const warnings = [];
+  const diagnostics = [];
   const event = () => ({ addListener: () => {} });
   const chrome = {
     contextMenus: { onClicked: event(), removeAll: (cb) => cb(), create: (_opts, cb) => cb() },
@@ -204,7 +204,7 @@ test('an authenticated 401 clears account state and broadcasts one detailed expi
   };
   const context = {
     chrome,
-    console: { ...console, warn: (...args) => warnings.push(args) },
+    console: { ...console, info: (...args) => diagnostics.push(args) },
     crypto,
     fetch: async () => new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401, headers: { 'Content-Type': 'application/json' },
@@ -226,5 +226,5 @@ test('an authenticated 401 clears account state and broadcasts one detailed expi
   assert.equal(notices[0].message.diagnostic.severity, 'error');
   assert.match(notices[0].message.diagnostic.detail, /status=401; path=\/api\//);
   assert.ok(notices[0].message.diagnostic.correlationId);
-  assert.equal(warnings.filter((args) => args[0] === '[polycast:fallback]').length, 1);
+  assert.equal(diagnostics.filter((args) => args[0] === '[polycast:fallback]').length, 1);
 });

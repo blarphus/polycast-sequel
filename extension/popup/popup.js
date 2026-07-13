@@ -58,7 +58,7 @@ function langName(code) {
     const names = new Intl.DisplayNames(['en'], { type: 'language' });
     return names.of(code) || code;
   } catch (error) {
-    console.warn('[polycast:fallback]', {
+    console.info('[polycast:fallback]', {
       code: 'popup_language_name_fallback',
       severity: 'warning',
       title: 'Language name fallback used',
@@ -321,7 +321,7 @@ siteHighlightButtons.forEach((button) => button.addEventListener('click', () => 
     if (!granted || error) {
       siteHighlightButtons.forEach((item) => { item.disabled = false; });
       const correlationId = crypto.randomUUID();
-      console.warn('[polycast:fallback]', {
+      console.info('[polycast:fallback]', {
         code: 'site_activation_permission_denied', severity: 'warning',
         title: 'Site activation permission not granted',
         message: `Polycast remains inactive on ${activePageStatus.hostname} because site access was not granted.`,

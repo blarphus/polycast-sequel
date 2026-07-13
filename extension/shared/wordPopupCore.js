@@ -16,13 +16,16 @@
   const POPUP_WIDTH = 300;
 
   function logPopupDiagnostic(code, operation, message, error) {
-    console.warn('[polycast:diagnostic]', {
+    console.info('[polycast:diagnostic]', {
       code,
       severity: 'error',
       title: 'Word popup operation failed',
       message,
       source: 'shared.word-popup',
       operation,
+      pipeline: operation,
+      stage: 'failed',
+      selectedAction: 'show-visible-popup-error',
       correlationId: globalThis.crypto?.randomUUID?.() || `popup-${Date.now()}`,
       occurredAt: new Date().toISOString(),
       detail: error?.message || String(error || 'unknown error'),

@@ -2,8 +2,8 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 510,
-    "lines": 82044,
-    "declarations": 2275,
+    "lines": 82090,
+    "declarations": 2278,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 1
@@ -71,6 +71,7 @@
         "client/src/test/catalogProgress.test.tsx",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/runtimeDiagnostics.test.ts",
+        "extension/test/background.test.mjs",
         "server/lib/authResponse.test.js",
         "server/lib/httpErrors.test.js"
       ],
@@ -5914,7 +5915,7 @@
       "symbols": [
         {
           "name": "correlationId",
-          "callers": 218,
+          "callers": 216,
           "testReferences": [
             "client/src/test/callSignalContract.test.ts",
             "client/src/test/groupCallLifecycle.test.tsx",
@@ -7128,11 +7129,10 @@
     },
     {
       "file": "extension/content/pageHighlights.js",
-      "lines": 430,
+      "lines": 447,
       "responsibility": "extension runtime/UI",
       "sideEffects": [
-        "UI",
-        "logging"
+        "UI"
       ],
       "testCoverage": [
         "extension/test/page-highlights.test.mjs",
@@ -7149,8 +7149,30 @@
         },
         {
           "name": "showDiagnostic",
-          "callers": 14,
+          "callers": 13,
           "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "isExtensionContextInvalidated",
+          "callers": 1,
+          "testReferences": [
+            "extension/test/page-highlights.test.mjs"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "handleHighlightFailure",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "refreshHighlightState",
+          "callers": 4,
+          "testReferences": [
+            "extension/test/page-highlights.test.mjs"
+          ],
           "disposition": "retain"
         },
         {
@@ -7241,14 +7263,16 @@
         },
         {
           "name": "stopObservers",
-          "callers": 1,
+          "callers": 2,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "resolveHighlightState",
-          "callers": 4,
-          "testReferences": [],
+          "callers": 1,
+          "testReferences": [
+            "extension/test/page-highlights.test.mjs"
+          ],
           "disposition": "retain"
         },
         {
@@ -7344,7 +7368,7 @@
     },
     {
       "file": "extension/content/shared.js",
-      "lines": 731,
+      "lines": 745,
       "responsibility": "extension runtime/UI",
       "sideEffects": [
         "UI",
@@ -7383,7 +7407,7 @@
         },
         {
           "name": "showFallbackToast",
-          "callers": 13,
+          "callers": 15,
           "testReferences": [
             "extension/test/fallback-toast.test.mjs"
           ],
@@ -7795,7 +7819,7 @@
     },
     {
       "file": "extension/shared/wordPopupCore.js",
-      "lines": 588,
+      "lines": 591,
       "responsibility": "extension runtime/UI",
       "sideEffects": [
         "network",
@@ -7946,7 +7970,7 @@
     },
     {
       "file": "extension/test/fallback-toast.test.mjs",
-      "lines": 64,
+      "lines": 65,
       "responsibility": "test",
       "sideEffects": [
         "UI"
@@ -7958,7 +7982,7 @@
     },
     {
       "file": "extension/test/page-highlights.test.mjs",
-      "lines": 20,
+      "lines": 31,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
@@ -8077,7 +8101,7 @@
         },
         {
           "name": "show",
-          "callers": 21,
+          "callers": 22,
           "testReferences": [
             "ios/Polycast/Tests/PolycastTests.swift"
           ],
@@ -8933,7 +8957,8 @@
       ],
       "testCoverage": [
         "client/src/test/groupCallLifecycle.test.tsx",
-        "client/src/test/groupCallProvider.test.tsx"
+        "client/src/test/groupCallProvider.test.tsx",
+        "extension/test/page-highlights.test.mjs"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -8994,10 +9019,11 @@
         },
         {
           "name": "stop",
-          "callers": 68,
+          "callers": 69,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
-            "client/src/test/groupCallProvider.test.tsx"
+            "client/src/test/groupCallProvider.test.tsx",
+            "extension/test/page-highlights.test.mjs"
           ],
           "disposition": "retain"
         },
@@ -9043,6 +9069,7 @@
       "testCoverage": [
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
+        "extension/test/page-highlights.test.mjs",
         "server/test/auth.integration.test.js",
         "server/test/dictionaryPagination.integration.test.js"
       ],
@@ -9075,10 +9102,11 @@
         },
         {
           "name": "stop",
-          "callers": 68,
+          "callers": 69,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
-            "client/src/test/groupCallProvider.test.tsx"
+            "client/src/test/groupCallProvider.test.tsx",
+            "extension/test/page-highlights.test.mjs"
           ],
           "disposition": "retain"
         },
@@ -11210,7 +11238,7 @@
         },
         {
           "name": "remove",
-          "callers": 81,
+          "callers": 79,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -11297,7 +11325,7 @@
         },
         {
           "name": "body",
-          "callers": 638,
+          "callers": 637,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -11518,6 +11546,7 @@
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs",
         "extension/test/fallback-toast.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "server/services/dictionaryWordService.test.js"
       ],
       "disposition": "reviewed-retain",
@@ -11532,7 +11561,9 @@
         {
           "name": "reload",
           "callers": 7,
-          "testReferences": [],
+          "testReferences": [
+            "extension/test/page-highlights.test.mjs"
+          ],
           "disposition": "retain"
         },
         {
@@ -11561,7 +11592,7 @@
         },
         {
           "name": "remove",
-          "callers": 81,
+          "callers": 79,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -13791,7 +13822,7 @@
         },
         {
           "name": "append",
-          "callers": 118,
+          "callers": 116,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -13958,7 +13989,7 @@
         },
         {
           "name": "content",
-          "callers": 139,
+          "callers": 142,
           "testReferences": [
             "client/src/test/epub.test.ts",
             "client/src/test/groupCallProvider.test.tsx",
@@ -20639,7 +20670,7 @@
       "symbols": [
         {
           "name": "configuration",
-          "callers": 14,
+          "callers": 15,
           "testReferences": [],
           "disposition": "retain"
         },

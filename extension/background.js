@@ -161,7 +161,7 @@ async function sendTabMessageSafe(tabId, payload, operation) {
       detail: `tabId=${tabId}; reason=${err?.message || 'unknown error'}`,
       severity: 'error',
     });
-    console.warn('[polycast:fallback-delivery-failed]', diagnostic);
+    console.info('[polycast:fallback-delivery-failed]', diagnostic);
     await surfaceBackgroundDiagnostic(diagnostic);
     return undefined;
   }
@@ -517,7 +517,7 @@ async function broadcastFallbackNotice(title, message, options = {}) {
     detail: options.detail,
     severity: options.severity || 'warning',
   });
-  console.warn('[polycast:fallback]', diagnostic);
+  console.info('[polycast:fallback]', diagnostic);
   await surfaceBackgroundDiagnostic(diagnostic);
   const tabs = await getPageContentTabs();
   for (const tab of tabs) {
@@ -574,13 +574,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       operation: 'validate-runtime-message',
       detail: error?.message || String(error),
     });
-    console.warn('[polycast:fallback]', diagnostic);
+    console.info('[polycast:fallback]', diagnostic);
     sendResponse({ error: diagnostic.message, diagnostic, fallback_notices: [diagnostic] });
     return false;
   }
   handleMessage(validated, sender).then(async (result) => {
     if (result?.diagnostic) {
-      console.warn('[polycast:fallback]', result.diagnostic);
+      console.info('[polycast:fallback]', result.diagnostic);
       await surfaceBackgroundDiagnostic(result.diagnostic);
     }
     sendResponse(result && typeof result === 'object'
@@ -597,7 +597,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       correlationId: validated.correlationId,
       occurredAt: validated.occurredAt,
     });
-    console.warn('[polycast:fallback]', diagnostic);
+    console.info('[polycast:fallback]', diagnostic);
     sendResponse({ error: err?.message || diagnostic.message, diagnostic, fallback_notices: [diagnostic], correlationId: validated.correlationId, occurredAt: validated.occurredAt });
   });
   return true; // keep channel open for async response
@@ -634,7 +634,7 @@ async function handleMessage(msg, sender = {}) {
         try {
           payload = JSON.parse(text);
         } catch (error) {
-          console.warn('[polycast:diagnostic]', makeFallbackDiagnostic({
+          console.info('[polycast:diagnostic]', makeFallbackDiagnostic({
             code: 'login_error_payload_fallback',
             title: 'Login error details unavailable',
             message: 'The server returned a non-JSON login error, so the HTTP status will be shown.',

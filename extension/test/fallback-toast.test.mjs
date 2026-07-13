@@ -43,6 +43,7 @@ test('fallback toast renders hostile diagnostic fields as text, never HTML', asy
     },
     window: {},
     console,
+    crypto,
     Intl,
     Set,
     Map,

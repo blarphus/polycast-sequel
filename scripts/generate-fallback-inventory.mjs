@@ -40,7 +40,7 @@ for (const file of roots.flatMap(walk)) {
       file,
       line,
       structured: adapter || backgroundResponseAdapter || (/\b(source|source:)\b/.test(context) && /\b(operation|operation:)\b/.test(context)),
-      logged: adapter || backgroundResponseAdapter || /(logRuntimeDiagnostic|runtimeLog\.|PolycastLog\.|logger\.|req\.log\.|console\.warn\('\[polycast:)/.test(context),
+      logged: adapter || backgroundResponseAdapter || /(logRuntimeDiagnostic|runtimeLog\.|PolycastLog\.|logger\.|req\.log\.|console\.(?:info|warn)\('\[polycast:)/.test(context),
       visible: adapter || backgroundResponseAdapter || /(polycast:fallback|FallbackNoticeCenter|showFallback|fallback_notices|fallbackNotices|setFallbackDiagnosticHeader|broadcastFallback|sendResponse|diagnostic\s*[,}])/.test(context),
     });
   }
