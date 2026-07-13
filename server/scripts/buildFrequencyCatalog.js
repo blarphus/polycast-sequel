@@ -217,6 +217,11 @@ try {
     [FREQUENCY_LANGUAGES],
   );
 
+  // The sense import immediately joins against millions of newly inserted lemmas.
+  // Refresh planner statistics inside this transaction so low-memory databases do
+  // not choose a plan based on the table's pre-build row count.
+  await client.query('ANALYZE dictionary_lemmas');
+
   await client.query(`
     INSERT INTO dictionary_senses (
       lemma_id, part_of_speech, definition, definition_hash, source,
@@ -319,6 +324,11 @@ try {
     ON CONFLICT (language, lemma_key) DO NOTHING
   `);
 
+  // Both inputs were bulk-loaded in this transaction and feed the ranking window
+  // below. Accurate cardinalities keep its joins and sorts from spilling needlessly.
+  await client.query('ANALYZE dictionary_lemmas');
+  await client.query('ANALYZE catalog_frequency_stage');
+
   await client.query(`
     WITH ordered AS (
       SELECT l.id AS lemma_id, l.language,
@@ -350,6 +360,11 @@ try {
            COALESCE(sources, '[]'::jsonb)
       FROM ordered
   `, [catalog.id, FREQUENCY_LANGUAGES]);
+
+  // Sense ranking joins two other bulk-loaded tables immediately. Publish their
+  // transaction-local cardinalities before PostgreSQL plans that operation.
+  await client.query('ANALYZE dictionary_senses');
+  await client.query('ANALYZE lemma_frequency_rankings');
 
   await client.query(`
     WITH ordered AS (
