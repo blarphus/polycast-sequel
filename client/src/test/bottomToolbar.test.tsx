@@ -90,4 +90,9 @@ describe('responsive navigation style ownership', () => {
     expect(studentsStyles).not.toContain('.bottom-toolbar');
     expect(studentsStyles).not.toContain('.sidebar-in-progress');
   });
+
+  it('opens the desktop In progress menu as a floating panel without moving its anchored row', () => {
+    expect(shellStyles).toMatch(/@media \(min-width: 481px\)[\s\S]*?\.sidebar-in-progress-items\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?left:\s*calc\(100% \+ 0\.75rem\);[\s\S]*?bottom:\s*0;/);
+    expect(shellStyles).toMatch(/\.bottom-toolbar\.collapsed \.sidebar-in-progress-items \.toolbar-label\s*\{[\s\S]*?display:\s*inline;/);
+  });
 });

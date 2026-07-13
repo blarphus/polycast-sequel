@@ -2,8 +2,8 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 510,
-    "lines": 81984,
-    "declarations": 2274,
+    "lines": 82037,
+    "declarations": 2275,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 1
@@ -200,6 +200,7 @@
       "testCoverage": [
         "client/src/test/epub.test.ts",
         "extension/test/activation.test.mjs",
+        "extension/test/background.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/httpErrors.test.js",
         "server/lib/origins.test.js",
@@ -4990,7 +4991,7 @@
     },
     {
       "file": "client/src/test/bottomToolbar.test.tsx",
-      "lines": 94,
+      "lines": 99,
       "responsibility": "test",
       "sideEffects": [
         "persistence",
@@ -6739,7 +6740,7 @@
     },
     {
       "file": "extension/background.js",
-      "lines": 1190,
+      "lines": 1198,
       "responsibility": "extension runtime/UI",
       "sideEffects": [
         "network",
@@ -6800,6 +6801,12 @@
           "disposition": "retain"
         },
         {
+          "name": "getPageContentTabs",
+          "callers": 5,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
           "name": "getApiBase",
           "callers": 4,
           "testReferences": [],
@@ -6836,7 +6843,9 @@
         {
           "name": "broadcastDailyGoalUpdated",
           "callers": 4,
-          "testReferences": [],
+          "testReferences": [
+            "extension/test/background.test.mjs"
+          ],
           "disposition": "retain"
         },
         {
@@ -7091,7 +7100,9 @@
         "events",
         "UI"
       ],
-      "testCoverage": [],
+      "testCoverage": [
+        "extension/test/background.test.mjs"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
@@ -7340,6 +7351,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/bottomToolbar.test.tsx",
         "extension/test/fallback-toast.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "extension/test/selection.test.mjs",
@@ -7494,7 +7506,9 @@
         {
           "name": "position",
           "callers": 140,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/bottomToolbar.test.tsx"
+          ],
           "disposition": "retain"
         },
         {
@@ -7540,6 +7554,7 @@
         "UI"
       ],
       "testCoverage": [
+        "extension/test/background.test.mjs",
         "ios/Polycast/UITests/PolycastUITests.swift"
       ],
       "disposition": "intentionally standalone",
@@ -7789,6 +7804,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/bottomToolbar.test.tsx",
         "extension/test/popup-performance.test.mjs"
       ],
       "disposition": "reviewed-retain",
@@ -7841,7 +7857,9 @@
         {
           "name": "position",
           "callers": 140,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/bottomToolbar.test.tsx"
+          ],
           "disposition": "retain"
         },
         {
@@ -7915,7 +7933,7 @@
     },
     {
       "file": "extension/test/background.test.mjs",
-      "lines": 191,
+      "lines": 231,
       "responsibility": "test",
       "sideEffects": [
         "network",
@@ -13913,6 +13931,7 @@
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/readerSelection.test.ts",
         "client/src/test/runtimeDiagnostics.test.ts",
+        "extension/test/background.test.mjs",
         "extension/test/fallback-toast.test.mjs",
         "extension/test/page-highlights.test.mjs",
         "extension/test/popup-performance.test.mjs",
@@ -13944,6 +13963,7 @@
             "client/src/test/epub.test.ts",
             "client/src/test/groupCallProvider.test.tsx",
             "client/src/test/readerSelection.test.ts",
+            "extension/test/background.test.mjs",
             "extension/test/fallback-toast.test.mjs",
             "extension/test/page-highlights.test.mjs",
             "extension/test/selection.test.mjs",

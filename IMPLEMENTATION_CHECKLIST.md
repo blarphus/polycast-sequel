@@ -12,7 +12,7 @@ This is the live completion ledger for `AUDIT_REPORT.md`. An item is checked onl
 - [x] **AUD-006 — Make retries idempotency-safe.** Automatic retries are read-only by default; review mutations use persisted user/operation/body-bound idempotency keys with lost-response replay and key-reuse rejection tests.
 - [x] **AUD-007 — Remove extension HTML injection and constrain page activation.** Remote text never reaches HTML sinks, hostile payload tests pass, generic sites require exact-origin optional permission and registration, and every denial remains visible.
 - [x] **AUD-008 — Remove vulnerable/unused dependencies.** Unused inference dependencies were removed; production CycloneDX SBOMs, zero-vulnerability audits, lockfile/exception policy, clean `npm ci` CI, and Dependabot automation are enforced.
-- [x] **AUD-009 — Every fallback is detailed, structured, logged, and visible.** The generated 59-code guarded-path inventory has zero incomplete occurrences; the check gate verifies structured source/operation/correlation, logging, and relevant-UI delivery. Web/iOS/extension/server/Worker adapter and fault tests cover hostile payloads, provider alternates, offline/session paths, retries, signaling rejection, scheduling repair, and fallback delivery.
+- [x] **AUD-009 — Every fallback is detailed, structured, logged, and visible.** The generated 57-code guarded-path inventory has zero incomplete occurrences; the check gate verifies structured source/operation/correlation, logging, and relevant-UI delivery. Web/iOS/extension/server/Worker adapter and fault tests cover hostile payloads, provider alternates, offline/session paths, retries, signaling rejection, scheduling repair, and fallback delivery. The two removed codes belonged only to the deleted page-language gate; no live alternate path lost its diagnostic.
 - [x] **AUD-010 — One truthful green release check.** The final root check passed across contracts, fallbacks, formatting, tools, inventories, web, server, extension, Worker, fresh/legacy PostgreSQL, and iOS unit/UI tests. A sanitized isolated workspace then completed pinned Node 22.12.0 clean installs and the credential-free `check:fast` gate; this proof also found and fixed a benchmark `--help` path that had incorrectly required a local Gemini key.
 
 ## P2 — pipeline simplification, performance, and architecture
@@ -21,7 +21,7 @@ This is the live completion ledger for `AUDIT_REPORT.md`. An item is checked onl
 - [x] **AUD-012 — Database-backed bounded dictionary pagination.** All six sorts use context-bound stable keyset cursors, limit+1 SQL, immutable total propagation, supporting indexes, and a real 10k-word PG latency/heap/no-gap test.
 - [x] **AUD-013 — Remove startup data/cache waste.** Frequency maps lazy-load into a six-language bound, article parsing is dynamically imported, Redis namespaces are versioned with no `KEYS`/blanket flush, and startup RSS/latency budgets pass.
 - [x] **AUD-014 — Split initial web payload.** Routes and feature CSS are lazy, call/transcript/word-popup CSS was removed from the shell and now ships as a route chunk, shared shell/base primitives remain global, Vite has no oversized-entry warning, and byte/gzip budgets pass. Initial CSS fell from 44,853 to 31,232 bytes.
-- [x] **AUD-015 — Simplify route pipelines.** Dictionary is a four-router composer over word/media/study services; video and classroom transports validate and delegate through the central async/error mapper; intentional transcript/TTS alternates preserve structured visible diagnostics. The dynamic registry proves 139 unique routes after the split.
+- [x] **AUD-015 — Simplify route pipelines.** Dictionary is a four-router composer over word/media/study services; video and classroom transports validate and delegate through the central async/error mapper; intentional transcript/TTS alternates preserve structured visible diagnostics. The dynamic registry proves 140 unique routes after the split and addition of the compact-catalog progress endpoint.
 - [x] **AUD-016 — Split files with mixed ownership.** Practice start/card/session views, Videos/Shorts/cards, widget intents/provider/view/registration, API transport/domain endpoints, transcript domain/views/popup, extension message validation/activation, and dictionary schedule/sense/study/group/calendar queries now have separate tested ownership seams. XcodeGen and the full app+widget simulator build pass.
 - [x] **AUD-017 — Consolidate duplicated cross-platform behavior.** Generated language/SRS registries, golden transcript/tokenization fixtures across web/extension/Swift, canonical SRT behavior, and the extension-safe shared widget snapshot infrastructure replaced hand-maintained copies.
 - [x] **AUD-018 — Narrow the Worker pipeline.** Routing/auth/HTTP/TTS/playability/transcript/related concerns are separated; body/batch/time limits, scoped quotas, replay protection, request IDs, and detailed alternate-path tests pass.
@@ -61,7 +61,7 @@ For every row, record before/after evidence covering: entry points and ownership
 - [x] Group call signaling/media/transcription/navigation/reconnect/end
 - [x] EPUB/local video import/storage/parsing/progress/lookup
 - [x] Classroom/classwork/templates/student authorization
-- [x] Extension page activation/language detection/highlighting/lookup/offline bridge
+- [x] Extension page activation/click-context language validation/highlighting/lookup/offline bridge; random page shimmer is explicitly paused and the redundant page-wide language gate is removed
 - [x] iOS widget auth/snapshot/image cache/refresh
 - [x] Server startup/migration/Redis/cache/background workers/deployment
 
@@ -69,7 +69,7 @@ Detailed ownership, primary/alternate flows, bounds, diagnostics, and acceptance
 
 ## Prune/combine proof checklist
 
-- [x] Run static reference analysis and dynamic route/message registration checks. `check:inventory` plus `check:registrations` inspect 139 live routes, 28 extension messages, socket registrations, and caller candidates.
+- [x] Run static reference analysis and dynamic route/message registration checks. `check:inventory` plus `check:registrations` inspect 140 live routes, 27 extension messages, socket registrations, and caller candidates. Placement-test ownership and the page-language-detection message were removed after caller/registration verification.
 - [x] Produce a file/function inventory with size, responsibility, callers, side effects, and test coverage; flag oversized files, mixed ownership, near-duplicates, forwarding shells, and zero-caller code. See `docs/CODE_INVENTORY.md` and its complete JSON ledger.
 - [x] Classify every candidate as delete, combine, extract, generated, prototype, or intentionally standalone.
 - [x] Record a concrete disposition for every flagged candidate, including why retained candidates must remain separate and why combined candidates enforce the same invariant. The generated inventory has 37 reviewed oversized owners, zero unresolved extract candidates, and a reason for every retention.

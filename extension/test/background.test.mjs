@@ -132,6 +132,46 @@ test('large saved dictionaries are indexed once and page matching stays bounded'
   assert.ok(matchMs < 50, `1200-token match took ${matchMs.toFixed(1)}ms`);
 });
 
+test('page broadcasts target only tabs with a registered Polycast content script', async () => {
+  const generated = await readFile(new URL('../generated/messageContract.js', import.meta.url), 'utf8');
+  const router = await readFile(new URL('../background/messageRouter.js', import.meta.url), 'utf8');
+  const activation = await readFile(new URL('../background/activation.js', import.meta.url), 'utf8');
+  const source = `${generated}\n${router}\n${activation}\n${await readFile(new URL('../background.js', import.meta.url), 'utf8')}`;
+  const queried = [];
+  const tabMessages = [];
+  const event = () => ({ addListener: () => {} });
+  const stored = { siteContentScriptIds: { 'https://learn.example.test': 'polycast-site-test' } };
+  const chrome = {
+    contextMenus: { onClicked: event(), removeAll: (cb) => cb(), create: (_opts, cb) => cb() },
+    runtime: { id: 'polycast-test-extension', lastError: undefined, onInstalled: event(), onStartup: event(), onMessage: event() },
+    storage: { local: {
+      async get(key) { return key in stored ? { [key]: stored[key] } : {}; },
+      async set(values) { Object.assign(stored, values); },
+      async remove() {},
+    } },
+    tabs: {
+      async query(options) {
+        queried.push(options);
+        return [{ id: 7, url: 'https://www.youtube.com/watch?v=test' }];
+      },
+      async sendMessage(tabId, message) { tabMessages.push({ tabId, message }); },
+      async create() {},
+    },
+  };
+  const context = {
+    chrome, console, crypto, fetch, URLSearchParams, Intl, Date, setTimeout, clearTimeout, Map, Set,
+  };
+  vm.runInNewContext(source, context);
+
+  await context.broadcastDailyGoalUpdated(context.buildDailyGoalSnapshot(5, 2));
+
+  assert.deepEqual(JSON.parse(JSON.stringify(queried)), [{
+    url: ['*://*.youtube.com/*', 'https://*.netflix.com/*', 'https://learn.example.test/*'],
+  }]);
+  assert.equal(tabMessages.length, 1);
+  assert.equal(tabMessages[0].message.type, 'DAILY_GOAL_UPDATED');
+});
+
 test('an authenticated 401 clears account state and broadcasts one detailed expiration diagnostic', async () => {
   const generated = await readFile(new URL('../generated/messageContract.js', import.meta.url), 'utf8');
   const router = await readFile(new URL('../background/messageRouter.js', import.meta.url), 'utf8');

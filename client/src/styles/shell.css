@@ -484,14 +484,19 @@
   }
 
   .sidebar-in-progress-items {
-    position: static;
+    position: absolute;
+    left: calc(100% + 0.75rem);
+    right: auto;
+    bottom: 0;
     display: flex;
-    width: auto;
-    padding: 0;
-    border: none;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
+    width: 220px;
+    max-height: calc(100dvh - 1.5rem);
+    overflow-y: auto;
+    padding: 0.55rem 0;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-lg);
     flex-direction: column;
     gap: 0.25rem;
   }
@@ -672,6 +677,18 @@
 
   .bottom-toolbar.collapsed .sidebar-in-progress-chevron {
     display: none;
+  }
+
+  .bottom-toolbar.collapsed .sidebar-in-progress-items .toolbar-tab {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin: 0 0.5rem;
+  }
+
+  .bottom-toolbar.collapsed .sidebar-in-progress-items .toolbar-label {
+    display: inline;
   }
 
   .bottom-toolbar.collapsed .toolbar-tab svg {

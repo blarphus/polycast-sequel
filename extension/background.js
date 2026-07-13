@@ -14,6 +14,7 @@ const OFFLINE_WORDS_KEY = 'offlineDictionaryWords';
 const SELECTION_CONTEXT_MENU_ID = 'polycast-lookup-selection';
 const SITE_HIGHLIGHT_OVERRIDES_KEY = 'siteHighlightOverrides';
 const SITE_CONTENT_SCRIPTS_KEY = 'siteContentScriptIds';
+const PAGE_CONTENT_TAB_PATTERNS = ['*://*.youtube.com/*', 'https://*.netflix.com/*'];
 const PAGE_CUE_DATE_KEY = 'pageCueDate';
 const DEFAULT_OFFLINE_USER = {
   id: 'offline-local-user',
@@ -166,6 +167,13 @@ async function sendTabMessageSafe(tabId, payload, operation) {
   }
 }
 
+async function getPageContentTabs() {
+  const stored = await chrome.storage.local.get(SITE_CONTENT_SCRIPTS_KEY);
+  const optionalPatterns = Object.keys(stored[SITE_CONTENT_SCRIPTS_KEY] || {})
+    .map((origin) => `${origin}/*`);
+  return chrome.tabs.query({ url: [...PAGE_CONTENT_TAB_PATTERNS, ...optionalPatterns] });
+}
+
 
 
 const { activateOptionalSite, deactivateOptionalSite } = globalThis.PolycastActivationHandlers.create({
@@ -214,7 +222,7 @@ async function getDailyGoalSnapshot() {
 }
 
 async function broadcastDailyGoalUpdated(snapshot, extra = {}) {
-  const tabs = await chrome.tabs.query({});
+  const tabs = await getPageContentTabs();
   for (const tab of tabs) {
     await sendTabMessageSafe(tab.id, { type: 'DAILY_GOAL_UPDATED', snapshot, ...extra }, 'broadcast-daily-goal');
   }
@@ -494,7 +502,7 @@ async function syncOfflineWordsToAppTabs(words) {
 }
 
 async function broadcastWordsUpdated(savedWords) {
-  const tabs = await chrome.tabs.query({});
+  const tabs = await getPageContentTabs();
   for (const tab of tabs) {
     await sendTabMessageSafe(tab.id, { type: 'WORDS_UPDATED', revision: savedTokenRevision }, 'broadcast-words-updated');
   }
@@ -511,7 +519,7 @@ async function broadcastFallbackNotice(title, message, options = {}) {
   });
   console.warn('[polycast:fallback]', diagnostic);
   await surfaceBackgroundDiagnostic(diagnostic);
-  const tabs = await chrome.tabs.query({});
+  const tabs = await getPageContentTabs();
   for (const tab of tabs) {
     await sendTabMessageSafe(tab.id, { type: 'POLYCAST_FALLBACK_NOTICE', diagnostic }, 'broadcast-fallback-notice');
   }
@@ -519,7 +527,7 @@ async function broadcastFallbackNotice(title, message, options = {}) {
 }
 
 async function broadcastWildRecallUpdated(challenge, progression = null, diagnostic = null) {
-  const tabs = await chrome.tabs.query({});
+  const tabs = await getPageContentTabs();
   for (const tab of tabs) {
     await sendTabMessageSafe(tab.id, {
       type: 'WILD_RECALL_UPDATED', challenge, progression, diagnostic,
@@ -543,7 +551,7 @@ async function storeProgression(progression, { justAdded = false, awardedXp = 0 
 }
 
 async function broadcastTargetLanguageUpdated(targetLanguage) {
-  const tabs = await chrome.tabs.query({});
+  const tabs = await getPageContentTabs();
   for (const tab of tabs) {
     await sendTabMessageSafe(tab.id, { type: 'TARGET_LANGUAGE_UPDATED', targetLanguage }, 'broadcast-target-language');
   }
