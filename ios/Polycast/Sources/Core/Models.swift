@@ -261,8 +261,6 @@ struct SavedWord: Codable, Identifiable, Hashable {
     let introducedDate: String?
     let relearningDate: String?
     let stageSentences: [StageSentence]?
-    var lemmaId: String? = nil
-    var senseId: String? = nil
     var rankVersionId: String? = nil
     var lemmaFrequencyRank: Int? = nil
     var senseRank: Int? = nil
@@ -303,8 +301,6 @@ struct SavedWordResponse: Codable {
     let introducedDate: String?
     let relearningDate: String?
     let stageSentences: [StageSentence]?
-    let lemmaId: String?
-    let senseId: String?
     let rankVersionId: String?
     let lemmaFrequencyRank: Int?
     let senseRank: Int?
@@ -344,8 +340,6 @@ struct SavedWordResponse: Codable {
             introducedDate: introducedDate,
             relearningDate: relearningDate,
             stageSentences: stageSentences,
-            lemmaId: lemmaId,
-            senseId: senseId,
             rankVersionId: rankVersionId,
             lemmaFrequencyRank: lemmaFrequencyRank,
             senseRank: senseRank,
@@ -404,8 +398,6 @@ struct EnrichResponse: Codable {
     let lemma: String?
     let forms: String?
     let imageTerm: String?
-    let lemmaId: String?
-    let senseId: String?
     let rankVersionId: String?
     let rankVersion: String?
     let lemmaFrequencyRank: Int?

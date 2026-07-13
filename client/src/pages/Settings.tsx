@@ -138,6 +138,13 @@ export default function Settings() {
           </div>
         </div>
 
+        <div className="theme-toggle-row">
+          <span className="form-label" style={{ marginBottom: 0 }}>Dictionary ranking build</span>
+          <button className="btn btn-small" onClick={() => navigate('/catalog-progress')} type="button">
+            View live progress
+          </button>
+        </div>
+
         {canTakePlacement && (
           <div className="theme-toggle-row">
             <span className="form-label" style={{ marginBottom: 0 }}>

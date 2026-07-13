@@ -616,7 +616,9 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     correlationId: options.correlationId,
   });
   fallback_notices.push(...catalogLookup.diagnostics);
-  if (!catalogLookup.entry?.sense_id && definition && targetLang) {
+  const hasCatalogSense = catalogLookup.entry?.catalog_wiktionary_id
+    || catalogLookup.entry?.catalog_provisional_sense_id;
+  if (!hasCatalogSense && definition && targetLang) {
     const provisional = await persistProvisionalSense({
       language: targetLang,
       lemma: lemma || word,

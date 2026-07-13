@@ -1,7 +1,7 @@
 {
   "generatedAt": "deterministic-from-runtime-registration",
   "summary": {
-    "apiRoutes": 140,
+    "apiRoutes": 141,
     "extensionMessages": 28,
     "socketRegistrations": 12
   },
@@ -185,6 +185,10 @@
     {
       "method": "PATCH",
       "path": "/api/dictionary/words/:id/review"
+    },
+    {
+      "method": "GET",
+      "path": "/api/frequency-catalog/progress"
     },
     {
       "method": "GET",

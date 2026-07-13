@@ -246,6 +246,25 @@ function basicDefinition(word: string, sentence?: string | null) {
   return context ? `Saved offline from: ${context}` : `Saved offline. Add a definition when the server is available.`;
 }
 
+function offlineFrequencyDiagnostic(word: string, targetLanguage: string | null | undefined, emit = false) {
+  const diagnostic = {
+    code: 'offline_frequency_rank_unavailable',
+    severity: 'warning' as const,
+    title: 'Saved ranking unavailable offline',
+    message: 'This entry was saved offline without a catalog rank. The warning remains visible until the server resolves it during synchronization.',
+    source: 'web.offline-dictionary',
+    operation: 'save-word',
+    detail: `language=${targetLanguage || 'unknown'}; word=${word}`,
+  };
+  if (emit) {
+    emitFallbackDiagnostic(diagnostic, {
+      source: 'web.offline-dictionary',
+      operation: 'save-word',
+    });
+  }
+  return diagnostic;
+}
+
 function toSavedWord(data: SaveWordData): SavedWord {
   const now = new Date().toISOString();
   const user = getOfflineUser();
@@ -259,20 +278,15 @@ function toSavedWord(data: SaveWordData): SavedWord {
     created_at: now,
     frequency: data.frequency ?? null,
     frequency_count: data.frequency_count ?? null,
-    lemma_id: data.lemma_id ?? null,
-    sense_id: data.sense_id ?? null,
     rank_version_id: data.rank_version_id ?? null,
     lemma_frequency_rank: data.lemma_frequency_rank ?? null,
     sense_rank: data.sense_rank ?? null,
     lemma_occurrences_per_billion: data.lemma_occurrences_per_billion ?? null,
     frequency_confidence: data.frequency_confidence ?? 'unavailable',
     frequency_sources: data.frequency_sources ?? [],
-    ranking_diagnostics: data.sense_rank == null ? [{
-      code: 'offline_frequency_rank_unavailable',
-      severity: 'warning',
-      title: 'Saved ranking unavailable offline',
-      message: 'This entry was saved offline without a catalog rank. The warning remains visible until the server resolves it during synchronization.',
-    }] : [],
+    ranking_diagnostics: data.sense_rank == null
+      ? [offlineFrequencyDiagnostic(data.word, data.target_language)]
+      : [],
     example_sentence: data.example_sentence || data.sentence_context || null,
     sentence_translation: data.sentence_translation || null,
     part_of_speech: data.part_of_speech || null,
@@ -361,23 +375,18 @@ function saveWord(data: SaveWordData) {
   const words = readWords();
   const targetLanguage = data.target_language || getOfflineUser().target_language || null;
   const existing = words.find((word) => {
-    const sameSense = data.sense_id
-      ? word.sense_id === data.sense_id
-      : word.word.toLowerCase() === data.word.toLowerCase()
-        && word.definition === (data.definition || basicDefinition(data.word, data.sentence_context));
+    const canonicalWord = (word.lemma || word.word).trim().normalize('NFC').toLocaleLowerCase();
+    const incomingWord = (data.lemma || data.word).trim().normalize('NFC').toLocaleLowerCase();
+    const sameSense = canonicalWord === incomingWord
+      && word.definition.trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+        === (data.definition || basicDefinition(data.word, data.sentence_context)).trim().replace(/\s+/g, ' ').toLocaleLowerCase();
     return sameSense && word.target_language === targetLanguage;
   });
 
   if (existing) return { ...existing, _created: false };
 
   if (data.sense_rank == null) {
-    emitFallbackDiagnostic({
-      code: 'offline_frequency_rank_unavailable',
-      severity: 'warning',
-      title: 'Saved ranking unavailable offline',
-      message: 'This entry is being saved without a server catalog rank and will remain visibly marked until synchronization resolves it.',
-      detail: `language=${targetLanguage || 'unknown'}; word=${data.word}`,
-    }, { source: 'web.offline-dictionary', operation: 'save-word' });
+    offlineFrequencyDiagnostic(data.word, targetLanguage, true);
   }
 
   const saved = toSavedWord({ ...data, target_language: targetLanguage || undefined });

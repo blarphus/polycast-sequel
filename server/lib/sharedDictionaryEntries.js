@@ -49,8 +49,11 @@ export function sharedEntryToEnrichment(entry) {
     part_of_speech: entry.part_of_speech || null,
     frequency: entry.frequency ?? null,
     frequency_count: entry.frequency_count ?? null,
-    lemma_id: entry.lemma_id ?? null,
-    sense_id: entry.sense_id ?? null,
+    catalog_lemma_key: entry.catalog_lemma_key ?? null,
+    catalog_wiktionary_id: entry.catalog_wiktionary_id ?? null,
+    catalog_sense_index: entry.catalog_sense_index ?? null,
+    catalog_gloss_index: entry.catalog_gloss_index ?? null,
+    catalog_provisional_sense_id: entry.catalog_provisional_sense_id ?? null,
     rank_version_id: entry.rank_version_id ?? null,
     lemma_frequency_rank: entry.lemma_frequency_rank ?? null,
     sense_rank: entry.sense_rank == null ? null : Number(entry.sense_rank),
@@ -101,11 +104,12 @@ export async function storeSharedEntry(payload, db = pool) {
        definition_hash, definition, translation, frequency, frequency_count,
        example_sentence, sentence_translation, image_url, image_term, lemma, forms,
        definition_source, matched_gloss, source_sense_index,
-       lemma_id, sense_id, rank_version_id, lemma_frequency_rank, sense_rank,
+       catalog_lemma_key, catalog_wiktionary_id, catalog_sense_index, catalog_gloss_index,
+       catalog_provisional_sense_id, rank_version_id, lemma_frequency_rank, sense_rank,
        lemma_occurrences_per_billion, frequency_confidence, frequency_sources
      )
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
-             $20, $21, $22, $23, $24, $25, $26, $27::jsonb)
+             $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30::jsonb)
      ON CONFLICT (target_language, word_key, part_of_speech_key, definition_hash)
      DO UPDATE SET
        use_count = shared_dictionary_entries.use_count + 1,
@@ -131,8 +135,11 @@ export async function storeSharedEntry(payload, db = pool) {
       payload.definition_source ?? null,
       payload.matched_gloss ?? null,
       payload.sense_index ?? null,
-      payload.lemma_id ?? null,
-      payload.sense_id ?? null,
+      payload.catalog_lemma_key ?? null,
+      payload.catalog_wiktionary_id ?? null,
+      payload.catalog_sense_index ?? null,
+      payload.catalog_gloss_index ?? null,
+      payload.catalog_provisional_sense_id ?? null,
       payload.rank_version_id ?? null,
       payload.lemma_frequency_rank ?? null,
       payload.sense_rank ?? null,

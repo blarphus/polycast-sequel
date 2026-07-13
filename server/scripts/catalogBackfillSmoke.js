@@ -11,19 +11,20 @@ const catalogVersion = `catalog-smoke-${suffix}`;
 try {
   const { rows: [user] } = await pool.query(
     `INSERT INTO users (username, password_hash, target_language, native_language)
-     VALUES ($1, 'not-a-real-hash', 'en', 'es') RETURNING id`,
+     VALUES ($1, 'not-a-real-hash', 'es', 'en') RETURNING id`,
     [username],
   );
-  await pool.query(
+  const { rows: sourceRows } = await pool.query(
     `INSERT INTO wiktionary (lang, key, word, pos, senses, forms, translations)
      VALUES
-       ('en', 'the', 'the', 'article', $1::jsonb, ARRAY['the'], '[]'::jsonb),
-       ('en', 'run', 'run', 'verb', $2::jsonb, ARRAY['run', 'runs', 'running', 'ran'], '[]'::jsonb),
-       ('en', 'sprint', 'sprint', 'verb', $3::jsonb, ARRAY['sprint', 'sprints'], '[]'::jsonb)`,
+       ('es', 'el', 'el', 'article', $1::jsonb, ARRAY['el'], '[]'::jsonb),
+       ('es', 'correr', 'correr', 'verb', $2::jsonb, ARRAY['correr', 'corriendo', 'corrió'], '[]'::jsonb),
+       ('es', 'correr', 'correr', 'verb', $3::jsonb, ARRAY['correr'], '[]'::jsonb)
+     RETURNING id`,
     [
-      JSON.stringify([{ id: `en-the-${suffix}`, glosses: ['definite article'] }]),
-      JSON.stringify([{ id: `en-run-${suffix}`, glosses: ['move quickly'] }]),
-      JSON.stringify([{ id: `en-run-${suffix}`, glosses: ['dash quickly'] }]),
+      JSON.stringify([{ glosses: ['definite article'] }]),
+      JSON.stringify([{ glosses: ['move quickly'] }]),
+      JSON.stringify([{ glosses: ['dash quickly'] }]),
     ],
   );
   await pool.query(
@@ -31,10 +32,10 @@ try {
        user_id, word, lemma, forms, translation, definition,
        target_language, part_of_speech, queue_position
      ) VALUES
-       ($1, 'the', 'the', '["the"]', 'el', 'definite article', 'en', 'article', 4),
-       ($1, 'running', 'run', '["run","running"]', 'correr', 'move quickly', 'en', 'verb', 9),
-       ($1, 'florped', 'florp', '["florp","florped"]', 'inventado',
-        'perform an imaginary action', 'en', 'verb', 12)`,
+       ($1, 'el', 'el', '["el"]', 'the', 'definite article', 'es', 'article', 4),
+       ($1, 'corriendo', 'correr', '["correr","corriendo"]', 'run', 'move quickly', 'es', 'verb', 9),
+       ($1, 'florpando', 'florpar', '["florpar","florpando"]', 'invented',
+        'perform an imaginary action', 'es', 'verb', 12)`,
     [user.id],
   );
 
@@ -51,43 +52,50 @@ try {
 
   const { rows } = await pool.query(
     `SELECT sw.word, sw.lemma, sw.queue_position, sw.lemma_frequency_rank,
-            sw.sense_rank, sw.lemma_id, sw.sense_id, v.version,
-            ds.provisional
+            sw.sense_rank, sw.catalog_lemma_key, sw.catalog_wiktionary_id,
+            sw.catalog_sense_index, sw.catalog_gloss_index,
+            sw.catalog_provisional_sense_id, v.version
        FROM saved_words sw
        JOIN frequency_catalog_versions v ON v.id = sw.rank_version_id
-       JOIN dictionary_senses ds ON ds.id = sw.sense_id
       WHERE sw.user_id = $1
       ORDER BY sw.queue_position`,
     [user.id],
   );
-  assert.deepEqual(rows.map((row) => row.word), ['the', 'run', 'florp']);
+  assert.deepEqual(rows.map((row) => row.word), ['el', 'correr', 'florpar']);
   assert.deepEqual(rows.map((row) => row.queue_position), [4, 9, 12]);
-  assert.ok(rows.every((row) => row.lemma_id && row.sense_id && row.lemma_frequency_rank && row.sense_rank));
+  assert.ok(rows.every((row) => row.catalog_lemma_key && row.lemma_frequency_rank && row.sense_rank));
   assert.ok(rows.every((row) => row.version === catalogVersion));
-  assert.equal(rows[0].provisional, false);
-  assert.equal(rows[1].provisional, false);
-  assert.equal(rows[2].provisional, true);
+  assert.ok(rows[0].catalog_wiktionary_id);
+  assert.ok(rows[1].catalog_wiktionary_id);
+  assert.equal(rows[2].catalog_wiktionary_id, null);
+  assert.ok(rows[2].catalog_provisional_sense_id);
 
-  const { rows: [duplicates] } = await pool.query(
-    `SELECT COUNT(*)::int AS count
-       FROM dictionary_senses ds
-       JOIN dictionary_lemmas dl ON dl.id = ds.lemma_id
-      WHERE dl.language = 'en' AND dl.lemma_key IN ('the', 'run') AND ds.provisional`,
+  const { rows: [compactCounts] } = await pool.query(
+    `SELECT COUNT(*)::int AS count,
+            COUNT(DISTINCT (wiktionary_id, sense_index, gloss_index))::int AS distinct_count
+       FROM compact_sense_rankings csr
+       JOIN frequency_catalog_versions v ON v.id = csr.catalog_version_id
+      WHERE v.version = $1 AND csr.wiktionary_id = ANY($2::int[])`,
+    [catalogVersion, sourceRows.map((row) => row.id)],
   );
-  assert.equal(duplicates.count, 0);
-  const { rows: [collidingSourceIds] } = await pool.query(
-    `SELECT COUNT(*)::int AS count, COUNT(DISTINCT source_sense_id)::int AS distinct_count
-       FROM dictionary_senses
-      WHERE source = 'wiktionary' AND definition IN ('move quickly', 'dash quickly')`,
+  assert.equal(compactCounts.count, 3);
+  assert.equal(compactCounts.distinct_count, 3);
+
+  const { rows: [progress] } = await pool.query(
+    `SELECT status, current_language, current_phase
+       FROM frequency_catalog_build_runs WHERE version = $1`,
+    [catalogVersion],
   );
-  assert.equal(collidingSourceIds.count, 2);
-  assert.equal(collidingSourceIds.distinct_count, 2);
+  assert.equal(progress.status, 'succeeded');
+  assert.equal(progress.current_language, 'es');
+  assert.equal(progress.current_phase, 'activation');
+
   console.log(JSON.stringify({
-    event: 'catalog_backfill_smoke_passed',
+    event: 'compact_spanish_catalog_backfill_smoke_passed',
     catalogVersion,
     existingWordsBackfilled: rows.length,
     queuePositions: rows.map((row) => row.queue_position),
-    provisionalSenses: rows.filter((row) => row.provisional).length,
+    provisionalSenses: rows.filter((row) => row.catalog_provisional_sense_id).length,
   }));
 } finally {
   await pool.end();

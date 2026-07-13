@@ -7,8 +7,6 @@ export interface EnrichedWord {
   part_of_speech: string | null;
   frequency: number | null;
   frequency_count: number | null;
-  lemma_id?: string | null;
-  sense_id?: string | null;
   rank_version_id?: string | null;
   rank_version?: string | null;
   lemma_frequency_rank?: number | null;
@@ -147,8 +145,6 @@ export interface SaveWordData {
   forms?: string | null;
   image_term?: string | null;
   shared_entry_id?: string | null;
-  lemma_id?: string | null;
-  sense_id?: string | null;
   rank_version_id?: string | null;
   lemma_frequency_rank?: number | null;
   sense_rank?: number | null;
@@ -189,8 +185,6 @@ export interface SavedWord {
   relearning_date: string | null;
   stage_sentences?: Array<{ stage: number; example: string; translation: string }>;
   shared_entry_id?: string | null;
-  lemma_id?: string | null;
-  sense_id?: string | null;
   rank_version_id?: string | null;
   lemma_frequency_rank?: number | null;
   sense_rank?: number | null;

@@ -32,7 +32,6 @@ const saveWordBody = z.object({
   image_url: z.string().nullable().optional(), lemma: z.string().nullable().optional(),
   forms: z.string().nullable().optional(), surface_form: z.string().nullable().optional(),
   image_term: z.string().nullable().optional(), shared_entry_id: z.string().uuid().nullable().optional(),
-  lemma_id: z.string().uuid().nullable().optional(), sense_id: z.string().uuid().nullable().optional(),
   rank_version_id: z.string().uuid().nullable().optional(), lemma_frequency_rank: z.number().int().nullable().optional(),
   sense_rank: z.number().int().nullable().optional(), lemma_occurrences_per_billion: z.number().nullable().optional(),
   frequency_confidence: z.enum(['high', 'medium', 'low', 'unavailable']).nullable().optional(),

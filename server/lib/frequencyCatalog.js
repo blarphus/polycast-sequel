@@ -4,7 +4,8 @@ import logger from '../logger.js';
 import { normalizeFallbackDiagnostic, persistFallbackDiagnostic } from './fallbackDiagnostics.js';
 import { canonicalLemmaKey } from './normalizeWordFields.js';
 
-export const FREQUENCY_LANGUAGES = Object.freeze(['en', 'es', 'pt', 'fr', 'de', 'ja']);
+// Spanish is deliberately the only materialized catalog for this iteration.
+export const FREQUENCY_LANGUAGES = Object.freeze(['es']);
 const FREQUENCY_LANGUAGE_SET = new Set(FREQUENCY_LANGUAGES);
 
 export function baseFrequencyLanguage(language) {
@@ -31,6 +32,22 @@ export function bandForLemmaRank(rank) {
   return 1;
 }
 
+async function reportFallbackDiagnostic(db, input, context, logMessage) {
+  const diagnostic = normalizeFallbackDiagnostic(input, context);
+  logger.warn({ diagnostic }, logMessage);
+  try {
+    await persistFallbackDiagnostic(db, diagnostic);
+  } catch (error) {
+    logger.error({
+      event: 'fallback_diagnostic_persistence_failed',
+      operation: input.operation,
+      correlationId: diagnostic.correlationId,
+      error: error instanceof Error ? error.message : String(error),
+    }, 'Frequency catalog fallback remained visible but could not be persisted');
+  }
+  return diagnostic;
+}
+
 export async function lookupFrequencyCatalog({
   db = pool,
   language,
@@ -39,56 +56,102 @@ export async function lookupFrequencyCatalog({
   definition = null,
   correlationId = null,
 }) {
+  const requestedLanguage = String(language || '').trim().toLowerCase().split('-')[0];
   const lang = baseFrequencyLanguage(language);
-  if (!lang || !lemma) return { entry: null, diagnostics: [] };
+  if (!lemma) return { entry: null, diagnostics: [] };
+  if (!lang) {
+    const diagnostic = await reportFallbackDiagnostic(db, {
+      code: 'frequency_catalog_language_unavailable',
+      severity: 'warning',
+      title: 'Saved frequency ranking unavailable for this language',
+      message: `The compact frequency catalog currently supports Spanish only. “${lemma}” remains visibly unranked.`,
+      source: 'server.frequency-catalog',
+      operation: 'lookup-ranking',
+      pipeline: 'frequency_lookup',
+      stage: 'language-not-materialized',
+      language: requestedLanguage || null,
+      selectedAction: 'preserve-unranked-entry',
+      detail: `supportedLanguages=${FREQUENCY_LANGUAGES.join(',')}`,
+    }, { correlationId }, 'Frequency catalog language unavailable');
+    return { entry: null, diagnostics: [diagnostic] };
+  }
+
   const lemmaKey = canonicalLemmaKey(lemma);
   const definitionHash = definition ? definitionFingerprint(definition) : null;
-  const { rows } = await db.query(
+  const { rows: [lemmaRow] } = await db.query(
     `SELECT
        v.id AS rank_version_id, v.version AS rank_version,
-       l.id AS lemma_id, l.canonical_lemma,
-       lf.lemma_rank, lf.occurrences_per_billion AS lemma_occurrences_per_billion,
-       lf.zipf, lf.frequency_band, lf.confidence AS frequency_confidence,
-       lf.percentile AS frequency_percentile, lf.sources AS frequency_sources,
-       s.id AS sense_id, sr.sense_order, sr.sense_rank
+       lr.lemma_key AS catalog_lemma_key, lr.canonical_lemma,
+       lr.lemma_rank, lr.occurrences_per_billion AS lemma_occurrences_per_billion,
+       lr.zipf, lr.frequency_band, lr.confidence AS frequency_confidence,
+       lr.percentile AS frequency_percentile, lr.sources AS frequency_sources
      FROM frequency_catalog_versions v
-     JOIN dictionary_lemmas l ON l.language = $1 AND l.lemma_key = $2
-     JOIN lemma_frequency_rankings lf ON lf.catalog_version_id = v.id AND lf.lemma_id = l.id
-     LEFT JOIN dictionary_senses s ON s.lemma_id = l.id AND s.active
-       AND ($3::text IS NULL OR s.part_of_speech = '' OR LOWER(s.part_of_speech) = LOWER($3))
-       AND ($4::text IS NULL OR s.definition_hash = $4)
-     LEFT JOIN sense_rankings sr ON sr.catalog_version_id = v.id AND sr.sense_id = s.id
+     JOIN compact_lemma_rankings lr
+       ON lr.catalog_version_id = v.id AND lr.language = $1 AND lr.lemma_key = $2
      WHERE v.status = 'active'
-     ORDER BY CASE WHEN s.definition_hash = $4 THEN 0 ELSE 1 END, sr.sense_order, s.id
      LIMIT 1`,
-    [lang, lemmaKey, partOfSpeech, definitionHash],
+    [lang, lemmaKey],
   );
-  if (rows[0]) return { entry: rows[0], diagnostics: [] };
 
-  const diagnostic = normalizeFallbackDiagnostic({
-    code: 'frequency_catalog_entry_unavailable',
-    severity: 'warning',
-    title: 'Frequency catalog entry unavailable',
-    message: `No active saved ranking was found for “${lemma}”. This entry is visibly placed in the unranked tail until the catalog is rebuilt.`,
-    source: 'server.frequency-catalog',
-    operation: 'lookup-ranking',
-    pipeline: 'frequency_lookup',
-    stage: 'active-catalog-read',
-    language: lang,
-    detail: `lemmaKey=${lemmaKey}; partOfSpeech=${partOfSpeech || 'unknown'}; definitionHash=${definitionHash || 'none'}`,
-  }, { correlationId });
-  logger.warn({ diagnostic, lemmaKey, language: lang }, 'Saved frequency ranking unavailable');
-  try {
-    await persistFallbackDiagnostic(db, diagnostic);
-  } catch (error) {
-    logger.error({
-      event: 'fallback_diagnostic_persistence_failed',
-      operation: 'persist-frequency-catalog-fallback',
-      correlationId: diagnostic.correlationId,
-      error: error instanceof Error ? error.message : String(error),
-    }, 'Frequency catalog fallback remained visible but could not be persisted');
+  if (!lemmaRow) {
+    const diagnostic = await reportFallbackDiagnostic(db, {
+      code: 'frequency_catalog_entry_unavailable',
+      severity: 'warning',
+      title: 'Frequency catalog entry unavailable',
+      message: `No active saved Spanish ranking was found for “${lemma}”. This entry is visibly placed in the unranked tail until the catalog is rebuilt.`,
+      source: 'server.frequency-catalog',
+      operation: 'lookup-ranking',
+      pipeline: 'frequency_lookup',
+      stage: 'active-catalog-read',
+      language: lang,
+      selectedAction: 'preserve-unranked-entry',
+      detail: `lemmaKey=${lemmaKey}; partOfSpeech=${partOfSpeech || 'unknown'}; definitionHash=${definitionHash || 'none'}`,
+    }, { correlationId }, 'Saved Spanish frequency ranking unavailable');
+    return { entry: null, diagnostics: [diagnostic] };
   }
-  return { entry: null, diagnostics: [diagnostic] };
+
+  const { rows: [senseRow] } = await db.query(
+    `SELECT w.id AS catalog_wiktionary_id,
+            (sense.ordinality - 1)::int AS catalog_sense_index,
+            (gloss.ordinality - 1)::int AS catalog_gloss_index,
+            sr.sense_order, sr.sense_rank
+       FROM wiktionary w
+       CROSS JOIN LATERAL jsonb_array_elements(w.senses) WITH ORDINALITY sense(value, ordinality)
+       CROSS JOIN LATERAL jsonb_array_elements_text(
+         COALESCE(sense.value->'glosses', '[]'::jsonb)
+       ) WITH ORDINALITY gloss(value, ordinality)
+       JOIN compact_sense_rankings sr
+         ON sr.catalog_version_id = $3
+        AND sr.wiktionary_id = w.id
+        AND sr.sense_index = sense.ordinality - 1
+        AND sr.gloss_index = gloss.ordinality - 1
+      WHERE w.lang = $1 AND w.key = unaccent($2)
+        AND LOWER(BTRIM(w.word)) = $2
+        AND ($4::text IS NULL OR LOWER(w.pos) = LOWER($4))
+        AND ($5::text IS NULL OR encode(digest(
+              LOWER(REGEXP_REPLACE(BTRIM(gloss.value), '\\s+', ' ', 'g')),
+              'sha256'
+            ), 'hex') = $5)
+      ORDER BY CASE WHEN $5::text IS NOT NULL THEN 0 ELSE 1 END,
+               sr.sense_order, w.id, sense.ordinality, gloss.ordinality
+      LIMIT 1`,
+    [lang, lemmaKey, lemmaRow.rank_version_id, partOfSpeech, definitionHash],
+  );
+
+  return {
+    entry: {
+      ...lemmaRow,
+      ...(senseRow || {
+        catalog_wiktionary_id: null,
+        catalog_sense_index: null,
+        catalog_gloss_index: null,
+        sense_order: null,
+        sense_rank: null,
+      }),
+      catalog_provisional_sense_id: null,
+    },
+    diagnostics: [],
+  };
 }
 
 export async function persistProvisionalSense({
@@ -103,97 +166,99 @@ export async function persistProvisionalSense({
   if (!lang || !lemma || !definition) return { entry: null, diagnostics: [] };
   const lemmaKey = canonicalLemmaKey(lemma);
   const fingerprint = definitionFingerprint(definition);
-  const sourceSenseId = `polycast:${crypto.createHash('sha256').update(`${lang}\0${lemmaKey}\0${partOfSpeech || ''}\0${fingerprint}`).digest('hex')}`;
   const client = typeof db.connect === 'function' ? await db.connect() : db;
   const release = client !== db;
   try {
     await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`provisional-sense:${lang}`]);
     const { rows: [lemmaRow] } = await client.query(
-      `INSERT INTO dictionary_lemmas (language, lemma_key, canonical_lemma, provenance)
-       VALUES ($1, $2, $3, jsonb_build_object('source', 'polycast-provisional'))
+      `INSERT INTO catalog_provisional_lemmas (language, lemma_key, canonical_lemma)
+       VALUES ($1, $2, $3)
        ON CONFLICT (language, lemma_key) DO UPDATE SET updated_at = NOW()
-       RETURNING id`,
+       RETURNING id, canonical_lemma`,
       [lang, lemmaKey, String(lemma).trim().normalize('NFC')],
     );
     const { rows: [senseRow] } = await client.query(
-      `INSERT INTO dictionary_senses (
-         lemma_id, part_of_speech, definition, definition_hash, source,
-         source_sense_id, source_order, provisional, provenance
-       ) VALUES ($1, $2, $3, $4, 'polycast-provisional', $5, 2147483647, TRUE,
-                 jsonb_build_object('reason', 'dictionary-source-miss'))
-       ON CONFLICT (source, source_sense_id) DO UPDATE SET
-         definition = EXCLUDED.definition, definition_hash = EXCLUDED.definition_hash,
-         updated_at = NOW(), active = TRUE
-       RETURNING id`,
-      [lemmaRow.id, partOfSpeech || '', definition, fingerprint, sourceSenseId],
+      `INSERT INTO catalog_provisional_senses (
+         lemma_id, part_of_speech, definition, definition_hash, sense_order
+       )
+       SELECT $1, $2, $3, $4,
+              COALESCE((SELECT MAX(sense_order) + 1 FROM catalog_provisional_senses WHERE lemma_id = $1), 1)
+       ON CONFLICT (lemma_id, part_of_speech, definition_hash) DO UPDATE SET
+         definition = EXCLUDED.definition, updated_at = NOW()
+       RETURNING id, sense_order`,
+      [lemmaRow.id, partOfSpeech || '', definition, fingerprint],
     );
     const { rows: [active] } = await client.query(
-      `SELECT id, version FROM frequency_catalog_versions WHERE status = 'active' LIMIT 1`,
+      `SELECT v.id, v.version,
+              lr.lemma_rank, lr.occurrences_per_billion,
+              lr.zipf, lr.frequency_band, lr.confidence, lr.percentile, lr.sources,
+              COALESCE((SELECT MAX(lemma_rank) FROM compact_lemma_rankings WHERE catalog_version_id = v.id AND language = $1), 0) AS max_lemma_rank,
+              COALESCE((SELECT MAX(sense_rank) FROM compact_sense_rankings WHERE catalog_version_id = v.id), 0) AS max_sense_rank
+         FROM frequency_catalog_versions v
+         LEFT JOIN compact_lemma_rankings lr
+           ON lr.catalog_version_id = v.id AND lr.language = $1 AND lr.lemma_key = $2
+        WHERE v.status = 'active' LIMIT 1`,
+      [lang, lemmaKey],
     );
-    if (active) {
-      await client.query(
-        `INSERT INTO lemma_frequency_rankings (
-           catalog_version_id, lemma_id, language, lemma_rank, frequency_band,
-           confidence, percentile, sources
-         )
-         SELECT $1, $2, $3, COALESCE(MAX(lemma_rank), 0) + 1, 1,
-                'unavailable', 0, '[]'::jsonb
-           FROM lemma_frequency_rankings
-          WHERE catalog_version_id = $1 AND language = $3
-         ON CONFLICT (catalog_version_id, lemma_id) DO NOTHING`,
-        [active.id, lemmaRow.id, lang],
-      );
-      await client.query(
-        `INSERT INTO sense_rankings (
-           catalog_version_id, sense_id, language, lemma_rank, sense_order, sense_rank
-         )
-         SELECT $1, $2, $3, lf.lemma_rank,
-                COALESCE((SELECT MAX(sr.sense_order) + 1
-                            FROM sense_rankings sr
-                            JOIN dictionary_senses ds ON ds.id = sr.sense_id
-                           WHERE sr.catalog_version_id = $1 AND ds.lemma_id = $4), 1),
-                COALESCE((SELECT MAX(sr.sense_rank) + 1
-                            FROM sense_rankings sr
-                           WHERE sr.catalog_version_id = $1 AND sr.language = $3), 1)
-           FROM lemma_frequency_rankings lf
-          WHERE lf.catalog_version_id = $1 AND lf.lemma_id = $4
-         ON CONFLICT (catalog_version_id, sense_id) DO NOTHING`,
-        [active.id, senseRow.id, lang, lemmaRow.id],
-      );
-    }
     await client.query('COMMIT');
 
-    const diagnostic = normalizeFallbackDiagnostic({
+    const diagnostic = await reportFallbackDiagnostic(db, {
       code: 'provisional_dictionary_sense_created',
       severity: 'warning',
       title: 'Provisional dictionary sense created',
-      message: `No canonical dictionary sense matched “${lemma}”, so Polycast saved this meaning as a provisional sense with a visible tail ranking.`,
+      message: `No canonical Wiktionary sense matched “${lemma}”, so Polycast preserved this user meaning in the compact provisional tail.`,
       source: 'server.frequency-catalog',
       operation: 'create-provisional-sense',
       pipeline: 'sense_identity',
       stage: 'dictionary-source-miss',
       language: lang,
-      entityType: 'dictionary_sense',
+      entityType: 'catalog_provisional_sense',
       entityId: senseRow.id,
       selectedAction: active ? 'assigned-provisional-tail-rank' : 'awaiting-catalog-activation',
       catalogVersion: active?.version,
-      detail: `lemmaKey=${lemmaKey}; partOfSpeech=${partOfSpeech || 'unknown'}; sourceSenseId=${sourceSenseId}`,
-    }, { correlationId });
-    await persistFallbackDiagnostic(db, diagnostic);
-    const resolved = await lookupFrequencyCatalog({ db, language: lang, lemma, partOfSpeech, definition, correlationId });
-    return { entry: resolved.entry, diagnostics: [diagnostic, ...resolved.diagnostics] };
+      detail: `lemmaKey=${lemmaKey}; partOfSpeech=${partOfSpeech || 'unknown'}; definitionHash=${fingerprint}`,
+    }, { correlationId }, 'Compact provisional sense created');
+    if (!active) return { entry: null, diagnostics: [diagnostic] };
+
+    const provisionalLemmaRank = active.lemma_rank == null
+      ? Number(active.max_lemma_rank) + Number(lemmaRow.id)
+      : Number(active.lemma_rank);
+    const provisionalSenseRank = Number(active.max_sense_rank) + Number(senseRow.id);
+    return {
+      entry: {
+        rank_version_id: active.id,
+        rank_version: active.version,
+        catalog_lemma_key: lemmaKey,
+        canonical_lemma: lemmaRow.canonical_lemma,
+        lemma_rank: provisionalLemmaRank,
+        lemma_occurrences_per_billion: active.occurrences_per_billion,
+        zipf: active.zipf,
+        frequency_band: active.frequency_band ?? 1,
+        frequency_confidence: active.confidence ?? 'unavailable',
+        frequency_percentile: active.percentile ?? 0,
+        frequency_sources: active.sources || [],
+        catalog_wiktionary_id: null,
+        catalog_sense_index: null,
+        catalog_gloss_index: null,
+        catalog_provisional_sense_id: senseRow.id,
+        sense_order: senseRow.sense_order,
+        sense_rank: provisionalSenseRank,
+      },
+      diagnostics: [diagnostic],
+    };
   } catch (error) {
     try {
       await client.query('ROLLBACK');
     } catch (rollbackError) {
-      logger.error('frequency_catalog_rollback_failed', {
+      logger.error({
+        event: 'frequency_catalog_rollback_failed',
         pipeline: 'sense_identity',
         stage: 'rollback',
         language: lang,
         lemmaKey,
-        error: rollbackError,
-      });
+        error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+      }, 'Compact provisional sense rollback failed visibly');
     }
     throw error;
   } finally {
@@ -204,8 +269,11 @@ export async function persistProvisionalSense({
 export function catalogEntryToWordFields(entry) {
   if (!entry) return {};
   return {
-    lemma_id: entry.lemma_id,
-    sense_id: entry.sense_id || null,
+    catalog_lemma_key: entry.catalog_lemma_key,
+    catalog_wiktionary_id: entry.catalog_wiktionary_id || null,
+    catalog_sense_index: entry.catalog_sense_index ?? null,
+    catalog_gloss_index: entry.catalog_gloss_index ?? null,
+    catalog_provisional_sense_id: entry.catalog_provisional_sense_id || null,
     rank_version_id: entry.rank_version_id,
     rank_version: entry.rank_version,
     lemma_frequency_rank: entry.lemma_rank,

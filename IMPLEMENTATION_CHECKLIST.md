@@ -12,7 +12,7 @@ This is the live completion ledger for `AUDIT_REPORT.md`. An item is checked onl
 - [x] **AUD-006 — Make retries idempotency-safe.** Automatic retries are read-only by default; review mutations use persisted user/operation/body-bound idempotency keys with lost-response replay and key-reuse rejection tests.
 - [x] **AUD-007 — Remove extension HTML injection and constrain page activation.** Remote text never reaches HTML sinks, hostile payload tests pass, generic sites require exact-origin optional permission and registration, and every denial remains visible.
 - [x] **AUD-008 — Remove vulnerable/unused dependencies.** Unused inference dependencies were removed; production CycloneDX SBOMs, zero-vulnerability audits, lockfile/exception policy, clean `npm ci` CI, and Dependabot automation are enforced.
-- [x] **AUD-009 — Every fallback is detailed, structured, logged, and visible.** The generated 53-code guarded-path inventory has zero incomplete occurrences; the check gate verifies structured source/operation/correlation, logging, and relevant-UI delivery. Web/iOS/extension/server/Worker adapter and fault tests cover hostile payloads, provider alternates, offline/session paths, retries, signaling rejection, scheduling repair, and fallback delivery.
+- [x] **AUD-009 — Every fallback is detailed, structured, logged, and visible.** The generated 59-code guarded-path inventory has zero incomplete occurrences; the check gate verifies structured source/operation/correlation, logging, and relevant-UI delivery. Web/iOS/extension/server/Worker adapter and fault tests cover hostile payloads, provider alternates, offline/session paths, retries, signaling rejection, scheduling repair, and fallback delivery.
 - [x] **AUD-010 — One truthful green release check.** The final root check passed across contracts, fallbacks, formatting, tools, inventories, web, server, extension, Worker, fresh/legacy PostgreSQL, and iOS unit/UI tests. A sanitized isolated workspace then completed pinned Node 22.12.0 clean installs and the credential-free `check:fast` gate; this proof also found and fixed a benchmark `--help` path that had incorrectly required a local Gemini key.
 
 ## P2 — pipeline simplification, performance, and architecture
@@ -34,6 +34,15 @@ This is the live completion ledger for `AUDIT_REPORT.md`. An item is checked onl
 - [x] **AUD-022 — Repair and consolidate tools/prototypes.** Enrichment imports/smoke mode, common WSD tooling/dependencies, maintained-tool help and non-writing modes, archived one-time prototypes, and generated research simulator/catalog drift checks are enforced.
 - [x] **AUD-023 — Eliminate local generated bloat safely.** Checks use one `/tmp` DerivedData location; ignored legacy build directories have a size-reporting cleanup command that requires literal confirmation and never deletes user artifacts automatically.
 - [x] **AUD-024 — Root ownership and release automation.** Root setup/check/format/audit/generate/SBOM/inventory/registration/clean commands, architecture ownership and cross-platform matrices, version policy, CI, and dependency automation are present.
+
+## Compact Spanish frequency catalog follow-up
+
+- [ ] Replace the duplicated multi-gigabyte lemma/sense catalog with compact Spanish-only ranks that reference Wiktionary rows without copying definitions.
+- [ ] Preserve meaning-bearing accents (`el` versus `él`) while canonicalizing inflected saved words to their lemma/infinitive.
+- [ ] Backfill every existing Spanish saved/shared entry without changing its queue position, verify every defined meaning has one canonical or visibly provisional sense rank, and activate atomically.
+- [ ] Remove the obsolete heavy tables, UUID identity fields, client/extension/iOS payload fields, and no-longer-called catalog code only after the compact runtime is live.
+- [ ] Expose exact build counts, all phases, rates, heartbeats, detailed diagnostics, and phase/overall ETA on a two-second live website tracker.
+- [ ] Prove migration, server, web, extension, iOS, production deployment, database reclamation, and live Spanish activation before marking this follow-up complete.
 
 ## End-to-end pipeline review ledger
 
@@ -67,6 +76,6 @@ Detailed ownership, primary/alternate flows, bounds, diagnostics, and acceptance
 - [x] Delete only after targeted tests prove no caller/registration remains. Static caller review plus runtime route/message registration now reports zero unresolved zero-caller candidates.
 - [x] Combine functions only where they enforce the same invariant; no generic abstraction layer was introduced for coincidental similarity.
 - [x] Verify each surviving pipeline has one authoritative implementation per invariant and that platform-specific copies are generated, fixture-tested, or explicitly justified. See `docs/PIPELINE_AUDIT.md`.
-- [x] Inspect every fallback after simplification: the generated 53-code inventory has zero incomplete structured/logged/visible occurrences and is backed by platform fault tests.
+- [x] Inspect every fallback after simplification: the generated 59-code inventory has zero incomplete structured/logged/visible occurrences and is backed by platform fault tests.
 - [x] Compare file/function counts, first-party LOC, bundle size, install size, startup RSS, query count, and test coverage before/after. See `docs/OPTIMIZATION_METRICS.md`.
 - [x] Re-run all platform gates and complete a requirement-by-requirement audit against all 24 findings. All 24 findings are acceptance-complete, including the credentialed Worker rotation/deployment and live success/rejection/replay evidence for AUD-001.

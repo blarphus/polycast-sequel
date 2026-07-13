@@ -17,3 +17,4 @@ export * from './practice';
 export * from './progression';
 export * from './voicePractice';
 export * from './translate';
+export * from './frequencyCatalog';

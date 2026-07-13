@@ -26,6 +26,7 @@ const ChatView = lazy(() => import('./pages/ChatView'));
 const Call = lazy(() => import('./pages/Call'));
 const Test = lazy(() => import('./pages/Test'));
 const Settings = lazy(() => import('./pages/Settings'));
+const CatalogProgress = lazy(() => import('./pages/CatalogProgress'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 const Dictionary = lazy(() => import('./pages/Dictionary'));
 const Learn = lazy(() => import('./pages/Learn'));
@@ -232,6 +233,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/catalog-progress"
+          element={
+            <ProtectedRoute>
+              <CatalogProgress />
             </ProtectedRoute>
           }
         />

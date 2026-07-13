@@ -18,7 +18,7 @@ The baseline is the executed audit snapshot in `AUDIT_REPORT.md`; current values
 | Full app import benchmark | Not separately budgeted | 159.69 ms / 84.2 MB RSS delta | Within enforced local startup budget |
 | Dictionary paging | Full in-memory grouping/sort risk | 10k-word PostgreSQL p95 32.88 ms, 1.25 MB heap delta | Stable keyset paging with no gap after preceding insert |
 | Runtime registrations | ~133 routes, hand-audited | 139 unique routes, 28 exact extension messages, 12 socket registration groups | Dynamic gate rejects duplicates/drift |
-| Fallback coverage | No canonical exhaustive ledger | 53 codes / 56 occurrences / 0 incomplete | Every literal guarded path is structured, logged, and visible |
+| Fallback coverage | No canonical exhaustive ledger | 59 codes / 62 occurrences / 0 incomplete | Every literal guarded path is structured, logged, and visible |
 | Local production bundle | One oversized entry | 67 JS chunks, 22 CSS chunks, 924,703 total built bytes | Feature code/styles load on demand and all budgets pass |
 
 The increased file count within some feature directories is intentional decomposition: large mixed files became smaller ownership units. Overall first-party LOC and installed dependency size decreased while contracts, tests, migration/security gates, and documentation increased.

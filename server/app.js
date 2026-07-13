@@ -9,6 +9,7 @@ import authRoutes from './routes/auth.js';
 import classroomRoutes from './routes/classroom.js';
 import dictionaryRoutes from './routes/dictionary.js';
 import friendkeeperRoutes from './routes/friendkeeper.js';
+import frequencyCatalogRoutes from './routes/frequencyCatalog.js';
 import friendsRoutes from './routes/friends.js';
 import groupClassRoutes from './routes/groupClass.js';
 import homeRoutes from './routes/home.js';
@@ -72,6 +73,7 @@ export function createApp({ clientDist = path.resolve('client/dist') } = {}) {
     usersRoutes,
     friendsRoutes,
     dictionaryRoutes,
+    frequencyCatalogRoutes,
     messagesRoutes,
     classroomRoutes,
     iceServersRoutes,

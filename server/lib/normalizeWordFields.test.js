@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeForm, parseFormsValue } from './normalizeWordFields.js';
+import { canonicalLemmaKey, mergeForm, parseFormsValue } from './normalizeWordFields.js';
 
 test('mergeForm adds a missing surface form to an empty/null list', () => {
   assert.equal(mergeForm(null, 'premia'), '["premia"]');
@@ -26,4 +26,11 @@ test('parseFormsValue normalizes JSON, comma, and array inputs', () => {
   assert.deepEqual(parseFormsValue('A, b ,'), ['a', 'b']);
   assert.deepEqual(parseFormsValue(['A', 'B']), ['a', 'b']);
   assert.deepEqual(parseFormsValue(null), []);
+});
+
+test('canonical lemma keys preserve meaning-bearing Spanish accents', () => {
+  assert.equal(canonicalLemmaKey('  ÉL '), 'él');
+  assert.equal(canonicalLemmaKey('el'), 'el');
+  assert.notEqual(canonicalLemmaKey('él'), canonicalLemmaKey('el'));
+  assert.equal(canonicalLemmaKey('o\u0301r'), 'ór');
 });

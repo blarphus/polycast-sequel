@@ -28,14 +28,14 @@ export function createDictionaryWordService({
         word, translation, definition, target_language, sentence_context, frequency, frequency_count,
         example_sentence, sentence_translation, part_of_speech, image_url, lemma, forms, surface_form,
         image_term, shared_entry_id,
-        lemma_id, sense_id, rank_version_id, lemma_frequency_rank, sense_rank,
+        rank_version_id, lemma_frequency_rank, sense_rank,
         lemma_occurrences_per_billion, frequency_confidence, frequency_sources,
       } = input;
       const canonicalWord = normalizeLemma(lemma || word, part_of_speech, target_language) || String(word).trim().normalize('NFC');
       let mergedForms = mergeForm(forms, surface_form || word);
       const diagnostics = [];
       let catalogFields = {
-        lemma_id, sense_id, rank_version_id, lemma_frequency_rank, sense_rank,
+        rank_version_id, lemma_frequency_rank, sense_rank,
         lemma_occurrences_per_billion, frequency_confidence,
         frequency_sources: frequency_sources || [], frequency, frequency_count,
       };
@@ -46,7 +46,8 @@ export function createDictionaryWordService({
         });
         diagnostics.push(...resolved.diagnostics);
         let catalogEntry = resolved.entry;
-        if (!catalogEntry?.sense_id && definition) {
+        const hasCatalogSense = catalogEntry?.catalog_wiktionary_id || catalogEntry?.catalog_provisional_sense_id;
+        if (!hasCatalogSense && definition) {
           const provisional = await createProvisionalSense({
             db, language: target_language, lemma: canonicalWord,
             partOfSpeech: part_of_speech, definition, correlationId,
@@ -65,9 +66,17 @@ export function createDictionaryWordService({
       const { rows: existing } = await db.query(
         `SELECT * FROM saved_words WHERE user_id = $1
          AND target_language IS NOT DISTINCT FROM $2
-         AND (($3::uuid IS NOT NULL AND sense_id = $3)
-           OR ($3::uuid IS NULL AND word = $4 AND definition = $5))`,
-        [userId, target_language || null, catalogFields.sense_id || null, canonicalWord, definition || ''],
+         AND (($3::int IS NOT NULL
+               AND catalog_wiktionary_id = $3
+               AND catalog_sense_index = $4
+               AND catalog_gloss_index = $5)
+           OR ($6::bigint IS NOT NULL AND catalog_provisional_sense_id = $6)
+           OR ($3::int IS NULL AND $6::bigint IS NULL AND word = $7 AND definition = $8))`,
+        [
+          userId, target_language || null, catalogFields.catalog_wiktionary_id || null,
+          catalogFields.catalog_sense_index ?? null, catalogFields.catalog_gloss_index ?? null,
+          catalogFields.catalog_provisional_sense_id || null, canonicalWord, definition || '',
+        ],
       );
       if (existing.length) {
         let row = existing[0];
@@ -98,22 +107,25 @@ export function createDictionaryWordService({
            user_id, word, translation, definition, target_language, sentence_context,
            frequency, example_sentence, sentence_translation, part_of_speech, image_url,
            lemma, forms, frequency_count, image_term, shared_entry_id,
-           lemma_id, sense_id, rank_version_id, lemma_frequency_rank, sense_rank,
+           catalog_lemma_key, catalog_wiktionary_id, catalog_sense_index, catalog_gloss_index,
+           catalog_provisional_sense_id, rank_version_id, lemma_frequency_rank, sense_rank,
            lemma_occurrences_per_billion, frequency_confidence, frequency_sources, ranking_diagnostics
          ) VALUES (
            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-           $17, $18, $19, $20, $21, $22, $23, $24::jsonb, $25::jsonb
+           $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27::jsonb, $28::jsonb
          ) RETURNING *`,
         [
           userId, canonicalWord, translation || '', definition || '', target_language || null,
           sentence_context || null, catalogFields.frequency ?? null, example_sentence || null,
           sentence_translation || null, part_of_speech || null, image_url || null,
           canonicalWord, mergedForms, catalogFields.frequency_count ?? null, image_term || null,
-          shared_entry_id || null, catalogFields.lemma_id || null, catalogFields.sense_id || null,
+          shared_entry_id || null, catalogFields.catalog_lemma_key || null,
+          catalogFields.catalog_wiktionary_id || null, catalogFields.catalog_sense_index ?? null,
+          catalogFields.catalog_gloss_index ?? null, catalogFields.catalog_provisional_sense_id || null,
           catalogFields.rank_version_id || null, catalogFields.lemma_frequency_rank ?? null,
           catalogFields.sense_rank ?? null, catalogFields.lemma_occurrences_per_billion ?? null,
-          catalogFields.frequency_confidence || null, JSON.stringify(catalogFields.frequency_sources || []),
-          JSON.stringify(diagnostics),
+          catalogFields.frequency_confidence || null,
+          JSON.stringify(catalogFields.frequency_sources || []), JSON.stringify(diagnostics),
         ],
       );
       const scheduled = await refreshWord(rows[0].id);

@@ -176,8 +176,6 @@ extension APIClient {
         forms: String? = nil,
         surfaceForm: String? = nil,
         imageTerm: String? = nil,
-        lemmaId: String? = nil,
-        senseId: String? = nil,
         rankVersionId: String? = nil,
         lemmaFrequencyRank: Int? = nil,
         senseRank: Int? = nil,
@@ -203,8 +201,6 @@ extension APIClient {
         if let forms { body["forms"] = forms }
         if let surfaceForm { body["surface_form"] = surfaceForm }
         if let imageTerm { body["image_term"] = imageTerm }
-        if let lemmaId { body["lemma_id"] = lemmaId }
-        if let senseId { body["sense_id"] = senseId }
         if let rankVersionId { body["rank_version_id"] = rankVersionId }
         if let lemmaFrequencyRank { body["lemma_frequency_rank"] = lemmaFrequencyRank }
         if let senseRank { body["sense_rank"] = senseRank }

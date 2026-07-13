@@ -16,7 +16,12 @@ import pg from 'pg';
 import { execFileSync } from 'node:child_process';
 import vm from 'node:vm';
 import v8 from 'node:v8';
-import { FREQUENCY_LANGUAGES } from '../lib/frequencyCatalog.js';
+import { canonicalLemmaKey } from '../lib/normalizeWordFields.js';
+import {
+  createCatalogBuildRun,
+  linkCatalogBuildVersion,
+  updateCatalogBuildProgress,
+} from '../lib/catalogBuildProgress.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 dotenv.config({ path: path.join(root, '.env') });
@@ -126,21 +131,18 @@ function buildLanguageScores(lang, sources) {
   for (const source of sources.filter((item) => item.language === lang && item.entries.length)) {
     const weight = Number(source.weight) || 1;
     source.entries.forEach((entry, index) => {
-      const key = entry.lemma.toLocaleLowerCase();
+      const key = canonicalLemmaKey(entry.lemma);
       const record = records.get(key) || {
         language: lang,
         lemmaKey: key,
         canonicalLemma: entry.lemma,
         score: 0,
-        weightedOccurrences: 0,
-        occurrenceWeight: 0,
         sourceCount: 0,
         sourcesJson: '[',
       };
       // Weighted reciprocal-rank fusion is robust to corpora with incomparable raw units.
       record.score += weight / (60 + index + 1);
-      record.weightedOccurrences += weight * entry.value;
-      record.occurrenceWeight += weight;
+      if (source.id === 'wordfreq-snapshot') record.occurrencesPerBillion = entry.value;
       const sourceJson = JSON.stringify({ id: source.id, rank: index + 1, weight, value: entry.value });
       record.sourcesJson += `${record.sourceCount > 0 ? ',' : ''}${sourceJson}`;
       record.sourceCount += 1;
@@ -149,10 +151,11 @@ function buildLanguageScores(lang, sources) {
     source.entries.length = 0;
   }
   for (const record of records.values()) {
-    record.occurrences = Math.max(0, Math.round(record.weightedOccurrences / record.occurrenceWeight));
+    record.occurrences = record.occurrencesPerBillion == null
+      ? null
+      : Math.max(0, Math.round(record.occurrencesPerBillion));
     record.sourcesJson += ']';
-    delete record.weightedOccurrences;
-    delete record.occurrenceWeight;
+    delete record.occurrencesPerBillion;
   }
   return [...records.values()];
 }
@@ -183,13 +186,17 @@ function loadLanguageScores(lang) {
   return scores;
 }
 
+const BUILD_LANGUAGE = 'es';
+const FREQUENCY_BATCH_SIZE = 2_000;
+const INVENTORY_BATCH_SIZE = 10_000;
+const LEMMA_BATCH_SIZE = 10_000;
+const SENSE_LEMMA_BATCH_SIZE = 2_000;
+
 if (dryRun) {
-  for (const lang of FREQUENCY_LANGUAGES) {
-    const scores = loadLanguageScores(lang);
-    scores.length = 0;
-    collectGarbage();
-  }
-  console.log(JSON.stringify({ version, activate, dryRun, scoreCount, manifest, diagnostics }, null, 2));
+  const scores = loadLanguageScores(BUILD_LANGUAGE);
+  scores.length = 0;
+  collectGarbage();
+  console.log(JSON.stringify({ version, activate, dryRun, languages: [BUILD_LANGUAGE], scoreCount, manifest, diagnostics }, null, 2));
   process.exit(0);
 }
 
@@ -198,333 +205,720 @@ if (process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes(
   poolConfig.ssl = { rejectUnauthorized: false };
 }
 const pool = new pg.Pool(poolConfig);
-const client = await pool.connect();
+const progressPool = new pg.Pool(poolConfig);
+let client;
+let runId;
+let currentPhase = 'frequency_sources';
+let catalog;
+
+async function reportProgress(input) {
+  currentPhase = input.phase;
+  await updateCatalogBuildProgress({
+    db: progressPool,
+    runId,
+    language: BUILD_LANGUAGE,
+    ...input,
+  });
+}
+
+async function withProgressHeartbeat(progress, operation) {
+  let pendingHeartbeat = Promise.resolve();
+  let heartbeatFailure = null;
+  const timer = setInterval(() => {
+    pendingHeartbeat = pendingHeartbeat.then(async () => {
+      try {
+        await reportProgress(progress);
+      } catch (error) {
+        heartbeatFailure = error;
+        console.error(JSON.stringify({
+          event: 'catalog_progress_heartbeat_failed',
+          severity: 'error',
+          pipeline: 'catalog_build',
+          stage: progress.phase,
+          language: BUILD_LANGUAGE,
+          error: error instanceof Error ? error.message : String(error),
+        }));
+      }
+    });
+  }, 15_000);
+  try {
+    const result = await operation();
+    await pendingHeartbeat;
+    if (heartbeatFailure) throw heartbeatFailure;
+    return result;
+  } finally {
+    clearInterval(timer);
+  }
+}
+
 try {
+  runId = await createCatalogBuildRun({
+    db: progressPool,
+    version,
+    languages: [BUILD_LANGUAGE],
+  });
+  const scores = loadLanguageScores(BUILD_LANGUAGE);
+  await reportProgress({
+    phase: 'frequency_sources', completed: 0, total: scores.length,
+    message: `Loaded ${manifest.length} Spanish frequency sources; staging fused scores.`,
+    counts: { frequencySourceCount: manifest.length, frequencyScoreCount: scores.length },
+    phaseTotals: { frequency_sources: scores.length },
+  });
+
+  client = await pool.connect();
   await client.query('BEGIN');
-  const { rows: [catalog] } = await client.query(
-    `INSERT INTO frequency_catalog_versions (version, status, source_manifest, diagnostics)
-     VALUES ($1, 'building', $2::jsonb, $3::jsonb)
+  const { rows: [catalogRow] } = await client.query(
+    `INSERT INTO frequency_catalog_versions (
+       version, status, source_manifest, diagnostics, languages, build_run_id
+     ) VALUES ($1, 'building', '[]'::jsonb, '[]'::jsonb, $2::jsonb, $3)
      RETURNING id`,
-    [version, '[]', '[]'],
+    [version, JSON.stringify([BUILD_LANGUAGE]), runId],
   );
-
-  await client.query(
-    `INSERT INTO dictionary_lemmas (language, lemma_key, canonical_lemma, provenance)
-     SELECT lang, LOWER(BTRIM(key)), BTRIM(word), jsonb_build_object('source', 'wiktionary')
-       FROM wiktionary
-      WHERE lang = ANY($1) AND BTRIM(key) <> '' AND BTRIM(word) <> ''
-     ON CONFLICT (language, lemma_key) DO NOTHING`,
-    [FREQUENCY_LANGUAGES],
-  );
-
-  // The sense import immediately joins against millions of newly inserted lemmas.
-  // Refresh planner statistics inside this transaction so low-memory databases do
-  // not choose a plan based on the table's pre-build row count.
-  await client.query('ANALYZE dictionary_lemmas');
-
-  await client.query(`
-    INSERT INTO dictionary_senses (
-      lemma_id, part_of_speech, definition, definition_hash, source,
-      source_sense_id, source_order, provenance
-    )
-    SELECT l.id, w.pos, gloss.value,
-           encode(digest(LOWER(REGEXP_REPLACE(BTRIM(gloss.value), '\\s+', ' ', 'g')), 'sha256'), 'hex'),
-           'wiktionary',
-           CONCAT('wiktionary:', w.id, ':', sense.ordinality, ':', gloss.ordinality),
-           ((sense.ordinality - 1) * 1000 + gloss.ordinality)::int,
-           jsonb_build_object('wiktionaryRowId', w.id, 'senseIndex', sense.ordinality - 1)
-      FROM wiktionary w
-      JOIN dictionary_lemmas l ON l.language = w.lang AND l.lemma_key = LOWER(BTRIM(w.key))
-      CROSS JOIN LATERAL jsonb_array_elements(w.senses) WITH ORDINALITY sense(value, ordinality)
-      CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE(sense.value->'glosses', '[]'::jsonb)) WITH ORDINALITY gloss(value, ordinality)
-     WHERE w.lang = ANY($1) AND BTRIM(gloss.value) <> ''
-    ON CONFLICT (source, source_sense_id) DO UPDATE SET
-      definition = EXCLUDED.definition,
-      definition_hash = EXCLUDED.definition_hash,
-      part_of_speech = EXCLUDED.part_of_speech,
-      source_order = EXCLUDED.source_order,
-      active = TRUE,
-      updated_at = NOW()
-  `, [FREQUENCY_LANGUAGES]);
-
-  // Preserve every existing user sense, including meanings that never matched the source dump.
-  await client.query(`
-    INSERT INTO dictionary_lemmas (language, lemma_key, canonical_lemma, provenance)
-    SELECT target_language,
-           LOWER(BTRIM(COALESCE(NULLIF(lemma, ''), word))),
-           MIN(BTRIM(COALESCE(NULLIF(lemma, ''), word))),
-           jsonb_build_object('source', 'legacy-user-dictionary')
-      FROM saved_words
-     WHERE target_language = ANY($1)
-       AND BTRIM(COALESCE(NULLIF(lemma, ''), word)) <> ''
-     GROUP BY target_language, LOWER(BTRIM(COALESCE(NULLIF(lemma, ''), word)))
-    ON CONFLICT (language, lemma_key) DO NOTHING
-  `, [FREQUENCY_LANGUAGES]);
-  await client.query(`
-    INSERT INTO dictionary_senses (
-      lemma_id, part_of_speech, definition, definition_hash, source,
-      source_sense_id, source_order, provisional, provenance
-    )
-    SELECT DISTINCT ON (l.id, COALESCE(sw.part_of_speech, ''), normalized.definition_hash)
-           l.id, COALESCE(sw.part_of_speech, ''), sw.definition, normalized.definition_hash,
-           'polycast-legacy',
-           CONCAT('polycast-legacy:', encode(digest(CONCAT_WS(CHR(31), l.id::text,
-             COALESCE(sw.part_of_speech, ''), normalized.definition_hash), 'sha256'), 'hex')),
-           2147483647, TRUE,
-           jsonb_build_object('reason', 'legacy-user-sense-preserved')
-      FROM saved_words sw
-      JOIN dictionary_lemmas l
-        ON l.language = sw.target_language
-       AND l.lemma_key = LOWER(BTRIM(COALESCE(NULLIF(sw.lemma, ''), sw.word)))
-      CROSS JOIN LATERAL (
-        SELECT encode(digest(LOWER(REGEXP_REPLACE(BTRIM(sw.definition), '\\s+', ' ', 'g')), 'sha256'), 'hex') AS definition_hash
-      ) normalized
-     WHERE sw.target_language = ANY($1) AND BTRIM(sw.definition) <> ''
-       AND NOT EXISTS (
-         SELECT 1
-           FROM dictionary_senses existing
-          WHERE existing.lemma_id = l.id
-            AND existing.active
-            AND existing.part_of_speech = COALESCE(sw.part_of_speech, '')
-            AND existing.definition_hash = normalized.definition_hash
-       )
-    ON CONFLICT (source, source_sense_id) DO UPDATE SET updated_at = NOW(), active = TRUE
-  `, [FREQUENCY_LANGUAGES]);
+  catalog = catalogRow;
 
   await client.query(`
     CREATE TEMP TABLE catalog_frequency_stage (
       language TEXT, lemma_key TEXT, canonical_lemma TEXT, score DOUBLE PRECISION,
-      occurrences BIGINT, sources JSONB, source_count INTEGER
+      occurrences BIGINT, sources JSONB, source_count INTEGER,
+      PRIMARY KEY (language, lemma_key)
     ) ON COMMIT DROP
   `);
-  const batchSize = 2000;
-  for (const lang of FREQUENCY_LANGUAGES) {
-    const scores = loadLanguageScores(lang);
-    for (let offset = 0; offset < scores.length; offset += batchSize) {
-      const batch = scores.slice(offset, offset + batchSize);
-      await client.query(
-        `INSERT INTO catalog_frequency_stage
-         SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::float8[], $5::bigint[], $6::jsonb[], $7::int[])`,
-        [
-          batch.map((row) => row.language), batch.map((row) => row.lemmaKey),
-          batch.map((row) => row.canonicalLemma), batch.map((row) => row.score),
-          batch.map((row) => row.occurrences), batch.map((row) => row.sourcesJson),
-          batch.map((row) => row.sourceCount),
-        ],
-      );
-    }
-    scores.length = 0;
-    collectGarbage();
+  for (let offset = 0; offset < scores.length; offset += FREQUENCY_BATCH_SIZE) {
+    const batch = scores.slice(offset, offset + FREQUENCY_BATCH_SIZE);
+    await client.query(
+      `INSERT INTO catalog_frequency_stage
+       SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::float8[], $5::bigint[], $6::jsonb[], $7::int[])
+       ON CONFLICT (language, lemma_key) DO UPDATE SET
+         score = GREATEST(catalog_frequency_stage.score, EXCLUDED.score),
+         occurrences = GREATEST(catalog_frequency_stage.occurrences, EXCLUDED.occurrences)`,
+      [
+        batch.map((row) => row.language), batch.map((row) => row.lemmaKey),
+        batch.map((row) => row.canonicalLemma), batch.map((row) => row.score),
+        batch.map((row) => row.occurrences), batch.map((row) => row.sourcesJson),
+        batch.map((row) => row.sourceCount),
+      ],
+    );
+    await reportProgress({
+      phase: 'frequency_sources', completed: Math.min(offset + batch.length, scores.length), total: scores.length,
+      message: 'Staging fused Spanish frequency evidence.',
+      counts: { frequencySourceCount: manifest.length, frequencyScoreCount: scores.length },
+      phaseTotals: { frequency_sources: scores.length },
+    });
+  }
+  scores.length = 0;
+  collectGarbage();
+
+  const { rows: [sourceSummary] } = await client.query(
+    `SELECT COUNT(*)::bigint AS source_rows FROM wiktionary WHERE lang = $1`,
+    [BUILD_LANGUAGE],
+  );
+  const { rows: [existingCounts] } = await client.query(
+    `SELECT
+       (SELECT COUNT(*)::bigint FROM saved_words WHERE target_language = $1) AS saved_words,
+       (SELECT COUNT(*)::bigint FROM shared_dictionary_entries WHERE target_language = $1) AS shared_entries`,
+    [BUILD_LANGUAGE],
+  );
+  const sourceTotal = Number(sourceSummary.source_rows);
+  const savedTotal = Number(existingCounts.saved_words);
+  const sharedTotal = Number(existingCounts.shared_entries);
+  let sourceCompleted = 0;
+  let senseTotal = 0;
+  let lastSourceId = 0;
+  await reportProgress({
+    phase: 'source_inventory', completed: 0, total: sourceTotal,
+    message: 'Counting exact Spanish Wiktionary senses in bounded batches.',
+    counts: { sourceRows: sourceTotal, senses: 0, savedWords: savedTotal, sharedEntries: sharedTotal },
+    phaseTotals: {
+      frequency_sources: scoreCount,
+      source_inventory: sourceTotal,
+      saved_backfill: savedTotal,
+      shared_backfill: sharedTotal,
+      verification: 6,
+      activation: 1,
+    },
+  });
+  while (sourceCompleted < sourceTotal) {
+    const { rows: [batch] } = await client.query(
+      `WITH source_batch AS (
+         SELECT id, senses
+           FROM wiktionary
+          WHERE lang = $1 AND id > $2
+          ORDER BY id
+          LIMIT $3
+       )
+       SELECT COALESCE(MAX(id), $2)::int AS last_id,
+              COUNT(*)::int AS source_rows,
+              COALESCE(SUM((
+                SELECT COUNT(*)
+                  FROM jsonb_array_elements(source_batch.senses) sense(value)
+                  CROSS JOIN LATERAL jsonb_array_elements_text(
+                    COALESCE(sense.value->'glosses', '[]'::jsonb)
+                  ) gloss(value)
+                 WHERE BTRIM(gloss.value) <> ''
+              )), 0)::bigint AS senses
+         FROM source_batch`,
+      [BUILD_LANGUAGE, lastSourceId, INVENTORY_BATCH_SIZE],
+    );
+    if (!batch.source_rows) break;
+    lastSourceId = Number(batch.last_id);
+    sourceCompleted += Number(batch.source_rows);
+    senseTotal += Number(batch.senses);
+    await reportProgress({
+      phase: 'source_inventory', completed: sourceCompleted, total: sourceTotal,
+      message: `Inventoried ${sourceCompleted.toLocaleString()} of ${sourceTotal.toLocaleString()} Spanish source entries.`,
+      counts: { sourceRows: sourceTotal, senses: senseTotal, savedWords: savedTotal, sharedEntries: sharedTotal },
+      phaseTotals: {
+        frequency_sources: scoreCount,
+        source_inventory: sourceTotal,
+        saved_backfill: savedTotal,
+        shared_backfill: sharedTotal,
+        verification: 6,
+        activation: 1,
+      },
+    });
   }
 
+  await reportProgress({
+    phase: 'lemma_ranking', completed: 0, total: null,
+    message: 'Preparing the exact compact Spanish lemma order.',
+    counts: { sourceRows: sourceTotal, senses: senseTotal, savedWords: savedTotal, sharedEntries: sharedTotal },
+    phaseTotals: {
+      frequency_sources: scoreCount,
+      source_inventory: sourceTotal,
+      sense_ranking: senseTotal,
+      saved_backfill: savedTotal,
+      shared_backfill: sharedTotal,
+      verification: 6,
+      activation: 1,
+    },
+  });
+  await withProgressHeartbeat({
+    phase: 'lemma_ranking', completed: 0, total: null,
+    message: 'Preparing the exact compact Spanish lemma order; the database aggregation is still active.',
+    counts: { sourceRows: sourceTotal, senses: senseTotal, savedWords: savedTotal, sharedEntries: sharedTotal },
+    phaseTotals: {
+      frequency_sources: scoreCount, source_inventory: sourceTotal,
+      sense_ranking: senseTotal, saved_backfill: savedTotal,
+      shared_backfill: sharedTotal, verification: 6, activation: 1,
+    },
+  }, () => client.query(`
+    CREATE TEMP TABLE catalog_lemma_stage ON COMMIT DROP AS
+    WITH candidate_rows AS (
+      SELECT LOWER(BTRIM(word)) AS lemma_key, MIN(BTRIM(word)) AS canonical_lemma
+        FROM wiktionary
+       WHERE lang = 'es' AND BTRIM(word) <> ''
+       GROUP BY LOWER(BTRIM(word))
+      UNION ALL
+      SELECT lemma_key, MIN(canonical_lemma)
+        FROM catalog_frequency_stage
+       WHERE language = 'es'
+       GROUP BY lemma_key
+      UNION ALL
+      SELECT LOWER(BTRIM(COALESCE(NULLIF(lemma, ''), word))) AS lemma_key,
+             MIN(BTRIM(COALESCE(NULLIF(lemma, ''), word))) AS canonical_lemma
+        FROM saved_words
+       WHERE target_language = 'es' AND BTRIM(COALESCE(NULLIF(lemma, ''), word)) <> ''
+       GROUP BY LOWER(BTRIM(COALESCE(NULLIF(lemma, ''), word)))
+      UNION ALL
+      SELECT LOWER(BTRIM(COALESCE(NULLIF(lemma, ''), word))) AS lemma_key,
+             MIN(BTRIM(COALESCE(NULLIF(lemma, ''), word)))
+        FROM shared_dictionary_entries
+       WHERE target_language = 'es' AND BTRIM(COALESCE(NULLIF(lemma, ''), word)) <> ''
+       GROUP BY LOWER(BTRIM(COALESCE(NULLIF(lemma, ''), word)))
+    ), candidates AS (
+      SELECT lemma_key, MIN(canonical_lemma) AS canonical_lemma
+        FROM candidate_rows
+       WHERE BTRIM(lemma_key) <> ''
+       GROUP BY lemma_key
+    )
+    SELECT c.lemma_key,
+           COALESCE(f.canonical_lemma, c.canonical_lemma) AS canonical_lemma,
+           ROW_NUMBER() OVER (
+             ORDER BY (f.score IS NOT NULL) DESC, f.score DESC NULLS LAST, c.lemma_key
+           )::int AS lemma_rank,
+           f.occurrences,
+           CASE WHEN f.occurrences > 0 THEN LOG(10, f.occurrences::numeric) ELSE NULL END AS zipf,
+           CASE WHEN f.source_count >= 3 THEN 'high'
+                WHEN f.source_count = 2 THEN 'medium'
+                WHEN f.source_count = 1 THEN 'low' ELSE 'unavailable' END AS confidence,
+           COALESCE(f.sources, '[]'::jsonb) AS sources,
+           COUNT(*) OVER ()::numeric AS total
+      FROM candidates c
+      LEFT JOIN catalog_frequency_stage f
+        ON f.language = 'es' AND f.lemma_key = c.lemma_key
+  `));
+  await client.query('CREATE UNIQUE INDEX catalog_lemma_stage_rank ON catalog_lemma_stage (lemma_rank)');
+  await client.query('ANALYZE catalog_lemma_stage');
+  const { rows: [lemmaSummary] } = await client.query('SELECT COUNT(*)::int AS count FROM catalog_lemma_stage');
+  const lemmaTotal = Number(lemmaSummary.count);
+  let lemmaCompleted = 0;
+  await reportProgress({
+    phase: 'lemma_ranking', completed: 0, total: lemmaTotal,
+    message: `Writing ${lemmaTotal.toLocaleString()} compact Spanish lemma ranks.`,
+    counts: { sourceRows: sourceTotal, lemmas: lemmaTotal, senses: senseTotal, savedWords: savedTotal, sharedEntries: sharedTotal },
+    phaseTotals: {
+      frequency_sources: scoreCount, source_inventory: sourceTotal,
+      lemma_ranking: lemmaTotal, sense_ranking: senseTotal,
+      saved_backfill: savedTotal, shared_backfill: sharedTotal,
+      verification: 6, activation: 1,
+    },
+  });
+  while (lemmaCompleted < lemmaTotal) {
+    const { rowCount } = await client.query(
+      `INSERT INTO compact_lemma_rankings (
+         catalog_version_id, language, lemma_key, canonical_lemma, lemma_rank,
+         occurrences_per_billion, zipf, frequency_band, confidence, percentile, sources
+       )
+       SELECT $1, 'es', lemma_key, canonical_lemma, lemma_rank, occurrences, zipf,
+              CASE WHEN lemma_rank <= 500 THEN 10 WHEN lemma_rank <= 1000 THEN 9
+                   WHEN lemma_rank <= 2000 THEN 8 WHEN lemma_rank <= 4000 THEN 7
+                   WHEN lemma_rank <= 7000 THEN 6 WHEN lemma_rank <= 12000 THEN 5
+                   WHEN lemma_rank <= 20000 THEN 4 WHEN lemma_rank <= 35000 THEN 3
+                   WHEN lemma_rank <= 60000 THEN 2 ELSE 1 END,
+              confidence,
+              CASE WHEN total <= 1 THEN 1 ELSE 1 - ((lemma_rank - 1)::numeric / (total - 1)) END,
+              sources
+         FROM catalog_lemma_stage
+        WHERE lemma_rank > $2
+        ORDER BY lemma_rank
+        LIMIT $3`,
+      [catalog.id, lemmaCompleted, LEMMA_BATCH_SIZE],
+    );
+    if (!rowCount) break;
+    lemmaCompleted += rowCount;
+    await reportProgress({
+      phase: 'lemma_ranking', completed: lemmaCompleted, total: lemmaTotal,
+      message: `Ranked ${lemmaCompleted.toLocaleString()} of ${lemmaTotal.toLocaleString()} Spanish lemmas.`,
+      counts: { lemmas: lemmaTotal, senses: senseTotal },
+      phaseTotals: {
+        frequency_sources: scoreCount, source_inventory: sourceTotal,
+        lemma_ranking: lemmaTotal, sense_ranking: senseTotal,
+        saved_backfill: savedTotal, shared_backfill: sharedTotal,
+        verification: 6, activation: 1,
+      },
+    });
+  }
+  await client.query('ANALYZE compact_lemma_rankings');
+
+  let senseCompleted = 0;
+  let lastLemmaRank = 0;
+  await reportProgress({
+    phase: 'sense_ranking', completed: 0, total: senseTotal,
+    message: `Writing ${senseTotal.toLocaleString()} compact Spanish sense references without copying definitions.`,
+    counts: { lemmas: lemmaTotal, senses: senseTotal },
+    phaseTotals: {
+      frequency_sources: scoreCount, source_inventory: sourceTotal,
+      lemma_ranking: lemmaTotal, sense_ranking: senseTotal,
+      saved_backfill: savedTotal, shared_backfill: sharedTotal,
+      verification: 6, activation: 1,
+    },
+  });
+  while (lastLemmaRank < lemmaTotal) {
+    const upperLemmaRank = Math.min(lemmaTotal, lastLemmaRank + SENSE_LEMMA_BATCH_SIZE);
+    const { rows: [batch] } = await client.query(
+      `WITH selected AS (
+         SELECT lemma_key, lemma_rank
+           FROM compact_lemma_rankings
+          WHERE catalog_version_id = $1 AND language = 'es'
+            AND lemma_rank > $2 AND lemma_rank <= $3
+       ), expanded AS (
+         SELECT w.id AS wiktionary_id,
+                (sense.ordinality - 1)::int AS sense_index,
+                (gloss.ordinality - 1)::int AS gloss_index,
+                selected.lemma_rank,
+                ROW_NUMBER() OVER (
+                  PARTITION BY selected.lemma_key
+                  ORDER BY w.id, sense.ordinality, gloss.ordinality
+                )::int AS sense_order
+           FROM selected
+           JOIN wiktionary w ON w.lang = 'es' AND w.key = unaccent(selected.lemma_key)
+                            AND LOWER(BTRIM(w.word)) = selected.lemma_key
+           CROSS JOIN LATERAL jsonb_array_elements(w.senses) WITH ORDINALITY sense(value, ordinality)
+           CROSS JOIN LATERAL jsonb_array_elements_text(
+             COALESCE(sense.value->'glosses', '[]'::jsonb)
+           ) WITH ORDINALITY gloss(value, ordinality)
+          WHERE BTRIM(gloss.value) <> ''
+       ), numbered AS (
+           SELECT *, ($4::int + ROW_NUMBER() OVER (
+             ORDER BY lemma_rank, wiktionary_id, sense_index, gloss_index
+           ))::int AS sense_rank
+           FROM expanded
+       ), inserted AS (
+         INSERT INTO compact_sense_rankings (
+           catalog_version_id, wiktionary_id, sense_index,
+           gloss_index, sense_order, sense_rank
+         )
+         SELECT $1, wiktionary_id, sense_index, gloss_index, sense_order, sense_rank
+           FROM numbered
+         RETURNING sense_rank
+       )
+       SELECT COUNT(*)::int AS inserted,
+              COALESCE(MAX(sense_rank), $4)::bigint AS max_sense_rank
+         FROM inserted`,
+      [catalog.id, lastLemmaRank, upperLemmaRank, senseCompleted],
+    );
+    lastLemmaRank = upperLemmaRank;
+    senseCompleted += Number(batch.inserted);
+    await reportProgress({
+      phase: 'sense_ranking', completed: senseCompleted, total: senseTotal,
+      message: `Ranked ${senseCompleted.toLocaleString()} of ${senseTotal.toLocaleString()} Spanish senses.`,
+      counts: { lemmas: lemmaTotal, senses: senseTotal, rankedSenses: senseCompleted },
+      phaseTotals: {
+        frequency_sources: scoreCount, source_inventory: sourceTotal,
+        lemma_ranking: lemmaTotal, sense_ranking: senseTotal,
+        saved_backfill: savedTotal, shared_backfill: sharedTotal,
+        verification: 6, activation: 1,
+      },
+    });
+  }
+  await client.query('ANALYZE compact_sense_rankings');
+
   await client.query(`
-    INSERT INTO dictionary_lemmas (language, lemma_key, canonical_lemma, provenance)
-    SELECT language, lemma_key, canonical_lemma, jsonb_build_object('source', 'frequency-catalog')
-      FROM catalog_frequency_stage
-    ON CONFLICT (language, lemma_key) DO NOTHING
+    INSERT INTO catalog_provisional_lemmas (language, lemma_key, canonical_lemma)
+    SELECT 'es', lemma_key, MIN(canonical_lemma)
+      FROM (
+        SELECT LOWER(BTRIM(COALESCE(NULLIF(lemma, ''), word))) AS lemma_key,
+               BTRIM(COALESCE(NULLIF(lemma, ''), word)) AS canonical_lemma
+          FROM saved_words WHERE target_language = 'es'
+        UNION ALL
+        SELECT LOWER(BTRIM(COALESCE(NULLIF(lemma, ''), word))),
+               BTRIM(COALESCE(NULLIF(lemma, ''), word))
+          FROM shared_dictionary_entries WHERE target_language = 'es'
+      ) existing
+     WHERE lemma_key <> ''
+     GROUP BY lemma_key
+    ON CONFLICT (language, lemma_key) DO UPDATE SET updated_at = NOW()
+  `);
+  await client.query(`
+    INSERT INTO catalog_provisional_senses (
+      lemma_id, part_of_speech, definition, definition_hash, sense_order
+    )
+    SELECT DISTINCT ON (pl.id, existing.part_of_speech, existing.definition_hash)
+           pl.id, existing.part_of_speech, existing.definition,
+           existing.definition_hash,
+           ROW_NUMBER() OVER (PARTITION BY pl.id ORDER BY existing.part_of_speech, existing.definition_hash)::int
+      FROM (
+        SELECT LOWER(BTRIM(COALESCE(NULLIF(lemma, ''), word))) AS lemma_key,
+               COALESCE(part_of_speech, '') AS part_of_speech,
+               definition,
+               encode(digest(LOWER(REGEXP_REPLACE(BTRIM(definition), '\\s+', ' ', 'g')), 'sha256'), 'hex') AS definition_hash
+          FROM saved_words
+         WHERE target_language = 'es' AND BTRIM(definition) <> ''
+        UNION ALL
+        SELECT LOWER(BTRIM(COALESCE(NULLIF(lemma, ''), word))),
+               COALESCE(part_of_speech, ''), definition, definition_hash
+          FROM shared_dictionary_entries
+         WHERE target_language = 'es' AND BTRIM(definition) <> ''
+      ) existing
+      JOIN catalog_provisional_lemmas pl
+        ON pl.language = 'es' AND pl.lemma_key = existing.lemma_key
+     WHERE NOT EXISTS (
+       SELECT 1
+         FROM wiktionary w
+         CROSS JOIN LATERAL jsonb_array_elements(w.senses) sense(value)
+         CROSS JOIN LATERAL jsonb_array_elements_text(
+           COALESCE(sense.value->'glosses', '[]'::jsonb)
+         ) gloss(value)
+        WHERE w.lang = 'es' AND w.key = unaccent(existing.lemma_key)
+          AND LOWER(BTRIM(w.word)) = existing.lemma_key
+          AND LOWER(w.pos) = LOWER(existing.part_of_speech)
+          AND encode(digest(LOWER(REGEXP_REPLACE(BTRIM(gloss.value), '\\s+', ' ', 'g')), 'sha256'), 'hex') = existing.definition_hash
+     )
+    ON CONFLICT (lemma_id, part_of_speech, definition_hash) DO UPDATE SET updated_at = NOW()
   `);
 
-  // Both inputs were bulk-loaded in this transaction and feed the ranking window
-  // below. Accurate cardinalities keep its joins and sorts from spilling needlessly.
-  await client.query('ANALYZE dictionary_lemmas');
-  await client.query('ANALYZE catalog_frequency_stage');
-
-  await client.query(`
-    WITH ordered AS (
-      SELECT l.id AS lemma_id, l.language,
-             ROW_NUMBER() OVER (
-               PARTITION BY l.language
-               ORDER BY (s.score IS NOT NULL) DESC, s.score DESC NULLS LAST, l.lemma_key, l.id
-             )::int AS lemma_rank,
-             s.occurrences, s.sources, COALESCE(s.source_count, 0) AS source_count,
-             COUNT(*) OVER (PARTITION BY l.language)::numeric AS total
-        FROM dictionary_lemmas l
-        LEFT JOIN catalog_frequency_stage s
-          ON s.language = l.language AND s.lemma_key = l.lemma_key
-       WHERE l.language = ANY($2)
-    )
-    INSERT INTO lemma_frequency_rankings (
-      catalog_version_id, lemma_id, language, lemma_rank, occurrences_per_billion,
-      zipf, frequency_band, confidence, percentile, sources
-    )
-    SELECT $1, lemma_id, language, lemma_rank, occurrences,
-           CASE WHEN occurrences > 0 THEN LOG(10, occurrences::numeric) ELSE NULL END,
-           CASE WHEN lemma_rank <= 500 THEN 10 WHEN lemma_rank <= 1000 THEN 9
-                WHEN lemma_rank <= 2000 THEN 8 WHEN lemma_rank <= 4000 THEN 7
-                WHEN lemma_rank <= 7000 THEN 6 WHEN lemma_rank <= 12000 THEN 5
-                WHEN lemma_rank <= 20000 THEN 4 WHEN lemma_rank <= 35000 THEN 3
-                WHEN lemma_rank <= 60000 THEN 2 ELSE 1 END,
-           CASE WHEN source_count >= 3 THEN 'high' WHEN source_count = 2 THEN 'medium'
-                WHEN source_count = 1 THEN 'low' ELSE 'unavailable' END,
-           CASE WHEN total <= 1 THEN 1 ELSE 1 - ((lemma_rank - 1)::numeric / (total - 1)) END,
-           COALESCE(sources, '[]'::jsonb)
-      FROM ordered
-  `, [catalog.id, FREQUENCY_LANGUAGES]);
-
-  // Sense ranking joins two other bulk-loaded tables immediately. Publish their
-  // transaction-local cardinalities before PostgreSQL plans that operation.
-  await client.query('ANALYZE dictionary_senses');
-  await client.query('ANALYZE lemma_frequency_rankings');
-
-  await client.query(`
-    WITH ordered AS (
-      SELECT s.id AS sense_id, l.language, lf.lemma_rank,
-             ROW_NUMBER() OVER (PARTITION BY s.lemma_id ORDER BY s.source_order, s.id)::int AS sense_order,
-             ROW_NUMBER() OVER (
-               PARTITION BY l.language
-               ORDER BY lf.lemma_rank, s.source_order, s.id
-             )::bigint AS sense_rank
-        FROM dictionary_senses s
-        JOIN dictionary_lemmas l ON l.id = s.lemma_id
-        JOIN lemma_frequency_rankings lf ON lf.catalog_version_id = $1 AND lf.lemma_id = l.id
-       WHERE s.active
-    )
-    INSERT INTO sense_rankings (
-      catalog_version_id, sense_id, language, lemma_rank, sense_order, sense_rank
-    )
-    SELECT $1, sense_id, language, lemma_rank, sense_order, sense_rank FROM ordered
-  `, [catalog.id]);
-
-  await client.query(`
+  const maxSenseRank = senseCompleted;
+  const { rowCount: savedUpdated } = await client.query(`
     WITH mapped AS (
       SELECT DISTINCT ON (sw.id)
-             sw.id AS saved_word_id, l.id AS lemma_id, l.canonical_lemma,
-             s.id AS sense_id, lf.lemma_rank, sr.sense_rank,
-             lf.occurrences_per_billion, lf.frequency_band, lf.confidence, lf.sources
+             sw.id, lr.lemma_key, lr.canonical_lemma, lr.lemma_rank,
+             lr.occurrences_per_billion, lr.frequency_band, lr.confidence, lr.sources,
+             source_sense.wiktionary_id, source_sense.sense_index,
+             source_sense.gloss_index, source_sense.sense_rank,
+             provisional.id AS provisional_sense_id
         FROM saved_words sw
-        JOIN dictionary_lemmas l
-          ON sw.target_language = l.language
-         AND LOWER(BTRIM(COALESCE(NULLIF(sw.lemma, ''), sw.word))) = l.lemma_key
-        JOIN lemma_frequency_rankings lf ON lf.catalog_version_id = $1 AND lf.lemma_id = l.id
-        LEFT JOIN dictionary_senses s
-          ON s.lemma_id = l.id AND s.active
-         AND s.part_of_speech = COALESCE(sw.part_of_speech, '')
-         AND s.definition_hash = encode(digest(LOWER(REGEXP_REPLACE(BTRIM(sw.definition), '\\s+', ' ', 'g')), 'sha256'), 'hex')
-        LEFT JOIN sense_rankings sr ON sr.catalog_version_id = $1 AND sr.sense_id = s.id
-       ORDER BY sw.id, s.provisional ASC, s.source_order, s.id
+        JOIN compact_lemma_rankings lr
+          ON lr.catalog_version_id = $1 AND lr.language = 'es'
+         AND lr.lemma_key = LOWER(BTRIM(COALESCE(NULLIF(sw.lemma, ''), sw.word)))
+        LEFT JOIN LATERAL (
+          SELECT w.id AS wiktionary_id,
+                 (sense.ordinality - 1)::int AS sense_index,
+                 (gloss.ordinality - 1)::int AS gloss_index,
+                 sr.sense_rank
+            FROM wiktionary w
+            CROSS JOIN LATERAL jsonb_array_elements(w.senses) WITH ORDINALITY sense(value, ordinality)
+            CROSS JOIN LATERAL jsonb_array_elements_text(
+              COALESCE(sense.value->'glosses', '[]'::jsonb)
+            ) WITH ORDINALITY gloss(value, ordinality)
+            JOIN compact_sense_rankings sr
+              ON sr.catalog_version_id = $1 AND sr.wiktionary_id = w.id
+             AND sr.sense_index = sense.ordinality - 1 AND sr.gloss_index = gloss.ordinality - 1
+           WHERE w.lang = 'es' AND w.key = unaccent(lr.lemma_key)
+             AND LOWER(BTRIM(w.word)) = lr.lemma_key
+             AND LOWER(w.pos) = LOWER(COALESCE(sw.part_of_speech, ''))
+             AND encode(digest(LOWER(REGEXP_REPLACE(BTRIM(gloss.value), '\\s+', ' ', 'g')), 'sha256'), 'hex') =
+                 encode(digest(LOWER(REGEXP_REPLACE(BTRIM(sw.definition), '\\s+', ' ', 'g')), 'sha256'), 'hex')
+           ORDER BY sr.sense_order, w.id
+           LIMIT 1
+        ) source_sense ON BTRIM(sw.definition) <> ''
+        LEFT JOIN catalog_provisional_lemmas pl
+          ON pl.language = 'es' AND pl.lemma_key = lr.lemma_key
+        LEFT JOIN catalog_provisional_senses provisional
+          ON provisional.lemma_id = pl.id
+         AND provisional.part_of_speech = COALESCE(sw.part_of_speech, '')
+         AND provisional.definition_hash = encode(digest(LOWER(REGEXP_REPLACE(BTRIM(sw.definition), '\\s+', ' ', 'g')), 'sha256'), 'hex')
+         AND source_sense.wiktionary_id IS NULL
+       WHERE sw.target_language = 'es'
+       ORDER BY sw.id, source_sense.sense_rank, provisional.id
     )
     UPDATE saved_words sw
        SET word = mapped.canonical_lemma,
            lemma = mapped.canonical_lemma,
-           lemma_id = mapped.lemma_id,
-           sense_id = mapped.sense_id,
+           catalog_lemma_key = mapped.lemma_key,
+           catalog_wiktionary_id = mapped.wiktionary_id,
+           catalog_sense_index = mapped.sense_index,
+           catalog_gloss_index = mapped.gloss_index,
+           catalog_provisional_sense_id = mapped.provisional_sense_id,
            rank_version_id = $1,
            lemma_frequency_rank = mapped.lemma_rank,
-           sense_rank = mapped.sense_rank,
+           sense_rank = COALESCE(mapped.sense_rank, $2::bigint + mapped.provisional_sense_id),
            lemma_occurrences_per_billion = mapped.occurrences_per_billion,
            frequency_count = mapped.occurrences_per_billion,
            frequency = mapped.frequency_band,
            frequency_confidence = mapped.confidence,
            frequency_sources = mapped.sources
       FROM mapped
-     WHERE sw.id = mapped.saved_word_id
-  `, [catalog.id]);
+     WHERE sw.id = mapped.id
+  `, [catalog.id, maxSenseRank]);
+  await reportProgress({
+    phase: 'saved_backfill', completed: savedUpdated || 0, total: savedTotal,
+    message: `Backfilled ${savedUpdated || 0} of ${savedTotal} existing Spanish saved words.`,
+    counts: { savedWords: savedTotal, savedWordsBackfilled: savedUpdated || 0 },
+    phaseTotals: {
+      frequency_sources: scoreCount, source_inventory: sourceTotal,
+      lemma_ranking: lemmaTotal, sense_ranking: senseTotal,
+      saved_backfill: savedTotal, shared_backfill: sharedTotal,
+      verification: 6, activation: 1,
+    },
+  });
 
-  await client.query(`
+  const { rowCount: sharedUpdated } = await client.query(`
     WITH mapped AS (
       SELECT DISTINCT ON (shared.id)
-             shared.id AS shared_id, l.id AS lemma_id, s.id AS sense_id,
-             lf.lemma_rank, sr.sense_rank, lf.occurrences_per_billion,
-             lf.frequency_band, lf.confidence, lf.sources
+             shared.id, lr.lemma_key, lr.lemma_rank,
+             lr.occurrences_per_billion, lr.frequency_band, lr.confidence, lr.sources,
+             source_sense.wiktionary_id, source_sense.sense_index,
+             source_sense.gloss_index, source_sense.sense_rank,
+             provisional.id AS provisional_sense_id
         FROM shared_dictionary_entries shared
-        JOIN dictionary_lemmas l
-          ON shared.target_language = l.language AND shared.word_key = l.lemma_key
-        JOIN lemma_frequency_rankings lf ON lf.catalog_version_id = $1 AND lf.lemma_id = l.id
-        LEFT JOIN dictionary_senses s
-          ON s.lemma_id = l.id AND s.active
-         AND s.part_of_speech = COALESCE(shared.part_of_speech, '')
-         AND s.definition_hash = shared.definition_hash
-        LEFT JOIN sense_rankings sr ON sr.catalog_version_id = $1 AND sr.sense_id = s.id
-       ORDER BY shared.id, s.provisional ASC, s.source_order, s.id
+        JOIN compact_lemma_rankings lr
+          ON lr.catalog_version_id = $1 AND lr.language = 'es'
+         AND lr.lemma_key = LOWER(BTRIM(COALESCE(NULLIF(shared.lemma, ''), shared.word)))
+        LEFT JOIN LATERAL (
+          SELECT w.id AS wiktionary_id,
+                 (sense.ordinality - 1)::int AS sense_index,
+                 (gloss.ordinality - 1)::int AS gloss_index,
+                 sr.sense_rank
+            FROM wiktionary w
+            CROSS JOIN LATERAL jsonb_array_elements(w.senses) WITH ORDINALITY sense(value, ordinality)
+            CROSS JOIN LATERAL jsonb_array_elements_text(
+              COALESCE(sense.value->'glosses', '[]'::jsonb)
+            ) WITH ORDINALITY gloss(value, ordinality)
+            JOIN compact_sense_rankings sr
+              ON sr.catalog_version_id = $1 AND sr.wiktionary_id = w.id
+             AND sr.sense_index = sense.ordinality - 1 AND sr.gloss_index = gloss.ordinality - 1
+           WHERE w.lang = 'es' AND w.key = unaccent(lr.lemma_key)
+             AND LOWER(BTRIM(w.word)) = lr.lemma_key
+             AND LOWER(w.pos) = LOWER(COALESCE(shared.part_of_speech, ''))
+             AND encode(digest(LOWER(REGEXP_REPLACE(BTRIM(gloss.value), '\\s+', ' ', 'g')), 'sha256'), 'hex') = shared.definition_hash
+           ORDER BY sr.sense_order, w.id
+           LIMIT 1
+        ) source_sense ON BTRIM(shared.definition) <> ''
+        LEFT JOIN catalog_provisional_lemmas pl
+          ON pl.language = 'es' AND pl.lemma_key = lr.lemma_key
+        LEFT JOIN catalog_provisional_senses provisional
+          ON provisional.lemma_id = pl.id
+         AND provisional.part_of_speech = COALESCE(shared.part_of_speech, '')
+         AND provisional.definition_hash = shared.definition_hash
+         AND source_sense.wiktionary_id IS NULL
+       WHERE shared.target_language = 'es'
+       ORDER BY shared.id, source_sense.sense_rank, provisional.id
     )
     UPDATE shared_dictionary_entries shared
-       SET lemma_id = mapped.lemma_id,
-           sense_id = mapped.sense_id,
+       SET catalog_lemma_key = mapped.lemma_key,
+           catalog_wiktionary_id = mapped.wiktionary_id,
+           catalog_sense_index = mapped.sense_index,
+           catalog_gloss_index = mapped.gloss_index,
+           catalog_provisional_sense_id = mapped.provisional_sense_id,
            rank_version_id = $1,
            lemma_frequency_rank = mapped.lemma_rank,
-           sense_rank = mapped.sense_rank,
+           sense_rank = COALESCE(mapped.sense_rank, $2::bigint + mapped.provisional_sense_id),
            lemma_occurrences_per_billion = mapped.occurrences_per_billion,
            frequency_count = mapped.occurrences_per_billion,
            frequency = mapped.frequency_band,
            frequency_confidence = mapped.confidence,
            frequency_sources = mapped.sources
       FROM mapped
-     WHERE shared.id = mapped.shared_id
-  `, [catalog.id]);
+     WHERE shared.id = mapped.id
+  `, [catalog.id, maxSenseRank]);
+  await reportProgress({
+    phase: 'shared_backfill', completed: sharedUpdated || 0, total: sharedTotal,
+    message: `Backfilled ${sharedUpdated || 0} of ${sharedTotal} shared Spanish entries.`,
+    counts: { sharedEntries: sharedTotal, sharedEntriesBackfilled: sharedUpdated || 0 },
+    phaseTotals: {
+      frequency_sources: scoreCount, source_inventory: sourceTotal,
+      lemma_ranking: lemmaTotal, sense_ranking: senseTotal,
+      saved_backfill: savedTotal, shared_backfill: sharedTotal,
+      verification: 6, activation: 1,
+    },
+  });
 
+  const { rows: [catalogCounts] } = await client.query(`
+    SELECT
+      (SELECT COUNT(*)::int FROM compact_lemma_rankings WHERE catalog_version_id = $1 AND language = 'es') AS lemmas,
+      (SELECT COUNT(DISTINCT lemma_rank)::int FROM compact_lemma_rankings WHERE catalog_version_id = $1 AND language = 'es') AS unique_lemma_ranks,
+      (SELECT COUNT(*)::bigint FROM compact_sense_rankings WHERE catalog_version_id = $1) AS senses,
+      (SELECT COUNT(DISTINCT sense_rank)::bigint FROM compact_sense_rankings WHERE catalog_version_id = $1) AS unique_sense_ranks
+  `, [catalog.id]);
   const { rows: [savedWordBackfill] } = await client.query(`
     SELECT COUNT(*)::int AS total,
-           COUNT(*) FILTER (WHERE lemma_id IS NOT NULL)::int AS lemma_linked,
-           COUNT(*) FILTER (WHERE lemma_frequency_rank IS NOT NULL)::int AS ranked,
-           COUNT(*) FILTER (WHERE BTRIM(COALESCE(definition, '')) <> '' AND sense_id IS NOT NULL)::int AS defined_sense_linked,
+           COUNT(*) FILTER (WHERE catalog_lemma_key IS NOT NULL AND lemma_frequency_rank IS NOT NULL)::int AS ranked,
            COUNT(*) FILTER (WHERE BTRIM(COALESCE(definition, '')) <> '')::int AS defined_total,
+           COUNT(*) FILTER (WHERE BTRIM(COALESCE(definition, '')) <> '' AND
+             (catalog_wiktionary_id IS NOT NULL OR catalog_provisional_sense_id IS NOT NULL))::int AS defined_sense_linked,
            COUNT(*) FILTER (WHERE rank_version_id = $1)::int AS catalog_version_linked
-      FROM saved_words
-     WHERE target_language = ANY($2)
-  `, [catalog.id, FREQUENCY_LANGUAGES]);
+      FROM saved_words WHERE target_language = 'es'
+  `, [catalog.id]);
   const { rows: [sharedEntryBackfill] } = await client.query(`
     SELECT COUNT(*)::int AS total,
-           COUNT(*) FILTER (WHERE lemma_id IS NOT NULL)::int AS lemma_linked,
-           COUNT(*) FILTER (WHERE lemma_frequency_rank IS NOT NULL)::int AS ranked,
-           COUNT(*) FILTER (WHERE BTRIM(COALESCE(definition, '')) <> '' AND sense_id IS NOT NULL)::int AS defined_sense_linked,
+           COUNT(*) FILTER (WHERE catalog_lemma_key IS NOT NULL AND lemma_frequency_rank IS NOT NULL)::int AS ranked,
            COUNT(*) FILTER (WHERE BTRIM(COALESCE(definition, '')) <> '')::int AS defined_total,
+           COUNT(*) FILTER (WHERE BTRIM(COALESCE(definition, '')) <> '' AND
+             (catalog_wiktionary_id IS NOT NULL OR catalog_provisional_sense_id IS NOT NULL))::int AS defined_sense_linked,
            COUNT(*) FILTER (WHERE rank_version_id = $1)::int AS catalog_version_linked
-      FROM shared_dictionary_entries
-     WHERE target_language = ANY($2)
-  `, [catalog.id, FREQUENCY_LANGUAGES]);
-  const backfill = { savedWords: savedWordBackfill, sharedEntries: sharedEntryBackfill };
-  const incompleteBackfills = Object.entries(backfill).filter(([, summary]) =>
-    summary.lemma_linked !== summary.total
-    || summary.ranked !== summary.total
-    || summary.catalog_version_linked !== summary.total
-    || summary.defined_sense_linked !== summary.defined_total
-  );
-  if (incompleteBackfills.length) {
-    const diagnostic = {
-      code: 'catalog_backfill_verification_failed',
-      severity: 'error',
-      pipeline: 'catalog_build',
-      stage: 'existing-entry-backfill-verification',
-      catalogVersion: version,
-      detail: backfill,
-    };
-    console.error(JSON.stringify(diagnostic));
-    throw new Error(`Catalog backfill verification failed: ${JSON.stringify(backfill)}`);
+      FROM shared_dictionary_entries WHERE target_language = 'es'
+  `, [catalog.id]);
+  const checks = [
+    Number(catalogCounts.lemmas) === lemmaTotal,
+    Number(catalogCounts.unique_lemma_ranks) === lemmaTotal,
+    Number(catalogCounts.senses) === senseTotal,
+    Number(catalogCounts.unique_sense_ranks) === senseTotal,
+    savedWordBackfill.ranked === savedWordBackfill.total
+      && savedWordBackfill.defined_sense_linked === savedWordBackfill.defined_total
+      && savedWordBackfill.catalog_version_linked === savedWordBackfill.total,
+    sharedEntryBackfill.ranked === sharedEntryBackfill.total
+      && sharedEntryBackfill.defined_sense_linked === sharedEntryBackfill.defined_total
+      && sharedEntryBackfill.catalog_version_linked === sharedEntryBackfill.total,
+  ];
+  for (let index = 0; index < checks.length; index += 1) {
+    await reportProgress({
+      phase: 'verification', completed: index + 1, total: checks.length,
+      message: `Completed catalog integrity check ${index + 1} of ${checks.length}.`,
+      counts: { catalogCounts, savedWordBackfill, sharedEntryBackfill },
+      phaseTotals: {
+        frequency_sources: scoreCount, source_inventory: sourceTotal,
+        lemma_ranking: lemmaTotal, sense_ranking: senseTotal,
+        saved_backfill: savedTotal, shared_backfill: sharedTotal,
+        verification: checks.length, activation: 1,
+      },
+    });
+    if (!checks[index]) {
+      const diagnostic = {
+        code: 'compact_catalog_verification_failed',
+        severity: 'error',
+        title: 'Compact catalog verification failed',
+        message: `Spanish catalog integrity check ${index + 1} failed. The build will roll back and remain visibly failed.`,
+        source: 'server.catalog-builder',
+        operation: 'verify-compact-catalog',
+        pipeline: 'catalog_build',
+        stage: 'verification',
+        language: BUILD_LANGUAGE,
+        occurredAt: new Date().toISOString(),
+        detail: JSON.stringify({ catalogCounts, savedWordBackfill, sharedEntryBackfill }),
+      };
+      console.error(JSON.stringify(diagnostic));
+      throw Object.assign(new Error(diagnostic.message), { diagnostic });
+    }
   }
 
-  if (activate) {
-    await client.query(
-      `UPDATE frequency_catalog_versions SET status = 'retired' WHERE status = 'active'`,
-    );
-  }
+  await reportProgress({
+    phase: 'activation', completed: 0, total: 1,
+    message: 'Committing the verified Spanish catalog atomically.',
+    counts: { catalogCounts, savedWordBackfill, sharedEntryBackfill },
+    phaseTotals: {
+      frequency_sources: scoreCount, source_inventory: sourceTotal,
+      lemma_ranking: lemmaTotal, sense_ranking: senseTotal,
+      saved_backfill: savedTotal, shared_backfill: sharedTotal,
+      verification: checks.length, activation: 1,
+    },
+  });
+  if (activate) await client.query(`UPDATE frequency_catalog_versions SET status = 'retired' WHERE status = 'active'`);
   await client.query(
     `UPDATE frequency_catalog_versions
-        SET status = $2,
-            source_manifest = $3::jsonb,
-            diagnostics = $4::jsonb,
+        SET status = $2, source_manifest = $3::jsonb, diagnostics = $4::jsonb,
             built_at = NOW(), activated_at = CASE WHEN $2 = 'active' THEN NOW() ELSE NULL END
       WHERE id = $1`,
-    [
-      catalog.id,
-      activate ? 'active' : 'retired',
-      JSON.stringify(manifest),
-      JSON.stringify(diagnostics),
-    ],
+    [catalog.id, activate ? 'active' : 'retired', JSON.stringify(manifest), JSON.stringify(diagnostics)],
   );
   await client.query('COMMIT');
+  await linkCatalogBuildVersion({ db: progressPool, runId, catalogVersionId: catalog.id });
+  await reportProgress({
+    phase: 'activation', completed: 1, total: 1, status: 'succeeded',
+    message: `Spanish compact catalog ${activate ? 'activated' : 'built'} successfully.`,
+    counts: { catalogCounts, savedWordBackfill, sharedEntryBackfill },
+    phaseTotals: {
+      frequency_sources: scoreCount, source_inventory: sourceTotal,
+      lemma_ranking: lemmaTotal, sense_ranking: senseTotal,
+      saved_backfill: savedTotal, shared_backfill: sharedTotal,
+      verification: checks.length, activation: 1,
+    },
+  });
   console.log(JSON.stringify({
-    event: 'frequency_catalog_built',
-    version,
-    status: activate ? 'active' : 'retired',
-    scoreCount,
-    sourceCount: manifest.length,
-    backfill,
+    event: 'compact_spanish_frequency_catalog_built', version,
+    status: activate ? 'active' : 'retired', runId,
+    scoreCount, sourceCount: manifest.length, catalogCounts,
+    backfill: { savedWords: savedWordBackfill, sharedEntries: sharedEntryBackfill },
     diagnostics,
   }));
 } catch (error) {
-  await client.query('ROLLBACK');
+  if (client) {
+    try { await client.query('ROLLBACK'); } catch (rollbackError) {
+      console.error(JSON.stringify({
+        event: 'compact_catalog_rollback_failed', severity: 'error',
+        error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+      }));
+    }
+  }
+  const diagnostic = error.diagnostic || {
+    code: 'compact_catalog_build_failed',
+    severity: 'error',
+    title: 'Compact Spanish catalog build failed',
+    message: 'The compact Spanish catalog transaction rolled back. No partial ranking was activated.',
+    source: 'server.catalog-builder',
+    operation: 'build-compact-catalog',
+    pipeline: 'catalog_build',
+    stage: currentPhase,
+    language: BUILD_LANGUAGE,
+    occurredAt: new Date().toISOString(),
+    detail: error instanceof Error ? error.message : String(error),
+  };
+  console.error(JSON.stringify(diagnostic));
+  if (runId) {
+    try {
+      await reportProgress({
+        phase: currentPhase, completed: 0, total: null, status: 'rolled_back',
+        message: diagnostic.message, diagnostic,
+      });
+    } catch (progressError) {
+      console.error(JSON.stringify({
+        event: 'catalog_progress_failure_not_persisted', severity: 'error',
+        originalDiagnostic: diagnostic,
+        error: progressError instanceof Error ? progressError.message : String(progressError),
+      }));
+    }
+  }
   throw error;
 } finally {
-  client.release();
-  await pool.end();
+  client?.release();
+  await Promise.allSettled([pool.end(), progressPool.end()]);
 }

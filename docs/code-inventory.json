@@ -1,11 +1,11 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 504,
-    "lines": 80923,
-    "declarations": 2256,
+    "files": 510,
+    "lines": 82282,
+    "declarations": 2280,
     "extractCandidates": 0,
-    "reviewedOversizedFiles": 38,
+    "reviewedOversizedFiles": 39,
     "zeroCallerCandidates": 1
   },
   "files": [
@@ -68,6 +68,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/catalogProgress.test.tsx",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/runtimeDiagnostics.test.ts",
         "server/lib/authResponse.test.js",
@@ -312,7 +313,7 @@
     },
     {
       "file": "client/src/App.tsx",
-      "lines": 409,
+      "lines": 418,
       "responsibility": "application support",
       "sideEffects": [
         "UI"
@@ -328,7 +329,7 @@
       "symbols": [
         {
           "name": "ProtectedRoute",
-          "callers": 55,
+          "callers": 57,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -361,6 +362,7 @@
         "client/src/test/apiContract.test.ts",
         "client/src/test/bottomToolbar.test.tsx",
         "client/src/test/callSignalContract.test.ts",
+        "client/src/test/catalogProgress.test.tsx",
         "client/src/test/dictionaryGroups.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
@@ -760,7 +762,7 @@
         },
         {
           "name": "request",
-          "callers": 333,
+          "callers": 336,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",
@@ -781,7 +783,7 @@
     },
     {
       "file": "client/src/api/dictionary.ts",
-      "lines": 338,
+      "lines": 332,
       "responsibility": "web API adapter",
       "sideEffects": [],
       "testCoverage": [
@@ -920,6 +922,27 @@
       ]
     },
     {
+      "file": "client/src/api/frequencyCatalog.ts",
+      "lines": 79,
+      "responsibility": "web API adapter",
+      "sideEffects": [],
+      "testCoverage": [
+        "client/src/test/catalogProgress.test.tsx"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "getFrequencyCatalogProgress",
+          "callers": 2,
+          "testReferences": [
+            "client/src/test/catalogProgress.test.tsx"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
       "file": "client/src/api/friends.ts",
       "lines": 41,
       "responsibility": "web API adapter",
@@ -1026,7 +1049,7 @@
     },
     {
       "file": "client/src/api/index.ts",
-      "lines": 20,
+      "lines": 21,
       "responsibility": "web API adapter",
       "sideEffects": [],
       "testCoverage": [
@@ -1118,7 +1141,7 @@
     },
     {
       "file": "client/src/api/offlineDictionary.ts",
-      "lines": 535,
+      "lines": 544,
       "responsibility": "web API adapter",
       "sideEffects": [
         "persistence",
@@ -1145,7 +1168,7 @@
         },
         {
           "name": "uuid",
-          "callers": 92,
+          "callers": 88,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -1242,6 +1265,12 @@
         {
           "name": "basicDefinition",
           "callers": 5,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "offlineFrequencyDiagnostic",
+          "callers": 2,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -2126,7 +2155,7 @@
     },
     {
       "file": "client/src/components/WordLookupModal.tsx",
-      "lines": 192,
+      "lines": 190,
       "responsibility": "web component UI",
       "sideEffects": [],
       "testCoverage": [],
@@ -2143,7 +2172,7 @@
     },
     {
       "file": "client/src/components/WordPopup.tsx",
-      "lines": 233,
+      "lines": 231,
       "responsibility": "web component UI",
       "sideEffects": [
         "UI"
@@ -2537,6 +2566,7 @@
       "responsibility": "web component UI",
       "sideEffects": [],
       "testCoverage": [
+        "client/src/test/catalogProgress.test.tsx",
         "extension/test/background.test.mjs",
         "server/test/ttsService.test.js"
       ],
@@ -2762,7 +2792,7 @@
         },
         {
           "name": "ChevronLeftIcon",
-          "callers": 29,
+          "callers": 31,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -3145,6 +3175,7 @@
       "responsibility": "generated contract",
       "sideEffects": [],
       "testCoverage": [
+        "client/src/test/catalogProgress.test.tsx",
         "extension/test/background.test.mjs",
         "server/test/ttsService.test.js"
       ],
@@ -3414,7 +3445,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -4015,6 +4046,89 @@
       ]
     },
     {
+      "file": "client/src/pages/CatalogProgress.tsx",
+      "lines": 285,
+      "responsibility": "web route UI",
+      "sideEffects": [],
+      "testCoverage": [
+        "client/src/test/catalogProgress.test.tsx"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "formatCatalogDuration",
+          "callers": 2,
+          "testReferences": [
+            "client/src/test/catalogProgress.test.tsx"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "asNumber",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "formatCount",
+          "callers": 5,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "percent",
+          "callers": 7,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "timeLabel",
+          "callers": 9,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "StatusBadge",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "ProgressBar",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "DiagnosticCard",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "PhaseRow",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "LanguagePanel",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "CatalogProgress",
+          "callers": 3,
+          "testReferences": [
+            "client/src/test/catalogProgress.test.tsx"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
       "file": "client/src/pages/Channel.tsx",
       "lines": 91,
       "responsibility": "web route UI",
@@ -4196,7 +4310,7 @@
         },
         {
           "name": "Dictionary",
-          "callers": 23,
+          "callers": 26,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx"
           ],
@@ -4613,7 +4727,7 @@
     },
     {
       "file": "client/src/pages/Settings.tsx",
-      "lines": 194,
+      "lines": 201,
       "responsibility": "web route UI",
       "sideEffects": [],
       "testCoverage": [
@@ -4938,6 +5052,18 @@
       "symbols": []
     },
     {
+      "file": "client/src/test/catalogProgress.test.tsx",
+      "lines": 82,
+      "responsibility": "test",
+      "sideEffects": [
+        "UI"
+      ],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
       "file": "client/src/test/dailyGoal.test.ts",
       "lines": 41,
       "responsibility": "test",
@@ -5160,7 +5286,7 @@
       "symbols": [
         {
           "name": "card",
-          "callers": 829,
+          "callers": 831,
           "testReferences": [
             "client/src/test/srs.test.ts",
             "ios/Polycast/Tests/PolycastTests.swift",
@@ -5481,7 +5607,7 @@
         },
         {
           "name": "emit",
-          "callers": 86,
+          "callers": 88,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -5846,7 +5972,7 @@
         },
         {
           "name": "normalizeFallbackDiagnostic",
-          "callers": 26,
+          "callers": 25,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -6151,7 +6277,7 @@
         },
         {
           "name": "createScopedRuntimeLogger",
-          "callers": 124,
+          "callers": 126,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -6653,7 +6779,7 @@
     },
     {
       "file": "extension/background.js",
-      "lines": 1251,
+      "lines": 1247,
       "responsibility": "extension runtime/UI",
       "sideEffects": [
         "network",
@@ -6811,7 +6937,7 @@
         },
         {
           "name": "uuid",
-          "callers": 92,
+          "callers": 88,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -6913,6 +7039,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/catalogProgress.test.tsx",
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs"
       ],
@@ -7537,6 +7664,7 @@
       "responsibility": "generated contract",
       "sideEffects": [],
       "testCoverage": [
+        "client/src/test/catalogProgress.test.tsx",
         "extension/test/background.test.mjs",
         "server/test/ttsService.test.js"
       ],
@@ -8178,7 +8306,7 @@
         },
         {
           "name": "request",
-          "callers": 333,
+          "callers": 336,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",
@@ -8252,7 +8380,7 @@
     },
     {
       "file": "ios/Polycast/Sources/Core/APIClientDictionary.swift",
-      "lines": 456,
+      "lines": 452,
       "responsibility": "iOS core/runtime",
       "sideEffects": [
         "events",
@@ -8276,7 +8404,7 @@
         },
         {
           "name": "savedWords",
-          "callers": 66,
+          "callers": 74,
           "testReferences": [
             "extension/test/background.test.mjs"
           ],
@@ -9019,6 +9147,7 @@
       ],
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
+        "client/src/test/catalogProgress.test.tsx",
         "client/src/test/dailyGoal.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
@@ -9050,7 +9179,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -9137,7 +9266,7 @@
         },
         {
           "name": "delete",
-          "callers": 81,
+          "callers": 80,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -9168,9 +9297,10 @@
         },
         {
           "name": "progress",
-          "callers": 118,
+          "callers": 170,
           "testReferences": [
-            "client/src/test/bottomToolbar.test.tsx"
+            "client/src/test/bottomToolbar.test.tsx",
+            "client/src/test/catalogProgress.test.tsx"
           ],
           "disposition": "retain"
         },
@@ -9569,7 +9699,7 @@
         },
         {
           "name": "emit",
-          "callers": 86,
+          "callers": 88,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -9580,7 +9710,7 @@
         },
         {
           "name": "activate",
-          "callers": 15,
+          "callers": 16,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -9719,7 +9849,7 @@
         },
         {
           "name": "save",
-          "callers": 97,
+          "callers": 98,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts",
             "server/services/dictionaryWordService.test.js"
@@ -9728,7 +9858,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -9753,7 +9883,7 @@
         },
         {
           "name": "delete",
-          "callers": 81,
+          "callers": 80,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -9820,7 +9950,7 @@
         },
         {
           "name": "data",
-          "callers": 869,
+          "callers": 881,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -9834,7 +9964,7 @@
         },
         {
           "name": "string",
-          "callers": 1769,
+          "callers": 1808,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -9879,7 +10009,7 @@
     },
     {
       "file": "ios/Polycast/Sources/Core/Models.swift",
-      "lines": 651,
+      "lines": 643,
       "responsibility": "iOS core/runtime",
       "sideEffects": [],
       "testCoverage": [
@@ -10223,7 +10353,7 @@
         },
         {
           "name": "encode",
-          "callers": 21,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -10496,7 +10626,7 @@
         },
         {
           "name": "emit",
-          "callers": 86,
+          "callers": 88,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -11027,6 +11157,7 @@
       ],
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
+        "client/src/test/catalogProgress.test.tsx",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/readerSelection.test.ts",
@@ -11058,7 +11189,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -11093,6 +11224,7 @@
           "callers": 80,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
+            "client/src/test/catalogProgress.test.tsx",
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
             "client/src/test/readerSelection.test.ts",
@@ -11124,6 +11256,7 @@
       ],
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
+        "client/src/test/catalogProgress.test.tsx",
         "client/src/test/epub.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
@@ -11175,9 +11308,10 @@
         },
         {
           "name": "body",
-          "callers": 641,
+          "callers": 639,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
+            "client/src/test/catalogProgress.test.tsx",
             "client/src/test/epub.test.ts",
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -11277,7 +11411,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -11355,7 +11489,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -11386,6 +11520,7 @@
       ],
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
+        "client/src/test/catalogProgress.test.tsx",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/readerSelection.test.ts",
@@ -11440,6 +11575,7 @@
           "callers": 80,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
+            "client/src/test/catalogProgress.test.tsx",
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
             "client/src/test/readerSelection.test.ts",
@@ -11478,7 +11614,7 @@
         },
         {
           "name": "score",
-          "callers": 43,
+          "callers": 46,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -11514,7 +11650,7 @@
         },
         {
           "name": "activate",
-          "callers": 15,
+          "callers": 16,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -11824,7 +11960,7 @@
         },
         {
           "name": "delete",
-          "callers": 81,
+          "callers": 80,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -11905,7 +12041,7 @@
         },
         {
           "name": "save",
-          "callers": 97,
+          "callers": 98,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts",
             "server/services/dictionaryWordService.test.js"
@@ -11922,7 +12058,7 @@
     },
     {
       "file": "ios/Polycast/Sources/Features/Dictionary/WordLookupView.swift",
-      "lines": 243,
+      "lines": 241,
       "responsibility": "iOS feature UI",
       "sideEffects": [
         "network",
@@ -11948,13 +12084,13 @@
         },
         {
           "name": "senseRow",
-          "callers": 4,
+          "callers": 8,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "lookup",
-          "callers": 184,
+          "callers": 185,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts",
             "extension/test/background.test.mjs",
@@ -11966,7 +12102,7 @@
         },
         {
           "name": "save",
-          "callers": 97,
+          "callers": 98,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts",
             "server/services/dictionaryWordService.test.js"
@@ -12006,7 +12142,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12248,7 +12384,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12675,7 +12811,7 @@
         },
         {
           "name": "section",
-          "callers": 68,
+          "callers": 78,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -13062,7 +13198,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -13109,7 +13245,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -13325,7 +13461,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -13653,7 +13789,7 @@
         },
         {
           "name": "width",
-          "callers": 254,
+          "callers": 255,
           "testReferences": [
             "extension/test/popup-performance.test.mjs",
             "extension/test/selection.test.mjs",
@@ -13674,7 +13810,7 @@
         },
         {
           "name": "trim",
-          "callers": 268,
+          "callers": 273,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "server/lib/httpErrors.test.js"
@@ -13928,7 +14064,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14035,7 +14171,7 @@
     },
     {
       "file": "ios/Polycast/Sources/Features/Watch/WordPopupView.swift",
-      "lines": 613,
+      "lines": 611,
       "responsibility": "iOS feature UI",
       "sideEffects": [
         "network",
@@ -14101,7 +14237,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14128,7 +14264,7 @@
         },
         {
           "name": "save",
-          "callers": 97,
+          "callers": 98,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts",
             "server/services/dictionaryWordService.test.js"
@@ -14375,7 +14511,7 @@
         },
         {
           "name": "load",
-          "callers": 113,
+          "callers": 118,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -15428,7 +15564,7 @@
         },
         {
           "name": "normalize",
-          "callers": 32,
+          "callers": 34,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -15620,7 +15756,7 @@
         },
         {
           "name": "main",
-          "callers": 72,
+          "callers": 74,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -15869,13 +16005,14 @@
     },
     {
       "file": "server/app.js",
-      "lines": 116,
+      "lines": 118,
       "responsibility": "application support",
       "sideEffects": [
         "logging"
       ],
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
+        "client/src/test/catalogProgress.test.tsx",
         "client/src/test/epub.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
@@ -15958,7 +16095,7 @@
         },
         {
           "name": "authMiddleware",
-          "callers": 145,
+          "callers": 147,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -16067,7 +16204,7 @@
     },
     {
       "file": "server/enrichWord.js",
-      "lines": 789,
+      "lines": 791,
       "responsibility": "application support",
       "sideEffects": [
         "database",
@@ -16195,7 +16332,7 @@
       "symbols": [
         {
           "name": "main",
-          "callers": 72,
+          "callers": 74,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -16337,6 +16474,61 @@
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": []
+    },
+    {
+      "file": "server/lib/catalogBuildProgress.js",
+      "lines": 214,
+      "responsibility": "server domain/integration",
+      "sideEffects": [
+        "database"
+      ],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "asCount",
+          "callers": 4,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "calculateProgress",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "createCatalogBuildRun",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "updateCatalogBuildProgress",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "linkCatalogBuildVersion",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "getLatestCatalogBuildProgress",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "CATALOG_PROGRESS_PHASES",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        }
+      ]
     },
     {
       "file": "server/lib/cefrDifficulty.js",
@@ -16715,13 +16907,13 @@
         },
         {
           "name": "normalizeFallbackDiagnostic",
-          "callers": 26,
+          "callers": 25,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "persistFallbackDiagnostic",
-          "callers": 3,
+          "callers": 2,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -16741,13 +16933,15 @@
     },
     {
       "file": "server/lib/frequencyCatalog.js",
-      "lines": 224,
+      "lines": 292,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "database",
         "logging"
       ],
-      "testCoverage": [],
+      "testCoverage": [
+        "client/src/test/catalogProgress.test.tsx"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
@@ -16770,8 +16964,14 @@
           "disposition": "delete-review"
         },
         {
+          "name": "reportFallbackDiagnostic",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
           "name": "lookupFrequencyCatalog",
-          "callers": 5,
+          "callers": 4,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -16789,7 +16989,7 @@
         },
         {
           "name": "FREQUENCY_LANGUAGES",
-          "callers": 11,
+          "callers": 4,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -16925,6 +17125,7 @@
       "responsibility": "generated contract",
       "sideEffects": [],
       "testCoverage": [
+        "client/src/test/catalogProgress.test.tsx",
         "extension/test/background.test.mjs",
         "server/test/ttsService.test.js"
       ],
@@ -17121,7 +17322,7 @@
       "symbols": [
         {
           "name": "asyncHandler",
-          "callers": 70,
+          "callers": 72,
           "testReferences": [
             "server/lib/httpErrors.test.js"
           ],
@@ -17431,15 +17632,17 @@
         },
         {
           "name": "canonicalLemmaKey",
-          "callers": 3,
-          "testReferences": [],
+          "callers": 11,
+          "testReferences": [
+            "server/lib/normalizeWordFields.test.js"
+          ],
           "disposition": "retain"
         }
       ]
     },
     {
       "file": "server/lib/normalizeWordFields.test.js",
-      "lines": 30,
+      "lines": 37,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
@@ -17573,7 +17776,7 @@
         },
         {
           "name": "canonicalWord",
-          "callers": 7,
+          "callers": 9,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -17743,7 +17946,7 @@
     },
     {
       "file": "server/lib/sharedDictionaryEntries.js",
-      "lines": 146,
+      "lines": 153,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "database"
@@ -18170,7 +18373,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18193,7 +18396,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18216,7 +18419,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18245,7 +18448,7 @@
         },
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18268,7 +18471,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18291,7 +18494,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18314,7 +18517,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18337,7 +18540,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18360,7 +18563,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18383,7 +18586,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18406,7 +18609,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18429,7 +18632,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18452,7 +18655,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18476,7 +18679,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18500,7 +18703,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18523,7 +18726,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18546,7 +18749,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18569,7 +18772,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18592,7 +18795,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18615,7 +18818,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18638,7 +18841,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18661,7 +18864,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18685,7 +18888,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18708,7 +18911,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18731,7 +18934,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18754,7 +18957,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18777,7 +18980,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18800,7 +19003,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18823,7 +19026,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18846,7 +19049,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18869,7 +19072,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18892,7 +19095,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18915,7 +19118,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18938,7 +19141,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18961,7 +19164,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18984,7 +19187,30 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 99,
+          "callers": 100,
+          "testReferences": [
+            "ios/Polycast/UITests/PolycastUITests.swift"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "server/migrations/037-compact-spanish-frequency-catalog.js",
+      "lines": 128,
+      "responsibility": "application support",
+      "sideEffects": [
+        "database"
+      ],
+      "testCoverage": [
+        "ios/Polycast/UITests/PolycastUITests.swift"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "up",
+          "callers": 100,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19158,7 +19384,7 @@
     },
     {
       "file": "server/routes/dictionary/wordRoutes.js",
-      "lines": 75,
+      "lines": 74,
       "responsibility": "HTTP transport",
       "sideEffects": [
         "persistence"
@@ -19174,6 +19400,18 @@
           "disposition": "retain"
         }
       ]
+    },
+    {
+      "file": "server/routes/frequencyCatalog.js",
+      "lines": 14,
+      "responsibility": "HTTP transport",
+      "sideEffects": [],
+      "testCoverage": [
+        "client/src/test/catalogProgress.test.tsx"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
     },
     {
       "file": "server/routes/friendkeeper.js",
@@ -19526,7 +19764,7 @@
         },
         {
           "name": "backfill",
-          "callers": 11,
+          "callers": 14,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -19610,7 +19848,7 @@
         },
         {
           "name": "main",
-          "callers": 72,
+          "callers": 74,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -19708,7 +19946,7 @@
         },
         {
           "name": "main",
-          "callers": 72,
+          "callers": 74,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -19716,15 +19954,15 @@
     },
     {
       "file": "server/scripts/buildFrequencyCatalog.js",
-      "lines": 478,
+      "lines": 925,
       "responsibility": "application support",
       "sideEffects": [
         "database",
         "logging"
       ],
       "testCoverage": [],
-      "disposition": "intentionally standalone",
-      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "disposition": "reviewed-retain",
+      "dispositionReason": "One server domain pipeline; transport, persistence/query, provider, and diagnostic seams are already separated and tested.",
       "symbols": [
         {
           "name": "parseWordfreq",
@@ -19749,12 +19987,24 @@
           "callers": 2,
           "testReferences": [],
           "disposition": "retain"
+        },
+        {
+          "name": "reportProgress",
+          "callers": 16,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "withProgressHeartbeat",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
         }
       ]
     },
     {
       "file": "server/scripts/catalogBackfillSmoke.js",
-      "lines": 86,
+      "lines": 103,
       "responsibility": "application support",
       "sideEffects": [
         "database",
@@ -19807,7 +20057,7 @@
         },
         {
           "name": "main",
-          "callers": 72,
+          "callers": 74,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -19849,7 +20099,7 @@
         },
         {
           "name": "main",
-          "callers": 72,
+          "callers": 74,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -19901,7 +20151,7 @@
         },
         {
           "name": "main",
-          "callers": 72,
+          "callers": 74,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -20184,7 +20434,7 @@
     },
     {
       "file": "server/services/dictionaryWordService.js",
-      "lines": 165,
+      "lines": 177,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "database"
@@ -20258,7 +20508,7 @@
         },
         {
           "name": "normalize",
-          "callers": 32,
+          "callers": 34,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -21708,7 +21958,7 @@
         },
         {
           "name": "request",
-          "callers": 333,
+          "callers": 336,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",

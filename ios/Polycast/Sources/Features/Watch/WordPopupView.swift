@@ -587,8 +587,6 @@ struct WordPopupView: View {
                     forms: enriched.forms,
                     surfaceForm: savedSurface,
                     imageTerm: enriched.imageTerm,
-                    lemmaId: enriched.lemmaId,
-                    senseId: enriched.senseId,
                     rankVersionId: enriched.rankVersionId,
                     lemmaFrequencyRank: enriched.lemmaFrequencyRank,
                     senseRank: enriched.senseRank,
