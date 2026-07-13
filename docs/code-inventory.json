@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 510,
-    "lines": 82173,
-    "declarations": 2280,
+    "files": 511,
+    "lines": 82185,
+    "declarations": 2281,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 1
@@ -18428,7 +18428,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18451,7 +18451,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18474,7 +18474,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18503,7 +18503,7 @@
         },
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18526,7 +18526,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18549,7 +18549,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18572,7 +18572,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18595,7 +18595,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18618,7 +18618,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18641,7 +18641,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18664,7 +18664,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18687,7 +18687,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18710,7 +18710,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18734,7 +18734,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18758,7 +18758,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18781,7 +18781,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18804,7 +18804,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18827,7 +18827,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18850,7 +18850,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18873,7 +18873,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18896,7 +18896,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18919,7 +18919,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18943,7 +18943,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18966,7 +18966,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18989,7 +18989,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19012,7 +19012,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19035,7 +19035,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19058,7 +19058,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19081,7 +19081,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19104,7 +19104,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19127,7 +19127,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19150,7 +19150,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19173,7 +19173,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19196,7 +19196,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19219,7 +19219,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19242,7 +19242,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19265,7 +19265,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19288,7 +19288,30 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 101,
+          "callers": 102,
+          "testReferences": [
+            "ios/Polycast/UITests/PolycastUITests.swift"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "server/migrations/039-align-schedule-ranking-triggers.js",
+      "lines": 12,
+      "responsibility": "application support",
+      "sideEffects": [
+        "database"
+      ],
+      "testCoverage": [
+        "ios/Polycast/UITests/PolycastUITests.swift"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "up",
+          "callers": 102,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
