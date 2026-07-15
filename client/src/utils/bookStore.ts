@@ -23,6 +23,7 @@ export interface BookMeta {
   addedAt: number;
   format?: BookFormat;
   pageCount?: number;
+  language?: 'en' | 'es';
   notice?: string;
   ocr?: ComicOcrProgress;
 }

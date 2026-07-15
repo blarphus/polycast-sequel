@@ -16,7 +16,6 @@ import {
   startComicOcr,
   type ComicOcrProgressEvent,
 } from '../utils/comicOcr';
-import { useAuth } from './useAuth';
 
 export interface BookImportResult {
   id: string;
@@ -25,7 +24,6 @@ export interface BookImportResult {
 }
 
 export function useBooks() {
-  const { user } = useAuth();
   const [books, setBooks] = useState<BookMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -61,11 +59,13 @@ export function useBooks() {
   }, []);
 
   /** Parse + store an uploaded EPUB or supported CBZ. Returns the new book id. */
-  const addFromFile = useCallback(async (file: File): Promise<BookImportResult> => {
+  const addFromFile = useCallback(async (file: File, comicLanguage?: 'en' | 'es'): Promise<BookImportResult> => {
     const id = `${Date.now()}-${Math.round(performance.now())}`;
     if (file.name.toLowerCase().endsWith('.cbz')) {
-      const language = user?.target_language || '';
-      const { comic, cover } = await prepareCbzForOcr(file, language);
+      if (!comicLanguage) {
+        throw new Error('[cbz_ocr_language_required] Choose the language printed in this comic before uploading it.');
+      }
+      const { comic, cover } = await prepareCbzForOcr(file, comicLanguage);
       const meta: BookMeta = {
         id,
         title: comic.title,
@@ -74,6 +74,7 @@ export function useBooks() {
         addedAt: Date.now(),
         format: 'comic',
         pageCount: comic.pages.length,
+        language: comicLanguage,
         ocr: comic.ocr,
       };
       try {
@@ -99,7 +100,7 @@ export function useBooks() {
     await addBook(meta, bytes);
     await refresh();
     return { id, format: 'epub', processing: false };
-  }, [refresh, user?.target_language]);
+  }, [refresh]);
 
   const remove = useCallback(async (id: string) => {
     cancelComicOcr(id);

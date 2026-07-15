@@ -31,6 +31,33 @@
   line-height: 1.45;
 }
 
+.epub-upload-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+}
+
+.epub-comic-language {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.epub-comic-language select {
+  min-height: 42px;
+  padding: 0.55rem 2rem 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
 .epub-upload-btn {
   display: inline-flex;
   align-items: center;
@@ -855,6 +882,15 @@
 
   .epub-upload-btn {
     width: 100%;
+  }
+
+  .epub-upload-actions {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .epub-comic-language {
+    flex: 0 0 42%;
   }
 
   .epub-grid {

@@ -21,6 +21,12 @@ function formatEta(seconds: number | null) {
   return `about ${hours}h${remainder ? ` ${remainder}m` : ''}`;
 }
 
+function languageLabel(language: string | undefined) {
+  if (language === 'en') return 'English';
+  if (language === 'es') return 'Spanish';
+  return null;
+}
+
 function BookCard({ book, onOpen, onDelete, onRetryOcr }: {
   book: BookMeta;
   onOpen: () => void;
@@ -50,7 +56,11 @@ function BookCard({ book, onOpen, onDelete, onRetryOcr }: {
         <div className="epub-card-title" title={book.title}>{book.title}</div>
         <div className="epub-card-author" title={book.author}>{book.author}</div>
         {book.format === 'comic' && (
-          <div className="epub-card-format">CBZ · {book.pageCount ?? 0} pages{ocr?.status === 'ready' ? ' · text ready' : ''}</div>
+          <div className="epub-card-format">
+            CBZ · {book.pageCount ?? 0} pages
+            {languageLabel(book.language) ? ` · ${languageLabel(book.language)}` : ''}
+            {ocr?.status === 'ready' ? ' · text ready' : ''}
+          </div>
         )}
         {ocr && ocr.status !== 'ready' && ocr.status !== 'error' && (
           <div className="comic-ocr-card-status" aria-live="polite">
@@ -100,6 +110,7 @@ export default function Library() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [comicLanguage, setComicLanguage] = useState<'en' | 'es'>('en');
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || !files.length) return;
@@ -108,7 +119,10 @@ export default function Library() {
     try {
       let lastImport: Awaited<ReturnType<typeof addFromFile>> | null = null;
       for (const file of Array.from(files)) {
-        lastImport = await addFromFile(file);
+        lastImport = await addFromFile(
+          file,
+          file.name.toLowerCase().endsWith('.cbz') ? comicLanguage : undefined,
+        );
       }
       if (files.length === 1 && lastImport && !lastImport.processing) navigate(`/books/${lastImport.id}`);
     } catch (err) {
@@ -132,10 +146,24 @@ export default function Library() {
           <h1 className="epub-library-title">Books</h1>
           <p className="epub-library-subtitle">Read EPUBs or upload a CBZ. Polycast selects text from every comic page on this device, and completed pages become clickable immediately.</p>
         </div>
-        <button className="epub-upload-btn" onClick={() => fileInput.current?.click()} disabled={busy}>
-          <PlusIcon size={18} />
-          {busy ? 'Importing…' : 'Upload book'}
-        </button>
+        <div className="epub-upload-actions">
+          <label className="epub-comic-language">
+            <span>CBZ text</span>
+            <select
+              value={comicLanguage}
+              onChange={(event) => setComicLanguage(event.target.value as 'en' | 'es')}
+              disabled={busy}
+              aria-label="Language printed in uploaded CBZ comics"
+            >
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+            </select>
+          </label>
+          <button className="epub-upload-btn" onClick={() => fileInput.current?.click()} disabled={busy}>
+            <PlusIcon size={18} />
+            {busy ? 'Importing…' : 'Upload book'}
+          </button>
+        </div>
         <input
           ref={fileInput}
           type="file"
