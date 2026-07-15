@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
-import { parseCbzPrototype } from '../utils/cbz';
+import { parseCbzPrototype, prepareCbzForOcr } from '../utils/cbz';
+import { ocrPageToLines } from '../utils/comicOcr';
 
 describe('CBZ prototype importer', () => {
   const streamedFile = (archive: Uint8Array, name: string) => {
@@ -41,5 +42,64 @@ describe('CBZ prototype importer', () => {
     const file = streamedFile(archive, 'different.cbz');
 
     await expect(parseCbzPrototype(file)).rejects.toThrow('[cbz_prototype_mismatch]');
+  });
+});
+
+describe('full CBZ OCR importer', () => {
+  it('indexes every image page in natural reading order and queues the whole archive', async () => {
+    const archive = zipSync({
+      'comic-10.jpg': strToU8('ten'),
+      'comic-2.png': strToU8('two'),
+      'notes.txt': strToU8('not a page'),
+      'comic-1.jpg': strToU8('one'),
+    });
+    const file = new File([archive as BlobPart], 'My_Comic.cbz', { type: 'application/zip' });
+
+    const prepared = await prepareCbzForOcr(file, 'en');
+
+    expect(prepared.comic.title).toBe('My Comic');
+    expect(prepared.comic.pages.map((page) => page.entryName)).toEqual([
+      'comic-1.jpg',
+      'comic-2.png',
+      'comic-10.jpg',
+    ]);
+    expect(prepared.comic.archive).toBe(file);
+    expect(prepared.comic.ocr).toMatchObject({
+      status: 'queued',
+      processedPages: 0,
+      totalPages: 3,
+    });
+    expect(await prepared.cover.text()).toBe('one');
+  });
+
+  it('keeps exact OCR word boxes and paragraph context for clickable text', () => {
+    const lines = ocrPageToLines({
+      blocks: [{
+        paragraphs: [{
+          text: 'Hello brave world.',
+          lines: [{
+            text: 'Hello brave world.',
+            bbox: { x0: 10, y0: 20, x1: 210, y1: 50 },
+            words: [
+              { text: 'Hello', confidence: 96, bbox: { x0: 10, y0: 20, x1: 60, y1: 50 } },
+              { text: 'brave', confidence: 91, bbox: { x0: 70, y0: 20, x1: 125, y1: 50 } },
+              { text: 'world.', confidence: 94, bbox: { x0: 135, y0: 20, x1: 210, y1: 50 } },
+            ],
+          }],
+        }],
+      }],
+    } as unknown as Parameters<typeof ocrPageToLines>[0]);
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0].context).toBe('Hello brave world.');
+    expect(lines[0].words?.[1]).toMatchObject({
+      text: 'brave', x: 70, y: 20, width: 55, height: 30, confidence: 91,
+    });
+  });
+
+  it('rejects OCR languages outside the currently supported English and Spanish pair', async () => {
+    const archive = zipSync({ 'page-1.jpg': strToU8('page') });
+    const file = new File([archive as BlobPart], 'comic.cbz', { type: 'application/zip' });
+    await expect(prepareCbzForOcr(file, 'fr')).rejects.toThrow('[cbz_ocr_language_unsupported]');
   });
 });

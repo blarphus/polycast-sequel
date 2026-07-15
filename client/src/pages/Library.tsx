@@ -1,7 +1,7 @@
 import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
 const runtimeLog = createScopedRuntimeLogger('web.pages.library');
 // ---------------------------------------------------------------------------
-// pages/Library.tsx -- EPUB + prototype CBZ library (stored on-device).
+// pages/Library.tsx -- EPUB + full, on-device CBZ OCR library.
 // ---------------------------------------------------------------------------
 
 import '../styles/epub.css';
@@ -11,8 +11,25 @@ import { useBooks } from '../hooks/useBooks';
 import type { BookMeta } from '../utils/bookStore';
 import { BookOpenIcon, PlusIcon, TrashIcon } from '../components/icons';
 
-function BookCard({ book, onOpen, onDelete }: { book: BookMeta; onOpen: () => void; onDelete: () => void }) {
+function formatEta(seconds: number | null) {
+  if (seconds == null || !Number.isFinite(seconds)) return null;
+  if (seconds < 60) return 'less than a minute';
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 60) return `about ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return `about ${hours}h${remainder ? ` ${remainder}m` : ''}`;
+}
+
+function BookCard({ book, onOpen, onDelete, onRetryOcr }: {
+  book: BookMeta;
+  onOpen: () => void;
+  onDelete: () => void;
+  onRetryOcr: () => void;
+}) {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const ocr = book.ocr;
+  const processing = !!ocr && ocr.status !== 'ready' && ocr.status !== 'error';
 
   useEffect(() => {
     if (!book.cover) return;
@@ -22,9 +39,9 @@ function BookCard({ book, onOpen, onDelete }: { book: BookMeta; onOpen: () => vo
   }, [book.cover]);
 
   return (
-    <div className="epub-card" onClick={onOpen} role="button" tabIndex={0}
+    <div className={`epub-card${processing ? ' epub-card--processing' : ''}${ocr?.status === 'error' ? ' epub-card--ocr-error' : ''}`} onClick={onOpen} role="button" tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}>
-      <div className="epub-card-cover">
+      <div className={`epub-card-cover${processing ? ' epub-card-cover--processing' : ''}`}>
         {coverUrl
           ? <img src={coverUrl} alt={book.title} loading="lazy" />
           : <div className="epub-card-cover--placeholder"><BookOpenIcon size={32} /><span>{book.title}</span></div>}
@@ -33,7 +50,37 @@ function BookCard({ book, onOpen, onDelete }: { book: BookMeta; onOpen: () => vo
         <div className="epub-card-title" title={book.title}>{book.title}</div>
         <div className="epub-card-author" title={book.author}>{book.author}</div>
         {book.format === 'comic' && (
-          <div className="epub-card-format">CBZ preview · {book.pageCount ?? 2} pages</div>
+          <div className="epub-card-format">CBZ · {book.pageCount ?? 0} pages{ocr?.status === 'ready' ? ' · text ready' : ''}</div>
+        )}
+        {ocr && ocr.status !== 'ready' && ocr.status !== 'error' && (
+          <div className="comic-ocr-card-status" aria-live="polite">
+            <div className="comic-ocr-card-label">
+              <strong>Completed page {ocr.processedPages}/{ocr.totalPages}</strong>
+              <span>{Math.round(ocr.overallProgress * 100)}%</span>
+            </div>
+            <div
+              className="comic-ocr-progress-track"
+              role="progressbar"
+              aria-label={`Comic OCR: completed page ${ocr.processedPages} of ${ocr.totalPages}`}
+              aria-valuemin={0}
+              aria-valuemax={ocr.totalPages}
+              aria-valuenow={ocr.processedPages + ocr.pageProgress}
+            >
+              <span style={{ width: `${Math.max(1, ocr.overallProgress * 100)}%` }} />
+            </div>
+            <div className="comic-ocr-card-stage">{ocr.stage}</div>
+            {formatEta(ocr.estimatedSecondsRemaining) && (
+              <div className="comic-ocr-card-eta">Estimated remaining: {formatEta(ocr.estimatedSecondsRemaining)}</div>
+            )}
+          </div>
+        )}
+        {ocr?.status === 'error' && (
+          <div className="comic-ocr-card-error" role="alert">
+            <strong>[{ocr.diagnosticCode || 'cbz_ocr_failed'}]</strong>
+            <span>{ocr.diagnosticMessage}</span>
+            {ocr.diagnosticDetail && <small>{ocr.diagnosticDetail}</small>}
+            <button type="button" onClick={(event) => { event.stopPropagation(); onRetryOcr(); }}>Retry OCR</button>
+          </div>
         )}
       </div>
       <button
@@ -49,7 +96,7 @@ function BookCard({ book, onOpen, onDelete }: { book: BookMeta; onOpen: () => vo
 
 export default function Library() {
   const navigate = useNavigate();
-  const { books, loading, error, addFromFile, remove } = useBooks();
+  const { books, loading, error, addFromFile, remove, retryOcr } = useBooks();
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -59,11 +106,11 @@ export default function Library() {
     setBusy(true);
     setUploadError('');
     try {
-      let lastId = '';
+      let lastImport: Awaited<ReturnType<typeof addFromFile>> | null = null;
       for (const file of Array.from(files)) {
-        lastId = await addFromFile(file);
+        lastImport = await addFromFile(file);
       }
-      if (files.length === 1 && lastId) navigate(`/books/${lastId}`);
+      if (files.length === 1 && lastImport && !lastImport.processing) navigate(`/books/${lastImport.id}`);
     } catch (err) {
       runtimeLog.error('Failed to import book:', err);
       setUploadError(err instanceof Error ? err.message : 'Could not import that book.');
@@ -83,7 +130,7 @@ export default function Library() {
       <div className="epub-library-header">
         <div>
           <h1 className="epub-library-title">Books</h1>
-          <p className="epub-library-subtitle">Read EPUBs or the two-page CBZ preview and tap any mapped word to look it up.</p>
+          <p className="epub-library-subtitle">Read EPUBs or upload a CBZ. Polycast selects text from every comic page on this device, and completed pages become clickable immediately.</p>
         </div>
         <button className="epub-upload-btn" onClick={() => fileInput.current?.click()} disabled={busy}>
           <PlusIcon size={18} />
@@ -120,6 +167,7 @@ export default function Library() {
               book={book}
               onOpen={() => navigate(`/books/${book.id}`)}
               onDelete={() => void handleDelete(book)}
+              onRetryOcr={() => void retryOcr(book.id)}
             />
           ))}
         </div>

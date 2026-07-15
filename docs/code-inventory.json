@@ -1,12 +1,12 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 515,
-    "lines": 82807,
-    "declarations": 2288,
+    "files": 517,
+    "lines": 83694,
+    "declarations": 2316,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
-    "zeroCallerCandidates": 2
+    "zeroCallerCandidates": 3
   },
   "files": [
     {
@@ -255,6 +255,7 @@
         "network"
       ],
       "testCoverage": [
+        "client/src/test/cbz.test.ts",
         "client/src/test/offlineDictionary.test.ts",
         "extension/test/background.test.mjs",
         "extension/test/popup-performance.test.mjs",
@@ -376,6 +377,7 @@
         "client/src/test/watchTranscript.test.ts",
         "extension/test/background.test.mjs",
         "extension/test/popup-performance.test.mjs",
+        "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/authResponse.test.js",
         "server/lib/sharedDictionaryEntries.test.js",
@@ -765,7 +767,7 @@
         },
         {
           "name": "request",
-          "callers": 334,
+          "callers": 339,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",
@@ -1056,6 +1058,7 @@
       "responsibility": "web API adapter",
       "sideEffects": [],
       "testCoverage": [
+        "client/src/test/cbz.test.ts",
         "client/src/test/offlineDictionary.test.ts",
         "extension/test/background.test.mjs",
         "extension/test/popup-performance.test.mjs",
@@ -1756,7 +1759,7 @@
     },
     {
       "file": "client/src/components/ComicReader.tsx",
-      "lines": 211,
+      "lines": 344,
       "responsibility": "web component UI",
       "sideEffects": [
         "UI"
@@ -1767,7 +1770,7 @@
       "symbols": [
         {
           "name": "cleanLookupWord",
-          "callers": 2,
+          "callers": 3,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -2176,6 +2179,7 @@
       "testCoverage": [
         "extension/test/popup-performance.test.mjs",
         "extension/test/selection.test.mjs",
+        "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/UITests/ReaderPopupUITests.swift"
       ],
       "disposition": "intentionally standalone",
@@ -2563,6 +2567,7 @@
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/catalogProgress.test.tsx",
+        "client/src/test/cbz.test.ts",
         "extension/test/background.test.mjs",
         "server/test/ttsService.test.js"
       ],
@@ -3172,6 +3177,7 @@
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/catalogProgress.test.tsx",
+        "client/src/test/cbz.test.ts",
         "extension/test/background.test.mjs",
         "server/test/ttsService.test.js"
       ],
@@ -3368,7 +3374,7 @@
         },
         {
           "name": "useAuth",
-          "callers": 104,
+          "callers": 107,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -3397,7 +3403,7 @@
     },
     {
       "file": "client/src/hooks/useBooks.ts",
-      "lines": 75,
+      "lines": 116,
       "responsibility": "application support",
       "sideEffects": [],
       "testCoverage": [],
@@ -3435,7 +3441,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -4301,7 +4307,7 @@
         },
         {
           "name": "Dictionary",
-          "callers": 26,
+          "callers": 25,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx"
           ],
@@ -4494,13 +4500,19 @@
     },
     {
       "file": "client/src/pages/Library.tsx",
-      "lines": 130,
+      "lines": 178,
       "responsibility": "web route UI",
       "sideEffects": [],
       "testCoverage": [],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
+        {
+          "name": "formatEta",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
         {
           "name": "BookCard",
           "callers": 3,
@@ -4591,7 +4603,7 @@
     },
     {
       "file": "client/src/pages/Onboarding.tsx",
-      "lines": 96,
+      "lines": 95,
       "responsibility": "web route UI",
       "sideEffects": [],
       "testCoverage": [],
@@ -4638,7 +4650,7 @@
         },
         {
           "name": "next",
-          "callers": 242,
+          "callers": 247,
           "testReferences": [
             "client/src/test/srs.test.ts",
             "client/src/test/watchTranscript.test.ts",
@@ -5056,7 +5068,7 @@
     },
     {
       "file": "client/src/test/cbz.test.ts",
-      "lines": 46,
+      "lines": 106,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
@@ -5287,7 +5299,7 @@
       "symbols": [
         {
           "name": "card",
-          "callers": 830,
+          "callers": 838,
           "testReferences": [
             "client/src/test/srs.test.ts",
             "ios/Polycast/Tests/PolycastTests.swift",
@@ -5442,7 +5454,7 @@
         },
         {
           "name": "cleanup",
-          "callers": 24,
+          "callers": 28,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -5468,7 +5480,7 @@
     },
     {
       "file": "client/src/utils/bookStore.ts",
-      "lines": 98,
+      "lines": 164,
       "responsibility": "application support",
       "sideEffects": [
         "persistence"
@@ -5479,18 +5491,24 @@
       "symbols": [
         {
           "name": "openDB",
-          "callers": 4,
+          "callers": 6,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "tx",
-          "callers": 16,
+          "callers": 19,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "listBooks",
+          "callers": 7,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "getBookMeta",
           "callers": 2,
           "testReferences": [],
           "disposition": "retain"
@@ -5503,13 +5521,37 @@
         },
         {
           "name": "getStoredBook",
-          "callers": 3,
+          "callers": 5,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "addBook",
           "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "updateBookMeta",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "putComicPageResult",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "getComicPageResult",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "deleteComicPages",
+          "callers": 1,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -5535,7 +5577,7 @@
     },
     {
       "file": "client/src/utils/cbz.ts",
-      "lines": 111,
+      "lines": 261,
       "responsibility": "application support",
       "sideEffects": [],
       "testCoverage": [
@@ -5544,6 +5586,38 @@
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
+        {
+          "name": "imageMime",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "visibleImageEntries",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "titleFromFileName",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "prepareCbzForOcr",
+          "callers": 2,
+          "testReferences": [
+            "client/src/test/cbz.test.ts"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "openComicArchive",
+          "callers": 4,
+          "testReferences": [],
+          "disposition": "retain"
+        },
         {
           "name": "joinChunks",
           "callers": 1,
@@ -5558,11 +5632,11 @@
         },
         {
           "name": "parseCbzPrototype",
-          "callers": 2,
+          "callers": 0,
           "testReferences": [
             "client/src/test/cbz.test.ts"
           ],
-          "disposition": "retain"
+          "disposition": "delete-review"
         }
       ]
     },
@@ -5596,8 +5670,134 @@
       ]
     },
     {
+      "file": "client/src/utils/comicOcr.ts",
+      "lines": 333,
+      "responsibility": "application support",
+      "sideEffects": [
+        "events"
+      ],
+      "testCoverage": [
+        "client/src/test/cbz.test.ts",
+        "client/src/test/groupCallLifecycle.test.tsx",
+        "client/src/test/groupCallProvider.test.tsx",
+        "client/src/test/sessionExpiration.test.tsx"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "publish",
+          "callers": 6,
+          "testReferences": [
+            "client/src/test/groupCallLifecycle.test.tsx",
+            "client/src/test/groupCallProvider.test.tsx",
+            "client/src/test/sessionExpiration.test.tsx"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "boundedProgress",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "estimatedSeconds",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "liveProgress",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "ocrPageToLines",
+          "callers": 1,
+          "testReferences": [
+            "client/src/test/cbz.test.ts"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "imageDimensions",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "createOcrWorker",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "errorCode",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "persistProgress",
+          "callers": 9,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "processComic",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "markFailed",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "drainQueue",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "startComicOcr",
+          "callers": 6,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "retryComicOcr",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "cancelComicOcr",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "resumePendingComicOcr",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "COMIC_OCR_PROGRESS_EVENT",
+          "callers": 7,
+          "testReferences": [],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
       "file": "client/src/utils/comicPrototypeManifest.ts",
-      "lines": 193,
+      "lines": 203,
       "responsibility": "application support",
       "sideEffects": [],
       "testCoverage": [],
@@ -6102,7 +6302,7 @@
         },
         {
           "name": "openDB",
-          "callers": 4,
+          "callers": 6,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -6334,7 +6534,7 @@
         },
         {
           "name": "createScopedRuntimeLogger",
-          "callers": 124,
+          "callers": 128,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -7476,6 +7676,7 @@
         "extension/test/popup-performance.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/transcript-contract.test.mjs",
+        "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/lib/sharedDictionaryEntries.test.js"
@@ -7757,6 +7958,7 @@
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/catalogProgress.test.tsx",
+        "client/src/test/cbz.test.ts",
         "extension/test/background.test.mjs",
         "server/test/ttsService.test.js"
       ],
@@ -7805,6 +8007,7 @@
         "extension/test/background.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "extension/test/selection.test.mjs",
+        "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/UITests/PolycastUITests.swift"
       ],
       "disposition": "intentionally standalone",
@@ -7917,7 +8120,7 @@
     },
     {
       "file": "extension/shared/wordPopupCore.js",
-      "lines": 591,
+      "lines": 593,
       "responsibility": "extension runtime/UI",
       "sideEffects": [
         "network",
@@ -7927,7 +8130,8 @@
       ],
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
-        "extension/test/popup-performance.test.mjs"
+        "extension/test/popup-performance.test.mjs",
+        "extension/test/word-popup-localized-definition.test.mjs"
       ],
       "disposition": "reviewed-retain",
       "dispositionReason": "One isolated content-script lifecycle; shared popup/token/diagnostic infrastructure is already extracted.",
@@ -7972,7 +8176,8 @@
           "name": "createWordPopup",
           "callers": 6,
           "testReferences": [
-            "extension/test/popup-performance.test.mjs"
+            "extension/test/popup-performance.test.mjs",
+            "extension/test/word-popup-localized-definition.test.mjs"
           ],
           "disposition": "retain"
         },
@@ -8018,7 +8223,8 @@
           "name": "destroy",
           "callers": 11,
           "testReferences": [
-            "extension/test/popup-performance.test.mjs"
+            "extension/test/popup-performance.test.mjs",
+            "extension/test/word-popup-localized-definition.test.mjs"
           ],
           "disposition": "retain"
         },
@@ -8116,6 +8322,18 @@
       "lines": 20,
       "responsibility": "test",
       "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
+      "file": "extension/test/word-popup-localized-definition.test.mjs",
+      "lines": 38,
+      "responsibility": "test",
+      "sideEffects": [
+        "UI"
+      ],
       "testCoverage": [],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -8414,7 +8632,7 @@
         },
         {
           "name": "request",
-          "callers": 334,
+          "callers": 339,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",
@@ -8512,7 +8730,7 @@
         },
         {
           "name": "savedWords",
-          "callers": 83,
+          "callers": 84,
           "testReferences": [
             "extension/test/background.test.mjs"
           ],
@@ -9282,7 +9500,7 @@
       "symbols": [
         {
           "name": "BookMeta",
-          "callers": 17,
+          "callers": 22,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -9294,7 +9512,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -9381,7 +9599,7 @@
         },
         {
           "name": "delete",
-          "callers": 79,
+          "callers": 83,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -9412,7 +9630,7 @@
         },
         {
           "name": "progress",
-          "callers": 173,
+          "callers": 213,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx"
@@ -9427,7 +9645,7 @@
         },
         {
           "name": "pageProgress",
-          "callers": 2,
+          "callers": 14,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -9702,7 +9920,7 @@
         },
         {
           "name": "persistProgress",
-          "callers": 3,
+          "callers": 9,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -9806,7 +10024,7 @@
         },
         {
           "name": "Event",
-          "callers": 11,
+          "callers": 13,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx"
           ],
@@ -9973,7 +10191,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -9998,7 +10216,7 @@
         },
         {
           "name": "delete",
-          "callers": 79,
+          "callers": 83,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -10066,7 +10284,7 @@
         },
         {
           "name": "data",
-          "callers": 884,
+          "callers": 889,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -10080,7 +10298,7 @@
         },
         {
           "name": "string",
-          "callers": 1807,
+          "callers": 1842,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
@@ -10685,6 +10903,7 @@
         "client/src/test/sessionExpiration.test.tsx",
         "extension/test/page-highlights.test.mjs",
         "extension/test/popup-performance.test.mjs",
+        "extension/test/word-popup-localized-definition.test.mjs",
         "server/lib/srsAlgorithm.test.js",
         "server/lib/srsUpdate.test.js",
         "server/services/dictionaryStudyService.test.js",
@@ -10727,7 +10946,8 @@
           "name": "disconnect",
           "callers": 36,
           "testReferences": [
-            "extension/test/popup-performance.test.mjs"
+            "extension/test/popup-performance.test.mjs",
+            "extension/test/word-popup-localized-definition.test.mjs"
           ],
           "disposition": "retain"
         },
@@ -10756,7 +10976,7 @@
         },
         {
           "name": "on",
-          "callers": 276,
+          "callers": 280,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -11239,7 +11459,7 @@
         },
         {
           "name": "close",
-          "callers": 54,
+          "callers": 69,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "server/test/auth.integration.test.js",
@@ -11314,7 +11534,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -11392,6 +11612,7 @@
         "extension/test/page-highlights.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "extension/test/selection.test.mjs",
+        "extension/test/word-popup-localized-definition.test.mjs",
         "server/lib/httpErrors.test.js",
         "server/lib/idempotency.test.js",
         "server/services/dictionaryWordService.test.js",
@@ -11448,6 +11669,7 @@
             "extension/test/page-highlights.test.mjs",
             "extension/test/popup-performance.test.mjs",
             "extension/test/selection.test.mjs",
+            "extension/test/word-popup-localized-definition.test.mjs",
             "server/lib/httpErrors.test.js",
             "server/lib/idempotency.test.js",
             "server/services/dictionaryWordService.test.js",
@@ -11538,7 +11760,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -11616,7 +11838,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12090,7 +12312,7 @@
         },
         {
           "name": "delete",
-          "callers": 79,
+          "callers": 83,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -12200,6 +12422,7 @@
         "extension/test/background.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "extension/test/selection.test.mjs",
+        "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/services/dictionaryWordService.test.js",
         "server/test/targetLanguageGuard.test.js"
@@ -12227,6 +12450,7 @@
             "extension/test/background.test.mjs",
             "extension/test/popup-performance.test.mjs",
             "extension/test/selection.test.mjs",
+            "extension/test/word-popup-localized-definition.test.mjs",
             "ios/Polycast/Tests/PolycastTests.swift",
             "server/test/targetLanguageGuard.test.js"
           ],
@@ -12274,7 +12498,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12519,7 +12743,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12767,8 +12991,10 @@
         "UI"
       ],
       "testCoverage": [
+        "client/src/test/cbz.test.ts",
         "extension/test/popup-performance.test.mjs",
         "extension/test/selection.test.mjs",
+        "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/migrate.test.js"
@@ -12824,10 +13050,12 @@
         },
         {
           "name": "height",
-          "callers": 251,
+          "callers": 270,
           "testReferences": [
+            "client/src/test/cbz.test.ts",
             "extension/test/popup-performance.test.mjs",
             "extension/test/selection.test.mjs",
+            "extension/test/word-popup-localized-definition.test.mjs",
             "ios/Polycast/Tests/PolycastTests.swift",
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -13333,7 +13561,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -13380,7 +13608,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -13397,7 +13625,7 @@
         },
         {
           "name": "reject",
-          "callers": 44,
+          "callers": 50,
           "testReferences": [
             "server/test/correlation.test.js"
           ],
@@ -13596,7 +13824,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -13774,6 +14002,7 @@
         "extension/test/fallback-toast.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "extension/test/selection.test.mjs",
+        "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/httpErrors.test.js",
         "server/test/auth.integration.test.js",
@@ -13851,7 +14080,7 @@
         },
         {
           "name": "close",
-          "callers": 54,
+          "callers": 69,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "server/test/auth.integration.test.js",
@@ -13926,11 +14155,13 @@
         },
         {
           "name": "width",
-          "callers": 269,
+          "callers": 289,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
+            "client/src/test/cbz.test.ts",
             "extension/test/popup-performance.test.mjs",
             "extension/test/selection.test.mjs",
+            "extension/test/word-popup-localized-definition.test.mjs",
             "ios/Polycast/Tests/PolycastTests.swift"
           ],
           "disposition": "retain"
@@ -13948,7 +14179,7 @@
         },
         {
           "name": "trim",
-          "callers": 272,
+          "callers": 276,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "server/lib/httpErrors.test.js"
@@ -14082,6 +14313,7 @@
         "extension/test/page-highlights.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "extension/test/selection.test.mjs",
+        "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/lib/gemini.test.js",
@@ -14207,7 +14439,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14307,7 +14539,8 @@
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/epub.test.ts",
-            "extension/test/popup-performance.test.mjs"
+            "extension/test/popup-performance.test.mjs",
+            "extension/test/word-popup-localized-definition.test.mjs"
           ],
           "disposition": "retain"
         }
@@ -14381,7 +14614,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14655,7 +14888,7 @@
         },
         {
           "name": "load",
-          "callers": 118,
+          "callers": 120,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -16473,6 +16706,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/cbz.test.ts",
         "client/src/test/offlineDictionary.test.ts",
         "extension/test/background.test.mjs",
         "extension/test/popup-performance.test.mjs",
@@ -17279,6 +17513,7 @@
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/catalogProgress.test.tsx",
+        "client/src/test/cbz.test.ts",
         "extension/test/background.test.mjs",
         "server/test/ttsService.test.js"
       ],
@@ -20019,7 +20254,7 @@
         },
         {
           "name": "worker",
-          "callers": 24,
+          "callers": 28,
           "testReferences": [
             "server/test/ttsService.test.js"
           ],
@@ -21275,7 +21510,7 @@
         },
         {
           "name": "markFailed",
-          "callers": 1,
+          "callers": 3,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -21508,7 +21743,7 @@
     },
     {
       "file": "server/services/wordSemanticsService.js",
-      "lines": 538,
+      "lines": 545,
       "responsibility": "server domain/integration",
       "sideEffects": [],
       "testCoverage": [],
@@ -21517,7 +21752,7 @@
       "symbols": [
         {
           "name": "makeContextError",
-          "callers": 12,
+          "callers": 13,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -21891,6 +22126,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/cbz.test.ts",
         "client/src/test/offlineDictionary.test.ts",
         "extension/test/background.test.mjs",
         "extension/test/popup-performance.test.mjs",
@@ -22091,7 +22327,7 @@
         },
         {
           "name": "cleanup",
-          "callers": 24,
+          "callers": 28,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -22143,7 +22379,7 @@
         },
         {
           "name": "request",
-          "callers": 334,
+          "callers": 339,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",
@@ -22177,7 +22413,7 @@
       "symbols": [
         {
           "name": "fixture",
-          "callers": 56,
+          "callers": 57,
           "testReferences": [
             "client/src/test/srs.test.ts",
             "client/src/test/transcriptContract.test.ts",

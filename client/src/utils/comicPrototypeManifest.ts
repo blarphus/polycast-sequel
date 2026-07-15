@@ -1,3 +1,12 @@
+export interface ComicTextWord {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  text: string;
+  confidence?: number;
+}
+
 export interface ComicTextLine {
   x: number;
   y: number;
@@ -5,6 +14,7 @@ export interface ComicTextLine {
   height: number;
   text: string;
   context: string;
+  words?: ComicTextWord[];
 }
 
 export interface ComicPrototypePageDefinition {

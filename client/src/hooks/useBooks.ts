@@ -1,15 +1,31 @@
 import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
 const runtimeLog = createScopedRuntimeLogger('web.hooks.usebooks');
 // ---------------------------------------------------------------------------
-// hooks/useBooks.ts -- Manage the on-device EPUB + prototype CBZ library.
+// hooks/useBooks.ts -- Manage the on-device EPUB + resumable CBZ OCR library.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from 'react';
 import { listBooks, addBook, deleteBook, type BookMeta } from '../utils/bookStore';
 import { parseEpub, coverBlob } from '../utils/epub';
-import { parseCbzPrototype } from '../utils/cbz';
+import { prepareCbzForOcr } from '../utils/cbz';
+import {
+  cancelComicOcr,
+  COMIC_OCR_PROGRESS_EVENT,
+  resumePendingComicOcr,
+  retryComicOcr,
+  startComicOcr,
+  type ComicOcrProgressEvent,
+} from '../utils/comicOcr';
+import { useAuth } from './useAuth';
+
+export interface BookImportResult {
+  id: string;
+  format: 'epub' | 'comic';
+  processing: boolean;
+}
 
 export function useBooks() {
+  const { user } = useAuth();
   const [books, setBooks] = useState<BookMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,15 +42,30 @@ export function useBooks() {
     }
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    void refresh().then(() => resumePendingComicOcr()).catch((err) => {
+      runtimeLog.error('Failed to resume queued comic OCR:', err);
+    });
+  }, [refresh]);
+
+  useEffect(() => {
+    const handleProgress = (event: Event) => {
+      const detail = (event as CustomEvent<ComicOcrProgressEvent>).detail;
+      if (!detail) return;
+      setBooks((current) => current.map((book) => (
+        book.id === detail.bookId ? { ...book, ocr: detail.progress } : book
+      )));
+    };
+    window.addEventListener(COMIC_OCR_PROGRESS_EVENT, handleProgress);
+    return () => window.removeEventListener(COMIC_OCR_PROGRESS_EVENT, handleProgress);
+  }, []);
 
   /** Parse + store an uploaded EPUB or supported CBZ. Returns the new book id. */
-  const addFromFile = useCallback(async (file: File): Promise<string> => {
+  const addFromFile = useCallback(async (file: File): Promise<BookImportResult> => {
     const id = `${Date.now()}-${Math.round(performance.now())}`;
     if (file.name.toLowerCase().endsWith('.cbz')) {
-      const comic = await parseCbzPrototype(file);
-      const firstPage = comic.pages[0];
-      const cover = new Blob([firstPage.image as BlobPart], { type: firstPage.mimeType });
+      const language = user?.target_language || '';
+      const { comic, cover } = await prepareCbzForOcr(file, language);
       const meta: BookMeta = {
         id,
         title: comic.title,
@@ -43,11 +74,16 @@ export function useBooks() {
         addedAt: Date.now(),
         format: 'comic',
         pageCount: comic.pages.length,
-        notice: comic.prototypeNotice,
+        ocr: comic.ocr,
       };
-      await addBook(meta, comic);
+      try {
+        await addBook(meta, comic);
+      } catch (error) {
+        throw new Error(`[cbz_storage_failed] Polycast could not store this CBZ on the device: ${error instanceof Error ? error.message : String(error)}`);
+      }
       await refresh();
-      return id;
+      startComicOcr(id);
+      return { id, format: 'comic', processing: true };
     }
 
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -62,13 +98,18 @@ export function useBooks() {
     };
     await addBook(meta, bytes);
     await refresh();
-    return id;
-  }, [refresh]);
+    return { id, format: 'epub', processing: false };
+  }, [refresh, user?.target_language]);
 
   const remove = useCallback(async (id: string) => {
+    cancelComicOcr(id);
     await deleteBook(id);
     await refresh();
   }, [refresh]);
 
-  return { books, loading, error, refresh, addFromFile, remove };
+  const retryOcr = useCallback(async (id: string) => {
+    await retryComicOcr(id);
+  }, []);
+
+  return { books, loading, error, refresh, addFromFile, remove, retryOcr };
 }
