@@ -41,10 +41,11 @@ async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
 // best sense only points to another word (e.g. "plural of mão", "gerund of atenuar combined
 // with se", "alternative form of caracterizar", or a bare grammatical label), or -1 when none
 // fit — and
-// (b) a short native-language TRANSLATION of the word that is consistent with the sense it picked.
+// (b) a short native-language TRANSLATION of the word that is consistent with the sense it picked,
+// and (c) a concise native-language DEFINITION of that exact sense.
 // Word translation comes from here (not Google Translate) so the displayed translation never
 // disagrees with the chosen definition for polysemous words.
-// Returns { index, translation } | { base, translation }.
+// Returns { index, translation, definition } | { base, translation, definition }.
 async function pickBestSense(word, sentence, targetLang, nativeLang, senses) {
   const senseList = senses
     .map((s, i) => `${i}: [${s.pos}] ${s.gloss}${s.source === 'user' ? "  (already in the learner's dictionary)" : ''}`)
@@ -60,16 +61,22 @@ Pick the sense that best matches how "${word}" is used here. IMPORTANT: if ANY s
 - If NONE of the senses actually conveys the meaning of "${word}" as it is used in this sentence — e.g. it is used figuratively, idiomatically, or as part of a multi-word expression and no listed sense captures that meaning — the PICK is -1. Do NOT force a sense that doesn't fit.
 - ${strictSensePickRule({ word, targetLang })}
 
-Reply with exactly ONE line in the form:  PICK | TRANSLATION
-where PICK is the token chosen above (an index number, a single base word, or -1), and TRANSLATION is the best 1–3 word ${nativeLang} translation of "${word}" as used here, matching the sense you chose. Examples:  "3 | the region"  |  "mano | hands"  |  "-1 | stained".`,
-    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 40, responseMimeType: 'text/plain' },
+Reply with exactly ONE line in the form:  PICK | TRANSLATION | DEFINITION
+where PICK is the token chosen above (an index number, a single base word, or -1), TRANSLATION is the best 1–3 word ${nativeLang} translation of "${word}" as used here, and DEFINITION is a plain, concise ${nativeLang} explanation of that exact sense in 12 words or fewer. Do not copy the candidate gloss unless it is already in ${nativeLang}.`,
+    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 80, responseMimeType: 'text/plain' },
     'gemini-flash-lite-latest',
   );
 
   const reply = raw.trim();
-  const sepIdx = reply.indexOf('|');
-  const pickToken = (sepIdx >= 0 ? reply.slice(0, sepIdx) : reply).trim();
-  const translation = (sepIdx >= 0 ? reply.slice(sepIdx + 1) : '').split('|')[0].trim();
+  const parts = reply.split('|').map((part) => part.trim());
+  const pickToken = parts[0] || '';
+  const translation = parts[1] || '';
+  const definition = parts.slice(2).join('|').trim();
+  if (!translation || !definition) {
+    throw makeContextError('Gemini sense pick omitted its native-language translation or definition', {
+      word, targetLang, nativeLang, raw: reply,
+    });
+  }
 
   if (/^-?\d+$/.test(pickToken)) {
     const index = Number.parseInt(pickToken, 10);
@@ -78,10 +85,10 @@ where PICK is the token chosen above (an index number, a single base word, or -1
         word, targetLang, raw: reply, senseCount: senses.length,
       });
     }
-    return { index, translation };
+    return { index, translation, definition };
   }
   if (/^[\p{L}'-]+$/u.test(pickToken)) {
-    return { base: pickToken.toLowerCase(), translation };
+    return { base: pickToken.toLowerCase(), translation, definition };
   }
   throw makeContextError('Gemini sense pick reply was neither a number nor a single word', {
     word, targetLang, raw: reply,
@@ -196,7 +203,7 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
     target_word: word,
     valid: true,
     translation,
-    definition: resolved.definition,
+    definition: pick.definition,
     gemini_definition: null,
     part_of_speech: resolved.part_of_speech,
     sense_index: resolved.sense_index ?? null,
@@ -379,7 +386,7 @@ ${senseInstruction}
     target_word: parsed.target_word || word,
     valid: parsed.valid ?? true,
     translation: parsed.translation || '',
-    definition: matched_gloss || parsed.definition || '',
+    definition: parsed.definition || '',
     gemini_definition: null,
     part_of_speech: parsed.part_of_speech || null,
     sense_index,

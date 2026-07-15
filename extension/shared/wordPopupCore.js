@@ -385,8 +385,10 @@
         }
 
         const translation = res.translation || res.definition || '';
-        const dictionaryDefinition = res.matched_gloss || res.definition || '';
-        const definitionLabel = 'Dictionary';
+        // `definition` is localized for the learner. `matched_gloss` retains the
+        // source-language Wiktionary wording for sense identity and dedup only.
+        const dictionaryDefinition = res.definition || res.matched_gloss || '';
+        const definitionLabel = 'Definition';
         const definitionSourcePill = fallbackNoticePills(res);
         const fallbackDetails = fallbackNoticeDetails(res);
         if (!translation && !dictionaryDefinition && !res.part_of_speech) {
