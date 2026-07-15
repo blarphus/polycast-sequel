@@ -44,6 +44,7 @@ export default function Classes() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isTeacher = user?.account_type === 'teacher';
+  const isStudent = user?.account_type === 'student';
   const {
     classrooms,
     setActiveClassroomId,
@@ -58,6 +59,11 @@ export default function Classes() {
   const [createNativeLang, setCreateNativeLang] = useState('');
   const [createError, setCreateError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showJoinForm, setShowJoinForm] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [joinError, setJoinError] = useState('');
+  const [joinSuccess, setJoinSuccess] = useState('');
+  const [joining, setJoining] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
@@ -94,6 +100,28 @@ export default function Classes() {
     await reloadClassrooms();
     setActiveClassroomId(updated.id);
     setEditingId(null);
+  };
+
+  const handleJoin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setJoining(true);
+    setJoinError('');
+    setJoinSuccess('');
+    try {
+      const result = await api.joinClassroom(joinCode.trim());
+      await reloadClassrooms();
+      setActiveClassroomId(result.classroom.id);
+      setJoinSuccess(result.joined
+        ? `You joined ${result.classroom.name}.`
+        : `You are already enrolled in ${result.classroom.name}.`);
+      setJoinCode('');
+      setShowJoinForm(false);
+    } catch (err) {
+      runtimeLog.error('Failed to join classroom:', err);
+      setJoinError(err instanceof Error ? err.message : 'Failed to join classroom');
+    } finally {
+      setJoining(false);
+    }
   };
 
   const handleDelete = async (classroom: Classroom) => {
@@ -133,9 +161,19 @@ export default function Classes() {
             Create class
           </button>
         )}
+        {isStudent && (
+          <button className="btn btn-primary btn-sm" onClick={() => {
+            setShowJoinForm((prev) => !prev);
+            setJoinError('');
+          }}>
+            <PlusIcon size={14} strokeWidth={2.5} />
+            Join class
+          </button>
+        )}
       </div>
 
       {error && <div className="auth-error">{error}</div>}
+      {joinSuccess && <div className="classes-join-success" role="status">{joinSuccess}</div>}
 
       {isTeacher && showCreateForm && (
         <div className="create-class-overlay" onClick={() => setShowCreateForm(false)}>
@@ -204,6 +242,59 @@ export default function Classes() {
                 </button>
                 <button className="btn btn-primary" type="submit" disabled={creating}>
                   {creating ? 'Creating...' : 'Create class'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isStudent && showJoinForm && (
+        <div className="create-class-overlay" onClick={() => setShowJoinForm(false)}>
+          <div className="create-class-modal classes-join-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="create-class-modal-header">
+              <div>
+                <h2 className="create-class-modal-title">Join a class</h2>
+                <p className="classes-join-description">Enter the code provided by your teacher.</p>
+              </div>
+              <button
+                className="create-class-modal-close"
+                type="button"
+                onClick={() => setShowJoinForm(false)}
+                aria-label="Close join class form"
+              >
+                <CloseIcon size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleJoin}>
+              <div className="create-class-modal-body">
+                <label className="create-class-field">
+                  <span className="create-class-label">Class code</span>
+                  <input
+                    className="form-input classes-join-code-input"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value.replace(/\s/g, ''))}
+                    placeholder="e.g. a1b2c3d4"
+                    minLength={6}
+                    maxLength={12}
+                    pattern="[A-Za-z0-9]+"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    required
+                    autoFocus
+                  />
+                </label>
+                {joinError && <div className="auth-error" role="alert">{joinError}</div>}
+              </div>
+
+              <div className="create-class-modal-footer">
+                <button className="btn btn-secondary" type="button" onClick={() => setShowJoinForm(false)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" type="submit" disabled={joining || joinCode.trim().length < 6}>
+                  {joining ? 'Joining...' : 'Join class'}
                 </button>
               </div>
             </form>

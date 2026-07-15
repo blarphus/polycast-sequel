@@ -11,6 +11,7 @@ import {
   getClassroomForUser,
   getClassroomStudentStats,
   getClassroomTopics,
+  joinClassroomByCode,
   listClassroomStudents,
   listVisibleClassrooms,
   removeStudentFromClassroom,
@@ -23,6 +24,13 @@ const router = Router();
 const classroomIdParam = z.object({ id: z.string().uuid('Invalid classroom ID') });
 const studentIdParam = z.object({ studentId: z.string().uuid('Invalid student ID') });
 const addStudentBody = z.object({ studentId: z.string().uuid('Invalid student ID') });
+const joinClassroomBody = z.object({
+  classCode: z.string()
+    .trim()
+    .min(6, 'Class code is too short')
+    .max(12, 'Class code is too long')
+    .regex(/^[a-z0-9]+$/i, 'Class code can contain only letters and numbers'),
+});
 const createClassroomBody = z.object({
   name: z.string().min(1, 'Class name is required').trim(),
   section: z.string().trim().optional().or(z.literal('')),
@@ -103,6 +111,11 @@ router.post('/api/classrooms', authMiddleware, requireTeacher, validate({ body: 
     target_language: normalizeOptionalText(req.body.target_language),
     native_language: normalizeOptionalText(req.body.native_language),
   }));
+}));
+
+router.post('/api/classrooms/join', authMiddleware, validate({ body: joinClassroomBody }), asyncHandler(async (req, res) => {
+  const result = await joinClassroomByCode(req.userId, req.body.classCode);
+  return res.status(result.joined ? 201 : 200).json(result);
 }));
 
 router.get('/api/classrooms/:id', authMiddleware, validate({ params: classroomIdParam }), asyncHandler(async (req, res) => {

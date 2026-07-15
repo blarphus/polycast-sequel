@@ -129,6 +129,13 @@ export function createClassroom(data: { name: string; section?: string; subject?
   });
 }
 
+export function joinClassroom(classCode: string) {
+  return request<{ classroom: Classroom; joined: boolean }>('/classrooms/join', {
+    method: 'POST',
+    body: { classCode },
+  });
+}
+
 export function updateClassroom(id: string, data: {
   name?: string;
   section?: string | null;

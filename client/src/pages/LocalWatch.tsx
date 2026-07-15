@@ -4,6 +4,7 @@ const runtimeLog = createScopedRuntimeLogger('web.pages.localwatch');
 // pages/LocalWatch.tsx — Watch a local video with synced SRT transcript
 // ---------------------------------------------------------------------------
 
+import '../styles/watch.css';
 import '../styles/localVideos.css';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';

@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-13T16:13:34.180Z",
+  "generatedAt": "2026-07-15T20:46:04.335Z",
   "totals": {
-    "occurrences": 61,
-    "uniqueCodes": 58,
+    "occurrences": 62,
+    "uniqueCodes": 59,
     "incompleteOccurrences": 0
   },
   "entries": [
@@ -346,6 +346,14 @@
       "code": "region_detection_fallback",
       "file": "client/src/api/videos.ts",
       "line": 73,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "schedule_repair_used",
+      "file": "server/services/dictionaryScheduleService.js",
+      "line": 9,
       "structured": true,
       "logged": true,
       "visible": true

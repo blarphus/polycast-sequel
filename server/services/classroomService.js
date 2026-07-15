@@ -3,6 +3,7 @@ import { isUserOnline } from '../socket/presence.js';
 import { generateUniqueClassIdentity } from '../lib/classroomIdentity.js';
 import { getUserAccountType } from '../lib/userQueries.js';
 import { httpError } from '../lib/httpError.js';
+import { ForbiddenError, NotFoundError } from '../lib/httpErrors.js';
 
 function mapClassroomRow(row, roleOverride) {
   return {
@@ -158,6 +159,40 @@ export async function createClassroom({ teacherId, name, section, subject, room,
   } finally {
     client.release();
   }
+}
+
+export async function joinClassroomByCode(studentId, classCode, {
+  db = pool,
+  getAccountType = getUserAccountType,
+  getClassroom = getClassroomForUser,
+} = {}) {
+  const accountType = await getAccountType(studentId);
+  if (accountType !== 'student') {
+    throw new ForbiddenError('Student account required', { code: 'classroom_student_account_required' });
+  }
+
+  const normalizedCode = String(classCode || '').trim().toLowerCase();
+  const { rows } = await db.query(
+    `SELECT id
+     FROM classrooms
+     WHERE class_code = $1
+       AND archived_at IS NULL
+     LIMIT 1`,
+    [normalizedCode],
+  );
+  if (!rows[0]) {
+    throw new NotFoundError('No active class matches that code', { code: 'classroom_code_not_found' });
+  }
+
+  const enrollment = await db.query(
+    `INSERT INTO classroom_enrollments (classroom_id, student_id)
+     VALUES ($1, $2)
+     ON CONFLICT (classroom_id, student_id) DO NOTHING
+     RETURNING classroom_id`,
+    [rows[0].id, studentId],
+  );
+  const classroom = await getClassroom(rows[0].id, studentId);
+  return { classroom, joined: enrollment.rowCount === 1 };
 }
 
 export async function updateClassroom({ classroomId, teacherId, patch }) {
