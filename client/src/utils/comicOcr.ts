@@ -62,7 +62,7 @@ export function ocrPageToLines(page: Page): ComicTextLine[] {
     for (const paragraph of block.paragraphs || []) {
       const preparedLines = (paragraph.lines || []).map((sourceLine) => {
         const lineContainsLetters = sourceLine.words.some((word) => /\p{L}/u.test(word.text));
-        const words = (sourceLine.words || [])
+        const normalizedWords = (sourceLine.words || [])
           .map((word) => {
             let text = word.text.trim();
             if (text === '1' && lineContainsLetters) text = 'I';
@@ -75,9 +75,16 @@ export function ocrPageToLines(page: Page): ComicTextLine[] {
               text,
               confidence: word.confidence,
             };
-          })
-          .filter((word) => word.confidence >= 45 && /\p{L}/u.test(word.text)
-            && (word.text.length > 1 || /^[aiyo]$/iu.test(word.text)));
+          });
+        const plausibleWord = (word: typeof normalizedWords[number]) => /\p{L}/u.test(word.text)
+          && (word.text.length > 1 || /^[aiyo]$/iu.test(word.text));
+        const strongWordCount = normalizedWords.filter((word) => word.confidence >= 45 && plausibleWord(word)).length;
+        // Comic lettering often gives one word in an otherwise reliable line a
+        // lower score because it touches a bubble edge or uses a stylized font.
+        // Keep those contextual words, but retain the stricter threshold for
+        // isolated guesses so artwork does not become a field of false buttons.
+        const minimumConfidence = strongWordCount >= 2 ? 25 : 45;
+        const words = normalizedWords.filter((word) => word.confidence >= minimumConfidence && plausibleWord(word));
         if (!words.length) return null;
         return { sourceLine, words, text: words.map((word) => word.text).join(' ') };
       }).filter((line): line is NonNullable<typeof line> => !!line);

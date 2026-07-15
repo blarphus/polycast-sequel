@@ -97,6 +97,40 @@ describe('full CBZ OCR importer', () => {
     });
   });
 
+  it('keeps a lower-confidence word when reliable neighbors identify a real text line', () => {
+    const lines = ocrPageToLines({
+      blocks: [{
+        paragraphs: [{
+          lines: [{
+            bbox: { x0: 10, y0: 20, x1: 210, y1: 50 },
+            words: [
+              { text: 'Please', confidence: 95, bbox: { x0: 10, y0: 20, x1: 60, y1: 50 } },
+              { text: 'remember', confidence: 31, bbox: { x0: 70, y0: 20, x1: 135, y1: 50 } },
+              { text: 'me', confidence: 92, bbox: { x0: 145, y0: 20, x1: 175, y1: 50 } },
+            ],
+          }],
+        }],
+      }],
+    } as unknown as Parameters<typeof ocrPageToLines>[0]);
+
+    expect(lines[0].words?.map((word) => word.text)).toEqual(['Please', 'remember', 'me']);
+  });
+
+  it('still rejects an isolated low-confidence artwork guess', () => {
+    const lines = ocrPageToLines({
+      blocks: [{
+        paragraphs: [{
+          lines: [{
+            bbox: { x0: 10, y0: 20, x1: 80, y1: 50 },
+            words: [{ text: 'KRZZT', confidence: 31, bbox: { x0: 10, y0: 20, x1: 80, y1: 50 } }],
+          }],
+        }],
+      }],
+    } as unknown as Parameters<typeof ocrPageToLines>[0]);
+
+    expect(lines).toEqual([]);
+  });
+
   it('rejects OCR languages outside the currently supported English and Spanish pair', async () => {
     const archive = zipSync({ 'page-1.jpg': strToU8('page') });
     const file = new File([archive as BlobPart], 'comic.cbz', { type: 'application/zip' });

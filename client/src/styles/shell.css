@@ -510,16 +510,17 @@
   }
 
   .sidebar-account-popover {
-    position: static;
-    left: auto;
-    right: auto;
-    bottom: auto;
-    margin: 0 0.75rem 0.4rem;
+    position: absolute;
+    inset: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    margin: 0;
     padding: 0.85rem;
     border: 1px solid var(--border);
     border-radius: 14px;
     background: var(--bg-surface);
     box-shadow: var(--shadow-md);
+    z-index: 3;
   }
 
   .sidebar-account-popover-header {
@@ -697,7 +698,7 @@
   }
 
   .bottom-toolbar.collapsed .sidebar-account-popover {
-    margin: 0 0.4rem 0.4rem;
+    margin: 0;
     padding: 0.65rem;
   }
 

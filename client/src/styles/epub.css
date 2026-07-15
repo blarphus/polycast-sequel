@@ -281,7 +281,7 @@
 /* Two-page CBZ prototype -------------------------------------------------- */
 
 .epub-reader.comic-reader {
-  grid-template-rows: 56px auto minmax(0, 1fr) 42px;
+  grid-template-rows: 56px auto minmax(0, 1fr) 58px;
   background: #11131a;
 }
 
@@ -499,9 +499,95 @@
 
 .comic-footer {
   justify-content: space-between;
+  gap: 0.75rem;
   padding: 0 1rem;
   color: var(--text-secondary);
   font-size: 0.76rem;
+}
+
+.comic-footer-status {
+  flex: 1 1 0;
+}
+
+.comic-page-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.comic-page-controls > button {
+  min-width: 36px;
+  height: 32px;
+  padding: 0 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.comic-page-controls > button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  color: var(--accent);
+}
+
+.comic-page-controls > button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.comic-page-input {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.comic-page-input input {
+  width: 4.25rem;
+  height: 32px;
+  padding: 0 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 800;
+  text-align: center;
+}
+
+.comic-page-scrubber {
+  width: min(18vw, 220px);
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.comic-page-navigator-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.comic-page-navigator-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.comic-page-navigator-item small {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 650;
 }
 
 @media (max-width: 640px) {
@@ -529,6 +615,31 @@
 
   .comic-page-scroll-content {
     padding: 0.45rem;
+  }
+
+  .epub-reader.comic-reader {
+    grid-template-rows: 56px auto minmax(0, 1fr) 64px;
+  }
+
+  .comic-footer {
+    padding: 0 0.45rem;
+  }
+
+  .comic-footer-status,
+  .comic-page-scrubber {
+    display: none;
+  }
+
+  .comic-page-controls {
+    width: 100%;
+  }
+
+  .comic-page-controls > button {
+    min-width: 34px;
+  }
+
+  .comic-page-input input {
+    width: 3.6rem;
   }
 }
 

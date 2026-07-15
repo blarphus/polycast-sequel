@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { openComicArchive, type ComicArchiveSession, type ComicDocument, type ComicOcrProgress } from '../utils/cbz';
 import type { useSavedWords } from '../hooks/useSavedWords';
 import WordPopup from './WordPopup';
-import { ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { BookOpenIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon } from './icons';
 import type { PopupState } from '../textTokens';
 import { getBookMeta, getComicPageResult, getProgress, setProgress, type ComicPageRecord } from '../utils/bookStore';
 import { COMIC_OCR_PROGRESS_EVENT, startComicOcr, type ComicOcrProgressEvent } from '../utils/comicOcr';
@@ -27,6 +27,8 @@ function cleanLookupWord(word: string): string {
 export default function ComicReader({ bookId, comic, nativeLanguage, savedWords, onBack }: ComicReaderProps) {
   const [pageIndex, setPageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [pageNavigatorOpen, setPageNavigatorOpen] = useState(false);
+  const [pageInput, setPageInput] = useState('1');
   const [viewportHeight, setViewportHeight] = useState(0);
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [pageImageUrl, setPageImageUrl] = useState('');
@@ -155,6 +157,25 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
     void setProgress({ bookId, chapterIndex: 0, pageIndex });
   }, [bookId, pageIndex]);
 
+  useEffect(() => {
+    setPageInput(String(pageIndex + 1));
+  }, [pageIndex]);
+
+  const jumpToPage = useCallback((requestedPage: number) => {
+    if (!Number.isFinite(requestedPage)) return;
+    setPopup(null);
+    setPageIndex(Math.min(comic.pages.length - 1, Math.max(0, Math.round(requestedPage) - 1)));
+  }, [comic.pages.length]);
+
+  const commitPageInput = useCallback(() => {
+    const requestedPage = Number(pageInput);
+    if (!Number.isFinite(requestedPage)) {
+      setPageInput(String(pageIndex + 1));
+      return;
+    }
+    jumpToPage(requestedPage);
+  }, [jumpToPage, pageIndex, pageInput]);
+
   const goNext = useCallback(() => {
     setPopup(null);
     setPageIndex((current) => Math.min(comic.pages.length - 1, current + 1));
@@ -167,17 +188,37 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTextInput = target && (
+        target.tagName === 'INPUT'
+        || target.tagName === 'TEXTAREA'
+        || target.isContentEditable
+      );
+      if (isTextInput) return;
+
       if (event.key === 'ArrowRight') {
         event.preventDefault();
         goNext();
       } else if (event.key === 'ArrowLeft' || event.key === 'Backspace') {
         event.preventDefault();
         goPrev();
+      } else if (event.key === 'PageDown') {
+        event.preventDefault();
+        jumpToPage(pageIndex + 11);
+      } else if (event.key === 'PageUp') {
+        event.preventDefault();
+        jumpToPage(pageIndex - 9);
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        jumpToPage(1);
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        jumpToPage(comic.pages.length);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [goNext, goPrev]);
+  }, [comic.pages.length, goNext, goPrev, jumpToPage, pageIndex]);
 
   const page = comic.pages[pageIndex];
   const pageWidth = pageResult?.width || pageImageSize.width || page.width || 1;
@@ -197,6 +238,15 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
         </button>
         <div className="epub-topbar-title" title={comic.title}>{comic.title}</div>
         <div className="comic-topbar-actions">
+          <button
+            type="button"
+            className={`epub-topbar-btn${pageNavigatorOpen ? ' active' : ''}`}
+            title="Pages"
+            aria-label="Open page navigator"
+            onClick={() => setPageNavigatorOpen((open) => !open)}
+          >
+            <BookOpenIcon size={18} />
+          </button>
           <div className="comic-zoom-controls" aria-label="Comic zoom controls">
             <button type="button" onClick={() => changeZoom(zoom - 0.25)} disabled={zoom <= 0.75} aria-label="Zoom out">−</button>
             <button type="button" onClick={() => changeZoom(1)} aria-label="Reset zoom to fit page">{Math.round(zoom * 100)}%</button>
@@ -347,9 +397,81 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
       </div>
 
       <footer className="epub-footer comic-footer">
-        <span>{comic.kind === 'ocr' ? `Selected text · ${comic.language === 'es' ? 'Spanish' : 'English'}` : 'Speech-bubble map · English'}</span>
-        <span>{pageIndex + 1} / {comic.pages.length}</span>
+        <span className="comic-footer-status">{comic.kind === 'ocr' ? `Selected text · ${comic.language === 'es' ? 'Spanish' : 'English'}` : 'Speech-bubble map · English'}</span>
+        <div className="comic-page-controls" aria-label="Comic page navigation">
+          <button type="button" onClick={() => jumpToPage(1)} disabled={pageIndex === 0} title="First page" aria-label="First page">«</button>
+          <button type="button" onClick={() => jumpToPage(pageIndex - 9)} disabled={pageIndex === 0} title="Back 10 pages">−10</button>
+          <label className="comic-page-input">
+            <span>Page</span>
+            <input
+              type="number"
+              min={1}
+              max={comic.pages.length}
+              inputMode="numeric"
+              value={pageInput}
+              onChange={(event) => setPageInput(event.target.value)}
+              onBlur={commitPageInput}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  commitPageInput();
+                  event.currentTarget.blur();
+                } else if (event.key === 'Escape') {
+                  setPageInput(String(pageIndex + 1));
+                  event.currentTarget.blur();
+                }
+              }}
+              aria-label="Current comic page"
+            />
+            <span>/ {comic.pages.length}</span>
+          </label>
+          <button type="button" onClick={() => jumpToPage(pageIndex + 11)} disabled={pageIndex === comic.pages.length - 1} title="Forward 10 pages">+10</button>
+          <button type="button" onClick={() => jumpToPage(comic.pages.length)} disabled={pageIndex === comic.pages.length - 1} title="Last page" aria-label="Last page">»</button>
+        </div>
+        <input
+          className="comic-page-scrubber"
+          type="range"
+          min={1}
+          max={comic.pages.length}
+          value={pageIndex + 1}
+          onChange={(event) => jumpToPage(Number(event.target.value))}
+          aria-label={`Page ${pageIndex + 1} of ${comic.pages.length}`}
+        />
       </footer>
+
+      {pageNavigatorOpen && (
+        <>
+          <div className="epub-toc-backdrop" onClick={() => setPageNavigatorOpen(false)} />
+          <aside className="epub-toc comic-page-navigator" aria-label="Comic pages">
+            <div className="epub-toc-header">
+              <span>Pages</span>
+              <button className="epub-topbar-btn" onClick={() => setPageNavigatorOpen(false)} aria-label="Close page navigator"><CloseIcon size={18} /></button>
+            </div>
+            <div className="comic-page-navigator-summary">
+              <strong>{comic.pages.length} pages</strong>
+              {comic.kind === 'ocr' && ocrProgress && <span>{ocrProgress.processedPages} with clickable text</span>}
+            </div>
+            <ul className="epub-toc-list">
+              {comic.pages.map((comicPage, index) => {
+                const textReady = comic.kind !== 'ocr' || (ocrProgress?.processedPages ?? 0) > index;
+                return (
+                  <li key={comicPage.entryName || index}>
+                    <button
+                      className={`epub-toc-item comic-page-navigator-item${index === pageIndex ? ' active' : ''}`}
+                      onClick={() => {
+                        jumpToPage(index + 1);
+                        setPageNavigatorOpen(false);
+                      }}
+                    >
+                      <span>Page {index + 1}</span>
+                      <small>{textReady ? 'Text ready' : 'Waiting for text'}</small>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </aside>
+        </>
+      )}
 
       {popup && nativeLanguage && (
         <WordPopup

@@ -49,6 +49,12 @@ const enrichBody = z.object({
   matched_gloss: z.string().nullable().optional(),
 });
 
+export function shouldAttachDictionaryFallback(result, isNative) {
+  return isNative !== 'true'
+    && result?.valid !== false
+    && result?.definition_source === 'gemini';
+}
+
 export function createDictionarySemanticRoutes({
   lookupFast = resolveDictionaryLookupFast,
   lookup = resolveDictionaryLookup,
@@ -67,7 +73,15 @@ export function createDictionarySemanticRoutes({
       if (fast) return res.json(fast);
     }
     const result = await lookup({ word, sentence, nativeLang, targetLang, isNative: isNative === 'true' });
-    if (isNative !== 'true' && result.definition_source === 'gemini') {
+    if (result.valid === false) {
+      req.log.info({
+        code: 'dictionary_invalid_word',
+        correlationId: req.id,
+        word,
+        targetLang,
+      }, 'Dictionary lookup rejected a non-word');
+    }
+    if (shouldAttachDictionaryFallback(result, isNative)) {
       result.fallback_notices = [
         ...(Array.isArray(result.fallback_notices) ? result.fallback_notices : []),
         {

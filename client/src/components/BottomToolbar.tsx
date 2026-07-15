@@ -215,7 +215,11 @@ export default function BottomToolbar() {
                     <div className="sidebar-account-title">Profiles</div>
                     <div className="sidebar-account-subtitle">Switch accounts or add another login</div>
                   </div>
-                  <button className="sidebar-account-close" onClick={() => setAccountMenuOpen(false)}>
+                  <button
+                    className="sidebar-account-close"
+                    onClick={() => setAccountMenuOpen(false)}
+                    aria-label="Close profile menu"
+                  >
                     <CloseIcon size={16} />
                   </button>
                 </div>
