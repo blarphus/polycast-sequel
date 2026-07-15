@@ -34,7 +34,6 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
   const [pageResult, setPageResult] = useState<ComicPageRecord | null>(null);
   const [pageLoadError, setPageLoadError] = useState('');
   const [ocrProgress, setOcrProgress] = useState<ComicOcrProgress | null>(comic.ocr || null);
-  const [pageResultRevision, setPageResultRevision] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const archiveSessionRef = useRef<Promise<ComicArchiveSession> | null>(null);
@@ -62,11 +61,10 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
       const detail = (event as CustomEvent<ComicOcrProgressEvent>).detail;
       if (!detail || detail.bookId !== bookId) return;
       setOcrProgress(detail.progress);
-      if (detail.progress.processedPages > pageIndex) setPageResultRevision((value) => value + 1);
     };
     window.addEventListener(COMIC_OCR_PROGRESS_EVENT, handleProgress);
     return () => window.removeEventListener(COMIC_OCR_PROGRESS_EVENT, handleProgress);
-  }, [bookId, pageIndex]);
+  }, [bookId]);
 
   useEffect(() => {
     const page = comic.pages[pageIndex];
@@ -103,7 +101,38 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       setPageImageUrl('');
     };
-  }, [bookId, comic, pageIndex, pageResultRevision]);
+  }, [bookId, comic, pageIndex]);
+
+  const currentPageProcessed = (ocrProgress?.processedPages ?? 0) > pageIndex;
+
+  useEffect(() => {
+    if (
+      comic.kind !== 'ocr'
+      || pageResult
+      || !currentPageProcessed
+    ) return undefined;
+
+    let cancelled = false;
+    void getComicPageResult(bookId, pageIndex)
+      .then((result) => {
+        if (cancelled) return;
+        if (!result) {
+          const message = `[cbz_page_result_missing] Page ${pageIndex + 1} is marked complete, but its clickable text record is unavailable.`;
+          runtimeLog.error(message);
+          setPageLoadError(message);
+          return;
+        }
+        setPageResult(result);
+        setPageImageSize({ width: result.width, height: result.height });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        runtimeLog.error('[cbz_page_result_refresh_failed] Completed comic page text could not be loaded:', error);
+        setPageLoadError(error instanceof Error ? error.message : 'Completed comic page text could not be loaded.');
+      });
+
+    return () => { cancelled = true; };
+  }, [bookId, comic.kind, currentPageProcessed, pageIndex, pageResult]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
