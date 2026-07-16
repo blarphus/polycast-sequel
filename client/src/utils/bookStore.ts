@@ -26,6 +26,11 @@ export interface BookMeta {
   language?: 'en' | 'es';
   notice?: string;
   ocr?: ComicOcrProgress;
+  source?: 'personal' | 'class';
+  classBookId?: string;
+  classroomId?: string;
+  classroomName?: string;
+  originalFilename?: string;
 }
 
 export interface BookProgress {

@@ -5,7 +5,7 @@ const runtimeLog = createScopedRuntimeLogger('web.hooks.usebooks');
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from 'react';
-import { listBooks, addBook, deleteBook, type BookMeta } from '../utils/bookStore';
+import { listBooks, addBook, deleteBook, getStoredBook, type BookMeta } from '../utils/bookStore';
 import { parseEpub, coverBlob } from '../utils/epub';
 import { prepareCbzForOcr } from '../utils/cbz';
 import {
@@ -16,6 +16,7 @@ import {
   startComicOcr,
   type ComicOcrProgressEvent,
 } from '../utils/comicOcr';
+import { downloadClassroomBook, type ClassBook } from '../api/classroom';
 
 export interface BookImportResult {
   id: string;
@@ -112,5 +113,72 @@ export function useBooks() {
     await retryComicOcr(id);
   }, []);
 
-  return { books, loading, error, refresh, addFromFile, remove, retryOcr };
+  const addFromClass = useCallback(async (
+    classBook: ClassBook,
+    onProgress?: (fraction: number) => void,
+  ): Promise<BookImportResult> => {
+    if (classBook.format === 'pdf') {
+      throw new Error('[class_book_format_invalid] PDFs open from the classroom Documents tab rather than the book reader.');
+    }
+    const existing = await getStoredBook(classBook.id);
+    if (existing) {
+      return {
+        id: classBook.id,
+        format: existing.format === 'comic' ? 'comic' : 'epub',
+        processing: existing.format === 'comic' && existing.comic.ocr?.status !== 'ready',
+      };
+    }
+
+    const blob = await downloadClassroomBook(classBook, onProgress);
+    const addedAt = new Date(classBook.created_at).getTime() || Date.now();
+    const sourceMeta = {
+      source: 'class' as const,
+      classBookId: classBook.id,
+      classroomId: classBook.classroom_id,
+      classroomName: classBook.classroom_name,
+      originalFilename: classBook.original_filename,
+    };
+
+    if (classBook.format === 'cbz') {
+      if (!classBook.language) {
+        throw new Error('[class_book_language_missing] This shared CBZ does not identify whether its text is English or Spanish.');
+      }
+      const file = new File([blob], classBook.original_filename, { type: classBook.mime_type });
+      const { comic, cover } = await prepareCbzForOcr(file, classBook.language);
+      const meta: BookMeta = {
+        id: classBook.id,
+        title: classBook.title || comic.title,
+        author: classBook.author || comic.author,
+        cover,
+        addedAt,
+        format: 'comic',
+        pageCount: comic.pages.length,
+        language: classBook.language,
+        ocr: comic.ocr,
+        ...sourceMeta,
+      };
+      await addBook(meta, comic);
+      await refresh();
+      startComicOcr(classBook.id);
+      return { id: classBook.id, format: 'comic', processing: true };
+    }
+
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const parsed = parseEpub(bytes);
+    const meta: BookMeta = {
+      id: classBook.id,
+      title: classBook.title || parsed.title,
+      author: classBook.author || parsed.author,
+      cover: coverBlob(parsed),
+      addedAt,
+      format: 'epub',
+      language: classBook.language || (parsed.language === 'en' || parsed.language === 'es' ? parsed.language : undefined),
+      ...sourceMeta,
+    };
+    await addBook(meta, bytes);
+    await refresh();
+    return { id: classBook.id, format: 'epub', processing: false };
+  }, [refresh]);
+
+  return { books, loading, error, refresh, addFromFile, addFromClass, remove, retryOcr };
 }

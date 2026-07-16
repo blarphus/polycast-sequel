@@ -4,6 +4,7 @@ import { generateUniqueClassIdentity } from '../lib/classroomIdentity.js';
 import { getUserAccountType } from '../lib/userQueries.js';
 import { httpError } from '../lib/httpError.js';
 import { ForbiddenError, NotFoundError } from '../lib/httpErrors.js';
+import { removeStoredClassBook } from './classBookStorage.js';
 
 function mapClassroomRow(row, roleOverride) {
   return {
@@ -236,7 +237,14 @@ export async function deleteClassroom(classroomId, teacherId) {
   if (membership.rows[0].role !== 'owner') {
     throw httpError(403, 'Only the class owner can delete a classroom');
   }
+  const { rows: storedBooks } = await pool.query(
+    'SELECT storage_key FROM classroom_books WHERE classroom_id = $1',
+    [classroomId],
+  );
   await pool.query('DELETE FROM classrooms WHERE id = $1', [classroomId]);
+  await Promise.all(storedBooks.map(({ storage_key: storageKey }) => (
+    removeStoredClassBook(storageKey, { ignoreMissing: true })
+  )));
 }
 
 export async function getClassroomTopics(classroomId) {

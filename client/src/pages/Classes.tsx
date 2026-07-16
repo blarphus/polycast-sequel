@@ -13,6 +13,7 @@ import { useClickOutside } from '../hooks/useClickOutside';
 import { LANGUAGES } from '../components/classwork/languages';
 import { formatUsDateTime } from '../utils/dateFormat';
 import { LANGUAGE_BANNERS, bannerColor } from '../utils/languageBanners';
+import ClassBooksModal from '../components/classroom/ClassBooksModal';
 
 function languageName(code: string | null) {
   if (!code) return null;
@@ -21,10 +22,12 @@ function languageName(code: string | null) {
 
 // Three-dot menu for card actions
 function CardMenu({
+  onAddBook,
   onEdit,
   onDelete,
   onClose,
 }: {
+  onAddBook: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
@@ -34,6 +37,7 @@ function CardMenu({
 
   return (
     <div ref={menuRef} className="gc-card-menu">
+      <button className="gc-card-menu-item" onClick={() => { onAddBook(); onClose(); }}>Add files</button>
       <button className="gc-card-menu-item" onClick={() => { onEdit(); onClose(); }}>Edit class</button>
       <button className="gc-card-menu-item gc-card-menu-item--danger" onClick={() => { onDelete(); onClose(); }}>Delete class</button>
     </div>
@@ -66,6 +70,7 @@ export default function Classes() {
   const [joining, setJoining] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [bookClassroom, setBookClassroom] = useState<Classroom | null>(null);
 
   const sortedClassrooms = useMemo(
     () => [...classrooms].sort((a, b) => Number(b.needs_setup) - Number(a.needs_setup)),
@@ -386,6 +391,7 @@ export default function Classes() {
                         </button>
                         {menuOpenId === classroom.id && (
                           <CardMenu
+                            onAddBook={() => setBookClassroom(classroom)}
                             onEdit={() => setEditingId((prev) => prev === classroom.id ? null : classroom.id)}
                             onDelete={() => handleDelete(classroom)}
                             onClose={() => setMenuOpenId(null)}
@@ -399,6 +405,9 @@ export default function Classes() {
             );
           })}
         </div>
+      )}
+      {bookClassroom && (
+        <ClassBooksModal classroom={bookClassroom} onClose={() => setBookClassroom(null)} />
       )}
     </div>
   );

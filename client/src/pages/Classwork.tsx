@@ -18,6 +18,7 @@ import ClassroomPicker from '../components/classroom/ClassroomPicker';
 import ClassroomSetupBanner from '../components/classroom/ClassroomSetupBanner';
 import { PlusIcon, ChevronDownIcon, ChevronLeftIcon, CloseIcon, PeopleIcon } from '../components/icons';
 import { toErrorMessage } from '../utils/errors';
+import ClassDocumentsTab from '../components/classroom/ClassDocumentsTab';
 
 // ---------------------------------------------------------------------------
 // Main Classwork component
@@ -55,6 +56,7 @@ export default function Classwork() {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [filterTopicId, setFilterTopicId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<'classwork' | 'documents'>('classwork');
 
   const loadStream = useCallback(() => {
     if (!activeClassroomId) {
@@ -431,7 +433,7 @@ export default function Classwork() {
               <PeopleIcon size={14} />
               Students
             </button>
-            {allowLegacyStreamManagement ? (
+            {activeSection === 'classwork' && (allowLegacyStreamManagement ? (
               <>
                 <button
                   className="btn btn-primary btn-sm stream-create-btn"
@@ -456,13 +458,36 @@ export default function Classwork() {
                 <PlusIcon size={14} strokeWidth={2.5} />
                 Create topic
               </button>
-            )}
+            ))}
           </div>
         )}
       </div>
 
+      {activeClassroom && (
+        <div className="classroom-content-tabs" role="tablist" aria-label="Classroom content">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSection === 'classwork'}
+            className={activeSection === 'classwork' ? 'active' : ''}
+            onClick={() => setActiveSection('classwork')}
+          >
+            Classwork
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSection === 'documents'}
+            className={activeSection === 'documents' ? 'active' : ''}
+            onClick={() => setActiveSection('documents')}
+          >
+            Documents
+          </button>
+        </div>
+      )}
+
       {/* Toolbar: topic filter + collapse/expand all */}
-      {!isEmpty && !loading && !classroomsLoading && (
+      {activeSection === 'classwork' && !isEmpty && !loading && !classroomsLoading && (
         <div className="classwork-toolbar">
           <select
             className="classwork-topic-filter"
@@ -482,12 +507,14 @@ export default function Classwork() {
       )}
 
       {classroomsError && <div className="auth-error">{classroomsError}</div>}
-      {error && <div className="auth-error">{error}</div>}
+      {activeSection === 'classwork' && error && <div className="auth-error">{error}</div>}
       {activeClassroom?.needs_setup && isTeacher && (
         <ClassroomSetupBanner classroom={activeClassroom} onUpdated={handleClassroomUpdated} />
       )}
 
-      {classroomsLoading || loading ? (
+      {activeSection === 'documents' && activeClassroom ? (
+        <ClassDocumentsTab classroom={activeClassroom} isTeacher={!!isTeacher} />
+      ) : classroomsLoading || loading ? (
         <div className="loading-screen"><div className="loading-spinner" /></div>
       ) : isEmpty ? (
         <div className="classwork-empty">

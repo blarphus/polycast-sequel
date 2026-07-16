@@ -1,7 +1,7 @@
 {
   "generatedAt": "deterministic-from-runtime-registration",
   "summary": {
-    "apiRoutes": 140,
+    "apiRoutes": 146,
     "extensionMessages": 27,
     "socketRegistrations": 12
   },
@@ -9,6 +9,18 @@
     {
       "method": "GET",
       "path": "*"
+    },
+    {
+      "method": "GET",
+      "path": "/api/class-books"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/class-books/:id"
+    },
+    {
+      "method": "GET",
+      "path": "/api/class-books/:id/file"
     },
     {
       "method": "GET",
@@ -52,6 +64,14 @@
     },
     {
       "method": "GET",
+      "path": "/api/classrooms/:id/books"
+    },
+    {
+      "method": "POST",
+      "path": "/api/classrooms/:id/books"
+    },
+    {
+      "method": "GET",
       "path": "/api/classrooms/:id/students"
     },
     {
@@ -73,6 +93,10 @@
     {
       "method": "POST",
       "path": "/api/classrooms/:id/topics"
+    },
+    {
+      "method": "POST",
+      "path": "/api/classrooms/join"
     },
     {
       "method": "GET",

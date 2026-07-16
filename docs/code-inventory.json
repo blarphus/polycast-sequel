@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 517,
-    "lines": 83694,
-    "declarations": 2316,
+    "files": 527,
+    "lines": 85532,
+    "declarations": 2354,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 3
@@ -23,7 +23,8 @@
         "extension/test/background.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/authResponse.test.js",
-        "server/test/auth.integration.test.js"
+        "server/test/auth.integration.test.js",
+        "server/test/classBookService.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -405,6 +406,7 @@
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/authResponse.test.js",
         "server/test/auth.integration.test.js",
+        "server/test/classBookService.test.js",
         "server/test/correlation.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -486,11 +488,15 @@
     },
     {
       "file": "client/src/api/classroom.ts",
-      "lines": 186,
+      "lines": 318,
       "responsibility": "web API adapter",
-      "sideEffects": [],
+      "sideEffects": [
+        "network"
+      ],
       "testCoverage": [
-        "server/test/auth.integration.test.js"
+        "server/test/auth.integration.test.js",
+        "server/test/classBookService.test.js",
+        "server/test/classroomEnrollment.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -520,6 +526,12 @@
           "disposition": "retain"
         },
         {
+          "name": "joinClassroom",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
           "name": "updateClassroom",
           "callers": 4,
           "testReferences": [],
@@ -534,6 +546,38 @@
         {
           "name": "getClassroomTopics",
           "callers": 6,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "getClassBooks",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "getClassroomBooks",
+          "callers": 4,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "uploadClassroomBook",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "deleteClassroomBook",
+          "callers": 5,
+          "testReferences": [
+            "server/test/classBookService.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "downloadClassroomBook",
+          "callers": 2,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -767,7 +811,7 @@
         },
         {
           "name": "request",
-          "callers": 339,
+          "callers": 343,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",
@@ -804,8 +848,10 @@
         "server/services/dictionaryMediaService.test.js",
         "server/services/dictionaryStudyService.test.js",
         "server/services/dictionaryWordService.test.js",
+        "server/test/dictionaryFallbackNotice.test.js",
         "server/test/dictionaryPagination.integration.test.js",
-        "server/test/dictionaryQueries.test.js"
+        "server/test/dictionaryQueries.test.js",
+        "server/test/dictionaryScheduleDiagnostic.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -1176,7 +1222,7 @@
         },
         {
           "name": "uuid",
-          "callers": 88,
+          "callers": 89,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -1690,7 +1736,7 @@
     },
     {
       "file": "client/src/components/BottomToolbar.tsx",
-      "lines": 270,
+      "lines": 294,
       "responsibility": "web component UI",
       "sideEffects": [
         "network",
@@ -1759,7 +1805,7 @@
     },
     {
       "file": "client/src/components/ComicReader.tsx",
-      "lines": 344,
+      "lines": 495,
       "responsibility": "web component UI",
       "sideEffects": [
         "UI"
@@ -2300,6 +2346,60 @@
       ]
     },
     {
+      "file": "client/src/components/classroom/ClassBooksModal.tsx",
+      "lines": 230,
+      "responsibility": "web component UI",
+      "sideEffects": [
+        "UI"
+      ],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "titleFromFilename",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "formatBytes",
+          "callers": 6,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "ClassBooksModal",
+          "callers": 6,
+          "testReferences": [],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "client/src/components/classroom/ClassDocumentsTab.tsx",
+      "lines": 106,
+      "responsibility": "web component UI",
+      "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "formatBytes",
+          "callers": 6,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "ClassDocumentsTab",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
       "file": "client/src/components/classroom/ClassroomPicker.tsx",
       "lines": 35,
       "responsibility": "web component UI",
@@ -2661,7 +2761,7 @@
         },
         {
           "name": "BookOpenIcon",
-          "callers": 7,
+          "callers": 14,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -2757,13 +2857,13 @@
         },
         {
           "name": "PlusIcon",
-          "callers": 12,
+          "callers": 17,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "CloseIcon",
-          "callers": 27,
+          "callers": 32,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -2781,13 +2881,13 @@
         },
         {
           "name": "TrashIcon",
-          "callers": 4,
+          "callers": 6,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "ChevronRightIcon",
-          "callers": 12,
+          "callers": 13,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -2817,7 +2917,7 @@
         },
         {
           "name": "DocumentIcon",
-          "callers": 4,
+          "callers": 7,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -3374,7 +3474,7 @@
         },
         {
           "name": "useAuth",
-          "callers": 107,
+          "callers": 104,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -3403,7 +3503,7 @@
     },
     {
       "file": "client/src/hooks/useBooks.ts",
-      "lines": 116,
+      "lines": 185,
       "responsibility": "application support",
       "sideEffects": [],
       "testCoverage": [],
@@ -3441,7 +3541,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -3463,7 +3563,7 @@
       "symbols": [
         {
           "name": "useClickOutside",
-          "callers": 15,
+          "callers": 18,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -3938,7 +4038,8 @@
         "extension/test/background.test.mjs",
         "extension/test/page-highlights.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
-        "server/services/dictionaryMediaService.test.js"
+        "server/services/dictionaryMediaService.test.js",
+        "server/test/dictionaryScheduleDiagnostic.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -4175,7 +4276,7 @@
     },
     {
       "file": "client/src/pages/Classes.tsx",
-      "lines": 315,
+      "lines": 415,
       "responsibility": "web route UI",
       "sideEffects": [
         "UI"
@@ -4206,7 +4307,7 @@
     },
     {
       "file": "client/src/pages/Classwork.tsx",
-      "lines": 577,
+      "lines": 604,
       "responsibility": "web route UI",
       "sideEffects": [
         "UI"
@@ -4217,7 +4318,7 @@
       "symbols": [
         {
           "name": "Classwork",
-          "callers": 7,
+          "callers": 8,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -4257,6 +4358,7 @@
         "server/services/dictionaryMediaService.test.js",
         "server/services/dictionaryStudyService.test.js",
         "server/services/dictionaryWordService.test.js",
+        "server/test/dictionaryFallbackNotice.test.js",
         "server/test/dictionaryPagination.integration.test.js",
         "server/test/dictionaryQueries.test.js"
       ],
@@ -4307,7 +4409,7 @@
         },
         {
           "name": "Dictionary",
-          "callers": 25,
+          "callers": 26,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx"
           ],
@@ -4379,7 +4481,7 @@
       "symbols": [
         {
           "name": "Home",
-          "callers": 13,
+          "callers": 14,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx"
           ],
@@ -4500,16 +4602,30 @@
     },
     {
       "file": "client/src/pages/Library.tsx",
-      "lines": 178,
+      "lines": 329,
       "responsibility": "web route UI",
       "sideEffects": [],
-      "testCoverage": [],
+      "testCoverage": [
+        "server/test/classBookService.test.js"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "formatEta",
           "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "languageLabel",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "formatBytes",
+          "callers": 6,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -4521,8 +4637,10 @@
         },
         {
           "name": "Library",
-          "callers": 6,
-          "testReferences": [],
+          "callers": 11,
+          "testReferences": [
+            "server/test/classBookService.test.js"
+          ],
           "disposition": "retain"
         }
       ]
@@ -4567,7 +4685,7 @@
     },
     {
       "file": "client/src/pages/LocalWatch.tsx",
-      "lines": 323,
+      "lines": 324,
       "responsibility": "web route UI",
       "sideEffects": [
         "UI"
@@ -4644,13 +4762,13 @@
         },
         {
           "name": "submit",
-          "callers": 10,
+          "callers": 12,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "next",
-          "callers": 247,
+          "callers": 259,
           "testReferences": [
             "client/src/test/srs.test.ts",
             "client/src/test/watchTranscript.test.ts",
@@ -4848,7 +4966,7 @@
       "symbols": [
         {
           "name": "Students",
-          "callers": 16,
+          "callers": 17,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -5068,7 +5186,7 @@
     },
     {
       "file": "client/src/test/cbz.test.ts",
-      "lines": 106,
+      "lines": 140,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
@@ -5299,7 +5417,7 @@
       "symbols": [
         {
           "name": "card",
-          "callers": 838,
+          "callers": 843,
           "testReferences": [
             "client/src/test/srs.test.ts",
             "ios/Polycast/Tests/PolycastTests.swift",
@@ -5480,7 +5598,7 @@
     },
     {
       "file": "client/src/utils/bookStore.ts",
-      "lines": 164,
+      "lines": 170,
       "responsibility": "application support",
       "sideEffects": [
         "persistence"
@@ -5521,13 +5639,13 @@
         },
         {
           "name": "getStoredBook",
-          "callers": 5,
+          "callers": 7,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "addBook",
-          "callers": 3,
+          "callers": 5,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -5545,7 +5663,7 @@
         },
         {
           "name": "getComicPageResult",
-          "callers": 2,
+          "callers": 3,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -5581,7 +5699,8 @@
       "responsibility": "application support",
       "sideEffects": [],
       "testCoverage": [
-        "client/src/test/cbz.test.ts"
+        "client/src/test/cbz.test.ts",
+        "server/test/classBookService.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -5606,7 +5725,7 @@
         },
         {
           "name": "prepareCbzForOcr",
-          "callers": 2,
+          "callers": 3,
           "testReferences": [
             "client/src/test/cbz.test.ts"
           ],
@@ -5671,7 +5790,7 @@
     },
     {
       "file": "client/src/utils/comicOcr.ts",
-      "lines": 333,
+      "lines": 340,
       "responsibility": "application support",
       "sideEffects": [
         "events"
@@ -5765,7 +5884,7 @@
         },
         {
           "name": "startComicOcr",
-          "callers": 6,
+          "callers": 7,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -6048,7 +6167,8 @@
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/epub.test.ts",
-        "client/src/test/readerSelection.test.ts"
+        "client/src/test/readerSelection.test.ts",
+        "server/test/classBookService.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -6133,7 +6253,7 @@
         },
         {
           "name": "parseEpub",
-          "callers": 4,
+          "callers": 7,
           "testReferences": [
             "client/src/test/epub.test.ts"
           ],
@@ -6153,7 +6273,7 @@
         },
         {
           "name": "coverBlob",
-          "callers": 2,
+          "callers": 3,
           "testReferences": [
             "client/src/test/epub.test.ts"
           ],
@@ -6203,6 +6323,7 @@
         "server/services/dictionaryWordService.test.js",
         "server/test/callSignaling.test.js",
         "server/test/correlation.test.js",
+        "server/test/dictionaryScheduleDiagnostic.test.js",
         "server/test/groupCallSocket.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -6210,7 +6331,7 @@
       "symbols": [
         {
           "name": "correlationId",
-          "callers": 216,
+          "callers": 220,
           "testReferences": [
             "client/src/test/callSignalContract.test.ts",
             "client/src/test/groupCallLifecycle.test.tsx",
@@ -6223,6 +6344,7 @@
             "server/services/dictionaryWordService.test.js",
             "server/test/callSignaling.test.js",
             "server/test/correlation.test.js",
+            "server/test/dictionaryScheduleDiagnostic.test.js",
             "server/test/groupCallSocket.test.js"
           ],
           "disposition": "retain"
@@ -6235,7 +6357,7 @@
         },
         {
           "name": "emitFallbackDiagnostic",
-          "callers": 41,
+          "callers": 44,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -6534,7 +6656,7 @@
         },
         {
           "name": "createScopedRuntimeLogger",
-          "callers": 128,
+          "callers": 132,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -7202,7 +7324,7 @@
         },
         {
           "name": "uuid",
-          "callers": 88,
+          "callers": 89,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -7679,7 +7801,8 @@
         "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "ios/Polycast/UITests/PolycastUITests.swift",
-        "server/lib/sharedDictionaryEntries.test.js"
+        "server/lib/sharedDictionaryEntries.test.js",
+        "server/test/classBookService.test.js"
       ],
       "disposition": "reviewed-retain",
       "dispositionReason": "One isolated content-script lifecycle; shared popup/token/diagnostic infrastructure is already extracted.",
@@ -8350,6 +8473,7 @@
         "client/src/test/sessionExpiration.test.tsx",
         "extension/test/background.test.mjs",
         "server/test/auth.integration.test.js",
+        "server/test/classBookService.test.js",
         "server/test/correlation.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -8363,13 +8487,14 @@
         },
         {
           "name": "application",
-          "callers": 49,
+          "callers": 56,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "client/src/test/epub.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/background.test.mjs",
             "server/test/auth.integration.test.js",
+            "server/test/classBookService.test.js",
             "server/test/correlation.test.js"
           ],
           "disposition": "retain"
@@ -8632,7 +8757,7 @@
         },
         {
           "name": "request",
-          "callers": 339,
+          "callers": 343,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",
@@ -9081,7 +9206,8 @@
       "sideEffects": [],
       "testCoverage": [
         "ios/Polycast/Tests/PolycastTests.swift",
-        "server/test/auth.integration.test.js"
+        "server/test/auth.integration.test.js",
+        "server/test/classroomEnrollment.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -9106,9 +9232,10 @@
         },
         {
           "name": "classrooms",
-          "callers": 79,
+          "callers": 89,
           "testReferences": [
-            "server/test/auth.integration.test.js"
+            "server/test/auth.integration.test.js",
+            "server/test/classroomEnrollment.test.js"
           ],
           "disposition": "retain"
         },
@@ -9500,7 +9627,7 @@
       "symbols": [
         {
           "name": "BookMeta",
-          "callers": 22,
+          "callers": 25,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -9512,7 +9639,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -9599,7 +9726,7 @@
         },
         {
           "name": "delete",
-          "callers": 83,
+          "callers": 86,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -9630,7 +9757,7 @@
         },
         {
           "name": "progress",
-          "callers": 213,
+          "callers": 215,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx"
@@ -10103,7 +10230,7 @@
         },
         {
           "name": "ascii",
-          "callers": 8,
+          "callers": 9,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -10191,7 +10318,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -10216,7 +10343,7 @@
         },
         {
           "name": "delete",
-          "callers": 83,
+          "callers": 86,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -10284,7 +10411,7 @@
         },
         {
           "name": "data",
-          "callers": 889,
+          "callers": 892,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -10298,7 +10425,7 @@
         },
         {
           "name": "string",
-          "callers": 1842,
+          "callers": 1869,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
@@ -10378,7 +10505,7 @@
         },
         {
           "name": "Classroom",
-          "callers": 34,
+          "callers": 43,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -10976,7 +11103,7 @@
         },
         {
           "name": "on",
-          "callers": 280,
+          "callers": 281,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -10991,7 +11118,7 @@
         },
         {
           "name": "off",
-          "callers": 91,
+          "callers": 92,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -11459,7 +11586,7 @@
         },
         {
           "name": "close",
-          "callers": 69,
+          "callers": 73,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "server/test/auth.integration.test.js",
@@ -11515,6 +11642,7 @@
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/services/dictionaryWordService.test.js",
         "server/services/mediaWorkerService.test.js",
+        "server/test/classBookService.test.js",
         "server/test/dictionaryPagination.integration.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -11534,7 +11662,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -11545,6 +11673,7 @@
           "name": "insert",
           "callers": 28,
           "testReferences": [
+            "server/test/classBookService.test.js",
             "server/test/dictionaryPagination.integration.test.js"
           ],
           "disposition": "retain"
@@ -11566,7 +11695,7 @@
         },
         {
           "name": "remove",
-          "callers": 79,
+          "callers": 80,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -11655,7 +11784,7 @@
         },
         {
           "name": "body",
-          "callers": 637,
+          "callers": 662,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -11760,7 +11889,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -11838,7 +11967,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -11924,7 +12053,7 @@
         },
         {
           "name": "remove",
-          "callers": 79,
+          "callers": 80,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -11966,7 +12095,7 @@
         },
         {
           "name": "score",
-          "callers": 46,
+          "callers": 47,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -12312,7 +12441,7 @@
         },
         {
           "name": "delete",
-          "callers": 83,
+          "callers": 86,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -12444,7 +12573,7 @@
         },
         {
           "name": "lookup",
-          "callers": 186,
+          "callers": 187,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts",
             "extension/test/background.test.mjs",
@@ -12498,7 +12627,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12743,7 +12872,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -13050,7 +13179,7 @@
         },
         {
           "name": "height",
-          "callers": 270,
+          "callers": 272,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "extension/test/popup-performance.test.mjs",
@@ -13174,7 +13303,7 @@
         },
         {
           "name": "section",
-          "callers": 78,
+          "callers": 82,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -13201,6 +13330,7 @@
       ],
       "testCoverage": [
         "ios/Polycast/Tests/PolycastTests.swift",
+        "server/test/classBookService.test.js",
         "server/test/dictionaryPagination.integration.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -13224,6 +13354,7 @@
           "name": "insert",
           "callers": 28,
           "testReferences": [
+            "server/test/classBookService.test.js",
             "server/test/dictionaryPagination.integration.test.js"
           ],
           "disposition": "retain"
@@ -13507,7 +13638,7 @@
         },
         {
           "name": "send",
-          "callers": 23,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -13561,7 +13692,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -13608,7 +13739,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -13617,7 +13748,7 @@
         },
         {
           "name": "accept",
-          "callers": 22,
+          "callers": 23,
           "testReferences": [
             "server/test/learningSessionService.test.js"
           ],
@@ -13625,7 +13756,7 @@
         },
         {
           "name": "reject",
-          "callers": 50,
+          "callers": 54,
           "testReferences": [
             "server/test/correlation.test.js"
           ],
@@ -13824,7 +13955,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14080,7 +14211,7 @@
         },
         {
           "name": "close",
-          "callers": 69,
+          "callers": 73,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "server/test/auth.integration.test.js",
@@ -14155,7 +14286,7 @@
         },
         {
           "name": "width",
-          "callers": 289,
+          "callers": 293,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
@@ -14168,7 +14299,7 @@
         },
         {
           "name": "append",
-          "callers": 116,
+          "callers": 120,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -14179,7 +14310,7 @@
         },
         {
           "name": "trim",
-          "callers": 276,
+          "callers": 289,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "server/lib/httpErrors.test.js"
@@ -14336,7 +14467,7 @@
         },
         {
           "name": "content",
-          "callers": 146,
+          "callers": 148,
           "testReferences": [
             "client/src/test/epub.test.ts",
             "client/src/test/groupCallProvider.test.tsx",
@@ -14439,7 +14570,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14614,7 +14745,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14888,7 +15019,7 @@
         },
         {
           "name": "load",
-          "callers": 120,
+          "callers": 131,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -15619,7 +15750,7 @@
         },
         {
           "name": "placeholder",
-          "callers": 46,
+          "callers": 47,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -16390,7 +16521,7 @@
     },
     {
       "file": "server/app.js",
-      "lines": 116,
+      "lines": 118,
       "responsibility": "application support",
       "sideEffects": [
         "logging"
@@ -16417,6 +16548,7 @@
         "server/lib/srsUpdate.test.js",
         "server/test/apnsVoip.test.js",
         "server/test/auth.integration.test.js",
+        "server/test/classBookService.test.js",
         "server/test/correlation.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -16450,7 +16582,8 @@
         "extension/test/background.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/authResponse.test.js",
-        "server/test/auth.integration.test.js"
+        "server/test/auth.integration.test.js",
+        "server/test/classBookService.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -16481,7 +16614,7 @@
         },
         {
           "name": "authMiddleware",
-          "callers": 145,
+          "callers": 152,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -16580,6 +16713,8 @@
         "server/services/dictionaryWordService.test.js",
         "server/test/apnsVoip.test.js",
         "server/test/auth.integration.test.js",
+        "server/test/classBookService.test.js",
+        "server/test/classroomEnrollment.test.js",
         "server/test/dictionaryPagination.integration.test.js",
         "server/test/dictionaryQueries.test.js",
         "server/test/ttsService.test.js"
@@ -17393,7 +17528,8 @@
       "testCoverage": [
         "ios/Polycast/UITests/PolycastUITests.swift",
         "ios/Polycast/UITests/ReaderPopupUITests.swift",
-        "server/lib/gemini.test.js"
+        "server/lib/gemini.test.js",
+        "server/test/dictionaryFallbackNotice.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -17710,7 +17846,7 @@
       "symbols": [
         {
           "name": "asyncHandler",
-          "callers": 72,
+          "callers": 79,
           "testReferences": [
             "server/lib/httpErrors.test.js"
           ],
@@ -17726,7 +17862,7 @@
         },
         {
           "name": "HttpError",
-          "callers": 7,
+          "callers": 9,
           "testReferences": [
             "server/lib/httpErrors.test.js"
           ],
@@ -17734,7 +17870,7 @@
         },
         {
           "name": "ValidationError",
-          "callers": 8,
+          "callers": 17,
           "testReferences": [
             "server/lib/httpErrors.test.js"
           ],
@@ -17742,7 +17878,7 @@
         },
         {
           "name": "NotFoundError",
-          "callers": 12,
+          "callers": 19,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -17754,7 +17890,7 @@
         },
         {
           "name": "ForbiddenError",
-          "callers": 2,
+          "callers": 6,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -18615,7 +18751,7 @@
         },
         {
           "name": "getUserAccountType",
-          "callers": 10,
+          "callers": 11,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -18645,7 +18781,7 @@
       "symbols": [
         {
           "name": "validate",
-          "callers": 147,
+          "callers": 154,
           "testReferences": [
             "extension/test/page-highlights.test.mjs",
             "server/lib/httpErrors.test.js"
@@ -18769,7 +18905,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18792,7 +18928,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18815,7 +18951,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18844,7 +18980,7 @@
         },
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18867,7 +19003,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18890,7 +19026,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18913,7 +19049,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18936,7 +19072,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18959,7 +19095,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -18982,7 +19118,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19005,7 +19141,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19028,7 +19164,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19051,7 +19187,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19075,7 +19211,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19099,7 +19235,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19122,7 +19258,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19145,7 +19281,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19168,7 +19304,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19191,7 +19327,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19214,7 +19350,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19237,7 +19373,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19260,7 +19396,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19284,7 +19420,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19307,7 +19443,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19330,7 +19466,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19353,7 +19489,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19376,7 +19512,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19399,7 +19535,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19422,7 +19558,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19445,7 +19581,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19468,7 +19604,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19491,7 +19627,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19514,7 +19650,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19537,7 +19673,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19560,7 +19696,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19583,7 +19719,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19606,7 +19742,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19629,7 +19765,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19652,7 +19788,30 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 104,
+          "callers": 106,
+          "testReferences": [
+            "ios/Polycast/UITests/PolycastUITests.swift"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "server/migrations/040-classroom-books.js",
+      "lines": 30,
+      "responsibility": "application support",
+      "sideEffects": [
+        "database"
+      ],
+      "testCoverage": [
+        "ios/Polycast/UITests/PolycastUITests.swift"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "up",
+          "callers": 106,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift"
           ],
@@ -19688,19 +19847,45 @@
         "extension/test/background.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/authResponse.test.js",
-        "server/test/auth.integration.test.js"
+        "server/test/auth.integration.test.js",
+        "server/test/classBookService.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": []
     },
     {
+      "file": "server/routes/classBooks.js",
+      "lines": 116,
+      "responsibility": "HTTP transport",
+      "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "parseBookUpload",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "validateBookUpload",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
       "file": "server/routes/classroom.js",
-      "lines": 182,
+      "lines": 195,
       "responsibility": "HTTP transport",
       "sideEffects": [],
       "testCoverage": [
-        "server/test/auth.integration.test.js"
+        "server/test/auth.integration.test.js",
+        "server/test/classBookService.test.js",
+        "server/test/classroomEnrollment.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -19749,8 +19934,10 @@
         "server/services/dictionaryMediaService.test.js",
         "server/services/dictionaryStudyService.test.js",
         "server/services/dictionaryWordService.test.js",
+        "server/test/dictionaryFallbackNotice.test.js",
         "server/test/dictionaryPagination.integration.test.js",
-        "server/test/dictionaryQueries.test.js"
+        "server/test/dictionaryQueries.test.js",
+        "server/test/dictionaryScheduleDiagnostic.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -19775,7 +19962,7 @@
     },
     {
       "file": "server/routes/dictionary/scheduleMaintenance.js",
-      "lines": 11,
+      "lines": 14,
       "responsibility": "HTTP transport",
       "sideEffects": [],
       "testCoverage": [],
@@ -19792,13 +19979,23 @@
     },
     {
       "file": "server/routes/dictionary/semanticRoutes.js",
-      "lines": 123,
+      "lines": 137,
       "responsibility": "HTTP transport",
       "sideEffects": [],
-      "testCoverage": [],
+      "testCoverage": [
+        "server/test/dictionaryFallbackNotice.test.js"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
+        {
+          "name": "shouldAttachDictionaryFallback",
+          "callers": 1,
+          "testReferences": [
+            "server/test/dictionaryFallbackNotice.test.js"
+          ],
+          "disposition": "retain"
+        },
         {
           "name": "createDictionarySemanticRoutes",
           "callers": 2,
@@ -20629,13 +20826,161 @@
       "symbols": []
     },
     {
-      "file": "server/services/classroomService.js",
-      "lines": 619,
+      "file": "server/services/classBookService.js",
+      "lines": 190,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "database"
       ],
-      "testCoverage": [],
+      "testCoverage": [
+        "server/test/classBookService.test.js"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "mapClassBook",
+          "callers": 4,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "requireTeacherClassroom",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "listAccessibleClassBooks",
+          "callers": 2,
+          "testReferences": [
+            "server/test/classBookService.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "listClassroomBooks",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "addClassroomBook",
+          "callers": 2,
+          "testReferences": [
+            "server/test/classBookService.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "getAccessibleClassBook",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "deleteClassroomBook",
+          "callers": 5,
+          "testReferences": [
+            "server/test/classBookService.test.js"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "server/services/classBookStorage.js",
+      "lines": 92,
+      "responsibility": "server domain/integration",
+      "sideEffects": [],
+      "testCoverage": [
+        "server/test/classBookService.test.js"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "classBookStorageRoot",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "ensureClassBookStorage",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "createTemporaryUploadName",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "createStorageKey",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "storedBookPath",
+          "callers": 4,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "promoteClassBookUpload",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "removeStoredClassBook",
+          "callers": 5,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "removeTemporaryClassBook",
+          "callers": 5,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "isZipArchive",
+          "callers": 2,
+          "testReferences": [
+            "server/test/classBookService.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "isPdfDocument",
+          "callers": 2,
+          "testReferences": [
+            "server/test/classBookService.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "MAX_CLASS_BOOK_BYTES",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "server/services/classroomService.js",
+      "lines": 662,
+      "responsibility": "server domain/integration",
+      "sideEffects": [
+        "database"
+      ],
+      "testCoverage": [
+        "server/test/classroomEnrollment.test.js"
+      ],
       "disposition": "reviewed-retain",
       "dispositionReason": "One server domain pipeline; transport, persistence/query, provider, and diagnostic seams are already separated and tested.",
       "symbols": [
@@ -20653,7 +20998,7 @@
         },
         {
           "name": "getClassroomForUser",
-          "callers": 9,
+          "callers": 15,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -20661,6 +21006,14 @@
           "name": "createClassroom",
           "callers": 4,
           "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "joinClassroomByCode",
+          "callers": 2,
+          "testReferences": [
+            "server/test/classroomEnrollment.test.js"
+          ],
           "disposition": "retain"
         },
         {
@@ -20787,15 +21140,25 @@
     },
     {
       "file": "server/services/dictionaryScheduleService.js",
-      "lines": 30,
+      "lines": 43,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "logging"
       ],
-      "testCoverage": [],
+      "testCoverage": [
+        "server/test/dictionaryScheduleDiagnostic.test.js"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
+        {
+          "name": "buildScheduleRepairDiagnostic",
+          "callers": 1,
+          "testReferences": [
+            "server/test/dictionaryScheduleDiagnostic.test.js"
+          ],
+          "disposition": "retain"
+        },
         {
           "name": "refreshDictionarySchedule",
           "callers": 4,
@@ -21970,6 +22333,7 @@
         "server/services/dictionaryMediaService.test.js",
         "server/services/dictionaryStudyService.test.js",
         "server/services/dictionaryWordService.test.js",
+        "server/test/classroomEnrollment.test.js",
         "server/test/dictionaryQueries.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -22379,7 +22743,7 @@
         },
         {
           "name": "request",
-          "callers": 339,
+          "callers": 343,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",
@@ -22430,12 +22794,58 @@
       ]
     },
     {
+      "file": "server/test/classBookService.test.js",
+      "lines": 173,
+      "responsibility": "test",
+      "sideEffects": [
+        "database",
+        "persistence"
+      ],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
+      "file": "server/test/classroomEnrollment.test.js",
+      "lines": 65,
+      "responsibility": "test",
+      "sideEffects": [
+        "database"
+      ],
+      "testCoverage": [
+        "server/test/classroomEnrollment.test.js"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "classroomDatabase",
+          "callers": 0,
+          "testReferences": [
+            "server/test/classroomEnrollment.test.js"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
       "file": "server/test/correlation.test.js",
       "lines": 27,
       "responsibility": "test",
       "sideEffects": [
         "network"
       ],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
+      "file": "server/test/dictionaryFallbackNotice.test.js",
+      "lines": 16,
+      "responsibility": "test",
+      "sideEffects": [],
       "testCoverage": [],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -22500,6 +22910,16 @@
           "disposition": "retain"
         }
       ]
+    },
+    {
+      "file": "server/test/dictionaryScheduleDiagnostic.test.js",
+      "lines": 30,
+      "responsibility": "test",
+      "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
     },
     {
       "file": "server/test/groupCallSocket.test.js",
