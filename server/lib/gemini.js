@@ -3,6 +3,25 @@ import logger from '../logger.js';
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
 const GEMINI_MAX_ATTEMPTS = 3;
 
+export const GEMINI_GENERAL_MODEL = 'gemini-3.6-flash';
+export const GEMINI_DICTIONARY_MODEL = 'gemini-3.5-flash';
+export const GEMINI_GENERAL_THINKING_LEVEL = 'LOW';
+export const GEMINI_DICTIONARY_THINKING_LEVEL = 'MINIMAL';
+
+function withDefaultThinkingLevel(generationConfig, defaultThinkingLevel) {
+  const thinkingConfig = generationConfig.thinkingConfig || {};
+  if (Object.hasOwn(thinkingConfig, 'thinkingBudget')) {
+    throw new Error('Gemini thinkingBudget is unsupported; use thinkingLevel instead');
+  }
+  return {
+    ...generationConfig,
+    thinkingConfig: {
+      ...thinkingConfig,
+      thinkingLevel: thinkingConfig.thinkingLevel || defaultThinkingLevel,
+    },
+  };
+}
+
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -46,9 +65,14 @@ async function requestGemini(url, options, label) {
   throw lastError;
 }
 
-export async function callGemini(prompt, generationConfig = {}, model = 'gemini-flash-latest') {
+export async function callGemini(prompt, generationConfig = {}, model = GEMINI_GENERAL_MODEL) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
+  const resolvedGenerationConfig = withDefaultThinkingLevel(
+    generationConfig,
+    GEMINI_GENERAL_THINKING_LEVEL,
+  );
 
   const response = await requestGemini(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -57,7 +81,7 @@ export async function callGemini(prompt, generationConfig = {}, model = 'gemini-
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig,
+        generationConfig: resolvedGenerationConfig,
       }),
     },
     'Gemini',
@@ -78,9 +102,14 @@ export async function callGemini(prompt, generationConfig = {}, model = 'gemini-
  * model's text response. Used to have the model look at candidate images and
  * pick the best flashcard illustration.
  */
-export async function callGeminiVision(parts, generationConfig = {}, model = 'gemini-flash-latest') {
+export async function callGeminiVision(parts, generationConfig = {}, model = GEMINI_GENERAL_MODEL) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
+  const resolvedGenerationConfig = withDefaultThinkingLevel(
+    generationConfig,
+    GEMINI_GENERAL_THINKING_LEVEL,
+  );
 
   const response = await requestGemini(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -89,7 +118,7 @@ export async function callGeminiVision(parts, generationConfig = {}, model = 'ge
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ parts }],
-        generationConfig,
+        generationConfig: resolvedGenerationConfig,
       }),
     },
     'Gemini vision',
@@ -115,14 +144,19 @@ export async function streamGemini(
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
+  const resolvedGenerationConfig = withDefaultThinkingLevel(
+    generationConfig,
+    GEMINI_GENERAL_THINKING_LEVEL,
+  );
+
   const response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:streamGenerateContent?alt=sse',
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_GENERAL_MODEL}:streamGenerateContent?alt=sse`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig,
+        generationConfig: resolvedGenerationConfig,
       }),
       signal,
     },

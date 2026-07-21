@@ -154,7 +154,7 @@ Sentence:
 ${sourceText}`;
 
   const raw = await callGemini(prompt, {
-    thinkingConfig: { thinkingBudget: 0 },
+    thinkingConfig: { thinkingLevel: 'LOW' },
     maxOutputTokens: 400,
     responseMimeType: 'application/json',
   });

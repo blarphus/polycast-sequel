@@ -99,7 +99,7 @@ ${sources.length ? sources.map((source, index) => `${index + 1}. ${source}`).joi
 Return only the sentence. Nothing else.`;
 
   const raw = await callGemini(prompt, {
-    thinkingConfig: { thinkingBudget: 0 },
+    thinkingConfig: { thinkingLevel: 'LOW' },
     maxOutputTokens: 96,
   });
   const sentence = ensureFreshPracticeSentence(raw, word);

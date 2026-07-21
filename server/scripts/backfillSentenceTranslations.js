@@ -106,7 +106,7 @@ async function generateSentenceTranslation(row) {
   const raw = await callGemini(
     buildPrompt(row),
     {
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: 'LOW' },
       maxOutputTokens: 160,
       responseMimeType: 'application/json',
     },

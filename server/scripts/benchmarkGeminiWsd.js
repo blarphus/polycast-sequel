@@ -185,7 +185,7 @@ async function benchmarkSample(sample) {
   const prompt = buildSensePrompt(sample);
   const startedAt = Date.now();
   const raw = await callGemini(prompt, {
-    thinkingConfig: { thinkingBudget: 0 },
+    thinkingConfig: { thinkingLevel: 'LOW' },
     maxOutputTokens: 10,
     responseMimeType: 'text/plain',
   });

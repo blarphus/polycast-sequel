@@ -2,8 +2,8 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 527,
-    "lines": 85532,
-    "declarations": 2354,
+    "lines": 85688,
+    "declarations": 2359,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 3
@@ -811,7 +811,7 @@
         },
         {
           "name": "request",
-          "callers": 343,
+          "callers": 356,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",
@@ -844,6 +844,7 @@
         "extension/test/background.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "ios/Polycast/UITests/ReaderPopupUITests.swift",
+        "server/lib/gemini.test.js",
         "server/lib/sharedDictionaryEntries.test.js",
         "server/services/dictionaryMediaService.test.js",
         "server/services/dictionaryStudyService.test.js",
@@ -8757,7 +8758,7 @@
         },
         {
           "name": "request",
-          "callers": 343,
+          "callers": 356,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",
@@ -8941,7 +8942,7 @@
         },
         {
           "name": "Response",
-          "callers": 13,
+          "callers": 16,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/background.test.mjs",
@@ -9726,7 +9727,7 @@
         },
         {
           "name": "delete",
-          "callers": 86,
+          "callers": 90,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -10343,7 +10344,7 @@
         },
         {
           "name": "delete",
-          "callers": 86,
+          "callers": 90,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -10384,6 +10385,7 @@
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/watchTranscript.test.ts",
         "ios/Polycast/Tests/PolycastTests.swift",
+        "server/lib/gemini.test.js",
         "server/lib/httpErrors.test.js",
         "server/lib/sharedDictionaryEntries.test.js",
         "server/services/dictionaryMediaService.test.js"
@@ -10411,13 +10413,14 @@
         },
         {
           "name": "data",
-          "callers": 892,
+          "callers": 893,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
             "client/src/test/offlineDictionary.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
             "ios/Polycast/Tests/PolycastTests.swift",
+            "server/lib/gemini.test.js",
             "server/lib/sharedDictionaryEntries.test.js",
             "server/services/dictionaryMediaService.test.js"
           ],
@@ -11742,6 +11745,7 @@
         "extension/test/popup-performance.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/word-popup-localized-definition.test.mjs",
+        "server/lib/gemini.test.js",
         "server/lib/httpErrors.test.js",
         "server/lib/idempotency.test.js",
         "server/services/dictionaryWordService.test.js",
@@ -11784,7 +11788,7 @@
         },
         {
           "name": "body",
-          "callers": 662,
+          "callers": 671,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -11799,6 +11803,7 @@
             "extension/test/popup-performance.test.mjs",
             "extension/test/selection.test.mjs",
             "extension/test/word-popup-localized-definition.test.mjs",
+            "server/lib/gemini.test.js",
             "server/lib/httpErrors.test.js",
             "server/lib/idempotency.test.js",
             "server/services/dictionaryWordService.test.js",
@@ -12441,7 +12446,7 @@
         },
         {
           "name": "delete",
-          "callers": 86,
+          "callers": 90,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -13719,6 +13724,7 @@
       "testCoverage": [
         "client/src/test/runtimeDiagnostics.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/lib/gemini.test.js",
         "server/test/correlation.test.js",
         "server/test/learningSessionService.test.js"
       ],
@@ -13756,8 +13762,9 @@
         },
         {
           "name": "reject",
-          "callers": 54,
+          "callers": 55,
           "testReferences": [
+            "server/lib/gemini.test.js",
             "server/test/correlation.test.js"
           ],
           "disposition": "retain"
@@ -14467,7 +14474,7 @@
         },
         {
           "name": "content",
-          "callers": 148,
+          "callers": 151,
           "testReferences": [
             "client/src/test/epub.test.ts",
             "client/src/test/groupCallProvider.test.tsx",
@@ -16115,7 +16122,7 @@
         },
         {
           "name": "callGemini",
-          "callers": 43,
+          "callers": 48,
           "testReferences": [
             "server/lib/gemini.test.js"
           ],
@@ -17519,7 +17526,7 @@
     },
     {
       "file": "server/lib/gemini.js",
-      "lines": 224,
+      "lines": 258,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "network",
@@ -17534,6 +17541,12 @@
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
+        {
+          "name": "withDefaultThinkingLevel",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
         {
           "name": "wait",
           "callers": 7,
@@ -17557,7 +17570,7 @@
         },
         {
           "name": "callGemini",
-          "callers": 43,
+          "callers": 48,
           "testReferences": [
             "server/lib/gemini.test.js"
           ],
@@ -17565,14 +17578,18 @@
         },
         {
           "name": "callGeminiVision",
-          "callers": 4,
-          "testReferences": [],
+          "callers": 6,
+          "testReferences": [
+            "server/lib/gemini.test.js"
+          ],
           "disposition": "retain"
         },
         {
           "name": "streamGemini",
-          "callers": 2,
-          "testReferences": [],
+          "callers": 5,
+          "testReferences": [
+            "server/lib/gemini.test.js"
+          ],
           "disposition": "retain"
         },
         {
@@ -17586,12 +17603,42 @@
           "callers": 2,
           "testReferences": [],
           "disposition": "retain"
+        },
+        {
+          "name": "GEMINI_GENERAL_MODEL",
+          "callers": 6,
+          "testReferences": [
+            "server/lib/gemini.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "GEMINI_DICTIONARY_MODEL",
+          "callers": 7,
+          "testReferences": [
+            "server/lib/gemini.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "GEMINI_GENERAL_THINKING_LEVEL",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "GEMINI_DICTIONARY_THINKING_LEVEL",
+          "callers": 6,
+          "testReferences": [
+            "server/lib/gemini.test.js"
+          ],
+          "disposition": "retain"
         }
       ]
     },
     {
       "file": "server/lib/gemini.test.js",
-      "lines": 50,
+      "lines": 158,
       "responsibility": "test",
       "sideEffects": [
         "network"
@@ -18023,7 +18070,7 @@
     },
     {
       "file": "server/lib/imagePick.js",
-      "lines": 107,
+      "lines": 106,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "logging"
@@ -19930,6 +19977,7 @@
         "extension/test/background.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "ios/Polycast/UITests/ReaderPopupUITests.swift",
+        "server/lib/gemini.test.js",
         "server/lib/sharedDictionaryEntries.test.js",
         "server/services/dictionaryMediaService.test.js",
         "server/services/dictionaryStudyService.test.js",
@@ -22106,7 +22154,7 @@
     },
     {
       "file": "server/services/wordSemanticsService.js",
-      "lines": 545,
+      "lines": 560,
       "responsibility": "server domain/integration",
       "sideEffects": [],
       "testCoverage": [],
@@ -22743,7 +22791,7 @@
         },
         {
           "name": "request",
-          "callers": 343,
+          "callers": 356,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/activation.test.mjs",

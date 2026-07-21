@@ -1,4 +1,10 @@
-import { callGemini, parseGeminiJson, ensureGeminiKeys } from '../lib/gemini.js';
+import {
+  callGemini,
+  parseGeminiJson,
+  ensureGeminiKeys,
+  GEMINI_DICTIONARY_MODEL,
+  GEMINI_DICTIONARY_THINKING_LEVEL,
+} from '../lib/gemini.js';
 import {
   enrichWord,
   fetchWiktSenses,
@@ -63,8 +69,12 @@ Pick the sense that best matches how "${word}" is used here. IMPORTANT: if ANY s
 
 Reply with exactly ONE line in the form:  PICK | TRANSLATION | DEFINITION
 where PICK is the token chosen above (an index number, a single base word, or -1), TRANSLATION is the best 1–3 word ${nativeLang} translation of "${word}" as used here, and DEFINITION is a plain, concise ${nativeLang} explanation of that exact sense in 12 words or fewer. Do not copy the candidate gloss unless it is already in ${nativeLang}.`,
-    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 80, responseMimeType: 'text/plain' },
-    'gemini-flash-lite-latest',
+    {
+      thinkingConfig: { thinkingLevel: GEMINI_DICTIONARY_THINKING_LEVEL },
+      maxOutputTokens: 80,
+      responseMimeType: 'text/plain',
+    },
+    GEMINI_DICTIONARY_MODEL,
   );
 
   const reply = raw.trim();
@@ -107,8 +117,12 @@ Senses:
 ${senseList}
 Prefer the most basic, common, literal sense that fits; choose a specialized or figurative sense only if the context clearly requires it.
 Reply with ONLY the index NUMBER of the sense that best fits this usage, or -1 if none of the senses actually conveys the meaning as used (e.g. figurative, idiomatic, or multi-word usage with no fitting sense). Do NOT force a sense that doesn't fit.`,
-    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 8, responseMimeType: 'text/plain' },
-    'gemini-flash-lite-latest',
+    {
+      thinkingConfig: { thinkingLevel: GEMINI_DICTIONARY_THINKING_LEVEL },
+      maxOutputTokens: 32,
+      responseMimeType: 'text/plain',
+    },
+    GEMINI_DICTIONARY_MODEL,
   );
   const reply = raw.trim();
   if (!/^-?\d+$/.test(reply)) {
@@ -245,7 +259,7 @@ Do NOT add a preamble, markdown, bullets, or extra lines. Do not repeat the ${ta
 export async function explainWordInContext({ word, sentence, nativeLang, targetLang, context }) {
   const raw = await callGemini(
     buildExplainWordPrompt({ word, sentence, nativeLang, targetLang, context }),
-    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 300 },
+    { thinkingConfig: { thinkingLevel: 'LOW' }, maxOutputTokens: 300 },
   );
   const explanation = raw.trim();
   if (!explanation) {
@@ -264,7 +278,7 @@ The learner clicked the text wrapped in tildes in this ${targetLang || 'target-l
 In ${nativeLang} and in easy to understand and casual speech, explain what that word specifically means in "${context}". Again, explain in the context of that particular sentence. Explain in one or two sentences. While you should explain what a turn of phrase literally means, do not extend into textual analysis.
 
 Do NOT add a preamble, markdown, bullets, or extra lines. Do not repeat the ${targetLang || 'target-language'} sentence.`,
-    { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 400 },
+    { thinkingConfig: { thinkingLevel: 'LOW' }, maxOutputTokens: 400 },
   );
   const explanation = raw.trim();
   if (!explanation) {
@@ -356,10 +370,11 @@ ${senseInstruction}
 - phrase_translation: when is_phrase is true, the ${nativeLang} translation of the whole phrase, 1-4 words. Empty otherwise.
 - phrase_definition: when is_phrase is true, a short ${nativeLang} definition of the phrase, 12 words max. Empty otherwise.`,
     {
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: GEMINI_DICTIONARY_THINKING_LEVEL },
       maxOutputTokens: 350,
       responseMimeType: 'application/json',
     },
+    GEMINI_DICTIONARY_MODEL,
   );
 
   const parsed = parseGeminiJson(raw, 'Dictionary lookup');
@@ -499,7 +514,7 @@ ${wordEntries}
 Return ONLY a JSON array in order:
 [{"sense_index":0}, ...]`,
       {
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingLevel: 'LOW' },
         maxOutputTokens: 300,
         responseMimeType: 'application/json',
       },
