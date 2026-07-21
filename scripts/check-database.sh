@@ -17,7 +17,9 @@ find_pg_bin() {
 
 cleanup() {
   if [[ "$STARTED_POSTGRES" == 1 ]]; then "$PG_BIN/pg_ctl" -D "$PG_DIR" stop -m fast >/dev/null 2>&1 || true; fi
-  [[ -n "$PG_DIR" ]] && rm -rf "$PG_DIR"
+  if [[ -n "$PG_DIR" ]]; then
+    rm -rf "$PG_DIR"
+  fi
 }
 trap cleanup EXIT
 
