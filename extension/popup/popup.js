@@ -17,8 +17,8 @@ const apiBaseInput = document.getElementById('api-base-input');
 const loginApiBaseInput = document.getElementById('login-api-base-input');
 const saveApiBaseBtn = document.getElementById('save-api-base-btn');
 const loginSaveApiBaseBtn = document.getElementById('login-save-api-base-btn');
-const useLocalApiBtn = document.getElementById('use-local-api-btn');
-const loginUseLocalApiBtn = document.getElementById('login-use-local-api-btn');
+const useRenderApiBtn = document.getElementById('use-render-api-btn');
+const loginUseRenderApiBtn = document.getElementById('login-use-render-api-btn');
 const settingsMessage = document.getElementById('settings-message');
 const loginSettingsMessage = document.getElementById('login-settings-message');
 const wordCountEl = document.getElementById('word-count-num');
@@ -41,7 +41,7 @@ let activePageStatus = null;
 const POPUP_MESSAGES = {
   en: {
     username: 'Username', password: 'Password', signIn: 'Sign In', signingIn: 'Signing in...',
-    apiServer: 'API server', saveApi: 'Save API', useLocal: 'Use local', native: 'Native', learning: 'Learning',
+    apiServer: 'API server', saveApi: 'Save API', useRender: 'Use Render', native: 'Native', learning: 'Learning',
     savedWords: 'saved words', dailyActivity: 'Daily activity', dailyWordGoal: 'Daily word goal', goal: 'Goal',
     pageHighlights: 'Page highlights', auto: 'Auto', on: 'On', off: 'Off', learningLanguage: 'Learning language',
     hint: 'Click words in video subtitles to look them up.', openWebApp: 'Open Web App', signOut: 'Sign Out',
@@ -57,7 +57,7 @@ const POPUP_MESSAGES = {
   },
   es: {
     username: 'Usuario', password: 'Contraseña', signIn: 'Iniciar sesión', signingIn: 'Iniciando sesión...',
-    apiServer: 'Servidor API', saveApi: 'Guardar API', useLocal: 'Usar local', native: 'Nativo', learning: 'Aprendiendo',
+    apiServer: 'Servidor API', saveApi: 'Guardar API', useRender: 'Usar Render', native: 'Nativo', learning: 'Aprendiendo',
     savedWords: 'palabras guardadas', dailyActivity: 'Actividad diaria', dailyWordGoal: 'Meta diaria de palabras', goal: 'Meta',
     pageHighlights: 'Resaltados de página', auto: 'Auto', on: 'Activados', off: 'Desactivados', learningLanguage: 'Idioma que aprendes',
     hint: 'Haz clic en palabras de los subtítulos para buscarlas.', openWebApp: 'Abrir aplicación web', signOut: 'Cerrar sesión',
@@ -495,13 +495,13 @@ function saveApiBase(apiBase, { button = saveApiBaseBtn, message = setSettingsMe
 }
 
 saveApiBaseBtn.addEventListener('click', () => saveApiBase(apiBaseInput.value));
-useLocalApiBtn.addEventListener('click', () => saveApiBase('http://localhost:3001'));
+useRenderApiBtn.addEventListener('click', () => saveApiBase('https://polycast-sequel.onrender.com'));
 loginSaveApiBaseBtn.addEventListener('click', () => saveApiBase(loginApiBaseInput.value, {
   button: loginSaveApiBaseBtn,
   message: setLoginSettingsMessage,
 }));
-loginUseLocalApiBtn.addEventListener('click', () => saveApiBase('http://localhost:3001', {
-  button: loginUseLocalApiBtn,
+loginUseRenderApiBtn.addEventListener('click', () => saveApiBase('https://polycast-sequel.onrender.com', {
+  button: loginUseRenderApiBtn,
   message: setLoginSettingsMessage,
 }));
 

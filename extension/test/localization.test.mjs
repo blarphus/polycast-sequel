@@ -11,7 +11,10 @@ test('extension popup and in-page word controls expose Spanish profile localizat
   ]);
 
   assert.match(popupHtml, /data-i18n="learningLanguage"/);
+  assert.match(popupHtml, /data-i18n="useRender"/);
   assert.match(popupJs, /Idioma que aprendes/);
+  assert.match(popupJs, /https:\/\/polycast-sequel\.onrender\.com/);
+  assert.doesNotMatch(popupJs, /saveApiBase\('http:\/\/localhost:3001'/);
   assert.match(popupJs, /user\.native_language/);
   assert.match(sharedContent, /Agregar al diccionario/);
   assert.match(sharedContent, /native_language/);

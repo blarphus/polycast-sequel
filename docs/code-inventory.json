@@ -2,7 +2,7 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 535,
-    "lines": 86603,
+    "lines": 86606,
     "declarations": 2383,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 39,
@@ -205,6 +205,7 @@
         "client/src/test/epub.test.ts",
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs",
+        "extension/test/localization.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/httpErrors.test.js",
         "server/lib/origins.test.js",
@@ -8390,7 +8391,9 @@
         {
           "name": "saveApiBase",
           "callers": 4,
-          "testReferences": [],
+          "testReferences": [
+            "extension/test/localization.test.mjs"
+          ],
           "disposition": "retain"
         }
       ]
@@ -8614,7 +8617,7 @@
     },
     {
       "file": "extension/test/localization.test.mjs",
-      "lines": 20,
+      "lines": 23,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
