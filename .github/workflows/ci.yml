@@ -86,7 +86,13 @@ jobs:
       - run: bash scripts/check-xcodegen.sh
       - name: Provision iOS simulator
         run: |
-          runtime_id="$(xcrun simctl list runtimes --json | jq -r '[.runtimes[] | select(.isAvailable and (.identifier | contains("iOS")))] | sort_by(.version) | last | .identifier')"
+          sdk_version="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          runtime_id="$(xcrun simctl list runtimes --json | jq -r --arg sdk "$sdk_version" '[.runtimes[] | select(.isAvailable and ((.version | split(".")[0]) == ($sdk | split(".")[0])))] | sort_by(.version) | last | .identifier')"
+          if [[ -z "$runtime_id" ]]; then
+            echo "{\"event\":\"ios_ci_compatible_runtime_unavailable\",\"sdk_version\":\"$sdk_version\"}"
+            xcrun simctl list runtimes
+            exit 1
+          fi
           device_type_id="$(xcrun simctl list devicetypes --json | jq -r '.devicetypes[] | select(.name == "iPhone 16 Pro") | .identifier' | head -n 1)"
           simulator_id="$(xcrun simctl create Polycast-CI "$device_type_id" "$runtime_id")"
           xcrun simctl bootstatus "$simulator_id" -b
