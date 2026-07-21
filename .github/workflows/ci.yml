@@ -84,18 +84,4 @@ jobs:
           unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen-release"
           echo "$RUNNER_TEMP/xcodegen-release/xcodegen/bin" >> "$GITHUB_PATH"
       - run: bash scripts/check-xcodegen.sh
-      - name: Provision iOS simulator
-        run: |
-          sdk_version="$(xcrun --sdk iphonesimulator --show-sdk-version)"
-          runtime_id="$(xcrun simctl list runtimes --json | jq -r --arg sdk "$sdk_version" '[.runtimes[] | select(.isAvailable and ((.version | split(".")[0]) == ($sdk | split(".")[0])))] | sort_by(.version) | last | .identifier')"
-          if [[ -z "$runtime_id" ]]; then
-            echo "{\"event\":\"ios_ci_compatible_runtime_unavailable\",\"sdk_version\":\"$sdk_version\"}"
-            xcrun simctl list runtimes
-            exit 1
-          fi
-          device_type_id="$(xcrun simctl list devicetypes --json | jq -r '.devicetypes[] | select(.name == "iPhone 16 Pro") | .identifier' | head -n 1)"
-          simulator_id="$(xcrun simctl create Polycast-CI "$device_type_id" "$runtime_id")"
-          xcrun simctl bootstatus "$simulator_id" -b
-          echo "IOS_SIMULATOR_ID=$simulator_id" >> "$GITHUB_ENV"
-          echo "{\"event\":\"ios_ci_simulator_provisioned\",\"device_type\":\"$device_type_id\",\"runtime\":\"$runtime_id\",\"simulator_id\":\"$simulator_id\"}"
-      - run: xcodebuild -project ios/Polycast.xcodeproj -scheme Polycast -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" -derivedDataPath /tmp/polycast-ci-derived-data test -only-testing:PolycastTests CODE_SIGNING_ALLOWED=NO
+      - run: xcodebuild -project ios/Polycast.xcodeproj -scheme Polycast -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/polycast-ci-derived-data build-for-testing CODE_SIGNING_ALLOWED=NO
