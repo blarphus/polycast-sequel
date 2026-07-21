@@ -84,4 +84,11 @@ jobs:
           unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen-release"
           echo "$RUNNER_TEMP/xcodegen-release/xcodegen/bin" >> "$GITHUB_PATH"
       - run: bash scripts/check-xcodegen.sh
-      - run: xcodebuild -project ios/Polycast.xcodeproj -scheme Polycast -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -derivedDataPath /tmp/polycast-ci-derived-data test -only-testing:PolycastTests CODE_SIGNING_ALLOWED=NO
+      - name: Provision iOS simulator
+        run: |
+          runtime_id="$(xcrun simctl list runtimes --json | jq -r '[.runtimes[] | select(.isAvailable and (.identifier | contains("iOS")))] | sort_by(.version) | last | .identifier')"
+          device_type_id="$(xcrun simctl list devicetypes --json | jq -r '.devicetypes[] | select(.name == "iPhone 16 Pro") | .identifier' | head -n 1)"
+          simulator_id="$(xcrun simctl create Polycast-CI "$device_type_id" "$runtime_id")"
+          echo "IOS_SIMULATOR_ID=$simulator_id" >> "$GITHUB_ENV"
+          echo "{\"event\":\"ios_ci_simulator_provisioned\",\"device_type\":\"$device_type_id\",\"runtime\":\"$runtime_id\",\"simulator_id\":\"$simulator_id\"}"
+      - run: xcodebuild -project ios/Polycast.xcodeproj -scheme Polycast -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" -derivedDataPath /tmp/polycast-ci-derived-data test -only-testing:PolycastTests CODE_SIGNING_ALLOWED=NO
