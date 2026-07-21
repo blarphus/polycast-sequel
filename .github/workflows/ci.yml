@@ -61,8 +61,12 @@ jobs:
           cache-dependency-path: server/package-lock.json
       - run: npm ci
         working-directory: server
-      - run: createdb postgresql://postgres:postgres@127.0.0.1:5432/polycast_fresh
-      - run: createdb postgresql://postgres:postgres@127.0.0.1:5432/polycast_legacy
+      - run: createdb --host 127.0.0.1 --username postgres polycast_fresh
+        env:
+          PGPASSWORD: postgres
+      - run: createdb --host 127.0.0.1 --username postgres polycast_legacy
+        env:
+          PGPASSWORD: postgres
       - run: bash scripts/check-database.sh
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/polycast_fresh

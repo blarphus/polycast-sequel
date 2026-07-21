@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { JSDOM } from '../../client/node_modules/jsdom/lib/api.js';
+import { JSDOM } from 'jsdom';
 
 test('word popup displays the learner-language definition instead of the source gloss', async () => {
   const source = await readFile(new URL('../shared/wordPopupCore.js', import.meta.url), 'utf8');

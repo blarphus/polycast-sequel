@@ -380,8 +380,6 @@
         "client/src/test/srs.test.ts",
         "client/src/test/watchTranscript.test.ts",
         "extension/test/background.test.mjs",
-        "extension/test/popup-performance.test.mjs",
-        "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/authResponse.test.js",
         "server/lib/sharedDictionaryEntries.test.js",

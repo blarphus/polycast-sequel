@@ -616,7 +616,6 @@
 				};
 			};
 			buildConfigurationList = CB0B225685F27A4F50B53E45 /* Build configuration list for PBXProject "Polycast" */;
-			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -630,13 +629,14 @@
 				08DEBD2C449DDD65549CFD9E /* XCRemoteSwiftPackageReference "socket.io-client-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
+			productRefGroup = 73B7CB597CCE0B25772FD8C6 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				B2AFB531F9D173C07D9646EE /* Polycast */,
+				CEB9F3B8A9F844441A7DEAC9 /* PolycastWidget */,
 				0BFA1814D711B9A5CC07B58A /* PolycastTests */,
 				42C60502CE7BAA70C88DAE36 /* PolycastUITests */,
-				CEB9F3B8A9F844441A7DEAC9 /* PolycastWidget */,
 			);
 		};
 /* End PBXProject section */

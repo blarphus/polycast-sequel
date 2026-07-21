@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { JSDOM } from '../../client/node_modules/jsdom/lib/api.js';
+import { JSDOM } from 'jsdom';
 
 test('word popup shell mounts synchronously within the latency budget', async () => {
   const source = await readFile(new URL('../shared/wordPopupCore.js', import.meta.url), 'utf8');
