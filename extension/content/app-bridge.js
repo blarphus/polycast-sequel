@@ -2,11 +2,15 @@
 // app-bridge.js — Keeps the local web app and extension dictionary in sync
 // ---------------------------------------------------------------------------
 
-const APP_OFFLINE_ENABLED_KEY = 'polycast.offline.enabled';
 const APP_OFFLINE_WORDS_KEY = 'polycast.offline.dictionary.words.v1';
 
+// Older bridge versions enabled the web app's sticky offline mode on every
+// local-app load. The bridge only mirrors dictionary data; it must not decide
+// whether authenticated web requests use the backend. Clear that legacy flag
+// for the local development origins where this content script runs.
+localStorage.removeItem('polycast.offline.enabled');
+
 function writeAppWords(words) {
-  localStorage.setItem(APP_OFFLINE_ENABLED_KEY, 'true');
   localStorage.setItem(APP_OFFLINE_WORDS_KEY, JSON.stringify(Array.isArray(words) ? words : []));
   window.dispatchEvent(new CustomEvent('polycast-offline-dictionary-external-sync'));
 }

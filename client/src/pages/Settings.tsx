@@ -12,11 +12,14 @@ import { useTheme } from '../hooks/useTheme';
 import { LANGUAGES } from '../components/classwork/languages';
 import { ChevronLeftIcon } from '../components/icons';
 import { toErrorMessage } from '../utils/errors';
+import { CORE_LANGUAGE_CODES } from '../i18n';
+import { useI18n } from '../hooks/useI18n';
 
 export default function Settings() {
   const { user, updateSettings } = useAuth();
   const { theme, toggleTheme, bgTexture, setBgTexture } = useTheme();
   const navigate = useNavigate();
+  const { t, languageName } = useI18n();
 
   const [nativeLang, setNativeLang] = useState(user?.native_language || '');
   const [targetLang, setTargetLang] = useState(user?.target_language || '');
@@ -51,46 +54,46 @@ export default function Settings() {
       <div className="auth-card">
         <button className="channel-back-btn" onClick={() => navigate(-1)}>
           <ChevronLeftIcon size={18} />
-          Back
+          {t('settings.back')}
         </button>
-        <h1 className="auth-title">Settings</h1>
-        <p className="auth-subtitle">Set your language preferences</p>
+        <h1 className="auth-title">{t('settings.title')}</h1>
+        <p className="auth-subtitle">{t('settings.subtitle')}</p>
 
         <div className="theme-toggle-row">
-          <span className="form-label" style={{ marginBottom: 0 }}>Theme</span>
+          <span className="form-label" style={{ marginBottom: 0 }}>{t('settings.theme')}</span>
           <div className="theme-toggle">
             <button
               className={`theme-toggle-option${theme === 'light' ? ' active' : ''}`}
               onClick={() => theme !== 'light' && toggleTheme()}
             >
-              Light
+              {t('settings.light')}
             </button>
             <button
               className={`theme-toggle-option${theme === 'dark' ? ' active' : ''}`}
               onClick={() => theme !== 'dark' && toggleTheme()}
             >
-              Dark
+              {t('settings.dark')}
             </button>
           </div>
         </div>
 
         <div className="texture-toggle-row">
-          <span className="form-label" style={{ marginBottom: 0 }}>Background</span>
+          <span className="form-label" style={{ marginBottom: 0 }}>{t('settings.background')}</span>
           <div className="texture-toggle">
-            {(['none', 'dots', 'lines', 'noise', 'grid'] as const).map((t) => (
+            {(['none', 'dots', 'lines', 'noise', 'grid'] as const).map((texture) => (
               <button
-                key={t}
-                className={`texture-toggle-option${bgTexture === t ? ' active' : ''}`}
-                onClick={() => setBgTexture(t)}
+                key={texture}
+                className={`texture-toggle-option${bgTexture === texture ? ' active' : ''}`}
+                onClick={() => setBgTexture(texture)}
               >
-                {t === 'none' ? 'None' : t.charAt(0).toUpperCase() + t.slice(1)}
+                {{ none: t('settings.none'), dots: t('settings.dots'), lines: t('settings.lines'), noise: t('settings.noise'), grid: t('settings.grid') }[texture]}
               </button>
             ))}
           </div>
         </div>
 
         <div className="daily-limit-row">
-          <span className="form-label" style={{ marginBottom: 0 }}>Daily new words</span>
+          <span className="form-label" style={{ marginBottom: 0 }}>{t('settings.dailyWords')}</span>
           <div className="daily-limit-stepper">
             <button
               className="daily-limit-btn"
@@ -111,45 +114,45 @@ export default function Settings() {
         </div>
 
         <div className="theme-toggle-row">
-          <span className="form-label" style={{ marginBottom: 0 }}>Dictionary ranking build</span>
+          <span className="form-label" style={{ marginBottom: 0 }}>{t('settings.ranking')}</span>
           <button className="btn btn-small" onClick={() => navigate('/catalog-progress')} type="button">
-            View live progress
+            {t('settings.rankingProgress')}
           </button>
         </div>
 
         {error && <div className="auth-error">{error}</div>}
-        {saved && <div className="settings-success">Settings saved!</div>}
+        {saved && <div className="settings-success">{t('settings.saved')}</div>}
 
-        <label className="form-label">Native Language</label>
+        <label className="form-label">{t('settings.native')}</label>
         <select
           className="form-input"
           value={nativeLang}
           onChange={(e) => setNativeLang(e.target.value)}
         >
-          <option value="">Select...</option>
-          {LANGUAGES.filter((l) => l.code !== targetLang).map((l) => (
-            <option key={l.code} value={l.code}>{l.name}</option>
+          <option value="">{t('common.select')}</option>
+          {LANGUAGES.filter((l) => CORE_LANGUAGE_CODES.has(l.code) && l.code !== targetLang).map((l) => (
+            <option key={l.code} value={l.code}>{languageName(l.code)}</option>
           ))}
         </select>
 
-        <label className="form-label">Target Language</label>
+        <label className="form-label">{t('settings.target')}</label>
         <select
           className="form-input"
           value={targetLang}
           onChange={(e) => setTargetLang(e.target.value)}
         >
-          <option value="">Select...</option>
-          {LANGUAGES.filter((l) => l.code !== nativeLang).map((l) => (
-            <option key={l.code} value={l.code}>{l.name}</option>
+          <option value="">{t('common.select')}</option>
+          {LANGUAGES.filter((l) => CORE_LANGUAGE_CODES.has(l.code) && l.code !== nativeLang).map((l) => (
+            <option key={l.code} value={l.code}>{languageName(l.code)}</option>
           ))}
         </select>
 
         <button className="btn btn-primary btn-block" onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving...' : 'Save'}
+          {saving ? t('common.saving') : t('common.save')}
         </button>
 
         <div className="auth-link">
-          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Back to Home</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>{t('settings.backHome')}</a>
         </div>
       </div>
     </div>

@@ -68,3 +68,40 @@ test('selection popup shell opens before lookup content is requested', async () 
   assert.equal(response.success, true);
   assert.ok(response.shellLatencyMs >= 0);
 });
+
+test('multi-word right-click selection emits a visible structured error', async () => {
+  const source = await readFile(new URL('../content/selection.js', import.meta.url), 'utf8');
+  const messageListeners = [];
+  const notices = [];
+  const documentElement = { dataset: {} };
+  const selection = {
+    rangeCount: 1,
+    isCollapsed: false,
+    toString: () => 'two words',
+  };
+
+  vm.runInNewContext(source, {
+    chrome: { runtime: { onMessage: { addListener: (listener) => messageListeners.push(listener) } } },
+    document: { documentElement, body: {} },
+    window: { getSelection: () => selection, innerWidth: 1280, innerHeight: 720 },
+    Node: { ELEMENT_NODE: 1 },
+    PolycastContent: {
+      validateInboundMessage: () => true,
+      showFallbackToast: (...args) => notices.push(args),
+    },
+    console,
+    Date,
+  });
+
+  let response;
+  messageListeners[0]({
+    type: 'POLYCAST_LOOKUP_SELECTION',
+    selectionText: 'two words',
+    requestedAt: Date.now(),
+  }, {}, (value) => { response = value; });
+
+  assert.equal(response.success, false);
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0][2].code, 'selection_not_single_word');
+  assert.equal(notices[0][2].severity, 'error');
+});

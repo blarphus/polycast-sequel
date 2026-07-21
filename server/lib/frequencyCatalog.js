@@ -3,9 +3,11 @@ import pool from '../db.js';
 import logger from '../logger.js';
 import { normalizeFallbackDiagnostic, persistFallbackDiagnostic } from './fallbackDiagnostics.js';
 import { canonicalLemmaKey } from './normalizeWordFields.js';
+import { lookupEmbeddedFrequency } from './embeddedFrequencyCatalog.js';
 
-// Spanish is deliberately the only materialized catalog for this iteration.
-export const FREQUENCY_LANGUAGES = Object.freeze(['es']);
+// Spanish uses the materialized multi-source catalog. English uses the bounded,
+// committed wordfreq snapshot until its full sense catalog is materialized.
+export const FREQUENCY_LANGUAGES = Object.freeze(['es', 'en']);
 const FREQUENCY_LANGUAGE_SET = new Set(FREQUENCY_LANGUAGES);
 
 export function baseFrequencyLanguage(language) {
@@ -64,7 +66,7 @@ export async function lookupFrequencyCatalog({
       code: 'frequency_catalog_language_unavailable',
       severity: 'warning',
       title: 'Saved frequency ranking unavailable for this language',
-      message: `The compact frequency catalog currently supports Spanish only. “${lemma}” remains visibly unranked.`,
+      message: `The compact frequency catalog currently supports English and Spanish only. “${lemma}” remains visibly unranked.`,
       source: 'server.frequency-catalog',
       operation: 'lookup-ranking',
       pipeline: 'frequency_lookup',
@@ -78,6 +80,10 @@ export async function lookupFrequencyCatalog({
 
   const lemmaKey = canonicalLemmaKey(lemma);
   const definitionHash = definition ? definitionFingerprint(definition) : null;
+  const embeddedEntry = lang === 'en'
+    ? lookupEmbeddedFrequency(lang, lemma, bandForLemmaRank)
+    : null;
+  if (embeddedEntry) return { entry: embeddedEntry, diagnostics: [] };
   const { rows: [lemmaRow] } = await db.query(
     `SELECT
        v.id AS rank_version_id, v.version AS rank_version,
@@ -94,11 +100,28 @@ export async function lookupFrequencyCatalog({
   );
 
   if (!lemmaRow) {
+    const embeddedFallback = lookupEmbeddedFrequency(lang, lemma, bandForLemmaRank);
+    if (embeddedFallback) {
+      const diagnostic = await reportFallbackDiagnostic(db, {
+        code: 'frequency_catalog_embedded_fallback',
+        severity: 'warning',
+        title: 'Embedded frequency ranking used',
+        message: `The active Spanish catalog was unavailable, so Polycast used its committed Spanish frequency snapshot for “${lemma}”.`,
+        source: 'server.frequency-catalog',
+        operation: 'lookup-ranking',
+        pipeline: 'frequency_lookup',
+        stage: 'embedded-catalog-fallback',
+        language: lang,
+        selectedAction: 'use-embedded-frequency-rank',
+        detail: `lemmaKey=${lemmaKey}; embeddedRank=${embeddedFallback.lemma_rank}`,
+      }, { correlationId }, 'Embedded Spanish frequency ranking used');
+      return { entry: embeddedFallback, diagnostics: [diagnostic] };
+    }
     const diagnostic = await reportFallbackDiagnostic(db, {
       code: 'frequency_catalog_entry_unavailable',
       severity: 'warning',
       title: 'Frequency catalog entry unavailable',
-      message: `No active saved Spanish ranking was found for “${lemma}”. This entry is visibly placed in the unranked tail until the catalog is rebuilt.`,
+      message: `No active saved ${lang === 'es' ? 'Spanish' : 'English'} ranking was found for “${lemma}”. This entry is visibly placed in the unranked tail until the catalog is rebuilt.`,
       source: 'server.frequency-catalog',
       operation: 'lookup-ranking',
       pipeline: 'frequency_lookup',
@@ -106,7 +129,7 @@ export async function lookupFrequencyCatalog({
       language: lang,
       selectedAction: 'preserve-unranked-entry',
       detail: `lemmaKey=${lemmaKey}; partOfSpeech=${partOfSpeech || 'unknown'}; definitionHash=${definitionHash || 'none'}`,
-    }, { correlationId }, 'Saved Spanish frequency ranking unavailable');
+    }, { correlationId }, `Saved ${lang === 'es' ? 'Spanish' : 'English'} frequency ranking unavailable`);
     return { entry: null, diagnostics: [diagnostic] };
   }
 
@@ -163,7 +186,10 @@ export async function persistProvisionalSense({
   correlationId = null,
 }) {
   const lang = baseFrequencyLanguage(language);
-  if (!lang || !lemma || !definition) return { entry: null, diagnostics: [] };
+  // The provisional-sense table belongs to the materialized Spanish sense
+  // catalog. English ranking is lemma-only, so inserting English rows here
+  // would create a misleading fallback for an otherwise successful lookup.
+  if (lang !== 'es' || !lemma || !definition) return { entry: null, diagnostics: [] };
   const lemmaKey = canonicalLemmaKey(lemma);
   const fingerprint = definitionFingerprint(definition);
   const client = typeof db.connect === 'function' ? await db.connect() : db;

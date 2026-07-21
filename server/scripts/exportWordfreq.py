@@ -14,12 +14,17 @@ import os
 parser = argparse.ArgumentParser(description="Export bounded wordfreq Zipf tables for Polycast languages.")
 parser.add_argument("--output-dir", default=os.path.join(os.path.dirname(__file__), "..", "data", "frequency"))
 parser.add_argument("--top-n", type=int, default=50000)
+parser.add_argument(
+    "--languages",
+    default="en,es,pt,fr,de,ja",
+    help="comma-separated language codes to export",
+)
 parser.add_argument("--dry-run", action="store_true", help="compute tables without writing files")
 args = parser.parse_args()
 
 from wordfreq import top_n_list, zipf_frequency
 
-LANGS = ["en", "es", "pt", "fr", "de", "ja"]
+LANGS = [lang.strip().lower() for lang in args.languages.split(",") if lang.strip()]
 TOP_N = args.top_n
 OUT_DIR = args.output_dir
 

@@ -11,6 +11,7 @@ import { getStudentDashboard } from '../api';
 import { HomeIcon, BookIcon, BookOpenIcon, BoltIcon, TargetIcon, PeopleIcon, ClassworkIcon, PlayCircleIcon, FolderIcon, SettingsIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, UserIcon, PlusIcon, CloseIcon } from './icons';
 import { toErrorMessage } from '../utils/errors';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { useI18n } from '../hooks/useI18n';
 
 const COLLAPSED_KEY = 'sidebar-collapsed';
 const NARROW_QUERY = '(min-width: 481px) and (max-width: 1024px)';
@@ -19,6 +20,7 @@ export default function BottomToolbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, savedAccounts, switchAccount, forgetSavedAccount } = useAuth();
+  const { t } = useI18n();
 
   const isTeacher = user?.account_type === 'teacher';
   const isStudent = user?.account_type === 'student';
@@ -124,7 +126,7 @@ export default function BottomToolbar() {
     <nav className={`bottom-toolbar${collapsed ? ' collapsed' : ''}`}>
       <div className="sidebar-brand">
         <span className="sidebar-logo">Polycast</span>
-        <button className="sidebar-collapse-btn" onClick={toggleCollapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+        <button className="sidebar-collapse-btn" onClick={toggleCollapsed} title={collapsed ? t('nav.expand') : t('nav.collapse')}>
           {collapsed ? <ChevronRightIcon size={16} /> : <ChevronLeftIcon size={16} />}
         </button>
       </div>
@@ -133,28 +135,28 @@ export default function BottomToolbar() {
         onClick={() => navigate('/dictionary')}
       >
         <BookIcon size={22} />
-        <span className="toolbar-label">Dictionary</span>
+        <span className="toolbar-label">{t('nav.dictionary')}</span>
       </button>
       <button
         className={`toolbar-tab toolbar-tab--yellow${isFlashcards ? ' active' : ''}`}
         onClick={() => navigate('/learn')}
       >
         <BoltIcon size={22} />
-        <span className="toolbar-label">Flashcards</span>
+        <span className="toolbar-label">{t('nav.flashcards')}</span>
       </button>
       <button
         className={`toolbar-tab toolbar-tab--yellow${isPractice ? ' active' : ''}`}
         onClick={() => navigate('/practice')}
       >
         <TargetIcon size={22} />
-        <span className="toolbar-label">Practice</span>
+        <span className="toolbar-label">{t('nav.practice')}</span>
       </button>
       <button
         className={`toolbar-tab toolbar-tab--indigo${isBooks ? ' active' : ''}`}
         onClick={() => navigate('/books')}
       >
         <BookOpenIcon size={22} />
-        <span className="toolbar-label">Books</span>
+        <span className="toolbar-label">{t('nav.books')}</span>
       </button>
       <div ref={navigationMenuRef} className={`sidebar-in-progress${inProgressOpen ? ' open' : ''}`}>
         <button
@@ -168,7 +170,7 @@ export default function BottomToolbar() {
           <span className="sidebar-in-progress-icon">
             <SettingsIcon size={22} />
           </span>
-          <span className="toolbar-label">In progress</span>
+          <span className="toolbar-label">{t('nav.inProgress')}</span>
           <span className="sidebar-in-progress-chevron">
             {inProgressOpen ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
           </span>
@@ -180,14 +182,14 @@ export default function BottomToolbar() {
               onClick={() => navigateFromMenu('/home')}
             >
               <HomeIcon size={22} />
-              <span className="toolbar-label">Home</span>
+              <span className="toolbar-label">{t('nav.home')}</span>
             </button>
             <button
               className={`toolbar-tab toolbar-tab--purple${isSocial ? ' active' : ''}`}
               onClick={() => navigateFromMenu('/chats')}
             >
               <PeopleIcon size={22} />
-              <span className="toolbar-label">Social</span>
+              <span className="toolbar-label">{t('nav.social')}</span>
             </button>
             {!isTeacher && (
               <button
@@ -198,7 +200,7 @@ export default function BottomToolbar() {
                   <ClassworkIcon size={22} />
                   {(pendingCount > 0 || pendingError) && <span className="toolbar-badge">{pendingError ? '!' : pendingCount}</span>}
                 </span>
-                <span className="toolbar-label">Classwork</span>
+                <span className="toolbar-label">{t('nav.classwork')}</span>
               </button>
             )}
             <button
@@ -206,14 +208,14 @@ export default function BottomToolbar() {
               onClick={() => navigateFromMenu('/browse')}
             >
               <PlayCircleIcon size={22} />
-              <span className="toolbar-label">Watch</span>
+              <span className="toolbar-label">{t('nav.watch')}</span>
             </button>
             <button
               className={`toolbar-tab toolbar-tab--green${isLocalVideos ? ' active' : ''}`}
               onClick={() => navigateFromMenu('/local-videos')}
             >
               <FolderIcon size={22} />
-              <span className="toolbar-label">Local</span>
+              <span className="toolbar-label">{t('nav.local')}</span>
             </button>
             <button
               className={`toolbar-tab toolbar-tab--profile${accountMenuOpen ? ' active' : ''}`}
@@ -225,7 +227,7 @@ export default function BottomToolbar() {
               }}
             >
               <UserIcon size={22} />
-              <span className="toolbar-label">Profiles</span>
+              <span className="toolbar-label">{t('nav.profiles')}</span>
               <span className="sidebar-profile-chevron"><ChevronRightIcon size={16} /></span>
             </button>
             <button
@@ -233,21 +235,21 @@ export default function BottomToolbar() {
               onClick={() => navigateFromMenu('/settings')}
             >
               <SettingsIcon size={22} />
-              <span className="toolbar-label">Settings</span>
+              <span className="toolbar-label">{t('nav.settings')}</span>
             </button>
           </div>
         )}
         {inProgressOpen && accountMenuOpen && (
-          <div className="sidebar-account-popover" role="menu" aria-label="Profiles">
+          <div className="sidebar-account-popover" role="menu" aria-label={t('nav.profiles')}>
             <div className="sidebar-account-popover-header">
               <div>
-                <div className="sidebar-account-title">Profiles</div>
-                <div className="sidebar-account-subtitle">Switch accounts or add another login</div>
+                <div className="sidebar-account-title">{t('nav.profiles')}</div>
+                <div className="sidebar-account-subtitle">{t('profiles.subtitle')}</div>
               </div>
               <button
                 className="sidebar-account-close"
                 onClick={() => setAccountMenuOpen(false)}
-                aria-label="Close profile menu"
+                aria-label={t('profiles.close')}
               >
                 <CloseIcon size={16} />
               </button>
@@ -261,15 +263,15 @@ export default function BottomToolbar() {
                     disabled={switchingAccountId !== null}
                   >
                     <span className="sidebar-account-name">{account.display_name || account.username}</span>
-                    <span className="sidebar-account-meta">@{account.username} · {account.account_type}{account.id === user?.id ? ' · current' : ''}</span>
+                    <span className="sidebar-account-meta">@{account.username} · {t(`account.${account.account_type}` as 'account.student' | 'account.teacher')}{account.id === user?.id ? ` · ${t('profiles.current')}` : ''}</span>
                   </button>
                   <button
                     className="sidebar-account-remove"
                     onClick={() => forgetSavedAccount(account.id)}
                     disabled={account.id === user?.id || switchingAccountId !== null}
-                    title={account.id === user?.id ? 'Current profile' : 'Remove saved profile'}
+                    title={account.id === user?.id ? t('profiles.currentTitle') : t('profiles.removeTitle')}
                   >
-                    Remove
+                    {t('profiles.remove')}
                   </button>
                 </div>
               ))}
@@ -283,7 +285,7 @@ export default function BottomToolbar() {
               }}
             >
               <PlusIcon size={16} />
-              Add another profile
+              {t('profiles.add')}
             </button>
           </div>
         )}

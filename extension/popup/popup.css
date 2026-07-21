@@ -124,11 +124,41 @@ button:disabled {
   margin-top: 4px;
 }
 
+.login-api-control {
+  margin-top: 8px;
+}
+
 .error {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  border-radius: 8px;
+  background: rgba(127, 29, 29, 0.16);
   color: #f87171;
   font-size: 12px;
-  text-align: center;
+  line-height: 1.35;
+  text-align: left;
   margin-top: 4px;
+}
+
+.error strong { color: #fca5a5; }
+
+.error details {
+  width: 100%;
+  color: #fca5a5;
+}
+
+.error summary { cursor: pointer; }
+
+.error small {
+  display: block;
+  margin-top: 4px;
+  color: #d1a1a1;
+  overflow-wrap: anywhere;
 }
 
 /* ---- Status --------------------------------------------------------------- */

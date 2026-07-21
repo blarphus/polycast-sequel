@@ -153,7 +153,20 @@
     const word = hasDomSelection
       ? selectedSingleWord(selection)
       : selectedSingleWord({ toString: () => selectionText });
-    if (!word) return false;
+    if (!word) {
+      helpers().showFallbackToast?.(
+        'Select one word',
+        'Polycast can look up one word at a time. Select a single word and try again.',
+        {
+          code: 'selection_not_single_word',
+          severity: 'error',
+          source: 'extension.selection',
+          operation: 'open-selection-popup',
+          detail: `selectionLength=${normalizeText(selectionText || selection?.toString()).length}`,
+        },
+      );
+      return false;
+    }
 
     const range = hasDomSelection ? selection.getRangeAt(0).cloneRange() : null;
     const { sentence, context } = range
@@ -166,7 +179,19 @@
     const cleanSentence = cleanCaptionText(sentence) || word;
     const cleanContext = cleanCaptionText(context) || cleanSentence;
 
-    if (typeof helpers().openWordPopup !== 'function') return false;
+    if (typeof helpers().openWordPopup !== 'function') {
+      helpers().showFallbackToast?.(
+        'Selection lookup unavailable',
+        'Polycast loaded on this page but its word popup could not be opened.',
+        {
+          code: 'selection_popup_runtime_missing',
+          severity: 'error',
+          source: 'extension.selection',
+          operation: 'open-selection-popup',
+        },
+      );
+      return false;
+    }
 
     // Mount the shell before starting network-backed lookup. The shared popup
     // renders its loading state immediately, then fills in the result or error.
@@ -205,6 +230,16 @@
         shellLatencyMs: Number.isFinite(requestedAt) ? Math.max(0, Date.now() - requestedAt) : null,
       });
     } catch (err) {
+      helpers().showFallbackToast?.(
+        'Selection lookup failed',
+        err && err.message ? err.message : 'Polycast could not open this word lookup.',
+        {
+          code: 'selection_popup_open_failed',
+          severity: 'error',
+          source: 'extension.selection',
+          operation: 'open-selection-popup',
+        },
+      );
       sendResponse({ error: err && err.message ? err.message : 'Selection lookup failed' });
     }
     return false;

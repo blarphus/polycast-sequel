@@ -4,7 +4,20 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const source = await readFile(new URL('../content/pageHighlights.js', import.meta.url), 'utf8');
+const sharedSource = await readFile(new URL('../content/shared.js', import.meta.url), 'utf8');
 const messageContract = JSON.parse(await readFile(new URL('../../contracts/extension-messages-v1.json', import.meta.url), 'utf8'));
+
+test('saved-word revision broadcasts satisfy the content message contract', () => {
+  const start = sharedSource.indexOf('function validateInboundContentMessage');
+  const end = sharedSource.indexOf('\nglobalThis.PolycastContent', start);
+  const context = {};
+  vm.runInNewContext(`${sharedSource.slice(start, end)}\nthis.validate = validateInboundContentMessage;`, context);
+
+  assert.equal(context.validate({ type: 'WORDS_UPDATED', revision: 3 }), true);
+  assert.equal(context.validate({ type: 'WORDS_UPDATED', savedWords: [] }), true);
+  assert.equal(context.validate({ type: 'WORDS_UPDATED' }), false);
+  assert.equal(context.validate({ type: 'WORDS_UPDATED', revision: -1 }), false);
+});
 
 test('page highlights bypass page-language detection and validate language on click', () => {
   assert.match(source, /enabled = override !== 'off'/);

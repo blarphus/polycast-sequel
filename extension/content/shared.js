@@ -23,6 +23,7 @@ async function refreshCaptionSavedWords(root = document) {
 // ---- Target language state ------------------------------------------------
 
 let targetLanguage = null;
+let uiLocale = 'en';
 const BONUS_XP_PER_WORD = 10;
 let dailyGoalSnapshot = { goal: 5, added: 0, remaining: 5, complete: false, overGoal: 0, bonusXp: 0 };
 
@@ -36,6 +37,19 @@ let dailyGoalSnapshot = { goal: 5, added: 0, remaining: 5, complete: false, over
     showFallbackToast(
       'Target language fallback used',
       err?.message || 'The extension could not load your target language; page detection will be used until refresh.',
+    );
+  }
+})();
+
+(async function initUiLocale() {
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
+    uiLocale = String(res?.user?.native_language || '').toLowerCase().split(/[-_]/)[0] === 'es' ? 'es' : 'en';
+  } catch (err) {
+    showFallbackToast(
+      'Interface language fallback used',
+      'Polycast could not load the profile interface language, so page controls remain in English.',
+      { code: 'content_ui_locale_fallback', operation: 'load-interface-language', detail: err?.message || String(err) },
     );
   }
 })();
@@ -125,7 +139,11 @@ function validateInboundContentMessage(msg, acceptedTypes = null) {
   let serialized;
   try { serialized = JSON.stringify(msg); } catch { return false; }
   if (serialized.length > 1_000_000) return false;
-  if (msg.type === 'WORDS_UPDATED' && (!Array.isArray(msg.savedWords) || msg.savedWords.length > 50_000)) return false;
+  if (msg.type === 'WORDS_UPDATED') {
+    const hasWordSnapshot = Array.isArray(msg.savedWords) && msg.savedWords.length <= 50_000;
+    const hasRevision = Number.isSafeInteger(msg.revision) && msg.revision >= 0;
+    if (!hasWordSnapshot && !hasRevision) return false;
+  }
   if (msg.type === 'TARGET_LANGUAGE_UPDATED' && msg.targetLanguage != null && typeof msg.targetLanguage !== 'string') return false;
   if (msg.type === 'DAILY_GOAL_UPDATED' && (!msg.snapshot || typeof msg.snapshot !== 'object')) return false;
   if (msg.type === 'POLYCAST_FALLBACK_NOTICE') {
@@ -178,9 +196,9 @@ chrome.runtime.onMessage.addListener((msg) => {
 });
 
 function languageName(code) {
-  if (!code) return 'Detecting language';
+  if (!code) return uiLocale === 'es' ? 'Detectando idioma' : 'Detecting language';
   try {
-    return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) || code.toUpperCase();
+    return new Intl.DisplayNames([uiLocale], { type: 'language' }).of(code) || code.toUpperCase();
   } catch (error) {
     showFallbackToast('Language name fallback used', 'The browser could not localize this language code, so Polycast is showing the raw code.', {
       code: 'language_display_name_fallback',
@@ -192,6 +210,24 @@ function languageName(code) {
   }
 }
 
+function localizedPopupLabels() {
+  if (uiLocale !== 'es') return {};
+  return {
+    playPronunciation: 'Reproducir pronunciación', close: 'Cerrar',
+    addToDictionary: '+ Agregar al diccionario', addPhrase: '+ Agregar frase',
+    explainInContext: 'Explicar en contexto', added: 'Agregada',
+    inDictionary: 'En tu diccionario', removing: 'Quitando...',
+    removeConfirm: (target) => `¿Quitar ${target} del diccionario?`,
+    word: 'Palabra', phrase: 'Frase', inContext: 'En contexto',
+    notInDictionary: 'No está en el diccionario',
+    invalidWord: (target, language) => `«${target}» no es una palabra en ${language}`,
+    definition: 'Definición', noDefinition: 'No se encontró una definición',
+    contextUnavailable: 'La explicación contextual no está disponible',
+    savesAs: 'Se guarda como', partOfSpeech: 'Categoría gramatical',
+    newDefinition: '¡Nueva definición!',
+  };
+}
+
 function goalMarkup(snapshot) {
   const goal = Math.max(1, Number(snapshot.goal) || 5);
   const added = Math.max(0, Number(snapshot.added) || 0);
@@ -200,8 +236,8 @@ function goalMarkup(snapshot) {
   const steps = Array.from({ length: stepCount }, (_, index) =>
     `<i class="${index < filledSteps ? 'pc-popup-goal-step--filled' : ''}"></i>`).join('');
   const label = snapshot.complete
-    ? 'Goal complete · XP capped'
-    : `${snapshot.remaining} more today`;
+    ? (uiLocale === 'es' ? 'Meta completada · límite de XP' : 'Goal complete · XP capped')
+    : (uiLocale === 'es' ? `${snapshot.remaining} más hoy` : `${snapshot.remaining} more today`);
   const flameSvg = globalThis.PolycastWordPopup?.FLAME_SVG || '';
   return `<span class="pc-popup-goal-flame" aria-label="${added} of ${goal} daily words">${flameSvg}</span>` +
     `<div class="pc-popup-goal-steps">${steps}</div>` +
@@ -525,6 +561,7 @@ function openWordPopup({
     initialLookupResult,
     autoExplain,
     languageName: targetLanguage ? languageName(targetLanguage) : null,
+    labels: localizedPopupLabels(),
     onClose: () => {
       removePopup();
       resumeIfWePaused();

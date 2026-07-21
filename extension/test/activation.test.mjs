@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
-async function loadBackground({ permitted = true } = {}) {
+async function loadBackground({ permitted = true, sendMessage = async () => undefined } = {}) {
   const generated = await readFile(new URL('../generated/messageContract.js', import.meta.url), 'utf8');
   const router = await readFile(new URL('../background/messageRouter.js', import.meta.url), 'utf8');
   const activation = await readFile(new URL('../background/activation.js', import.meta.url), 'utf8');
@@ -13,10 +13,15 @@ async function loadBackground({ permitted = true } = {}) {
   const executed = [];
   const insertedCss = [];
   const unregistered = [];
+  const contextMenuListeners = [];
   const event = () => ({ addListener() {} });
   const chrome = {
     runtime: { id: 'extension-id', lastError: undefined, onInstalled: event(), onStartup: event(), onMessage: event() },
-    contextMenus: { onClicked: event(), removeAll: (callback) => callback(), create: (_options, callback) => callback() },
+    contextMenus: {
+      onClicked: { addListener: (listener) => contextMenuListeners.push(listener) },
+      removeAll: (callback) => callback(),
+      create: (_options, callback) => callback(),
+    },
     storage: { local: {
       async get(keys) {
         const names = Array.isArray(keys) ? keys : [keys];
@@ -25,7 +30,7 @@ async function loadBackground({ permitted = true } = {}) {
       async set(values) { Object.assign(storage, values); },
       async remove(keys) { for (const key of Array.isArray(keys) ? keys : [keys]) delete storage[key]; },
     } },
-    tabs: { query: async () => [], sendMessage: async () => {}, create: async () => {} },
+    tabs: { query: async () => [], sendMessage, create: async () => {} },
     permissions: { contains: async () => permitted },
     scripting: {
       async getRegisteredContentScripts({ ids }) { return ids.map((id) => registered.get(id)).filter(Boolean); },
@@ -37,7 +42,7 @@ async function loadBackground({ permitted = true } = {}) {
   };
   const context = { chrome, console, crypto, fetch, URL, URLSearchParams, Intl, Date, setTimeout, clearTimeout, Map, Set };
   vm.runInNewContext(source, context);
-  return { context, registered, executed, insertedCss, unregistered };
+  return { context, registered, executed, insertedCss, unregistered, contextMenuListeners, storage };
 }
 
 test('ordinary-site activation is exact-origin, user-permitted, persistent, and non-duplicating', async () => {
@@ -61,6 +66,69 @@ test('ordinary-site activation is exact-origin, user-permitted, persistent, and 
   await fixture.context.deactivateOptionalSite(request.pageUrl, request.hostname);
   assert.equal(fixture.registered.size, 0);
   assert.deepEqual(fixture.unregistered, [first.id]);
+});
+
+test('right-click lookup injects a one-time runtime when an ordinary page has no listener', async () => {
+  let sends = 0;
+  const fixture = await loadBackground({
+    sendMessage: async () => {
+      sends += 1;
+      if (sends === 1) throw new Error('Receiving end does not exist');
+      if (sends === 2) return { success: true, shellLatencyMs: 8 };
+      return undefined;
+    },
+  });
+
+  assert.equal(fixture.contextMenuListeners.length, 1);
+  fixture.contextMenuListeners[0]({
+    menuItemId: 'polycast-lookup-selection',
+    selectionText: 'teacher',
+    frameId: 0,
+  }, { id: 42 });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(fixture.insertedCss.length, 1);
+  assert.deepEqual(Array.from(fixture.insertedCss[0].target.frameIds), [0]);
+  assert.equal(fixture.executed.length, 1);
+  assert.ok(fixture.executed[0].files.includes('content/selection.js'));
+  assert.equal(fixture.storage.lastFallbackDiagnostic.code, 'selection_runtime_injected');
+});
+
+test('right-click lookup keeps listener rejections visible without reinjecting scripts', async () => {
+  const fixture = await loadBackground({
+    sendMessage: async () => ({ success: false, error: 'Select one word' }),
+  });
+
+  fixture.contextMenuListeners[0]({
+    menuItemId: 'polycast-lookup-selection',
+    selectionText: 'two words',
+    frameId: 0,
+  }, { id: 42 });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(fixture.executed.length, 0);
+  assert.equal(fixture.storage.lastFallbackDiagnostic.code, 'selection_popup_not_opened');
+});
+
+test('an injected listener rejection does not add a misleading unavailable notice', async () => {
+  let sends = 0;
+  const fixture = await loadBackground({
+    sendMessage: async () => {
+      sends += 1;
+      if (sends === 1) throw new Error('Receiving end does not exist');
+      return { success: false, error: 'Select one word' };
+    },
+  });
+
+  fixture.contextMenuListeners[0]({
+    menuItemId: 'polycast-lookup-selection',
+    selectionText: 'two words',
+    frameId: 0,
+  }, { id: 42 });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(fixture.executed.length, 1, 'only the runtime bundle should be injected');
+  assert.equal(fixture.storage.lastFallbackDiagnostic.code, 'selection_popup_not_opened');
 });
 
 test('ordinary-site activation fails visibly when optional permission is absent', async () => {

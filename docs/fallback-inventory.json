@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-15T21:01:20.543Z",
+  "generatedAt": "2026-07-21T19:18:59.332Z",
   "totals": {
-    "occurrences": 62,
-    "uniqueCodes": 59,
+    "occurrences": 64,
+    "uniqueCodes": 61,
     "incompleteOccurrences": 0
   },
   "entries": [
@@ -55,6 +55,14 @@
       "visible": true
     },
     {
+      "code": "content_ui_locale_fallback",
+      "file": "extension/content/shared.js",
+      "line": 52,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
       "code": "daily_goal_storage_repaired",
       "file": "client/src/utils/dailyGoal.ts",
       "line": 28,
@@ -65,7 +73,7 @@
     {
       "code": "dictionary_forms_display_fallback",
       "file": "client/src/pages/Dictionary.tsx",
-      "line": 111,
+      "line": 112,
       "structured": true,
       "logged": true,
       "visible": true
@@ -89,7 +97,7 @@
     {
       "code": "extension_offline_dictionary_save_used",
       "file": "extension/background.js",
-      "line": 847,
+      "line": 857,
       "structured": true,
       "logged": true,
       "visible": true
@@ -97,7 +105,7 @@
     {
       "code": "extension_offline_login_used",
       "file": "extension/background.js",
-      "line": 622,
+      "line": 631,
       "structured": true,
       "logged": true,
       "visible": true
@@ -105,7 +113,7 @@
     {
       "code": "extension_offline_status_used",
       "file": "extension/background.js",
-      "line": 684,
+      "line": 694,
       "structured": true,
       "logged": true,
       "visible": true
@@ -127,9 +135,17 @@
       "visible": true
     },
     {
+      "code": "frequency_catalog_embedded_fallback",
+      "file": "server/lib/frequencyCatalog.js",
+      "line": 106,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
       "code": "frequency_catalog_entry_unavailable",
       "file": "server/lib/frequencyCatalog.js",
-      "line": 98,
+      "line": 121,
       "structured": true,
       "logged": true,
       "visible": true
@@ -137,7 +153,7 @@
     {
       "code": "frequency_catalog_language_unavailable",
       "file": "server/lib/frequencyCatalog.js",
-      "line": 64,
+      "line": 66,
       "structured": true,
       "logged": true,
       "visible": true
@@ -193,7 +209,7 @@
     {
       "code": "language_display_name_fallback",
       "file": "extension/content/shared.js",
-      "line": 186,
+      "line": 204,
       "structured": true,
       "logged": true,
       "visible": true
@@ -217,7 +233,7 @@
     {
       "code": "login_error_payload_fallback",
       "file": "extension/background.js",
-      "line": 638,
+      "line": 647,
       "structured": true,
       "logged": true,
       "visible": true
@@ -233,7 +249,7 @@
     {
       "code": "offline_daily_goal_used",
       "file": "extension/background.js",
-      "line": 872,
+      "line": 882,
       "structured": true,
       "logged": true,
       "visible": true
@@ -297,7 +313,7 @@
     {
       "code": "popup_language_name_fallback",
       "file": "extension/popup/popup.js",
-      "line": 62,
+      "line": 123,
       "structured": true,
       "logged": true,
       "visible": true
@@ -361,7 +377,7 @@
     {
       "code": "selection_popup_unavailable",
       "file": "extension/background/activation.js",
-      "line": 109,
+      "line": 234,
       "structured": true,
       "logged": true,
       "visible": true
@@ -369,7 +385,7 @@
     {
       "code": "selection_top_frame_fallback",
       "file": "extension/background/activation.js",
-      "line": 93,
+      "line": 211,
       "structured": true,
       "logged": true,
       "visible": true
@@ -457,7 +473,7 @@
     {
       "code": "wild_recall_catalog_fallback",
       "file": "extension/background.js",
-      "line": 1023,
+      "line": 1033,
       "structured": true,
       "logged": true,
       "visible": true
@@ -465,7 +481,7 @@
     {
       "code": "wild_recall_offline_unavailable",
       "file": "extension/background.js",
-      "line": 999,
+      "line": 1009,
       "structured": true,
       "logged": true,
       "visible": true
@@ -473,7 +489,7 @@
     {
       "code": "wild_recall_preparation_fallback",
       "file": "extension/background.js",
-      "line": 1065,
+      "line": 1075,
       "structured": true,
       "logged": true,
       "visible": true
