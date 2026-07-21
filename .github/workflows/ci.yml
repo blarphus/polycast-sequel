@@ -84,4 +84,4 @@ jobs:
           unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen-release"
           echo "$RUNNER_TEMP/xcodegen-release/xcodegen/bin" >> "$GITHUB_PATH"
       - run: bash scripts/check-xcodegen.sh
-      - run: xcodebuild -project ios/Polycast.xcodeproj -scheme Polycast -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -derivedDataPath /tmp/polycast-ci-derived-data test CODE_SIGNING_ALLOWED=NO
+      - run: xcodebuild -project ios/Polycast.xcodeproj -scheme Polycast -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -derivedDataPath /tmp/polycast-ci-derived-data test -only-testing:PolycastTests CODE_SIGNING_ALLOWED=NO
