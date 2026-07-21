@@ -5,6 +5,10 @@ services:
     plan: starter
     buildCommand: cd client && npm ci --include=dev && npm run build && cd ../server && npm ci --omit=dev
     startCommand: cd server && node index.js
+    disk:
+      name: polycast-class-books
+      mountPath: /var/data
+      sizeGB: 10
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -27,6 +31,10 @@ services:
         value: 22.12.0
       - key: CLIENT_ORIGIN
         value: https://polycast-sequel.onrender.com
+      - key: CLASS_BOOK_STORAGE_DIR
+        value: /var/data/class-books
+      - key: CLASS_BOOK_MAX_BYTES
+        value: "1073741824"
       - key: CF_TRANSCRIPT_WORKER_URL
         sync: false
       - key: CF_TRANSCRIPT_WORKER_SECRET

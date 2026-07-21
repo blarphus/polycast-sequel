@@ -142,8 +142,23 @@
       // Display name of the learner's target language (e.g. "Spanish"), used
       // to word the invalid-lookup message.
       languageName = null,
+      labels: labelOverrides = {},
       handlers = {},
     } = opts;
+
+    const labels = {
+      playPronunciation: 'Play pronunciation', close: 'Close',
+      addToDictionary: '+ Add to dictionary', addPhrase: '+ Add phrase',
+      explainInContext: 'Explain in context', added: 'Added',
+      inDictionary: 'In your dictionary', removing: 'Removing...',
+      removeConfirm: (target) => `Remove ${target} from dictionary?`,
+      word: 'Word', phrase: 'Phrase', inContext: 'In context',
+      notInDictionary: 'Not in dictionary', invalidWord: (target, language) => `"${target}" isn't a ${language} word`,
+      definition: 'Definition', noDefinition: 'No definition found',
+      contextUnavailable: 'Context explanation unavailable', savesAs: 'Saves as',
+      partOfSpeech: 'Part of speech', newDefinition: 'New definition!',
+      ...labelOverrides,
+    };
 
     let destroyed = false;
 
@@ -165,14 +180,14 @@
       <div class="pc-popup-header">
         <span class="pc-popup-word">${escapeHtml(word)}</span>
         <div class="pc-popup-header-actions">
-          <button class="pc-popup-speak" title="Play pronunciation" aria-label="Play pronunciation" hidden>${SPEAKER_SVG}</button>
-          <button class="pc-popup-close" title="Close">&times;</button>
+          <button class="pc-popup-speak" title="${escapeHtml(labels.playPronunciation)}" aria-label="${escapeHtml(labels.playPronunciation)}" hidden>${SPEAKER_SVG}</button>
+          <button class="pc-popup-close" title="${escapeHtml(labels.close)}">&times;</button>
         </div>
       </div>
       <div class="pc-popup-lemma" hidden></div>
       <div class="pc-popup-body"><div class="pc-spinner"></div></div>
-      <button class="pc-popup-save" hidden>+ Add to dictionary</button>
-      <button class="pc-popup-explain" hidden>${EXPLAIN_SVG}Explain in context</button>
+      <button class="pc-popup-save" hidden>${escapeHtml(labels.addToDictionary)}</button>
+      <button class="pc-popup-explain" hidden>${EXPLAIN_SVG}${escapeHtml(labels.explainInContext)}</button>
       <div class="pc-popup-explanation" hidden></div>
     `;
 
@@ -250,19 +265,19 @@
       if (saveState === 'done') {
         saveBtn.disabled = true;
         saveBtn.classList.add('pc-popup-save--saved');
-        saveBtn.innerHTML = '&#10003; Added';
+        saveBtn.innerHTML = `&#10003; ${escapeHtml(labels.added)}`;
       } else if (saveState === 'saved') {
         saveBtn.disabled = !handlers.remove;
         saveBtn.classList.add('pc-popup-save--saved');
-        saveBtn.innerHTML = '&#10003; In your dictionary';
+        saveBtn.innerHTML = `&#10003; ${escapeHtml(labels.inDictionary)}`;
       } else if (saveState === 'removing') {
         saveBtn.disabled = true;
         saveBtn.classList.add('pc-popup-save--saved');
-        saveBtn.textContent = 'Removing...';
+        saveBtn.textContent = labels.removing;
       } else {
         saveBtn.disabled = false;
         saveBtn.classList.remove('pc-popup-save--saved');
-        saveBtn.textContent = mode === 'phrase' ? '+ Add phrase' : '+ Add to dictionary';
+        saveBtn.textContent = mode === 'phrase' ? labels.addPhrase : labels.addToDictionary;
       }
     }
 
@@ -275,7 +290,7 @@
         const target = (mode === 'phrase' && lastLookup.phrase)
           ? lastLookup.phrase
           : (lastLookup.lemma || lastLookup.target_word || word);
-        if (!window.confirm(`Remove ${target} from dictionary?`)) return;
+        if (!window.confirm(labels.removeConfirm(target))) return;
         saveState = 'removing';
         renderSaveButton();
         Promise.resolve(handlers.remove(getSaveTarget()))
@@ -375,9 +390,9 @@
 
         if (!res || res.valid === false) {
           const invalidMsg = languageName
-            ? `"${escapeHtml(word)}" isn't a ${escapeHtml(languageName)} word`
-            : 'Not in dictionary';
-          bodyEl.innerHTML = `<div class="pc-popup-error">${invalidMsg}</div>`;
+            ? labels.invalidWord(word, languageName)
+            : labels.notInDictionary;
+          bodyEl.innerHTML = `<div class="pc-popup-error">${escapeHtml(invalidMsg)}</div>`;
           explainBtn.hidden = !handlers.explain;
           saveBtn.hidden = true;
           position();
@@ -385,12 +400,14 @@
         }
 
         const translation = res.translation || res.definition || '';
-        const dictionaryDefinition = res.matched_gloss || res.definition || '';
-        const definitionLabel = 'Dictionary';
+        // `definition` is localized for the learner. `matched_gloss` retains the
+        // source-language Wiktionary wording for sense identity and dedup only.
+        const dictionaryDefinition = res.definition || res.matched_gloss || '';
+        const definitionLabel = labels.definition;
         const definitionSourcePill = fallbackNoticePills(res);
         const fallbackDetails = fallbackNoticeDetails(res);
         if (!translation && !dictionaryDefinition && !res.part_of_speech) {
-          bodyEl.innerHTML = `<div class="pc-popup-error">No definition found</div>`;
+          bodyEl.innerHTML = `<div class="pc-popup-error">${escapeHtml(labels.noDefinition)}</div>`;
           return;
         }
 
@@ -433,18 +450,18 @@
           if (autoExplanationState === 'idle') return '';
           if (autoExplanationState === 'loading') {
             return `<div class="pc-popup-definition pc-popup-definition-context">
-              <span class="pc-popup-definition-label">In context</span>
+              <span class="pc-popup-definition-label">${escapeHtml(labels.inContext)}</span>
               <div class="pc-spinner pc-spinner-inline"></div>
             </div>`;
           }
           if (autoExplanationState === 'error') {
             return `<div class="pc-popup-definition pc-popup-definition-context">
-              <span class="pc-popup-definition-label">In context</span>
-              Context explanation unavailable
+              <span class="pc-popup-definition-label">${escapeHtml(labels.inContext)}</span>
+              ${escapeHtml(labels.contextUnavailable)}
             </div>`;
           }
           return `<div class="pc-popup-definition pc-popup-definition-context">
-            <span class="pc-popup-definition-label">In context</span>
+            <span class="pc-popup-definition-label">${escapeHtml(labels.inContext)}</span>
             ${escapeHtml(autoExplanation)}
           </div>`;
         }
@@ -452,8 +469,8 @@
         function renderBody() {
           const toggle = hasPhrase ? `
             <div class="pc-popup-mode-toggle">
-              <button type="button" class="pc-popup-mode${mode === 'word' ? ' pc-popup-mode--active' : ''}" data-mode="word">Word</button>
-              <button type="button" class="pc-popup-mode${mode === 'phrase' ? ' pc-popup-mode--active' : ''}" data-mode="phrase">Phrase</button>
+              <button type="button" class="pc-popup-mode${mode === 'word' ? ' pc-popup-mode--active' : ''}" data-mode="word">${escapeHtml(labels.word)}</button>
+              <button type="button" class="pc-popup-mode${mode === 'phrase' ? ' pc-popup-mode--active' : ''}" data-mode="phrase">${escapeHtml(labels.phrase)}</button>
             </div>` : '';
 
           if (mode === 'phrase') {
@@ -470,17 +487,17 @@
             lemmaEl.hidden = true;
             const hasLemma = res.lemma && res.lemma.trim() && res.lemma.toLowerCase() !== word.toLowerCase();
             const lemmaBlock = hasLemma
-              ? `<div><span class="pc-popup-meta-label">Saves as</span><strong>${escapeHtml(res.lemma)}</strong></div>` : '';
+              ? `<div><span class="pc-popup-meta-label">${escapeHtml(labels.savesAs)}</span><strong>${escapeHtml(res.lemma)}</strong></div>` : '';
             const definitionBlock = dictionaryDefinition
               ? `<div class="pc-popup-definition"><span class="pc-popup-definition-label">${definitionLabel}${definitionSourcePill}</span>${escapeHtml(dictionaryDefinition)}</div>` : '';
             const posBlock = res.part_of_speech
-              ? `<div><span class="pc-popup-meta-label">Part of speech</span><span class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</span></div>` : '';
+              ? `<div><span class="pc-popup-meta-label">${escapeHtml(labels.partOfSpeech)}</span><span class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</span></div>` : '';
             const metadata = lemmaBlock || definitionBlock || posBlock ? `<div class="pc-popup-meta">
               <div>${lemmaBlock}${definitionBlock}</div>
               <div>${posBlock}</div>
             </div>` : '';
             bodyEl.innerHTML = `${toggle}
-              ${translation ? `<div class="pc-popup-translation">${escapeHtml(translation)}${saveState === 'new-sense' ? '<span class="pc-popup-new-def-pill">New definition!</span>' : ''}</div>` : ''}
+              ${translation ? `<div class="pc-popup-translation">${escapeHtml(translation)}${saveState === 'new-sense' ? `<span class="pc-popup-new-def-pill">${escapeHtml(labels.newDefinition)}</span>` : ''}</div>` : ''}
               ${metadata}
               ${autoExplanationHtml()}
               ${fallbackDetails}`;

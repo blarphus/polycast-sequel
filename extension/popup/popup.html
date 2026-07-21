@@ -17,10 +17,19 @@
     <div id="login-view" class="view hidden">
       <div class="logo">Polycast</div>
       <form id="login-form">
-        <input type="text" id="username" placeholder="Username" autocomplete="username" required>
-        <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
-        <button type="submit" id="login-btn">Sign In</button>
-        <div id="login-error" class="error hidden"></div>
+        <input type="text" id="username" placeholder="Username" data-i18n-placeholder="username" autocomplete="username" required>
+        <input type="password" id="password" placeholder="Password" data-i18n-placeholder="password" autocomplete="current-password" required>
+        <button type="submit" id="login-btn" data-i18n="signIn">Sign In</button>
+        <label class="api-control login-api-control" for="login-api-base-input">
+          <span data-i18n="apiServer">API server</span>
+          <input type="url" id="login-api-base-input" placeholder="https://polycast-sequel.onrender.com">
+        </label>
+        <div class="api-actions">
+          <button id="login-save-api-base-btn" class="btn-small" type="button" data-i18n="saveApi">Save API</button>
+          <button id="login-use-render-api-btn" class="btn-small" type="button" data-i18n="useRender">Use Render</button>
+        </div>
+        <div id="login-settings-message" class="settings-message hidden" aria-live="polite"></div>
+        <div id="login-error" class="error hidden" role="alert" aria-live="assertive"></div>
       </form>
     </div>
 
@@ -33,67 +42,67 @@
 
       <div class="lang-cards">
         <div class="lang-card">
-          <div class="lang-label">Native</div>
+          <div class="lang-label" data-i18n="native">Native</div>
           <div class="lang-value" id="native-lang">—</div>
         </div>
         <div class="lang-card">
-          <div class="lang-label">Learning</div>
+          <div class="lang-label" data-i18n="learning">Learning</div>
           <div class="lang-value" id="target-lang">—</div>
         </div>
       </div>
 
       <div class="word-count">
-        <span id="word-count-num">0</span> saved words
+        <span id="word-count-num">0</span> <span data-i18n="savedWords">saved words</span>
       </div>
       <div class="word-count"><span id="total-xp-num">0</span> XP</div>
 
       <div class="daily-activity-card">
-        <div class="daily-goal-heading"><span>Daily activity</span><strong id="daily-activity-count">0 / 50 XP</strong></div>
+        <div class="daily-goal-heading"><span data-i18n="dailyActivity">Daily activity</span><strong id="daily-activity-count">0 / 50 XP</strong></div>
         <div class="daily-goal-track"><i id="daily-activity-progress"></i></div>
         <div class="activity-week" id="activity-week"></div>
         <div class="daily-goal-footer"><span id="level-label">Level 1</span><span id="session-xp-label">2 session rewards left</span></div>
       </div>
 
       <div class="daily-goal-card">
-        <div class="daily-goal-heading"><span>Daily word goal</span><strong id="daily-goal-count">0 / 5</strong></div>
+        <div class="daily-goal-heading"><span data-i18n="dailyWordGoal">Daily word goal</span><strong id="daily-goal-count">0 / 5</strong></div>
         <div class="daily-goal-track"><i id="daily-goal-progress"></i></div>
         <div class="daily-goal-footer">
           <span id="daily-goal-message">5 words left today</span>
-          <label>Goal <input id="daily-goal-input" type="number" min="1" max="50" value="5"></label>
+          <label><span data-i18n="goal">Goal</span> <input id="daily-goal-input" type="number" min="1" max="50" value="5"></label>
         </div>
       </div>
 
       <div class="site-highlight-card" id="site-highlight-card">
         <div class="site-highlight-copy">
-          <strong id="site-highlight-title">Page highlights</strong>
+          <strong id="site-highlight-title" data-i18n="pageHighlights">Page highlights</strong>
           <span id="site-highlight-detail">Checking this page...</span>
         </div>
         <div class="site-highlight-options" role="group" aria-label="Page highlight behavior">
-          <button type="button" data-highlight-override="auto">Auto</button>
-          <button type="button" data-highlight-override="on">On</button>
-          <button type="button" data-highlight-override="off">Off</button>
+          <button type="button" data-highlight-override="auto" data-i18n="auto">Auto</button>
+          <button type="button" data-highlight-override="on" data-i18n="on">On</button>
+          <button type="button" data-highlight-override="off" data-i18n="off">Off</button>
         </div>
       </div>
 
       <label class="target-control" for="target-language-select">
-        <span>Learning language</span>
+        <span data-i18n="learningLanguage">Learning language</span>
         <select id="target-language-select"></select>
       </label>
 
       <label class="api-control" for="api-base-input">
-        <span>API server</span>
+        <span data-i18n="apiServer">API server</span>
         <input type="url" id="api-base-input" placeholder="https://polycast-sequel.onrender.com">
       </label>
       <div class="api-actions">
-        <button id="save-api-base-btn" class="btn-small" type="button">Save API</button>
-        <button id="use-local-api-btn" class="btn-small" type="button">Use local</button>
+        <button id="save-api-base-btn" class="btn-small" type="button" data-i18n="saveApi">Save API</button>
+        <button id="use-render-api-btn" class="btn-small" type="button" data-i18n="useRender">Use Render</button>
       </div>
-      <div id="settings-message" class="settings-message hidden"></div>
+      <div id="settings-message" class="settings-message hidden" aria-live="polite"></div>
 
-      <p class="hint">Click words in video subtitles to look them up.</p>
+      <p class="hint" data-i18n="hint">Click words in video subtitles to look them up.</p>
 
-      <button id="open-app-btn" class="btn-open-app">Open Web App</button>
-      <button id="logout-btn" class="btn-logout">Sign Out</button>
+      <button id="open-app-btn" class="btn-open-app" data-i18n="openWebApp">Open Web App</button>
+      <button id="logout-btn" class="btn-logout" data-i18n="signOut">Sign Out</button>
     </div>
   </div>
   <script src="../generated/languages.js"></script>

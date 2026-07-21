@@ -14,9 +14,13 @@ const nativeLangEl = document.getElementById('native-lang');
 const targetLangEl = document.getElementById('target-lang');
 const targetLanguageSelect = document.getElementById('target-language-select');
 const apiBaseInput = document.getElementById('api-base-input');
+const loginApiBaseInput = document.getElementById('login-api-base-input');
 const saveApiBaseBtn = document.getElementById('save-api-base-btn');
-const useLocalApiBtn = document.getElementById('use-local-api-btn');
+const loginSaveApiBaseBtn = document.getElementById('login-save-api-base-btn');
+const useRenderApiBtn = document.getElementById('use-render-api-btn');
+const loginUseRenderApiBtn = document.getElementById('login-use-render-api-btn');
 const settingsMessage = document.getElementById('settings-message');
+const loginSettingsMessage = document.getElementById('login-settings-message');
 const wordCountEl = document.getElementById('word-count-num');
 const totalXpEl = document.getElementById('total-xp-num');
 const dailyActivityCountEl = document.getElementById('daily-activity-count');
@@ -34,12 +38,69 @@ const siteHighlightDetailEl = document.getElementById('site-highlight-detail');
 const siteHighlightButtons = [...document.querySelectorAll('[data-highlight-override]')];
 let activePageStatus = null;
 
-for (const language of globalThis.PolycastLanguageContract?.languages || []) {
-  const option = document.createElement('option');
-  option.value = language.code;
-  option.textContent = language.name;
-  targetLanguageSelect.appendChild(option);
+const POPUP_MESSAGES = {
+  en: {
+    username: 'Username', password: 'Password', signIn: 'Sign In', signingIn: 'Signing in...',
+    apiServer: 'API server', saveApi: 'Save API', useRender: 'Use Render', native: 'Native', learning: 'Learning',
+    savedWords: 'saved words', dailyActivity: 'Daily activity', dailyWordGoal: 'Daily word goal', goal: 'Goal',
+    pageHighlights: 'Page highlights', auto: 'Auto', on: 'On', off: 'Off', learningLanguage: 'Learning language',
+    hint: 'Click words in video subtitles to look them up.', openWebApp: 'Open Web App', signOut: 'Sign Out',
+    goalComplete: 'Goal complete!', leftToday: (count) => `${count} ${count === 1 ? 'word' : 'words'} left today`,
+    level: (number) => `Level ${number}`, rewards: (count) => `${count} session reward${count === 1 ? '' : 's'} left`,
+    pageChecking: 'Checking this page...', pageOff: 'Highlights off for this site',
+    pageOn: 'Highlights on · language checked in context when clicked', pageUnavailable: 'Page status unavailable',
+    browserPageUnavailable: 'Page status unavailable on this browser page',
+    grantAccess: (host) => `Not active on ${host} · choose Auto or On to grant access`,
+    saving: 'Saving...', saved: 'Saved', extensionReloaded: 'Extension reloaded - reopen popup',
+    noResponse: 'No response - try again', savingApi: 'Saving API...', couldNotSaveApi: 'Could not save API',
+    apiSaved: 'API saved. Sign in to continue.', details: 'Diagnostic details', attention: 'Polycast needs your attention',
+  },
+  es: {
+    username: 'Usuario', password: 'Contraseña', signIn: 'Iniciar sesión', signingIn: 'Iniciando sesión...',
+    apiServer: 'Servidor API', saveApi: 'Guardar API', useRender: 'Usar Render', native: 'Nativo', learning: 'Aprendiendo',
+    savedWords: 'palabras guardadas', dailyActivity: 'Actividad diaria', dailyWordGoal: 'Meta diaria de palabras', goal: 'Meta',
+    pageHighlights: 'Resaltados de página', auto: 'Auto', on: 'Activados', off: 'Desactivados', learningLanguage: 'Idioma que aprendes',
+    hint: 'Haz clic en palabras de los subtítulos para buscarlas.', openWebApp: 'Abrir aplicación web', signOut: 'Cerrar sesión',
+    goalComplete: '¡Meta completada!', leftToday: (count) => `${count} ${count === 1 ? 'palabra pendiente' : 'palabras pendientes'} hoy`,
+    level: (number) => `Nivel ${number}`, rewards: (count) => `${count} recompensa${count === 1 ? '' : 's'} de sesión pendiente${count === 1 ? '' : 's'}`,
+    pageChecking: 'Comprobando esta página...', pageOff: 'Resaltados desactivados en este sitio',
+    pageOn: 'Resaltados activados · el idioma se comprueba en contexto al hacer clic', pageUnavailable: 'Estado de página no disponible',
+    browserPageUnavailable: 'Estado no disponible en esta página del navegador',
+    grantAccess: (host) => `No está activo en ${host} · elige Auto o Activados para conceder acceso`,
+    saving: 'Guardando...', saved: 'Guardado', extensionReloaded: 'La extensión se recargó; vuelve a abrirla',
+    noResponse: 'Sin respuesta; inténtalo de nuevo', savingApi: 'Guardando API...', couldNotSaveApi: 'No se pudo guardar la API',
+    apiSaved: 'API guardada. Inicia sesión para continuar.', details: 'Detalles del diagnóstico', attention: 'Polycast necesita tu atención',
+  },
+};
+let popupLocale = String(navigator.language || '').toLowerCase().startsWith('es') ? 'es' : 'en';
+const tr = (key, ...args) => {
+  const value = POPUP_MESSAGES[popupLocale][key] ?? POPUP_MESSAGES.en[key] ?? key;
+  return typeof value === 'function' ? value(...args) : value;
+};
+
+function populateLanguageOptions() {
+  const selected = targetLanguageSelect.value;
+  targetLanguageSelect.replaceChildren();
+  for (const language of globalThis.PolycastLanguageContract?.languages || []) {
+    if (!['en', 'es'].includes(language.code)) continue;
+    const option = document.createElement('option');
+    option.value = language.code;
+    option.textContent = langName(language.code);
+    targetLanguageSelect.appendChild(option);
+  }
+  targetLanguageSelect.value = selected;
 }
+
+function applyPopupLocale(nativeLanguage) {
+  popupLocale = String(nativeLanguage || '').toLowerCase().split(/[-_]/)[0] === 'es' ? 'es' : 'en';
+  document.documentElement.lang = popupLocale;
+  document.querySelectorAll('[data-i18n]').forEach((element) => { element.textContent = tr(element.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => { element.placeholder = tr(element.dataset.i18nPlaceholder); });
+  populateLanguageOptions();
+}
+
+applyPopupLocale(popupLocale);
+siteHighlightDetailEl.textContent = tr('pageChecking');
 
 function consumeRuntimeError() {
   return chrome.runtime.lastError?.message || '';
@@ -55,7 +116,7 @@ function showView(view) {
 function langName(code) {
   if (!code) return '—';
   try {
-    const names = new Intl.DisplayNames(['en'], { type: 'language' });
+    const names = new Intl.DisplayNames([popupLocale], { type: 'language' });
     return names.of(code) || code;
   } catch (error) {
     console.info('[polycast:fallback]', {
@@ -80,6 +141,35 @@ function setSettingsMessage(text, isError = false) {
   settingsMessage.classList.toggle('error-message', isError);
 }
 
+function setLoginSettingsMessage(text, isError = false) {
+  loginSettingsMessage.textContent = text;
+  loginSettingsMessage.classList.toggle('hidden', !text);
+  loginSettingsMessage.classList.toggle('error-message', isError);
+}
+
+function showLoginError(message, diagnostic = null) {
+  loginError.replaceChildren();
+
+  if (!diagnostic) {
+    loginError.textContent = message;
+    loginError.classList.remove('hidden');
+    return;
+  }
+
+  const title = document.createElement('strong');
+  title.textContent = diagnostic.title || tr('attention');
+  const summary = document.createElement('span');
+  summary.textContent = diagnostic.message || message;
+  const details = document.createElement('details');
+  const detailsSummary = document.createElement('summary');
+  detailsSummary.textContent = tr('details');
+  const metadata = document.createElement('small');
+  metadata.textContent = `${diagnostic.code || 'extension_fallback_used'} · ${diagnostic.source || 'extension.background'}/${diagnostic.operation || 'unknown'} · ref ${diagnostic.correlationId || 'unavailable'}${diagnostic.detail ? ` · ${diagnostic.detail}` : ''}`;
+  details.append(detailsSummary, metadata);
+  loginError.append(title, summary, details);
+  loginError.classList.remove('hidden');
+}
+
 function ensureLanguageOption(code) {
   if (!code || Array.from(targetLanguageSelect.options).some((option) => option.value === code)) return;
 
@@ -93,9 +183,8 @@ function ensureLanguageOption(code) {
 chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
   const runtimeError = consumeRuntimeError();
   if (runtimeError) {
-    loginError.textContent = runtimeError;
     showView(loginView);
-    loginError.classList.remove('hidden');
+    showLoginError(runtimeError);
     return;
   }
   if (res && res.loggedIn && res.user) {
@@ -114,8 +203,7 @@ chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
     showView(loginView);
     if (res?.diagnostic) {
       const diagnostic = res.diagnostic;
-      loginError.textContent = `${diagnostic.title}: ${diagnostic.message} · ${diagnostic.code} · ${diagnostic.correlationId}${diagnostic.detail ? ` · ${diagnostic.detail}` : ''}`;
-      loginError.classList.remove('hidden');
+      showLoginError(diagnostic.message, diagnostic);
     }
   }
 });
@@ -124,10 +212,7 @@ chrome.storage.local.get('lastFallbackDiagnostic', ({ lastFallbackDiagnostic: di
   if (!diagnostic) return;
   const text = `${diagnostic.title}: ${diagnostic.message} · ${diagnostic.code} · ${diagnostic.source}/${diagnostic.operation} · ref ${diagnostic.correlationId}${diagnostic.detail ? ` · ${diagnostic.detail}` : ''}`;
   if (!statusView.classList.contains('hidden')) setSettingsMessage(text, true);
-  else {
-    loginError.textContent = text;
-    loginError.classList.remove('hidden');
-  }
+  else showLoginError(diagnostic.message, diagnostic);
   chrome.action?.setBadgeText({ text: '' });
 });
 
@@ -135,6 +220,7 @@ chrome.runtime.sendMessage({ type: 'GET_API_BASE' }, (res) => {
   if (consumeRuntimeError()) return;
   if (res && res.apiBase) {
     apiBaseInput.value = res.apiBase;
+    loginApiBaseInput.value = res.apiBase;
   }
 });
 
@@ -143,8 +229,8 @@ function renderDailyGoal(snapshot = { goal: 5, added: 0, remaining: 5, complete:
   dailyGoalProgressEl.style.width = `${Math.min(100, (snapshot.added / Math.max(1, snapshot.goal)) * 100)}%`;
   dailyGoalProgressEl.parentElement.classList.toggle('complete', snapshot.complete);
   dailyGoalMessageEl.textContent = snapshot.complete
-    ? 'Goal complete!'
-    : `${snapshot.remaining} ${snapshot.remaining === 1 ? 'word' : 'words'} left today`;
+    ? tr('goalComplete')
+    : tr('leftToday', snapshot.remaining);
   dailyGoalInputEl.value = String(snapshot.goal);
 }
 
@@ -158,17 +244,18 @@ function renderProgression(progression) {
     const dot = document.createElement('i');
     dot.className = day.complete ? 'complete' : day.xp > 0 ? 'active' : '';
     const label = document.createElement('small');
-    label.textContent = new Date(`${day.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'narrow' });
+    label.textContent = new Date(`${day.date}T12:00:00`).toLocaleDateString(popupLocale === 'es' ? 'es' : 'en-US', { weekday: 'narrow' });
     item.title = `${day.date}: ${day.xp} XP`;
     item.append(dot, label);
     activityWeekEl.append(item);
   }
-  levelLabelEl.textContent = `Level ${progression?.level?.number || 1}`;
+  levelLabelEl.textContent = tr('level', progression?.level?.number || 1);
   const rewards = progression?.sessionRewards?.remaining ?? 2;
-  sessionXpLabelEl.textContent = `${rewards} session reward${rewards === 1 ? '' : 's'} left`;
+  sessionXpLabelEl.textContent = tr('rewards', rewards);
 }
 
 function showStatus(user, wordCount, dailyGoal, progression) {
+  applyPopupLocale(user.native_language);
   displayNameEl.textContent = user.display_name || user.username;
   usernameDisplayEl.textContent = `@${user.username}`;
   nativeLangEl.textContent = langName(user.native_language);
@@ -188,20 +275,20 @@ function renderPageHighlightStatus(status) {
   activePageStatus = status;
   siteHighlightButtons.forEach((button) => button.classList.toggle('selected', button.dataset.highlightOverride === status.override));
   if (status.activationRequired) {
-    siteHighlightDetailEl.textContent = `Not active on ${status.hostname} · choose Auto or On to grant access`;
+    siteHighlightDetailEl.textContent = tr('grantAccess', status.hostname);
     return;
   }
   if (!status.enabled) {
-    siteHighlightDetailEl.textContent = 'Highlights off for this site';
+    siteHighlightDetailEl.textContent = tr('pageOff');
     return;
   }
-  siteHighlightDetailEl.textContent = 'Highlights on · language checked in context when clicked';
+  siteHighlightDetailEl.textContent = tr('pageOn');
 }
 
 function loadPageHighlightStatus() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (consumeRuntimeError() || !tabs[0]?.id) {
-      siteHighlightDetailEl.textContent = 'Page status unavailable';
+      siteHighlightDetailEl.textContent = tr('pageUnavailable');
       return;
     }
     const activeTab = tabs[0];
@@ -226,7 +313,7 @@ function loadPageHighlightStatus() {
         } catch (parseError) {
           setSettingsMessage(`Page activation diagnostic · popup_page_url_invalid · ${crypto.randomUUID()} · ${parseError?.message || String(parseError)}`, true);
         }
-        siteHighlightDetailEl.textContent = 'Page status unavailable on this browser page';
+        siteHighlightDetailEl.textContent = tr('browserPageUnavailable');
         return;
       }
       renderPageHighlightStatus({ ...status, pageUrl: activeTab.url || '', tabId: activeTab.id });
@@ -243,17 +330,17 @@ loginForm.addEventListener('submit', (e) => {
   if (!username || !password) return;
 
   loginBtn.disabled = true;
-  loginBtn.textContent = 'Signing in...';
+  loginBtn.textContent = tr('signingIn');
   loginError.classList.add('hidden');
+  loginError.replaceChildren();
 
   chrome.runtime.sendMessage({ type: 'LOGIN', username, password }, (res) => {
     loginBtn.disabled = false;
-    loginBtn.textContent = 'Sign In';
+    loginBtn.textContent = tr('signIn');
 
     const runtimeError = consumeRuntimeError();
     if (runtimeError || (res && res.error)) {
-      loginError.textContent = runtimeError || res.error;
-      loginError.classList.remove('hidden');
+      showLoginError(runtimeError || res.error, res?.diagnostic || null);
       return;
     }
 
@@ -348,19 +435,19 @@ targetLanguageSelect.addEventListener('change', () => {
   if (!targetLanguage) return;
 
   targetLanguageSelect.disabled = true;
-  setSettingsMessage('Saving...');
+  setSettingsMessage(tr('saving'));
 
   chrome.runtime.sendMessage({ type: 'SET_TARGET_LANGUAGE', targetLanguage }, (res) => {
     targetLanguageSelect.disabled = false;
 
     const runtimeError = consumeRuntimeError();
     if (runtimeError) {
-      setSettingsMessage('Extension reloaded - reopen popup', true);
+      setSettingsMessage(tr('extensionReloaded'), true);
       return;
     }
 
     if (!res) {
-      setSettingsMessage('No response - try again', true);
+      setSettingsMessage(tr('noResponse'), true);
       return;
     }
 
@@ -374,40 +461,49 @@ targetLanguageSelect.addEventListener('change', () => {
       ensureLanguageOption(res.user.target_language);
       targetLanguageSelect.value = res.user.target_language || targetLanguage;
       wordCountEl.textContent = String(res.savedWordCount || 0);
-      setSettingsMessage('Saved');
+      setSettingsMessage(tr('saved'));
       window.setTimeout(() => setSettingsMessage(''), 1400);
     }
   });
 });
 
-function saveApiBase(apiBase) {
+function saveApiBase(apiBase, { button = saveApiBaseBtn, message = setSettingsMessage } = {}) {
   const value = String(apiBase || '').trim();
   if (!value) return;
 
-  saveApiBaseBtn.disabled = true;
-  setSettingsMessage('Saving API...');
+  button.disabled = true;
+  message(tr('savingApi'));
   chrome.runtime.sendMessage({ type: 'SET_API_BASE', apiBase: value }, (res) => {
-    saveApiBaseBtn.disabled = false;
+    button.disabled = false;
 
     const runtimeError = consumeRuntimeError();
     if (runtimeError) {
-      setSettingsMessage(runtimeError || 'Could not save API', true);
+      message(runtimeError || tr('couldNotSaveApi'), true);
       return;
     }
     if (res && res.error) {
-      setSettingsMessage(res.error, true);
+      message(res.error, true);
       return;
     }
     if (res && res.apiBase) {
       apiBaseInput.value = res.apiBase;
-      setSettingsMessage('API saved. Reload video tabs.');
-      window.setTimeout(() => setSettingsMessage(''), 2200);
+      loginApiBaseInput.value = res.apiBase;
+      message(tr('apiSaved'));
+      window.setTimeout(() => message(''), 2200);
     }
   });
 }
 
 saveApiBaseBtn.addEventListener('click', () => saveApiBase(apiBaseInput.value));
-useLocalApiBtn.addEventListener('click', () => saveApiBase('http://localhost:3001'));
+useRenderApiBtn.addEventListener('click', () => saveApiBase('https://polycast-sequel.onrender.com'));
+loginSaveApiBaseBtn.addEventListener('click', () => saveApiBase(loginApiBaseInput.value, {
+  button: loginSaveApiBaseBtn,
+  message: setLoginSettingsMessage,
+}));
+loginUseRenderApiBtn.addEventListener('click', () => saveApiBase('https://polycast-sequel.onrender.com', {
+  button: loginUseRenderApiBtn,
+  message: setLoginSettingsMessage,
+}));
 
 openAppBtn.addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'OPEN_WEB_APP' }, () => {

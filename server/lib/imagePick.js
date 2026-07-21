@@ -48,12 +48,11 @@ export async function pickBestImage({ word, definition, sentence, candidates }) 
 
   let text;
   try {
-    // thinkingBudget: 0 — gemini-flash-latest is a thinking model and will spend
-    // the whole token budget "thinking" and return no text otherwise.
+    // Keep image selection at low thinking for predictable latency and cost.
     text = await callGeminiVision(parts, {
       maxOutputTokens: 120,
       temperature: 0,
-      thinkingConfig: { thinkingBudget: 0 },
+      thinkingConfig: { thinkingLevel: 'LOW' },
       responseMimeType: 'application/json',
     });
   } catch (err) {

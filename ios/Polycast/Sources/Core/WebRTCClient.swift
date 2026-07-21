@@ -40,7 +40,7 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
             try session.setActive(true)
         } catch {
             PolycastLog.runtime.error("[Polycast] WebRTC: audio session config error: \(error)")
@@ -257,17 +257,15 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
             let frame = RTCVideoFrame(buffer: rtcPixelBuffer, rotation: ._0, timeStampNs: timeStampNs)
             videoSource.capturer(capturer, didCapture: frame)
         }, completionHandler: { [weak self] error in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                if error == nil {
-                    // Stop the camera while the screen is being shared.
-                    self.videoCapturer?.stopCapture()
-                    self.isScreenSharing = true
-                } else {
-                    self.screenCapturer = nil
-                }
-                completion(error)
+            guard let self else { return }
+            if error == nil {
+                // Stop the camera while the screen is being shared.
+                self.videoCapturer?.stopCapture()
+                self.isScreenSharing = true
+            } else {
+                self.screenCapturer = nil
             }
+            completion(error)
         })
     }
 

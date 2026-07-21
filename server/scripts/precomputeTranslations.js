@@ -154,7 +154,7 @@ Each sense_index must be a valid index from the senses listed for that word.`;
 
     try {
       const raw = await callGemini(prompt, {
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingLevel: 'LOW' },
         maxOutputTokens: 1500,
         responseMimeType: 'application/json',
       });
@@ -198,7 +198,7 @@ Each translation should be a concise ${lang} equivalent (1-3 words).`;
 
     try {
       const raw = await callGemini(prompt, {
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingLevel: 'LOW' },
         maxOutputTokens: 800,
         responseMimeType: 'application/json',
       });

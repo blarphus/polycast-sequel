@@ -52,7 +52,7 @@ Return a JSON object: {"example_sentence":"..."}
 
 Respond with ONLY the JSON object, no other text.`;
 
-    const raw = await callGemini(prompt, { thinkingConfig: { thinkingBudget: 0 }, maxOutputTokens: 100, responseMimeType: 'application/json' });
+    const raw = await callGemini(prompt, { thinkingConfig: { thinkingLevel: 'LOW' }, maxOutputTokens: 100, responseMimeType: 'application/json' });
     const parsed = parseGeminiJson(raw, 'Stream word example');
     return res.json({ example_sentence: parsed.example_sentence || null });
   } catch (err) {

@@ -15,11 +15,13 @@
     "check": "npm run typecheck && npm test && npm run build && npm run check:bundle && npm audit"
   },
   "dependencies": {
+    "@zip.js/zip.js": "^2.8.31",
     "fflate": "^0.8.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.4",
-    "socket.io-client": "^4.8.0"
+    "socket.io-client": "^4.8.0",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

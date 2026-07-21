@@ -17,6 +17,7 @@ import { CallProvider } from './contexts/CallProvider';
 import { GroupCallProvider } from './contexts/GroupCallProvider';
 import FloatingCallTile from './components/FloatingCallTile';
 import FloatingGroupCallTile from './components/FloatingGroupCallTile';
+import { uiLanguage } from './i18n';
 
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
@@ -103,6 +104,7 @@ function AuthenticatedShell() {
   useEffect(() => {
     if (!user) return;
     document.documentElement.classList.toggle('sidebar-visible', !hideToolbar);
+    document.documentElement.lang = uiLanguage(user.native_language);
     return () => document.documentElement.classList.remove('sidebar-visible');
   }, [user, hideToolbar]);
 

@@ -61,8 +61,12 @@ jobs:
           cache-dependency-path: server/package-lock.json
       - run: npm ci
         working-directory: server
-      - run: createdb postgresql://postgres:postgres@127.0.0.1:5432/polycast_fresh
-      - run: createdb postgresql://postgres:postgres@127.0.0.1:5432/polycast_legacy
+      - run: createdb --host 127.0.0.1 --username postgres polycast_fresh
+        env:
+          PGPASSWORD: postgres
+      - run: createdb --host 127.0.0.1 --username postgres polycast_legacy
+        env:
+          PGPASSWORD: postgres
       - run: bash scripts/check-database.sh
         env:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/polycast_fresh
@@ -72,6 +76,12 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - run: brew install xcodegen
+      - name: Install XcodeGen 2.46.0
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/yonaskolb/XcodeGen/releases/download/2.46.0/xcodegen.zip \
+            --output "$RUNNER_TEMP/xcodegen.zip"
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP/xcodegen-release"
+          echo "$RUNNER_TEMP/xcodegen-release/xcodegen/bin" >> "$GITHUB_PATH"
       - run: bash scripts/check-xcodegen.sh
-      - run: xcodebuild -project ios/Polycast.xcodeproj -scheme Polycast -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -derivedDataPath /tmp/polycast-ci-derived-data test CODE_SIGNING_ALLOWED=NO
+      - run: xcodebuild -project ios/Polycast.xcodeproj -scheme Polycast -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/polycast-ci-derived-data build-for-testing CODE_SIGNING_ALLOWED=NO

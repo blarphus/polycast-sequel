@@ -12,6 +12,7 @@ import { lookupWord, enrichWord, explainWord, getStudentDashboard, type SaveWord
 import { playAiSpeech } from '../utils/aiSpeech';
 import { useDictionaryToast } from '../hooks/useDictionaryToast';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { languageDisplayName, translate, uiLanguage, wordPopupLabels } from '../i18n';
 import '@popup/wordPopup.css';
 import '@popup/wordPopupCore.js'; // side-effect: sets window.PolycastWordPopup
 import {
@@ -42,6 +43,7 @@ interface CreateWordPopupOptions {
   initialSavedHint?: boolean;
   nativeMode?: boolean;
   languageName?: string | null;
+  labels?: ReturnType<typeof wordPopupLabels>;
   handlers: WordPopupHandlers;
 }
 
@@ -89,6 +91,7 @@ export default function WordPopup(props: WordPopupProps) {
       return;
     }
 
+    const locale = uiLanguage(nativeLang);
     const handlers: WordPopupHandlers = {
       lookup: () => lookupWord(word, sentence, nativeLang, targetLang, isNative),
       explain: () => explainWord(word, sentence, nativeLang, targetLang, context),
@@ -180,9 +183,8 @@ export default function WordPopup(props: WordPopupProps) {
       onClose,
       nativeMode: !!isNative,
       initialSavedHint: isWordSaved?.(word) ?? false,
-      languageName: targetLang
-        ? new Intl.DisplayNames(['en'], { type: 'language' }).of(targetLang) || targetLang.toUpperCase()
-        : null,
+      languageName: targetLang ? languageDisplayName(targetLang, locale) : null,
+      labels: wordPopupLabels(locale),
       handlers,
     });
     elRef.current = controls.el;
@@ -195,7 +197,9 @@ export default function WordPopup(props: WordPopupProps) {
       const filledSteps = Math.round((Math.min(snapshot.added, snapshot.goal) / snapshot.goal) * stepCount);
       const steps = Array.from({ length: stepCount }, (_, index) =>
         `<i class="${index < filledSteps ? 'pc-popup-goal-step--filled' : ''}"></i>`).join('');
-      const label = snapshot.complete ? 'Goal complete' : `${snapshot.remaining} more today`;
+      const label = snapshot.complete
+        ? translate(locale, 'popup.goalComplete')
+        : translate(locale, 'popup.moreToday', { count: snapshot.remaining });
       goalEl.innerHTML = `
         <span class="pc-popup-goal-flame" aria-label="${snapshot.added} of ${snapshot.goal} daily words">${core.FLAME_SVG}</span>
         <div class="pc-popup-goal-steps">${steps}</div>

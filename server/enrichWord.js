@@ -198,7 +198,7 @@ async function describeFlashcardImage({ word, definition, image }) {
         },
         { inlineData: { mimeType: image.contentType, data: image.buffer.toString('base64') } },
       ],
-      { maxOutputTokens: 80, temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } },
+      { maxOutputTokens: 80, temperature: 0.2, thinkingConfig: { thinkingLevel: 'LOW' } },
     );
     const description = raw.trim().replace(/^["']|["']$/g, '');
     if (!description) {
@@ -259,7 +259,7 @@ ${imageContext ? '- It must describe or fit the chosen image scene. Do not intro
     const raw = await callGemini(
       prompt,
       {
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingLevel: 'LOW' },
         // Generous cap: a truncated response is unparseable JSON, which was the
         // most common cause of the example-generation fallback.
         maxOutputTokens: 400,
@@ -307,7 +307,7 @@ Target word: ${word}`;
     const raw = await callGemini(
       prompt,
       {
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingLevel: 'LOW' },
         maxOutputTokens: 120,
         responseMimeType: 'application/json',
       },

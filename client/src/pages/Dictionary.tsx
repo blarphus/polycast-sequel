@@ -17,6 +17,7 @@ import type { DictionarySortMode, DictionaryWordGroup, SavedWord } from '../api'
 import { SearchIcon, SearchMinusIcon, BookPlusIcon, ChevronDownIcon, TrashIcon, GripVerticalIcon } from '../components/icons';
 import { FrequencyDots, FREQUENCY_DOT_COLORS } from '../components/FrequencyDots';
 import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
+import { useI18n } from '../hooks/useI18n';
 
 // -- DueStatusBadge: shows SRS status in collapsed header -------------------
 
@@ -154,6 +155,7 @@ function buildQueueTintStyles(
 const QUEUE_TINT_STYLES = buildQueueTintStyles(220, 38, 29, 35, 44);
 
 export default function Dictionary() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -351,7 +353,7 @@ export default function Dictionary() {
   const isQueueMode = sort === 'queue';
 
   const rebuildQueue = async () => {
-    if (!window.confirm('Replace the current manual queue order with priority-first frequency order?')) return;
+    if (!window.confirm(t('dictionary.rebuildConfirm'))) return;
     await rebuildFrequencyQueue();
     await loadPage();
   };
@@ -360,7 +362,7 @@ export default function Dictionary() {
     <div className="dict-page" style={QUEUE_TINT_STYLES}>
       <main className="dict-main">
         <section className="home-section">
-          <h2 className="section-title">My Dictionary</h2>
+          <h2 className="section-title">{t('dictionary.title')}</h2>
 
           {/* Controls row */}
           <div className="dict-controls">
@@ -369,7 +371,7 @@ export default function Dictionary() {
               <input
                 type="text"
                 className="form-input dict-search"
-                placeholder="Search words..."
+                placeholder={t('dictionary.search')}
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(0); setPageCursors([null]); }}
               />
@@ -379,16 +381,16 @@ export default function Dictionary() {
               value={sort}
               onChange={(e) => { setSort(e.target.value as DictionarySortMode); setPage(0); setPageCursors([null]); }}
             >
-              <option value="queue">Queue</option>
-              <option value="date">Recent first</option>
+              <option value="queue">{t('dictionary.queue')}</option>
+              <option value="date">{t('dictionary.recent')}</option>
               <option value="az">A-Z</option>
-              <option value="freq-high">Frequency high &rarr; low</option>
-              <option value="freq-low">Frequency low &rarr; high</option>
-              <option value="due">Due soonest</option>
+              <option value="freq-high">{t('dictionary.frequencyHigh')}</option>
+              <option value="freq-low">{t('dictionary.frequencyLow')}</option>
+              <option value="due">{t('dictionary.dueSoon')}</option>
             </select>
-            <span className="dict-count">{totalGroups} word{totalGroups !== 1 ? 's' : ''}</span>
-            <button className="dict-frequency-order-btn" onClick={() => { void rebuildQueue(); }} title="Rebuild frequency order">
-              Frequency order
+            <span className="dict-count">{t('dictionary.count', { count: totalGroups, countLabel: t(totalGroups === 1 ? 'dictionary.word' : 'dictionary.words') })}</span>
+            <button className="dict-frequency-order-btn" onClick={() => { void rebuildQueue(); }} title={t('dictionary.rebuildTitle')}>
+              {t('dictionary.frequencyOrder')}
             </button>
             {user?.native_language && user?.target_language && (
               <button
@@ -397,7 +399,7 @@ export default function Dictionary() {
                   setLookupInitialQuery('');
                   setLookupOpen(true);
                 }}
-                title="Look up a word"
+                title={t('dictionary.lookupTitle')}
               >
                 +
               </button>
@@ -405,7 +407,7 @@ export default function Dictionary() {
           </div>
 
           {loading ? (
-            <p className="text-muted">Loading saved words...</p>
+            <p className="text-muted">{t('dictionary.loading')}</p>
           ) : totalGroups === 0 ? (
             <div className="dict-empty">
               {search ? (
@@ -413,14 +415,14 @@ export default function Dictionary() {
                   <div className="dict-empty-icon">
                     <SearchMinusIcon size={40} strokeWidth={1.5} />
                   </div>
-                  <p>No words match your search.</p>
+                  <p>{t('dictionary.noMatches')}</p>
                 </>
               ) : (
                 <>
                   <div className="dict-empty-icon">
                     <BookPlusIcon size={40} strokeWidth={1.5} />
                   </div>
-                  <p>No saved words yet. Click on words in subtitles and press + to save them.</p>
+                  <p>{t('dictionary.empty')}</p>
                 </>
               )}
             </div>
@@ -431,7 +433,7 @@ export default function Dictionary() {
                 {/* Bracket rail */}
                 {isQueueMode && page === 0 && dueNextPageKeys.length > 0 && bracketHeight > 0 && (
                   <div className="dict-queue-bracket" style={{ height: bracketHeight }}>
-                    <span className="dict-queue-bracket-label">DUE NEXT</span>
+                    <span className="dict-queue-bracket-label">{t('dictionary.dueNext')}</span>
                   </div>
                 )}
                 {pageGroups.map((group) => {
@@ -473,7 +475,7 @@ export default function Dictionary() {
                           <span className={`dict-pos-badge pos-${group.primaryEntry.part_of_speech.toLowerCase()}`}>{group.primaryEntry.part_of_speech}</span>
                         )}
                         {group.hasPriority && (
-                          <span className="assigned-badge">Assigned</span>
+                          <span className="assigned-badge">{t('dictionary.assigned')}</span>
                         )}
                         {group.entries.length > 1 && (
                           <span className="dict-def-count">{group.entries.length}</span>
@@ -491,12 +493,12 @@ export default function Dictionary() {
                                     <span className={`dict-pos-badge pos-${w.part_of_speech.toLowerCase()}`}>{w.part_of_speech}</span>
                                   )}
                                   <div className="dict-field">
-                                    <span className="dict-field-label">Translation</span>
+                                    <span className="dict-field-label">{t('dictionary.translation')}</span>
                                     <span className="dict-field-value">{w.translation}</span>
                                   </div>
                                   {w.definition && (
                                     <div className="dict-field">
-                                      <span className="dict-field-label">Definition</span>
+                                      <span className="dict-field-label">{t('dictionary.definition')}</span>
                                       <span className="dict-field-value">{w.definition}</span>
                                     </div>
                                   )}
@@ -512,7 +514,7 @@ export default function Dictionary() {
                                           onClick={() => toggleForms(w.id)}
                                           aria-expanded={formsOpen}
                                         >
-                                          <span className="dict-field-label">Forms</span>
+                                          <span className="dict-field-label">{t('dictionary.forms')}</span>
                                           <span className="dict-forms-count">{fl.length}</span>
                                           <ChevronDownIcon size={15} className="dict-forms-chevron" />
                                         </button>
@@ -526,36 +528,36 @@ export default function Dictionary() {
                                   })()}
                                   {w.example_sentence && (
                                     <div className="dict-field">
-                                      <span className="dict-field-label">Example</span>
+                                      <span className="dict-field-label">{t('dictionary.example')}</span>
                                       <span className="dict-field-value dict-example">
                                         {renderTildeHighlight(w.example_sentence, 'dict-highlight')}
                                       </span>
                                     </div>
                                   )}
                                   <div className="dict-field">
-                                    <span className="dict-field-label">Saved</span>
+                                    <span className="dict-field-label">{t('dictionary.saved')}</span>
                                     <span className="dict-field-value text-muted">{formatDate(w.created_at)}</span>
                                   </div>
                                   <ReviewField word={w} />
                                   {w.frequency_count != null && (
                                     <div className="dict-field">
-                                      <span className="dict-field-label">Corpus count</span>
+                                      <span className="dict-field-label">{t('dictionary.corpusCount')}</span>
                                       <span className="dict-field-value text-muted">
                                         {w.frequency_count.toLocaleString()}
                                       </span>
                                     </div>
                                   )}
                                   <div className="dict-field">
-                                    <span className="dict-field-label">Frequency rank</span>
+                                    <span className="dict-field-label">{t('dictionary.frequencyRank')}</span>
                                     <span className="dict-field-value text-muted">
-                                      {w.lemma_frequency_rank != null ? `Lemma #${w.lemma_frequency_rank.toLocaleString()}` : 'Unranked tail'}
+                                      {w.lemma_frequency_rank != null ? `Lemma #${w.lemma_frequency_rank.toLocaleString()}` : t('dictionary.unranked')}
                                       {w.sense_rank != null ? ` · Sense list #${w.sense_rank.toLocaleString()}` : ''}
                                       {w.frequency_confidence ? ` · ${w.frequency_confidence} confidence` : ''}
                                     </span>
                                   </div>
                                   {Array.isArray(w.frequency_sources) && w.frequency_sources.length > 0 && (
                                     <div className="dict-field">
-                                      <span className="dict-field-label">Frequency sources</span>
+                                      <span className="dict-field-label">{t('dictionary.frequencySources')}</span>
                                       <span className="dict-field-value text-muted">
                                         {w.frequency_sources.map((source) => String(source.id || 'unknown')).join(', ')}
                                       </span>
@@ -563,7 +565,7 @@ export default function Dictionary() {
                                   )}
                                   {Array.isArray(w.ranking_diagnostics) && w.ranking_diagnostics.map((diagnostic) => (
                                     <div className="dict-field" key={`${w.id}-${diagnostic.code}`} role="status">
-                                      <span className="dict-field-label">Ranking fallback</span>
+                                      <span className="dict-field-label">{t('dictionary.rankingFallback')}</span>
                                       <span className="dict-field-value text-muted">
                                         {diagnostic.title}: {diagnostic.message} · {diagnostic.code}
                                         {diagnostic.detail ? ` · ${diagnostic.detail}` : ''}
@@ -575,7 +577,7 @@ export default function Dictionary() {
                                     await loadPage();
                                   }}>
                                     <TrashIcon size={16} />
-                                    Remove
+                                    {t('dictionary.remove')}
                                   </button>
                                 </div>
                                 <div className="dict-image-block">

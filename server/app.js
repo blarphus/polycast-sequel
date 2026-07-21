@@ -7,6 +7,7 @@ import pinoHttp from 'pino-http';
 import logger from './logger.js';
 import authRoutes from './routes/auth.js';
 import classroomRoutes from './routes/classroom.js';
+import classBookRoutes from './routes/classBooks.js';
 import dictionaryRoutes from './routes/dictionary.js';
 import friendkeeperRoutes from './routes/friendkeeper.js';
 import frequencyCatalogRoutes from './routes/frequencyCatalog.js';
@@ -75,6 +76,7 @@ export function createApp({ clientDist = path.resolve('client/dist') } = {}) {
     frequencyCatalogRoutes,
     messagesRoutes,
     classroomRoutes,
+    classBookRoutes,
     iceServersRoutes,
     streamPostsRoutes,
     streamTopicsRoutes,

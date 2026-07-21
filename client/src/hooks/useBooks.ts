@@ -1,12 +1,28 @@
 import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
 const runtimeLog = createScopedRuntimeLogger('web.hooks.usebooks');
 // ---------------------------------------------------------------------------
-// hooks/useBooks.ts -- Manage the on-device EPUB library.
+// hooks/useBooks.ts -- Manage the on-device EPUB + resumable CBZ OCR library.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from 'react';
-import { listBooks, addBook, deleteBook, type BookMeta } from '../utils/bookStore';
+import { listBooks, addBook, deleteBook, getStoredBook, type BookMeta } from '../utils/bookStore';
 import { parseEpub, coverBlob } from '../utils/epub';
+import { prepareCbzForOcr } from '../utils/cbz';
+import {
+  cancelComicOcr,
+  COMIC_OCR_PROGRESS_EVENT,
+  resumePendingComicOcr,
+  retryComicOcr,
+  startComicOcr,
+  type ComicOcrProgressEvent,
+} from '../utils/comicOcr';
+import { downloadClassroomBook, type ClassBook } from '../api/classroom';
+
+export interface BookImportResult {
+  id: string;
+  format: 'epub' | 'comic';
+  processing: boolean;
+}
 
 export function useBooks() {
   const [books, setBooks] = useState<BookMeta[]>([]);
@@ -25,29 +41,144 @@ export function useBooks() {
     }
   }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    void refresh().then(() => resumePendingComicOcr()).catch((err) => {
+      runtimeLog.error('Failed to resume queued comic OCR:', err);
+    });
+  }, [refresh]);
 
-  /** Parse + store an uploaded .epub file. Returns the new book id. */
-  const addFromFile = useCallback(async (file: File): Promise<string> => {
+  useEffect(() => {
+    const handleProgress = (event: Event) => {
+      const detail = (event as CustomEvent<ComicOcrProgressEvent>).detail;
+      if (!detail) return;
+      setBooks((current) => current.map((book) => (
+        book.id === detail.bookId ? { ...book, ocr: detail.progress } : book
+      )));
+    };
+    window.addEventListener(COMIC_OCR_PROGRESS_EVENT, handleProgress);
+    return () => window.removeEventListener(COMIC_OCR_PROGRESS_EVENT, handleProgress);
+  }, []);
+
+  /** Parse + store an uploaded EPUB or supported CBZ. Returns the new book id. */
+  const addFromFile = useCallback(async (file: File, comicLanguage?: 'en' | 'es'): Promise<BookImportResult> => {
+    const id = `${Date.now()}-${Math.round(performance.now())}`;
+    if (file.name.toLowerCase().endsWith('.cbz')) {
+      if (!comicLanguage) {
+        throw new Error('[cbz_ocr_language_required] Choose the language printed in this comic before uploading it.');
+      }
+      const { comic, cover } = await prepareCbzForOcr(file, comicLanguage);
+      const meta: BookMeta = {
+        id,
+        title: comic.title,
+        author: comic.author,
+        cover,
+        addedAt: Date.now(),
+        format: 'comic',
+        pageCount: comic.pages.length,
+        language: comicLanguage,
+        ocr: comic.ocr,
+      };
+      try {
+        await addBook(meta, comic);
+      } catch (error) {
+        throw new Error(`[cbz_storage_failed] Polycast could not store this CBZ on the device: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      await refresh();
+      startComicOcr(id);
+      return { id, format: 'comic', processing: true };
+    }
+
     const bytes = new Uint8Array(await file.arrayBuffer());
     const parsed = parseEpub(bytes); // throws on invalid epub — surfaced to caller
-    const id = `${Date.now()}-${Math.round(performance.now())}`;
     const meta: BookMeta = {
       id,
       title: parsed.title,
       author: parsed.author,
       cover: coverBlob(parsed),
       addedAt: Date.now(),
+      format: 'epub',
     };
     await addBook(meta, bytes);
     await refresh();
-    return id;
+    return { id, format: 'epub', processing: false };
   }, [refresh]);
 
   const remove = useCallback(async (id: string) => {
+    cancelComicOcr(id);
     await deleteBook(id);
     await refresh();
   }, [refresh]);
 
-  return { books, loading, error, refresh, addFromFile, remove };
+  const retryOcr = useCallback(async (id: string) => {
+    await retryComicOcr(id);
+  }, []);
+
+  const addFromClass = useCallback(async (
+    classBook: ClassBook,
+    onProgress?: (fraction: number) => void,
+  ): Promise<BookImportResult> => {
+    if (classBook.format === 'pdf') {
+      throw new Error('[class_book_format_invalid] PDFs open from the classroom Documents tab rather than the book reader.');
+    }
+    const existing = await getStoredBook(classBook.id);
+    if (existing) {
+      return {
+        id: classBook.id,
+        format: existing.format === 'comic' ? 'comic' : 'epub',
+        processing: existing.format === 'comic' && existing.comic.ocr?.status !== 'ready',
+      };
+    }
+
+    const blob = await downloadClassroomBook(classBook, onProgress);
+    const addedAt = new Date(classBook.created_at).getTime() || Date.now();
+    const sourceMeta = {
+      source: 'class' as const,
+      classBookId: classBook.id,
+      classroomId: classBook.classroom_id,
+      classroomName: classBook.classroom_name,
+      originalFilename: classBook.original_filename,
+    };
+
+    if (classBook.format === 'cbz') {
+      if (!classBook.language) {
+        throw new Error('[class_book_language_missing] This shared CBZ does not identify whether its text is English or Spanish.');
+      }
+      const file = new File([blob], classBook.original_filename, { type: classBook.mime_type });
+      const { comic, cover } = await prepareCbzForOcr(file, classBook.language);
+      const meta: BookMeta = {
+        id: classBook.id,
+        title: classBook.title || comic.title,
+        author: classBook.author || comic.author,
+        cover,
+        addedAt,
+        format: 'comic',
+        pageCount: comic.pages.length,
+        language: classBook.language,
+        ocr: comic.ocr,
+        ...sourceMeta,
+      };
+      await addBook(meta, comic);
+      await refresh();
+      startComicOcr(classBook.id);
+      return { id: classBook.id, format: 'comic', processing: true };
+    }
+
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const parsed = parseEpub(bytes);
+    const meta: BookMeta = {
+      id: classBook.id,
+      title: classBook.title || parsed.title,
+      author: classBook.author || parsed.author,
+      cover: coverBlob(parsed),
+      addedAt,
+      format: 'epub',
+      language: classBook.language || (parsed.language === 'en' || parsed.language === 'es' ? parsed.language : undefined),
+      ...sourceMeta,
+    };
+    await addBook(meta, bytes);
+    await refresh();
+    return { id: classBook.id, format: 'epub', processing: false };
+  }, [refresh]);
+
+  return { books, loading, error, refresh, addFromFile, addFromClass, remove, retryOcr };
 }

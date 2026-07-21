@@ -53,8 +53,8 @@ export default function FallbackToast() {
   if (!notice) return null;
 
   return (
-    <div className="fallback-toast" role="status" aria-live="polite">
-      <span aria-hidden="true">!</span>
+    <div className={`fallback-toast fallback-toast--${notice.severity}`} role="status" aria-live="polite">
+      <span aria-hidden="true">{notice.severity === 'info' ? 'i' : '!'}</span>
       <span className="fallback-toast-body">
         <strong>{notice.title}</strong>
         <span>{notice.message}</span>

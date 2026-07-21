@@ -55,6 +55,16 @@
   border-radius: 50%;
 }
 
+.fallback-toast--info {
+  border-color: #6366f1;
+  color: #4f46e5;
+}
+
+.fallback-toast--error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 .fallback-toast-body {
   display: flex;
   flex-direction: column;

@@ -1,4 +1,5 @@
 import { request } from './core';
+import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 function withClassroomQuery(path: string, classroomId: string) {
   const sep = path.includes('?') ? '&' : '?';
@@ -49,6 +50,29 @@ export interface ClassroomStudent {
   display_name: string;
   online: boolean;
   added_at: string;
+}
+
+export interface ClassBook {
+  id: string;
+  classroom_id: string;
+  classroom_name: string;
+  title: string;
+  author: string | null;
+  original_filename: string;
+  format: 'epub' | 'cbz' | 'pdf';
+  mime_type: string;
+  byte_size: number;
+  language: 'en' | 'es' | null;
+  created_at: string;
+  access_role: ClassroomRole | 'teacher' | null;
+}
+
+export interface ClassBookUpload {
+  classroomId: string;
+  file: File;
+  title: string;
+  author?: string;
+  language?: 'en' | 'es';
 }
 
 export interface StudentStats {
@@ -129,6 +153,13 @@ export function createClassroom(data: { name: string; section?: string; subject?
   });
 }
 
+export function joinClassroom(classCode: string) {
+  return request<{ classroom: Classroom; joined: boolean }>('/classrooms/join', {
+    method: 'POST',
+    body: { classCode },
+  });
+}
+
 export function updateClassroom(id: string, data: {
   name?: string;
   section?: string | null;
@@ -150,6 +181,107 @@ export function deleteClassroom(id: string) {
 
 export function getClassroomTopics(classroomId: string) {
   return request<ClassroomTopic[]>(`/classrooms/${classroomId}/topics`);
+}
+
+export function getClassBooks() {
+  return request<ClassBook[]>('/class-books');
+}
+
+export function getClassroomBooks(classroomId: string) {
+  return request<ClassBook[]>(`/classrooms/${classroomId}/books`);
+}
+
+export function uploadClassroomBook(
+  upload: ClassBookUpload,
+  onProgress?: (fraction: number) => void,
+): Promise<ClassBook> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api/classrooms/${encodeURIComponent(upload.classroomId)}/books`);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader('X-Correlation-ID', globalThis.crypto?.randomUUID?.() || `web-${Date.now()}`);
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total);
+    });
+    xhr.addEventListener('load', () => {
+      let payload: unknown = null;
+      try {
+        payload = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+      } catch (error) {
+        emitFallbackDiagnostic({
+          code: 'class_book_upload_error_payload_invalid',
+          severity: 'warning',
+          title: 'Upload error details were unreadable',
+          message: 'The class file upload failed and the server response was malformed, so Polycast is showing the HTTP status instead.',
+          detail: `status=${xhr.status}; ${error instanceof Error ? error.message : String(error)}`,
+        }, { source: 'web.api.classroom', operation: 'parse-class-book-upload-error' });
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && payload) {
+        onProgress?.(1);
+        resolve(payload as ClassBook);
+        return;
+      }
+      const message = payload && typeof payload === 'object' && 'error' in payload
+        ? String((payload as { error: unknown }).error)
+        : `Book upload failed (${xhr.status || 'network error'})`;
+      reject(new Error(message));
+    });
+    xhr.addEventListener('error', () => reject(new Error('The class book upload lost its network connection.')));
+    xhr.addEventListener('abort', () => reject(new Error('The class book upload was cancelled.')));
+
+    const body = new FormData();
+    body.append('book', upload.file);
+    body.append('title', upload.title);
+    body.append('author', upload.author || '');
+    body.append('language', upload.language || '');
+    xhr.send(body);
+  });
+}
+
+export function deleteClassroomBook(bookId: string) {
+  return request<void>(`/class-books/${bookId}`, { method: 'DELETE' });
+}
+
+export async function downloadClassroomBook(
+  book: ClassBook,
+  onProgress?: (fraction: number) => void,
+): Promise<Blob> {
+  const response = await fetch(`/api/class-books/${encodeURIComponent(book.id)}/file`, {
+    credentials: 'include',
+    headers: { 'X-Correlation-ID': globalThis.crypto?.randomUUID?.() || `web-${Date.now()}` },
+  });
+  if (!response.ok) {
+    let message = `Could not download ${book.title} (${response.status})`;
+    try {
+      const payload = await response.json() as { error?: string };
+      if (payload.error) message = payload.error;
+    } catch (error) {
+      emitFallbackDiagnostic({
+        code: 'class_book_download_error_payload_invalid',
+        severity: 'warning',
+        title: 'Download error details were unreadable',
+        message: 'The class file download failed and the server response was malformed, so Polycast is showing the HTTP status instead.',
+        detail: `status=${response.status}; ${error instanceof Error ? error.message : String(error)}`,
+      }, { source: 'web.api.classroom', operation: 'parse-class-book-download-error' });
+    }
+    throw new Error(message);
+  }
+
+  const total = Number(response.headers.get('Content-Length')) || book.byte_size;
+  if (!response.body) return response.blob();
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    chunks.push(value);
+    loaded += value.byteLength;
+    if (total > 0) onProgress?.(Math.min(loaded / total, 1));
+  }
+  onProgress?.(1);
+  return new Blob(chunks as BlobPart[], { type: book.mime_type });
 }
 
 export function createClassroomTopic(classroomId: string, title: string) {

@@ -25,6 +25,7 @@ import TappableFlashcardSentence from '../components/TappableFlashcardSentence';
 import { playAiSpeech, stopAiSpeech, preloadCardAudio, type PreloadedSpeech } from '../utils/aiSpeech';
 import { playFlipSound, playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
 import { BookIcon, CheckCircleIcon, SpeakerIcon, TapIcon, CloseIcon, CheckIcon } from '../components/icons';
+import { useI18n } from '../hooks/useI18n';
 
 // ---------------------------------------------------------------------------
 // Prompt type derivation
@@ -71,6 +72,7 @@ function spokenText(card: SavedWord, promptType: PromptType, back: boolean): str
 
 export default function Learn() {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   // Card queue
   const { user } = useAuth();
@@ -365,7 +367,7 @@ export default function Learn() {
     return (
       <div className="learn-page">
         <div className="flashcard-empty">
-          <p style={{ color: 'var(--danger)' }}>Failed to load cards: {error}</p>
+          <p style={{ color: 'var(--danger)' }}>{t('learn.loadFailed', { error })}</p>
         </div>
       </div>
     );
@@ -382,10 +384,10 @@ export default function Learn() {
           <div className="flashcard-empty-icon">
             <BookIcon size={48} strokeWidth={1.5} />
           </div>
-          <h2>No words to study yet</h2>
-          <p>Save words from conversations to start learning.</p>
+          <h2>{t('learn.emptyTitle')}</h2>
+          <p>{t('learn.emptyBody')}</p>
           <div className="flashcard-empty-box">
-            <p>Tap words in subtitles during calls, then press <strong>+</strong> to save them to your dictionary.</p>
+            <p>{t('learn.emptyHint')}</p>
           </div>
         </div>
       </div>
@@ -402,7 +404,7 @@ export default function Learn() {
         <div className="learn-page">
           <div className="flashcard-empty">
             <div className="loading-spinner" />
-            <p style={{ marginTop: '12px', color: 'var(--text-secondary)' }}>Checking for more cards...</p>
+            <p style={{ marginTop: '12px', color: 'var(--text-secondary)' }}>{t('learn.checking')}</p>
           </div>
         </div>
       );
@@ -421,25 +423,25 @@ export default function Learn() {
           <div className="flashcard-complete-icon">
             <CheckCircleIcon size={56} style={{ color: '#4ade80' }} />
           </div>
-          <h2>Session Complete</h2>
+          <h2>{t('learn.complete')}</h2>
           {sessionDiagnostic && <div className="flashcard-session-diagnostic" role="status">{sessionDiagnostic}</div>}
           <div className="flashcard-complete-stats">
             <div className="flashcard-stat">
               <span className="flashcard-stat-value">{sessionStats.reviewed}</span>
-              <span className="flashcard-stat-label">Cards reviewed</span>
+              <span className="flashcard-stat-label">{t('learn.reviewed')}</span>
             </div>
             <div className="flashcard-stat">
               <span className="flashcard-stat-value">{accuracy}%</span>
-              <span className="flashcard-stat-label">Accuracy</span>
+              <span className="flashcard-stat-label">{t('learn.accuracy')}</span>
             </div>
             <div className="flashcard-stat">
               <span className="flashcard-stat-value">{mins > 0 ? `${mins}m ${secs}s` : `${secs}s`}</span>
-              <span className="flashcard-stat-label">Duration</span>
+              <span className="flashcard-stat-label">{t('learn.duration')}</span>
             </div>
           </div>
-          <p className="flashcard-session-xp">{sessionAward === null ? 'Saving session...' : sessionAward ? `+${sessionAward} XP` : 'Session XP capped today'}</p>
+          <p className="flashcard-session-xp">{sessionAward === null ? t('learn.savingSession') : sessionAward ? `+${sessionAward} XP` : t('learn.sessionCap')}</p>
           <button className="btn btn-primary" onClick={() => navigate('/')}>
-            Done
+            {t('learn.done')}
           </button>
         </div>
       </div>
@@ -462,7 +464,7 @@ export default function Learn() {
     <div className={`learn-page${useBlue ? ' learn-page--recognition' : ''}`}>
       {/* Test stages link */}
       <button className="learn-test-stages-btn" onClick={() => navigate('/learn/preview')}>
-        Test stages
+        {t('learn.testStages')}
       </button>
 
       {/* Anki-style progress counts */}
@@ -476,7 +478,12 @@ export default function Learn() {
 
       {/* Card instruction */}
       <p className="flashcard-instruction">
-        {getInstructionText(promptType)}
+        {{
+          'meet-word': t('learn.meetWord'),
+          'sentence-meaning': t('learn.sentenceMeaning'),
+          'word-production': t('learn.wordProduction'),
+          'sentence-production': t('learn.sentenceProduction'),
+        }[promptType]}
       </p>
 
       {/* Card container */}
@@ -500,8 +507,8 @@ export default function Learn() {
           <div className={`flashcard-flip-wrapper${isFlipped ? ' flipped' : ''}`}>
             {/* Front */}
             <div className={`flashcard-front${useBlue ? ' flashcard-front--recognition' : ''}`}>
-              <span className="flashcard-new-badge">Stage {displayStage}</span>
-              {cardIsNew && <span className="flashcard-card-state">New</span>}
+              <span className="flashcard-new-badge">{t('learn.stage', { stage: displayStage })}</span>
+              {cardIsNew && <span className="flashcard-card-state">{t('learn.new')}</span>}
 
               {promptType === 'meet-word' && (
                 <>
@@ -539,7 +546,7 @@ export default function Learn() {
 
               <p className="flashcard-hint">
                 <TapIcon size={14} />
-                Tap to reveal
+                {t('learn.tapReveal')}
               </p>
             </div>
 
@@ -617,9 +624,9 @@ export default function Learn() {
           onClick={() => handleAnswer('again')}
         >
           <CloseIcon size={18} strokeWidth={2.5} />
-          <span className="flashcard-btn-label">Incorrect</span>
+          <span className="flashcard-btn-label">{t('learn.incorrect')}</span>
           <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'again')}</span>
-          <span className="flashcard-btn-stage">Stage {nextPromptStage(card, 'again')}</span>
+          <span className="flashcard-btn-stage">{t('learn.stage', { stage: nextPromptStage(card, 'again') })}</span>
         </button>
         <button
           className="flashcard-btn flashcard-btn--good"
@@ -627,9 +634,9 @@ export default function Learn() {
           onClick={() => handleAnswer('good')}
         >
           <CheckIcon size={18} strokeWidth={2.5} />
-          <span className="flashcard-btn-label">Correct</span>
+          <span className="flashcard-btn-label">{t('learn.correct')}</span>
           <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'good')}</span>
-          <span className="flashcard-btn-stage">Stage {nextPromptStage(card, 'good')}</span>
+          <span className="flashcard-btn-stage">{t('learn.stage', { stage: nextPromptStage(card, 'good') })}</span>
         </button>
       </div>
 

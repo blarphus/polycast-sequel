@@ -151,7 +151,7 @@ Rules:
 - Do not include any extra fields or commentary.`;
 
   const raw = await callGemini(prompt, {
-    thinkingConfig: { thinkingBudget: 0 },
+    thinkingConfig: { thinkingLevel: 'LOW' },
     maxOutputTokens: 500,
     responseMimeType: 'application/json',
   });

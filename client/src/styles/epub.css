@@ -31,6 +31,33 @@
   line-height: 1.45;
 }
 
+.epub-upload-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+}
+
+.epub-comic-language {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.epub-comic-language select {
+  min-height: 42px;
+  padding: 0.55rem 2rem 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
 .epub-upload-btn {
   display: inline-flex;
   align-items: center;
@@ -132,6 +159,11 @@
   object-fit: cover;
 }
 
+.epub-card-cover--processing img {
+  filter: grayscale(1) saturate(0) brightness(0.72);
+  opacity: 0.72;
+}
+
 .epub-card-cover--placeholder {
   height: 100%;
   display: flex;
@@ -166,6 +198,465 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.epub-card-class-source {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.45rem;
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.epub-card-class-source span:last-child {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.epub-card-format {
+  margin-top: 0.35rem;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.comic-ocr-card-status,
+.comic-ocr-card-error {
+  display: grid;
+  gap: 0.38rem;
+  margin-top: 0.55rem;
+  padding: 0.55rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.comic-ocr-card-status {
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+  color: var(--text-secondary);
+}
+
+.comic-ocr-card-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  color: var(--text-primary);
+}
+
+.comic-ocr-progress-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-secondary) 16%, transparent);
+}
+
+.comic-ocr-progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), #a78bfa);
+  transition: width 180ms ease-out;
+}
+
+.comic-ocr-card-stage,
+.comic-ocr-card-eta {
+  overflow-wrap: anywhere;
+}
+
+.comic-ocr-card-error {
+  border: 1px solid color-mix(in srgb, var(--danger) 34%, var(--border));
+  background: color-mix(in srgb, var(--danger) 8%, var(--bg-elevated));
+  color: var(--danger);
+}
+
+.comic-ocr-card-error small {
+  max-height: 5.4em;
+  overflow: auto;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.comic-ocr-card-error button {
+  justify-self: start;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Two-page CBZ prototype -------------------------------------------------- */
+
+.epub-reader.comic-reader {
+  grid-template-rows: 56px auto minmax(0, 1fr) 58px;
+  background: #11131a;
+}
+
+.comic-reader-format {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.comic-topbar-actions,
+.comic-zoom-controls {
+  display: flex;
+  align-items: center;
+}
+
+.comic-topbar-actions {
+  gap: 0.75rem;
+}
+
+.comic-zoom-controls {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+.comic-zoom-controls button {
+  height: 30px;
+  min-width: 32px;
+  padding: 0 0.45rem;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.comic-zoom-controls button:last-child {
+  border-right: 0;
+}
+
+.comic-zoom-controls button:hover:not(:disabled) {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.comic-zoom-controls button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.comic-prototype-notice {
+  padding: 0.45rem 1rem;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.14);
+  color: #f7c76c;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.comic-ocr-reader-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.45rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, #11131a);
+  color: #d9d5ff;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.comic-ocr-reader-notice > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comic-ocr-reader-notice--error {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 16%, #11131a);
+  color: #fecaca;
+}
+
+.comic-stage {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: clamp(42px, 6vw, 96px) minmax(0, 1fr) clamp(42px, 6vw, 96px);
+  align-items: stretch;
+}
+
+.comic-viewport {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.comic-page-scroll-content {
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.comic-page-frame {
+  position: relative;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #050505;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.42);
+}
+
+.comic-page-image,
+.comic-word-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.comic-page-image {
+  display: block;
+  object-fit: contain;
+}
+
+.comic-word-map {
+  pointer-events: none;
+}
+
+.comic-text-line {
+  position: absolute;
+  display: flex;
+  pointer-events: auto;
+}
+
+.comic-word-hit {
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+}
+
+.comic-word-hit--exact {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.comic-word-hit:hover,
+.comic-word-hit:focus-visible {
+  outline: 1px solid rgba(124, 106, 255, 0.95);
+  background: rgba(124, 106, 255, 0.28);
+}
+
+.comic-word-hit.saved {
+  box-shadow: inset 0 -2px rgba(34, 197, 94, 0.85);
+}
+
+.comic-page-loading,
+.comic-page-ocr-pending {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  color: white;
+  text-align: center;
+}
+
+.comic-page-loading {
+  inset: 0;
+  flex-direction: column;
+  background: #090a0e;
+  font-size: 0.82rem;
+}
+
+.comic-page-ocr-pending {
+  left: 50%;
+  bottom: 1.1rem;
+  width: min(88%, 34rem);
+  transform: translateX(-50%);
+  flex-direction: column;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 10px;
+  background: rgba(9, 10, 14, 0.9);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  font-size: clamp(0.64rem, 1vw, 0.82rem);
+  line-height: 1.35;
+  backdrop-filter: blur(8px);
+}
+
+.comic-page-ocr-pending--error {
+  border-color: rgba(248, 113, 113, 0.65);
+  color: #fecaca;
+}
+
+.comic-footer {
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 1rem;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.comic-footer-status {
+  flex: 1 1 0;
+}
+
+.comic-page-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.comic-page-controls > button {
+  min-width: 36px;
+  height: 32px;
+  padding: 0 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.comic-page-controls > button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+  color: var(--accent);
+}
+
+.comic-page-controls > button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.comic-page-input {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.comic-page-input input {
+  width: 4.25rem;
+  height: 32px;
+  padding: 0 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 800;
+  text-align: center;
+}
+
+.comic-page-scrubber {
+  width: min(18vw, 220px);
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.comic-page-navigator-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.comic-page-navigator-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.comic-page-navigator-item small {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+@media (max-width: 640px) {
+  .comic-reader-format {
+    display: none;
+  }
+
+  .comic-prototype-notice {
+    text-align: left;
+  }
+
+  .comic-ocr-reader-notice {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .comic-stage {
+    grid-template-columns: 38px minmax(0, 1fr) 38px;
+  }
+
+  .comic-viewport {
+    scrollbar-width: thin;
+  }
+
+  .comic-page-scroll-content {
+    padding: 0.45rem;
+  }
+
+  .epub-reader.comic-reader {
+    grid-template-rows: 56px auto minmax(0, 1fr) 64px;
+  }
+
+  .comic-footer {
+    padding: 0 0.45rem;
+  }
+
+  .comic-footer-status,
+  .comic-page-scrubber {
+    display: none;
+  }
+
+  .comic-page-controls {
+    width: 100%;
+  }
+
+  .comic-page-controls > button {
+    min-width: 34px;
+  }
+
+  .comic-page-input input {
+    width: 3.6rem;
+  }
 }
 
 .epub-card-title {
@@ -518,6 +1009,15 @@
 
   .epub-upload-btn {
     width: 100%;
+  }
+
+  .epub-upload-actions {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .epub-comic-language {
+    flex: 0 0 42%;
   }
 
   .epub-grid {
