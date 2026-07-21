@@ -40,7 +40,7 @@ final class WebRTCClient: NSObject, @unchecked Sendable {
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetoothHFP])
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
             try session.setActive(true)
         } catch {
             PolycastLog.runtime.error("[Polycast] WebRTC: audio session config error: \(error)")
