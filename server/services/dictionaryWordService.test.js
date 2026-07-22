@@ -26,7 +26,7 @@ test('dictionary word save creates, schedules, and awards through one service pi
     db,
     refreshSchedule: async (input) => {
       refreshCalls.push(input);
-      return { diagnostic: { code: 'schedule_repair_used' } };
+      return { diagnostic: null };
     },
     awardSaveXp: async () => ({ xpEarned: 5 }),
   });
@@ -40,20 +40,21 @@ test('dictionary word save creates, schedules, and awards through one service pi
     id: 'word-1', word: 'hola', next_review_date: '2026-07-12',
     created: true, _created: true, xpEarned: 5,
   });
-  assert.equal(result.diagnostic.code, 'schedule_repair_used');
+  assert.equal(result.diagnostic, null);
   assert.equal(refreshCalls[0].correlationId, 'correlation-1');
+  assert.equal(refreshCalls[0].source, 'mutation');
   assert.equal(db.calls[1].values[12], '["hola"]');
 });
 
 test('dictionary word save reuses an existing definition without awarding duplicate XP', async () => {
   const db = scriptedDb([
     { rows: [{ id: 'word-1', word: 'hola', forms: null }] },
-    { rows: [{ id: 'word-1', word: 'hola', forms: null, next_review_date: '2026-07-12' }] },
   ]);
   let awards = 0;
+  let refreshes = 0;
   const service = createDictionaryWordService({
     db,
-    refreshSchedule: async () => ({ diagnostic: null }),
+    refreshSchedule: async () => { refreshes += 1; return { diagnostic: null }; },
     awardSaveXp: async () => { awards += 1; return {}; },
   });
 
@@ -64,7 +65,8 @@ test('dictionary word save reuses an existing definition without awarding duplic
   assert.equal(result.status, 200);
   assert.equal(result.body.created, false);
   assert.equal(awards, 0);
-  assert.equal(db.calls.length, 2);
+  assert.equal(refreshes, 0);
+  assert.equal(db.calls.length, 1);
 });
 
 test('dictionary word update rejects an empty patch before querying', async () => {

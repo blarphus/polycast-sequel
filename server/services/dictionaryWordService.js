@@ -58,7 +58,9 @@ export function createDictionaryWordService({
         if (catalogEntry) catalogFields = { ...catalogFields, ...catalogEntryToWordFields(catalogEntry) };
       }
       const refreshWord = async (id) => {
-        const schedule = await refreshSchedule({ db, userId, timeZone, options: { force: true }, correlationId });
+        const schedule = await refreshSchedule({
+          db, userId, timeZone, correlationId, source: 'mutation',
+        });
         const { rows } = await db.query('SELECT * FROM saved_words WHERE id = $1 AND user_id = $2', [id, userId]);
         return { word: rows[0], diagnostic: schedule.diagnostic };
       };
@@ -91,14 +93,13 @@ export function createDictionaryWordService({
             row = rows[0];
           }
         }
-        const scheduled = await refreshWord(row.id);
         return {
           status: 200,
           body: {
-            ...scheduled.word, created: false, _created: false,
+            ...row, created: false, _created: false,
             ...(diagnostics.length ? { fallback_notices: diagnostics } : {}),
           },
-          diagnostic: scheduled.diagnostic,
+          diagnostic: null,
         };
       }
 

@@ -22,9 +22,22 @@ export async function refreshDictionarySchedule({
   timeZone,
   options,
   correlationId,
+  source = 'read-recovery',
 }) {
   const repair = await ensureScheduleCurrent(db, userId, timeZone, options);
   if (!repair.used) return { repair, diagnostic: null };
+  if (source === 'mutation') {
+    logger.info({
+      event: 'schedule_mutation_applied',
+      operation: 'refresh-study-schedule',
+      correlationId,
+      userId,
+      timeZone,
+      reason: repair.reason,
+      overdueCardsAdjusted: repair.changedCount,
+    }, 'Study schedule updated after mutation');
+    return { repair, diagnostic: null };
+  }
   if (repair.reason === 'local-day-boundary') {
     logger.info({
       event: 'schedule_day_boundary_applied',
