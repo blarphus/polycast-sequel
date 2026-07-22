@@ -148,7 +148,7 @@ function BookCard({ book, classBook, downloaded, downloadProgress, onOpen, onDel
 
 export default function Library() {
   const navigate = useNavigate();
-  const { books, loading, error, addFromFile, addFromClass, remove, retryOcr } = useBooks();
+  const { books, loading, error, migrationStatus, addFromFile, addFromClass, remove, retryOcr } = useBooks();
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -305,6 +305,7 @@ export default function Library() {
       {uploadError && <div className="epub-error">{uploadError}</div>}
       {error && <div className="epub-error">{error}</div>}
       {classBooksError && <div className="epub-error">Class library: {classBooksError}</div>}
+      {migrationStatus && <div className="epub-migration-status" role="status">{migrationStatus}</div>}
 
       {loading || classBooksLoading ? (
         <div className="epub-library-empty"><div className="loading-spinner" /></div>
