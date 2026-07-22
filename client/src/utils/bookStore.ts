@@ -1,10 +1,9 @@
 // ---------------------------------------------------------------------------
-// utils/bookStore.ts -- On-device book library (IndexedDB).
+// utils/bookStore.ts -- Browser processing cache for books (IndexedDB).
 //
-// EPUB bytes are too large for localStorage (~5MB cap), so books live in
-// IndexedDB. Light metadata + cover are in the `books` store (for a fast
-// library grid); EPUB bytes or compact comic documents are in `data`; reading position in
-// `progress`. Per-device only — no server sync.
+// Large processing artifacts live in IndexedDB rather than localStorage.
+// Profile and class books remain server-authorized; CBZ archives,
+// OCR results, and covers may be cached here so expensive OCR can resume.
 // ---------------------------------------------------------------------------
 
 import type { ComicDocument, ComicOcrProgress } from './cbz';

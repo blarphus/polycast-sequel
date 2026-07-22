@@ -28,16 +28,21 @@ export async function addUserLibraryBook({ userId, file, title, author, language
   removeStored = removeStoredClassBook, inspectZip = isZipArchive,
 } = {}) {
   if (!file?.path || !file?.originalname || !file?.size) {
-    throw new ValidationError([{ path: 'body.book', message: 'Choose an EPUB file' }]);
+    throw new ValidationError([{ path: 'body.book', message: 'Choose an EPUB or CBZ file' }]);
   }
-  if (!file.originalname.toLowerCase().endsWith('.epub')) {
-    throw new ValidationError([{ path: 'body.book', message: 'Personal cloud books must be EPUB files' }]);
+  const extension = file.originalname.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
+  if (extension !== 'epub' && extension !== 'cbz') {
+    throw new ValidationError([{ path: 'body.book', message: 'Personal cloud books must be EPUB or CBZ files' }]);
+  }
+  if (extension === 'cbz' && language !== 'en' && language !== 'es') {
+    throw new ValidationError([{ path: 'body.language', message: 'Choose English or Spanish for CBZ text recognition' }]);
   }
   if (!await inspectZip(file.path)) {
-    throw new ValidationError([{ path: 'body.book', message: 'The uploaded file is not a valid EPUB archive' }]);
+    throw new ValidationError([{ path: 'body.book', message: 'The uploaded file is not a valid ZIP-based EPUB or CBZ archive' }]);
   }
   const id = crypto.randomUUID();
-  const storageKey = createStorageKey(id, 'epub');
+  const storageKey = createStorageKey(id, extension);
+  const mimeType = extension === 'epub' ? 'application/epub+zip' : 'application/vnd.comicbook+zip';
   let promoted = false;
   try {
     await promoteUpload(file.path, storageKey);
@@ -46,9 +51,12 @@ export async function addUserLibraryBook({ userId, file, title, author, language
       `INSERT INTO user_library_books (
          id, owner_user_id, title, author, original_filename, format,
          mime_type, byte_size, storage_key, language
-       ) VALUES ($1, $2, $3, $4, $5, 'epub', 'application/epub+zip', $6, $7, $8)
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [id, userId, title.trim(), author?.trim() || null, file.originalname, file.size, storageKey, language || null],
+      [
+        id, userId, title.trim(), author?.trim() || null, file.originalname,
+        extension, mimeType, file.size, storageKey, language || null,
+      ],
     );
     return mapBook(rows[0]);
   } catch (error) {

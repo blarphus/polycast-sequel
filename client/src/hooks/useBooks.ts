@@ -1,11 +1,11 @@
 import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
 const runtimeLog = createScopedRuntimeLogger('web.hooks.usebooks');
 // ---------------------------------------------------------------------------
-// hooks/useBooks.ts -- Manage the on-device EPUB + resumable CBZ OCR library.
+// hooks/useBooks.ts -- Manage profile books plus resumable local CBZ OCR caches.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from 'react';
-import { listBooks, addBook, deleteBook, getStoredBook, type BookMeta } from '../utils/bookStore';
+import { listBooks, addBook, deleteBook, getStoredBook, updateBookMeta, type BookMeta } from '../utils/bookStore';
 import { parseEpub, coverBlob } from '../utils/epub';
 import { prepareCbzForOcr } from '../utils/cbz';
 import {
@@ -63,26 +63,97 @@ export function useBooks() {
           }, { source: 'web.library', operation: 'migrate-legacy-epub' });
         }
       }
+      const legacyComics = localBooks.filter((book) => (
+        book.format === 'comic' && book.source !== 'class' && book.source !== 'server'
+      ));
+      for (const legacy of legacyComics) {
+        let uploadedId: string | null = null;
+        try {
+          const stored = await getStoredBook(legacy.id);
+          if (!stored || stored.format !== 'comic' || !stored.comic.archive) continue;
+          const language = legacy.language || stored.comic.language;
+          if (language !== 'en' && language !== 'es') {
+            throw new Error('[legacy_cbz_language_missing] Choose English or Spanish before this comic can move to your profile.');
+          }
+          const file = new File(
+            [stored.comic.archive],
+            legacy.originalFilename || stored.comic.sourceFileName || `${legacy.title}.cbz`,
+            { type: 'application/vnd.comicbook+zip' },
+          );
+          const uploaded = await uploadUserLibraryBook(file, {
+            title: legacy.title, author: legacy.author, language,
+          });
+          uploadedId = uploaded.id;
+          const { comic, cover } = await prepareCbzForOcr(file, language);
+          await addBook({
+            ...legacy,
+            id: uploaded.id,
+            cover,
+            addedAt: new Date(uploaded.created_at).getTime(),
+            source: 'server',
+            serverBookId: uploaded.id,
+            originalFilename: uploaded.original_filename,
+            byteSize: uploaded.byte_size,
+            ocr: comic.ocr,
+            pageCount: comic.pages.length,
+          }, comic);
+          await deleteBook(legacy.id);
+          startComicOcr(uploaded.id);
+        } catch (err) {
+          if (uploadedId) {
+            try {
+              await deleteBook(legacy.id);
+            } catch (cleanupError) {
+              try {
+                await updateBookMeta(legacy.id, { source: 'server', serverBookId: uploadedId });
+              } catch (markError) {
+                emitFallbackDiagnostic({
+                  code: 'legacy_cbz_migration_cleanup_failed', severity: 'warning',
+                  title: 'Old comic cache could not be marked',
+                  message: 'The CBZ is safely in your profile, but this browser may try to migrate its old cache again.',
+                  detail: `cleanup=${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}; mark=${markError instanceof Error ? markError.message : String(markError)}`,
+                }, { source: 'web.library', operation: 'finalize-legacy-cbz-migration' });
+              }
+            }
+          }
+          emitFallbackDiagnostic({
+            code: 'legacy_cbz_cloud_migration_failed',
+            severity: 'warning',
+            title: uploadedId ? 'Comic uploaded; OCR cache unavailable' : 'Comic still stored on this device',
+            message: uploadedId
+              ? `“${legacy.title}” is in your profile library, but its browser OCR cache could not be prepared.`
+              : `“${legacy.title}” could not be moved to your profile library yet.`,
+            detail: err instanceof Error ? err.message : String(err),
+          }, { source: 'web.library', operation: 'migrate-legacy-cbz' });
+        }
+      }
       const cachedClassEpubs = localBooks.filter((book) => book.format === 'epub' && book.source === 'class');
       await Promise.all(cachedClassEpubs.map((book) => deleteBook(book.id)));
-      if (legacyEpubs.length || cachedClassEpubs.length) {
+      if (legacyEpubs.length || legacyComics.length || cachedClassEpubs.length) {
         localBooks = await listBooks();
         serverBooks = await getUserLibraryBooks();
       }
+      const localByServerId = new Map(
+        localBooks
+          .filter((book) => book.source === 'server')
+          .map((book) => [book.serverBookId || book.id, book]),
+      );
       const remote = serverBooks.map((book): BookMeta => ({
+        ...(book.format === 'cbz' ? localByServerId.get(book.id) : undefined),
         id: book.id,
         title: book.title,
         author: book.author || '',
-        cover: null,
+        cover: book.format === 'cbz' ? localByServerId.get(book.id)?.cover || null : null,
         addedAt: new Date(book.created_at).getTime(),
-        format: 'epub',
+        format: book.format === 'cbz' ? 'comic' : 'epub',
         language: book.language || undefined,
         source: 'server',
         serverBookId: book.id,
         originalFilename: book.original_filename,
         byteSize: book.byte_size,
       }));
-      setBooks([...remote, ...localBooks]
+      const visibleLocal = localBooks.filter((book) => book.source !== 'server');
+      setBooks([...remote, ...visibleLocal]
         .sort((a, b) => b.addedAt - a.addedAt));
       setError('');
     } catch (err) {
@@ -113,31 +184,47 @@ export function useBooks() {
 
   /** Parse + store an uploaded EPUB or supported CBZ. Returns the new book id. */
   const addFromFile = useCallback(async (file: File, comicLanguage?: 'en' | 'es'): Promise<BookImportResult> => {
-    const id = `${Date.now()}-${Math.round(performance.now())}`;
     if (file.name.toLowerCase().endsWith('.cbz')) {
       if (!comicLanguage) {
         throw new Error('[cbz_ocr_language_required] Choose the language printed in this comic before uploading it.');
       }
       const { comic, cover } = await prepareCbzForOcr(file, comicLanguage);
+      const uploaded = await uploadUserLibraryBook(file, {
+        title: comic.title,
+        author: comic.author,
+        language: comicLanguage,
+      });
       const meta: BookMeta = {
-        id,
+        id: uploaded.id,
         title: comic.title,
         author: comic.author,
         cover,
-        addedAt: Date.now(),
+        addedAt: new Date(uploaded.created_at).getTime(),
         format: 'comic',
         pageCount: comic.pages.length,
         language: comicLanguage,
         ocr: comic.ocr,
+        source: 'server',
+        serverBookId: uploaded.id,
+        originalFilename: uploaded.original_filename,
+        byteSize: uploaded.byte_size,
       };
       try {
         await addBook(meta, comic);
       } catch (error) {
-        throw new Error(`[cbz_storage_failed] Polycast could not store this CBZ on the device: ${error instanceof Error ? error.message : String(error)}`);
+        emitFallbackDiagnostic({
+          code: 'cbz_ocr_cache_failed',
+          severity: 'warning',
+          title: 'Comic uploaded; OCR cache unavailable',
+          message: `“${comic.title}” is saved to your profile, but this browser could not prepare its text cache.`,
+          detail: error instanceof Error ? error.message : String(error),
+        }, { source: 'web.library', operation: 'cache-profile-cbz-for-ocr' });
+        await refresh();
+        return { id: uploaded.id, format: 'comic', processing: false };
       }
       await refresh();
-      startComicOcr(id);
-      return { id, format: 'comic', processing: true };
+      startComicOcr(uploaded.id);
+      return { id: uploaded.id, format: 'comic', processing: true };
     }
 
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -154,8 +241,17 @@ export function useBooks() {
   const remove = useCallback(async (id: string) => {
     cancelComicOcr(id);
     const book = books.find((candidate) => candidate.id === id);
-    if (book?.source === 'server') await deleteUserLibraryBook(id);
-    else await deleteBook(id);
+    if (book?.source === 'server') {
+      await deleteUserLibraryBook(id);
+      await deleteBook(id).catch((error) => {
+        emitFallbackDiagnostic({
+          code: 'cbz_local_cache_cleanup_failed', severity: 'warning',
+          title: 'Book removed; browser cache remains',
+          message: 'The profile book was deleted, but this browser could not clear its processing cache.',
+          detail: error instanceof Error ? error.message : String(error),
+        }, { source: 'web.library', operation: 'clear-deleted-book-cache' });
+      });
+    } else await deleteBook(id);
     await refresh();
   }, [books, refresh]);
 

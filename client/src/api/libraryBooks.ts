@@ -6,7 +6,7 @@ export interface UserLibraryBook {
   title: string;
   author: string | null;
   original_filename: string;
-  format: 'epub';
+  format: 'epub' | 'cbz';
   mime_type: string;
   byte_size: number;
   language: 'en' | 'es' | null;

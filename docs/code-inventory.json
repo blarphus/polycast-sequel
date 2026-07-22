@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 543,
-    "lines": 87266,
-    "declarations": 2403,
+    "files": 544,
+    "lines": 87503,
+    "declarations": 2404,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 39,
     "zeroCallerCandidates": 3
@@ -555,7 +555,7 @@
         },
         {
           "name": "getClassBooks",
-          "callers": 2,
+          "callers": 4,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -1139,13 +1139,13 @@
       "symbols": [
         {
           "name": "getUserLibraryBooks",
-          "callers": 3,
+          "callers": 5,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "uploadUserLibraryBook",
-          "callers": 3,
+          "callers": 5,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -1175,13 +1175,13 @@
         },
         {
           "name": "getServerBookProgress",
-          "callers": 2,
+          "callers": 4,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "setServerBookProgress",
-          "callers": 2,
+          "callers": 4,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -1882,7 +1882,7 @@
     },
     {
       "file": "client/src/components/ComicReader.tsx",
-      "lines": 495,
+      "lines": 528,
       "responsibility": "web component UI",
       "sideEffects": [
         "UI"
@@ -3582,7 +3582,7 @@
     },
     {
       "file": "client/src/hooks/useBooks.ts",
-      "lines": 235,
+      "lines": 331,
       "responsibility": "application support",
       "sideEffects": [],
       "testCoverage": [],
@@ -3620,7 +3620,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -4759,7 +4759,7 @@
     },
     {
       "file": "client/src/pages/Library.tsx",
-      "lines": 339,
+      "lines": 338,
       "responsibility": "web route UI",
       "sideEffects": [],
       "testCoverage": [
@@ -4985,7 +4985,7 @@
     },
     {
       "file": "client/src/pages/Reader.tsx",
-      "lines": 517,
+      "lines": 564,
       "responsibility": "web route UI",
       "sideEffects": [
         "UI"
@@ -5744,7 +5744,7 @@
         },
         {
           "name": "cleanup",
-          "callers": 28,
+          "callers": 29,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -5770,7 +5770,7 @@
     },
     {
       "file": "client/src/utils/bookStore.ts",
-      "lines": 172,
+      "lines": 171,
       "responsibility": "application support",
       "sideEffects": [
         "persistence"
@@ -5811,19 +5811,19 @@
         },
         {
           "name": "getStoredBook",
-          "callers": 8,
+          "callers": 10,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "addBook",
-          "callers": 4,
+          "callers": 7,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "updateBookMeta",
-          "callers": 2,
+          "callers": 4,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -5847,7 +5847,7 @@
         },
         {
           "name": "deleteBook",
-          "callers": 4,
+          "callers": 7,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -5872,7 +5872,8 @@
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/cbz.test.ts",
-        "server/test/classBookService.test.js"
+        "server/test/classBookService.test.js",
+        "server/test/userLibraryBookService.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -5897,7 +5898,7 @@
         },
         {
           "name": "prepareCbzForOcr",
-          "callers": 3,
+          "callers": 6,
           "testReferences": [
             "client/src/test/cbz.test.ts"
           ],
@@ -6056,7 +6057,7 @@
         },
         {
           "name": "startComicOcr",
-          "callers": 7,
+          "callers": 10,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -6530,7 +6531,7 @@
         },
         {
           "name": "emitFallbackDiagnostic",
-          "callers": 50,
+          "callers": 57,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -8182,7 +8183,7 @@
         },
         {
           "name": "position",
-          "callers": 143,
+          "callers": 147,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx"
           ],
@@ -8571,7 +8572,7 @@
         },
         {
           "name": "position",
-          "callers": 143,
+          "callers": 147,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx"
           ],
@@ -8798,7 +8799,7 @@
         },
         {
           "name": "application",
-          "callers": 58,
+          "callers": 60,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "client/src/test/epub.test.ts",
@@ -9947,7 +9948,7 @@
       "symbols": [
         {
           "name": "BookMeta",
-          "callers": 25,
+          "callers": 27,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -9959,7 +9960,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -10077,7 +10078,7 @@
         },
         {
           "name": "progress",
-          "callers": 224,
+          "callers": 225,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -10630,7 +10631,7 @@
         },
         {
           "name": "save",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts",
             "server/services/dictionaryWordService.test.js"
@@ -10639,7 +10640,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -10648,7 +10649,7 @@
         },
         {
           "name": "clear",
-          "callers": 46,
+          "callers": 48,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -10735,7 +10736,7 @@
         },
         {
           "name": "data",
-          "callers": 898,
+          "callers": 897,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -10752,7 +10753,7 @@
         },
         {
           "name": "string",
-          "callers": 1896,
+          "callers": 1897,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
@@ -11434,7 +11435,7 @@
         },
         {
           "name": "on",
-          "callers": 288,
+          "callers": 286,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -11997,7 +11998,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12121,7 +12122,7 @@
         },
         {
           "name": "body",
-          "callers": 692,
+          "callers": 693,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -12228,7 +12229,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12306,7 +12307,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12500,7 +12501,7 @@
         },
         {
           "name": "saveProgress",
-          "callers": 1,
+          "callers": 3,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -12861,7 +12862,7 @@
         },
         {
           "name": "save",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts",
             "server/services/dictionaryWordService.test.js"
@@ -12932,7 +12933,7 @@
         },
         {
           "name": "save",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts",
             "server/services/dictionaryWordService.test.js"
@@ -12972,7 +12973,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -13217,7 +13218,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14043,7 +14044,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14091,7 +14092,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14308,7 +14309,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14681,7 +14682,7 @@
         },
         {
           "name": "sync",
-          "callers": 30,
+          "callers": 29,
           "testReferences": [
             "extension/test/app-bridge.test.mjs"
           ],
@@ -14936,7 +14937,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -15113,7 +15114,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -15140,7 +15141,7 @@
         },
         {
           "name": "save",
-          "callers": 101,
+          "callers": 102,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts",
             "server/services/dictionaryWordService.test.js"
@@ -15387,7 +15388,7 @@
         },
         {
           "name": "load",
-          "callers": 135,
+          "callers": 136,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -18318,7 +18319,7 @@
         },
         {
           "name": "ValidationError",
-          "callers": 24,
+          "callers": 25,
           "testReferences": [
             "server/lib/httpErrors.test.js"
           ],
@@ -19316,7 +19317,7 @@
       "symbols": [
         {
           "name": "migrate",
-          "callers": 10,
+          "callers": 12,
           "testReferences": [
             "server/test/migrate.test.js"
           ],
@@ -19355,7 +19356,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19380,7 +19381,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19405,7 +19406,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19436,7 +19437,7 @@
         },
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19461,7 +19462,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19486,7 +19487,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19511,7 +19512,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19536,7 +19537,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19561,7 +19562,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19586,7 +19587,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19611,7 +19612,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19636,7 +19637,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19661,7 +19662,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19687,7 +19688,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19713,7 +19714,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19738,7 +19739,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19763,7 +19764,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19788,7 +19789,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19813,7 +19814,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19838,7 +19839,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19863,7 +19864,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19888,7 +19889,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19914,7 +19915,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19939,7 +19940,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19964,7 +19965,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19989,7 +19990,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20014,7 +20015,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20039,7 +20040,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20064,7 +20065,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20089,7 +20090,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20114,7 +20115,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20139,7 +20140,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20164,7 +20165,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20189,7 +20190,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20214,7 +20215,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20239,7 +20240,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20264,7 +20265,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20289,7 +20290,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20314,7 +20315,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20339,7 +20340,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20370,7 +20371,7 @@
         },
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20395,7 +20396,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20420,7 +20421,32 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 112,
+          "callers": 113,
+          "testReferences": [
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "server/migrations/044-user-library-cbz.js",
+      "lines": 11,
+      "responsibility": "application support",
+      "sideEffects": [
+        "database"
+      ],
+      "testCoverage": [
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "up",
+          "callers": 113,
           "testReferences": [
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/scheduleTriggerMigration.test.js"
@@ -22217,7 +22243,7 @@
     },
     {
       "file": "server/services/userLibraryBookService.js",
-      "lines": 106,
+      "lines": 114,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "database"
@@ -22253,7 +22279,9 @@
         {
           "name": "getUserLibraryBook",
           "callers": 3,
-          "testReferences": [],
+          "testReferences": [
+            "server/test/userLibraryBookService.test.js"
+          ],
           "disposition": "retain"
         },
         {
@@ -23413,7 +23441,7 @@
         },
         {
           "name": "cleanup",
-          "callers": 28,
+          "callers": 29,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -23746,7 +23774,7 @@
     },
     {
       "file": "server/test/userLibraryBookService.test.js",
-      "lines": 66,
+      "lines": 110,
       "responsibility": "test",
       "sideEffects": [
         "database"
