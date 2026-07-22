@@ -1,8 +1,8 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 535,
-    "lines": 86606,
+    "files": 537,
+    "lines": 86686,
     "declarations": 2383,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 39,
@@ -424,7 +424,7 @@
         },
         {
           "name": "login",
-          "callers": 50,
+          "callers": 49,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts"
           ],
@@ -4446,7 +4446,8 @@
         "server/services/dictionaryWordService.test.js",
         "server/test/dictionaryFallbackNotice.test.js",
         "server/test/dictionaryPagination.integration.test.js",
-        "server/test/dictionaryQueries.test.js"
+        "server/test/dictionaryQueries.test.js",
+        "server/test/dictionaryScheduleDiagnostic.test.js"
       ],
       "disposition": "reviewed-retain",
       "dispositionReason": "One stateful screen/component lifecycle; reusable domain, card, popup, and transport seams are extracted.",
@@ -6431,7 +6432,7 @@
       "symbols": [
         {
           "name": "correlationId",
-          "callers": 222,
+          "callers": 223,
           "testReferences": [
             "client/src/test/callSignalContract.test.ts",
             "client/src/test/groupCallLifecycle.test.tsx",
@@ -6881,7 +6882,8 @@
         "server/lib/srsAlgorithm.test.js",
         "server/lib/srsUpdate.test.js",
         "server/services/dictionaryStudyService.test.js",
-        "server/test/dictionaryQueries.test.js"
+        "server/test/dictionaryQueries.test.js",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -7258,7 +7260,7 @@
     },
     {
       "file": "extension/background.js",
-      "lines": 1208,
+      "lines": 1198,
       "responsibility": "extension runtime/UI",
       "sideEffects": [
         "network",
@@ -7485,12 +7487,6 @@
         {
           "name": "broadcastFallbackNotice",
           "callers": 10,
-          "testReferences": [],
-          "disposition": "retain"
-        },
-        {
-          "name": "clearResolvedSessionExpirationDiagnostic",
-          "callers": 1,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -8867,7 +8863,7 @@
         },
         {
           "name": "login",
-          "callers": 50,
+          "callers": 49,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts"
           ],
@@ -9002,7 +8998,7 @@
       "symbols": [
         {
           "name": "login",
-          "callers": 50,
+          "callers": 49,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts"
           ],
@@ -10547,7 +10543,7 @@
         },
         {
           "name": "clear",
-          "callers": 47,
+          "callers": 46,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -11262,7 +11258,9 @@
         "server/services/dictionaryStudyService.test.js",
         "server/test/callSignaling.test.js",
         "server/test/dictionaryPagination.integration.test.js",
-        "server/test/groupCallSocket.test.js"
+        "server/test/dictionaryScheduleDiagnostic.test.js",
+        "server/test/groupCallSocket.test.js",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -11338,7 +11336,9 @@
             "server/lib/srsAlgorithm.test.js",
             "server/lib/srsUpdate.test.js",
             "server/test/callSignaling.test.js",
-            "server/test/groupCallSocket.test.js"
+            "server/test/dictionaryScheduleDiagnostic.test.js",
+            "server/test/groupCallSocket.test.js",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         },
@@ -11657,7 +11657,7 @@
     },
     {
       "file": "ios/Polycast/Sources/Core/WebRTCClient.swift",
-      "lines": 472,
+      "lines": 470,
       "responsibility": "iOS core/runtime",
       "sideEffects": [
         "logging"
@@ -11923,7 +11923,7 @@
         },
         {
           "name": "remove",
-          "callers": 87,
+          "callers": 86,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -12283,7 +12283,7 @@
         },
         {
           "name": "remove",
-          "callers": 87,
+          "callers": 86,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -16516,7 +16516,7 @@
         },
         {
           "name": "main",
-          "callers": 74,
+          "callers": 73,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -16968,6 +16968,7 @@
         "server/test/classroomEnrollment.test.js",
         "server/test/dictionaryPagination.integration.test.js",
         "server/test/dictionaryQueries.test.js",
+        "server/test/dictionaryScheduleDiagnostic.test.js",
         "server/test/englishFrequencyCatalog.test.js",
         "server/test/ttsService.test.js"
       ],
@@ -17107,7 +17108,7 @@
       "symbols": [
         {
           "name": "main",
-          "callers": 74,
+          "callers": 73,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -19224,16 +19225,18 @@
       ],
       "testCoverage": [
         "ios/Polycast/UITests/PolycastUITests.swift",
-        "server/test/migrate.test.js"
+        "server/test/migrate.test.js",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19247,16 +19250,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19270,16 +19275,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19293,7 +19300,8 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -19306,9 +19314,10 @@
         },
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19322,16 +19331,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19345,16 +19356,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19368,16 +19381,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19391,16 +19406,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19414,16 +19431,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19437,16 +19456,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19460,16 +19481,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19483,16 +19506,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19506,16 +19531,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19530,16 +19557,18 @@
         "logging"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19554,16 +19583,18 @@
         "logging"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19577,16 +19608,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19600,16 +19633,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19623,16 +19658,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19646,16 +19683,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19669,16 +19708,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19692,16 +19733,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19715,16 +19758,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19739,16 +19784,18 @@
         "logging"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19762,16 +19809,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19785,16 +19834,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19808,16 +19859,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19831,16 +19884,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19854,16 +19909,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19877,16 +19934,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19900,16 +19959,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19923,16 +19984,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19946,16 +20009,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19969,16 +20034,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -19992,16 +20059,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -20015,16 +20084,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -20038,16 +20109,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -20061,16 +20134,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -20084,16 +20159,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -20107,16 +20184,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -20130,16 +20209,18 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -20153,7 +20234,8 @@
         "database"
       ],
       "testCoverage": [
-        "ios/Polycast/UITests/PolycastUITests.swift"
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -20166,9 +20248,35 @@
         },
         {
           "name": "up",
-          "callers": 109,
+          "callers": 110,
           "testReferences": [
-            "ios/Polycast/UITests/PolycastUITests.swift"
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "server/migrations/042-only-dirty-schedule-on-real-changes.js",
+      "lines": 31,
+      "responsibility": "application support",
+      "sideEffects": [
+        "database"
+      ],
+      "testCoverage": [
+        "ios/Polycast/UITests/PolycastUITests.swift",
+        "server/test/scheduleTriggerMigration.test.js"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "up",
+          "callers": 110,
+          "testReferences": [
+            "ios/Polycast/UITests/PolycastUITests.swift",
+            "server/test/scheduleTriggerMigration.test.js"
           ],
           "disposition": "retain"
         }
@@ -20734,7 +20842,7 @@
       "symbols": [
         {
           "name": "login",
-          "callers": 50,
+          "callers": 49,
           "testReferences": [
             "client/src/test/offlineDictionary.test.ts"
           ],
@@ -20826,7 +20934,7 @@
         },
         {
           "name": "main",
-          "callers": 74,
+          "callers": 73,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -20924,7 +21032,7 @@
         },
         {
           "name": "main",
-          "callers": 74,
+          "callers": 73,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -21035,7 +21143,7 @@
         },
         {
           "name": "main",
-          "callers": 74,
+          "callers": 73,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -21077,7 +21185,7 @@
         },
         {
           "name": "main",
-          "callers": 74,
+          "callers": 73,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -21129,7 +21237,7 @@
         },
         {
           "name": "main",
-          "callers": 74,
+          "callers": 73,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -21501,7 +21609,7 @@
     },
     {
       "file": "server/services/dictionaryScheduleService.js",
-      "lines": 43,
+      "lines": 56,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "logging"
@@ -21522,15 +21630,17 @@
         },
         {
           "name": "refreshDictionarySchedule",
-          "callers": 4,
-          "testReferences": [],
+          "callers": 6,
+          "testReferences": [
+            "server/test/dictionaryScheduleDiagnostic.test.js"
+          ],
           "disposition": "retain"
         }
       ]
     },
     {
       "file": "server/services/dictionaryStudyService.js",
-      "lines": 141,
+      "lines": 149,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "database",
@@ -21568,7 +21678,7 @@
     },
     {
       "file": "server/services/dictionaryStudyService.test.js",
-      "lines": 65,
+      "lines": 71,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
@@ -21578,7 +21688,7 @@
     },
     {
       "file": "server/services/dictionaryWordService.js",
-      "lines": 177,
+      "lines": 178,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "database"
@@ -21609,7 +21719,7 @@
     },
     {
       "file": "server/services/dictionaryWordService.test.js",
-      "lines": 88,
+      "lines": 90,
       "responsibility": "test",
       "sideEffects": [
         "persistence"
@@ -23279,7 +23389,7 @@
     },
     {
       "file": "server/test/dictionaryScheduleDiagnostic.test.js",
-      "lines": 30,
+      "lines": 46,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
@@ -23349,6 +23459,16 @@
     {
       "file": "server/test/progression.test.js",
       "lines": 23,
+      "responsibility": "test",
+      "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
+      "file": "server/test/scheduleTriggerMigration.test.js",
+      "lines": 15,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],

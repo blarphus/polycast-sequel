@@ -14,6 +14,7 @@ import { applySrsReview } from '../lib/srsUpdate.js';
 import { generateStageSentence } from '../lib/stageSentence.js';
 import { recordFlashcardReview } from './learningSessionService.js';
 import logger from '../logger.js';
+import { refreshDictionarySchedule } from './dictionaryScheduleService.js';
 
 export async function scheduleStageSentence({ db, card, newStage }) {
   const { rows: langRows } = await db.query(
@@ -49,6 +50,7 @@ export function createDictionaryStudyService({
   reviewCard = applySrsReview,
   recordReview = recordFlashcardReview,
   idempotentMutation = runIdempotentMutation,
+  refreshSchedule = refreshDictionarySchedule,
 } = {}) {
   return {
     calendar(userId, year, month, timeZone) {
@@ -131,6 +133,12 @@ export function createDictionaryStudyService({
         });
         if (!updated) return { status: 404, body: { error: 'Word not found', code: 'dictionary_word_not_found' } };
         await recordReview(db, userId, learningSessionId, answer === 'good');
+        await refreshSchedule({
+          db,
+          userId,
+          timeZone,
+          source: 'mutation',
+        });
         return { status: 200, body: updated };
       });
     },
