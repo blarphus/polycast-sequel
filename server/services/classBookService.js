@@ -185,5 +185,6 @@ export async function deleteClassroomBook(bookId, userId, {
   if (!book) throw new NotFoundError('Class book not found', { code: 'class_book_not_found' });
   await requireTeacherClassroom(book.classroom_id, userId, getClassroom);
   await db.query('DELETE FROM classroom_books WHERE id = $1', [bookId]);
+  await db.query("DELETE FROM library_book_progress WHERE book_id = $1 AND source = 'class'", [bookId]);
   await removeStored(book.storage_key, { ignoreMissing: true });
 }

@@ -33,7 +33,7 @@ export function createStorageKey(bookId, format) {
 
 export function storedBookPath(storageKey) {
   if (path.basename(storageKey) !== storageKey || !/^[a-f0-9-]+\.(?:epub|cbz|pdf)$/i.test(storageKey)) {
-    throw new Error('Invalid classroom book storage key');
+    throw new Error('Invalid book storage key');
   }
   return path.join(classBookStorageRoot(), storageKey);
 }
