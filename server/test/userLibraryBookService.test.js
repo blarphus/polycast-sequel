@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  addUserLibraryBook, getLibraryBookProgress, listUserLibraryBooks, setLibraryBookProgress,
+  addUserLibraryBook, getLibraryBookProgress, getUserLibraryBook,
+  listUserLibraryBooks, setLibraryBookProgress,
 } from '../services/userLibraryBookService.js';
 
 const userId = '11111111-1111-4111-8111-111111111111';
@@ -15,8 +16,8 @@ test('personal EPUB upload is owned by the authenticated profile and stored once
       assert.equal(values[1], userId);
       return { rows: [{
         id: values[0], owner_user_id: values[1], title: values[2], author: values[3],
-        original_filename: values[4], format: 'epub', mime_type: 'application/epub+zip',
-        byte_size: values[5], storage_key: values[6], language: values[7], created_at: new Date().toISOString(),
+        original_filename: values[4], format: values[5], mime_type: values[6],
+        byte_size: values[7], storage_key: values[8], language: values[9], created_at: new Date().toISOString(),
       }] };
     },
   };
@@ -34,10 +35,53 @@ test('personal EPUB upload is owned by the authenticated profile and stored once
   assert.match(promoted.key, /^[a-f0-9-]+\.epub$/);
 });
 
+test('personal CBZ upload is profile-owned and requires its OCR language', async () => {
+  const rows = [];
+  const db = {
+    async query(_sql, values) {
+      rows.push(values);
+      return { rows: [{
+        id: values[0], owner_user_id: values[1], title: values[2], author: values[3],
+        original_filename: values[4], format: values[5], mime_type: values[6],
+        byte_size: values[7], storage_key: values[8], language: values[9], created_at: new Date().toISOString(),
+      }] };
+    },
+  };
+  const result = await addUserLibraryBook({
+    userId, file: { path: '/tmp/comic-upload', originalname: 'comic.cbz', size: 8192 },
+    title: 'Comic', author: '', language: 'en',
+  }, {
+    db, inspectZip: async () => true, promoteUpload: async () => {},
+    removeStored: async () => assert.fail('successful upload must remain stored'),
+  });
+  assert.equal(result.format, 'cbz');
+  assert.equal(result.mime_type, 'application/vnd.comicbook+zip');
+  assert.match(rows[0][8], /^[a-f0-9-]+\.cbz$/);
+
+  await assert.rejects(
+    addUserLibraryBook({
+      userId, file: { path: '/tmp/no-language', originalname: 'comic.cbz', size: 10 },
+      title: 'Comic', author: '', language: null,
+    }, { db, inspectZip: async () => true }),
+    /Choose English or Spanish/,
+  );
+});
+
 test('personal library listing is strictly scoped to one profile', async () => {
   let values;
   await listUserLibraryBooks(userId, { db: { query: async (_sql, params) => { values = params; return { rows: [] }; } } });
   assert.deepEqual(values, [userId]);
+});
+
+test('profile book file access requires the owning profile', async () => {
+  let values;
+  await assert.rejects(
+    getUserLibraryBook(bookId, userId, {
+      db: { query: async (_sql, params) => { values = params; return { rows: [] }; } },
+    }),
+    (error) => error?.code === 'library_book_not_found',
+  );
+  assert.deepEqual(values, [bookId, userId]);
 });
 
 test('reading progress is keyed by profile, book, and source', async () => {

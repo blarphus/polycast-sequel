@@ -7,6 +7,8 @@ import type { PopupState } from '../textTokens';
 import { getBookMeta, getComicPageResult, getProgress, setProgress, type ComicPageRecord } from '../utils/bookStore';
 import { COMIC_OCR_PROGRESS_EVENT, startComicOcr, type ComicOcrProgressEvent } from '../utils/comicOcr';
 import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
+import { getServerBookProgress, setServerBookProgress } from '../api/libraryBooks';
+import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 const runtimeLog = createScopedRuntimeLogger('web.components.comicreader');
 
@@ -17,6 +19,7 @@ interface ComicReaderProps {
   comic: ComicDocument;
   nativeLanguage: string | null;
   savedWords: SavedWordControls;
+  progressSource?: 'personal' | 'class';
   onBack: () => void;
 }
 
@@ -24,7 +27,7 @@ function cleanLookupWord(word: string): string {
   return word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}'’\-]+$/gu, '');
 }
 
-export default function ComicReader({ bookId, comic, nativeLanguage, savedWords, onBack }: ComicReaderProps) {
+export default function ComicReader({ bookId, comic, nativeLanguage, savedWords, progressSource, onBack }: ComicReaderProps) {
   const [pageIndex, setPageIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [pageNavigatorOpen, setPageNavigatorOpen] = useState(false);
@@ -36,6 +39,7 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
   const [pageResult, setPageResult] = useState<ComicPageRecord | null>(null);
   const [pageLoadError, setPageLoadError] = useState('');
   const [ocrProgress, setOcrProgress] = useState<ComicOcrProgress | null>(comic.ocr || null);
+  const [progressReady, setProgressReady] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const archiveSessionRef = useRef<Promise<ComicArchiveSession> | null>(null);
@@ -147,15 +151,44 @@ export default function ComicReader({ bookId, comic, nativeLanguage, savedWords,
 
   useEffect(() => {
     let cancelled = false;
-    void getProgress(bookId).then((progress) => {
-      if (!cancelled && progress) setPageIndex(Math.min(progress.pageIndex, comic.pages.length - 1));
-    });
+    setProgressReady(false);
+    const loadProgress = progressSource
+      ? getServerBookProgress(bookId, progressSource)
+      : getProgress(bookId);
+    void loadProgress
+      .then((progress) => {
+        if (!cancelled && progress) {
+          const savedPage = 'page_index' in progress ? progress.page_index : progress.pageIndex;
+          setPageIndex(Math.min(savedPage, comic.pages.length - 1));
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        emitFallbackDiagnostic({
+          code: 'comic_progress_load_failed', severity: 'warning',
+          title: 'Reading position unavailable',
+          message: 'The comic opened at the first page because its saved position could not be loaded.',
+          detail: error instanceof Error ? error.message : String(error),
+        }, { source: 'web.comic-reader', operation: 'load-comic-reading-position' });
+      })
+      .finally(() => { if (!cancelled) setProgressReady(true); });
     return () => { cancelled = true; };
-  }, [bookId, comic.pages.length]);
+  }, [bookId, comic.pages.length, progressSource]);
 
   useEffect(() => {
-    void setProgress({ bookId, chapterIndex: 0, pageIndex });
-  }, [bookId, pageIndex]);
+    if (!progressReady) return;
+    const saveProgress = progressSource
+      ? setServerBookProgress(bookId, progressSource, 0, pageIndex)
+      : setProgress({ bookId, chapterIndex: 0, pageIndex });
+    void saveProgress.catch((error) => {
+      emitFallbackDiagnostic({
+        code: 'comic_progress_save_failed', severity: 'warning',
+        title: 'Reading position not saved',
+        message: 'The comic remains open, but this page could not be saved to your profile.',
+        detail: error instanceof Error ? error.message : String(error),
+      }, { source: 'web.comic-reader', operation: 'save-comic-reading-position' });
+    });
+  }, [bookId, pageIndex, progressReady, progressSource]);
 
   useEffect(() => {
     setPageInput(String(pageIndex + 1));

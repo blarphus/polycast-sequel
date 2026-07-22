@@ -20,12 +20,15 @@ import ComicReader from '../components/ComicReader';
 import { PopupState } from '../textTokens';
 import { ChevronLeftIcon, ChevronRightIcon, BookOpenIcon, CloseIcon, TypeIcon, SunIcon, MoonIcon } from '../components/icons';
 import { parseEpub, imageObjectUrl, type ParsedEpub } from '../utils/epub';
-import { getStoredBook, getProgress, setProgress } from '../utils/bookStore';
-import type { ComicDocument } from '../utils/cbz';
+import { addBook, getStoredBook, getProgress, setProgress, type BookMeta } from '../utils/bookStore';
+import { prepareCbzForOcr, type ComicDocument } from '../utils/cbz';
+import { startComicOcr } from '../utils/comicOcr';
 import { READER_FONTS, fontStack, loadReaderPrefs, saveReaderPrefs, type ReaderTheme } from '../utils/readerPrefs';
 import {
-  downloadSharedClassBook, downloadUserLibraryBook, getServerBookProgress, setServerBookProgress,
+  downloadSharedClassBook, downloadUserLibraryBook, getServerBookProgress, getUserLibraryBooks,
+  setServerBookProgress,
 } from '../api/libraryBooks';
+import { getClassBooks } from '../api/classroom';
 import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 const GAP = 48;
@@ -84,10 +87,53 @@ export default function Reader() {
     (async () => {
       try {
         if (source !== 'device') {
-          const [bytes, progress] = await Promise.all([
-            source === 'class' ? downloadSharedClassBook(bookId) : downloadUserLibraryBook(bookId),
-            getServerBookProgress(bookId, source),
-          ]);
+          const progress = await getServerBookProgress(bookId, source);
+          const cached = await getStoredBook(bookId);
+          if (cached?.format === 'comic') {
+            if (!cancelled) setComic(cached.comic);
+            return;
+          }
+          const metadata = source === 'class'
+            ? (await getClassBooks()).find((candidate) => candidate.id === bookId)
+            : (await getUserLibraryBooks()).find((candidate) => candidate.id === bookId);
+          if (!metadata) throw new Error('Book not found.');
+          const bytes = source === 'class'
+            ? await downloadSharedClassBook(bookId)
+            : await downloadUserLibraryBook(bookId);
+          if (metadata.format === 'cbz') {
+            if (metadata.language !== 'en' && metadata.language !== 'es') {
+              throw new Error('[cbz_ocr_language_missing] This CBZ does not identify whether its text is English or Spanish.');
+            }
+            const file = new File(
+              [bytes as BlobPart],
+              metadata.original_filename,
+              { type: metadata.mime_type },
+            );
+            const { comic: parsedComic, cover } = await prepareCbzForOcr(file, metadata.language);
+            const cacheMeta: BookMeta = {
+              id: metadata.id,
+              title: metadata.title || parsedComic.title,
+              author: metadata.author || parsedComic.author,
+              cover,
+              addedAt: new Date(metadata.created_at).getTime(),
+              format: 'comic',
+              pageCount: parsedComic.pages.length,
+              language: metadata.language,
+              ocr: parsedComic.ocr,
+              source: source === 'class' ? 'class' : 'server',
+              serverBookId: source === 'personal' ? metadata.id : undefined,
+              classBookId: source === 'class' ? metadata.id : undefined,
+              classroomId: source === 'class' && 'classroom_id' in metadata ? metadata.classroom_id : undefined,
+              classroomName: source === 'class' && 'classroom_name' in metadata ? metadata.classroom_name : undefined,
+              originalFilename: metadata.original_filename,
+              byteSize: metadata.byte_size,
+            };
+            await addBook(cacheMeta, parsedComic);
+            if (cancelled) return;
+            setComic(parsedComic);
+            startComicOcr(bookId);
+            return;
+          }
           const parsed = parseEpub(bytes);
           if (cancelled) return;
           if (progress) {
@@ -317,6 +363,7 @@ export default function Reader() {
         comic={comic}
         nativeLanguage={user?.native_language || null}
         savedWords={savedWordControls}
+        progressSource={source === 'device' ? undefined : source}
         onBack={() => navigate('/books')}
       />
     );

@@ -79,7 +79,7 @@ function BookCard({ book, classBook, downloaded, downloadProgress, onOpen, onDel
         )}
         {book.format === 'comic' && (
           <div className="epub-card-format">
-            CBZ · {book.pageCount ?? 0} pages
+            CBZ{book.pageCount != null ? ` · ${book.pageCount} pages` : ''}
             {languageLabel(book.language) ? ` · ${languageLabel(book.language)}` : ''}
             {ocr?.status === 'ready' ? ' · text ready' : ''}
           </div>
@@ -218,7 +218,7 @@ export default function Library() {
         );
       }
       if (files.length === 1 && lastImport && !lastImport.processing) {
-        navigate(`/books/${lastImport.id}?source=${lastImport.format === 'epub' ? 'personal' : 'device'}`);
+        navigate(`/books/${lastImport.id}?source=personal`);
       }
     } catch (err) {
       runtimeLog.error('Failed to import book:', err);
@@ -236,7 +236,7 @@ export default function Library() {
 
   const handleOpen = async (entry: LibraryEntry) => {
     if (downloadProgress[entry.book.id] !== undefined) return;
-    if (entry.classBook?.format === 'epub') {
+    if (entry.classBook && entry.downloaded) {
       navigate(`/books/${entry.book.id}?source=class`);
       return;
     }
@@ -244,7 +244,7 @@ export default function Library() {
       navigate(`/books/${entry.book.id}?source=personal`);
       return;
     }
-    if (!entry.classBook || entry.downloaded) {
+    if (!entry.classBook) {
       navigate(`/books/${entry.book.id}?source=device`);
       return;
     }
@@ -255,7 +255,7 @@ export default function Library() {
       const imported = await addFromClass(entry.classBook, (fraction) => {
         setDownloadProgress((current) => ({ ...current, [id]: fraction }));
       });
-      if (!imported.processing) navigate(`/books/${imported.id}?source=device`);
+      if (!imported.processing) navigate(`/books/${imported.id}?source=class`);
     } catch (err) {
       runtimeLog.error('Failed to download class book:', err);
       setUploadError(err instanceof Error ? err.message : 'Could not download that class book.');
@@ -273,7 +273,6 @@ export default function Library() {
       <div className="epub-library-header">
         <div>
           <h1 className="epub-library-title">Books</h1>
-          <p className="epub-library-subtitle">EPUBs are saved privately to your Polycast profile. Books shared by a teacher appear automatically; CBZ text processing remains on this device.</p>
         </div>
         <div className="epub-upload-actions">
           <label className="epub-comic-language">
