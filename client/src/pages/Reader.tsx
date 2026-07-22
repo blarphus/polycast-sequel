@@ -11,7 +11,7 @@ const runtimeLog = createScopedRuntimeLogger('web.pages.reader');
 import '../styles/epub.css';
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
 import TokenizedText from '../components/TokenizedText';
@@ -23,6 +23,10 @@ import { parseEpub, imageObjectUrl, type ParsedEpub } from '../utils/epub';
 import { getStoredBook, getProgress, setProgress } from '../utils/bookStore';
 import type { ComicDocument } from '../utils/cbz';
 import { READER_FONTS, fontStack, loadReaderPrefs, saveReaderPrefs, type ReaderTheme } from '../utils/readerPrefs';
+import {
+  downloadSharedClassBook, downloadUserLibraryBook, getServerBookProgress, setServerBookProgress,
+} from '../api/libraryBooks';
+import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 const GAP = 48;
 const FONT_MIN = 0.8;
@@ -31,6 +35,10 @@ type PendingPageTarget = number | 'start' | 'end';
 
 export default function Reader() {
   const { bookId } = useParams<{ bookId: string }>();
+  const [searchParams] = useSearchParams();
+  const source = searchParams.get('source') === 'class'
+    ? 'class'
+    : searchParams.get('source') === 'personal' ? 'personal' : 'device';
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -75,6 +83,20 @@ export default function Reader() {
     let cancelled = false;
     (async () => {
       try {
+        if (source !== 'device') {
+          const [bytes, progress] = await Promise.all([
+            source === 'class' ? downloadSharedClassBook(bookId) : downloadUserLibraryBook(bookId),
+            getServerBookProgress(bookId, source),
+          ]);
+          const parsed = parseEpub(bytes);
+          if (cancelled) return;
+          if (progress) {
+            setChapterIndex(Math.min(progress.chapter_index, parsed.chapters.length - 1));
+            pendingPageTargetRef.current = progress.page_index;
+          }
+          setBook(parsed);
+          return;
+        }
         const stored = await getStoredBook(bookId);
         if (!stored) { if (!cancelled) setLoadError('Book not found.'); return; }
         const progress = await getProgress(bookId);
@@ -95,7 +117,7 @@ export default function Reader() {
       }
     })();
     return () => { cancelled = true; };
-  }, [bookId]);
+  }, [bookId, source]);
 
   const chapter = book?.chapters[chapterIndex] ?? null;
 
@@ -171,8 +193,20 @@ export default function Reader() {
   // Persist reading position.
   useEffect(() => {
     if (!bookId || !book) return;
-    void setProgress({ bookId, chapterIndex, pageIndex });
-  }, [bookId, book, chapterIndex, pageIndex]);
+    if (source === 'device') {
+      void setProgress({ bookId, chapterIndex, pageIndex });
+      return;
+    }
+    void setServerBookProgress(bookId, source, chapterIndex, pageIndex).catch((error) => {
+      emitFallbackDiagnostic({
+        code: 'server_book_progress_save_failed',
+        severity: 'warning',
+        title: 'Reading position not saved',
+        message: 'The book remains available, but this page could not be saved to your profile.',
+        detail: error instanceof Error ? error.message : String(error),
+      }, { source: 'web.reader', operation: 'save-profile-reading-position' });
+    });
+  }, [bookId, book, chapterIndex, pageIndex, source]);
 
   // Persist reader preferences (theme / font / text size) across sessions.
   useEffect(() => {

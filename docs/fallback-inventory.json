@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T19:18:59.332Z",
+  "generatedAt": "2026-07-22T19:01:56.941Z",
   "totals": {
     "occurrences": 64,
     "uniqueCodes": 61,
@@ -97,7 +97,7 @@
     {
       "code": "extension_offline_dictionary_save_used",
       "file": "extension/background.js",
-      "line": 857,
+      "line": 847,
       "structured": true,
       "logged": true,
       "visible": true
@@ -105,7 +105,7 @@
     {
       "code": "extension_offline_login_used",
       "file": "extension/background.js",
-      "line": 631,
+      "line": 622,
       "structured": true,
       "logged": true,
       "visible": true
@@ -113,7 +113,7 @@
     {
       "code": "extension_offline_status_used",
       "file": "extension/background.js",
-      "line": 694,
+      "line": 684,
       "structured": true,
       "logged": true,
       "visible": true
@@ -233,7 +233,7 @@
     {
       "code": "login_error_payload_fallback",
       "file": "extension/background.js",
-      "line": 647,
+      "line": 638,
       "structured": true,
       "logged": true,
       "visible": true
@@ -249,7 +249,7 @@
     {
       "code": "offline_daily_goal_used",
       "file": "extension/background.js",
-      "line": 882,
+      "line": 872,
       "structured": true,
       "logged": true,
       "visible": true
@@ -473,7 +473,7 @@
     {
       "code": "wild_recall_catalog_fallback",
       "file": "extension/background.js",
-      "line": 1033,
+      "line": 1023,
       "structured": true,
       "logged": true,
       "visible": true
@@ -481,7 +481,7 @@
     {
       "code": "wild_recall_offline_unavailable",
       "file": "extension/background.js",
-      "line": 1009,
+      "line": 999,
       "structured": true,
       "logged": true,
       "visible": true
@@ -489,7 +489,7 @@
     {
       "code": "wild_recall_preparation_fallback",
       "file": "extension/background.js",
-      "line": 1075,
+      "line": 1065,
       "structured": true,
       "logged": true,
       "visible": true

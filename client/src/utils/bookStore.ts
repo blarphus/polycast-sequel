@@ -26,7 +26,9 @@ export interface BookMeta {
   language?: 'en' | 'es';
   notice?: string;
   ocr?: ComicOcrProgress;
-  source?: 'personal' | 'class';
+  source?: 'personal' | 'class' | 'server';
+  serverBookId?: string;
+  byteSize?: number;
   classBookId?: string;
   classroomId?: string;
   classroomName?: string;

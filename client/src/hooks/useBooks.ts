@@ -17,6 +17,12 @@ import {
   type ComicOcrProgressEvent,
 } from '../utils/comicOcr';
 import { downloadClassroomBook, type ClassBook } from '../api/classroom';
+import {
+  deleteUserLibraryBook,
+  getUserLibraryBooks,
+  uploadUserLibraryBook,
+} from '../api/libraryBooks';
+import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 export interface BookImportResult {
   id: string;
@@ -31,7 +37,53 @@ export function useBooks() {
 
   const refresh = useCallback(async () => {
     try {
-      setBooks(await listBooks());
+      let localBooks = await listBooks();
+      let serverBooks = await getUserLibraryBooks();
+      const legacyEpubs = localBooks.filter((book) => book.format === 'epub' && book.source !== 'class');
+      for (const legacy of legacyEpubs) {
+        try {
+          const stored = await getStoredBook(legacy.id);
+          if (!stored || stored.format === 'comic') continue;
+          const file = new File(
+            [stored.bytes as BlobPart],
+            legacy.originalFilename || `${legacy.title}.epub`,
+            { type: 'application/epub+zip' },
+          );
+          await uploadUserLibraryBook(file, {
+            title: legacy.title, author: legacy.author, language: legacy.language,
+          });
+          await deleteBook(legacy.id);
+        } catch (err) {
+          emitFallbackDiagnostic({
+            code: 'legacy_epub_cloud_migration_failed',
+            severity: 'warning',
+            title: 'Book still stored on this device',
+            message: `“${legacy.title}” could not be moved to your profile library yet.`,
+            detail: err instanceof Error ? err.message : String(err),
+          }, { source: 'web.library', operation: 'migrate-legacy-epub' });
+        }
+      }
+      const cachedClassEpubs = localBooks.filter((book) => book.format === 'epub' && book.source === 'class');
+      await Promise.all(cachedClassEpubs.map((book) => deleteBook(book.id)));
+      if (legacyEpubs.length || cachedClassEpubs.length) {
+        localBooks = await listBooks();
+        serverBooks = await getUserLibraryBooks();
+      }
+      const remote = serverBooks.map((book): BookMeta => ({
+        id: book.id,
+        title: book.title,
+        author: book.author || '',
+        cover: null,
+        addedAt: new Date(book.created_at).getTime(),
+        format: 'epub',
+        language: book.language || undefined,
+        source: 'server',
+        serverBookId: book.id,
+        originalFilename: book.original_filename,
+        byteSize: book.byte_size,
+      }));
+      setBooks([...remote, ...localBooks]
+        .sort((a, b) => b.addedAt - a.addedAt));
       setError('');
     } catch (err) {
       runtimeLog.error('Failed to load books:', err);
@@ -90,24 +142,22 @@ export function useBooks() {
 
     const bytes = new Uint8Array(await file.arrayBuffer());
     const parsed = parseEpub(bytes); // throws on invalid epub — surfaced to caller
-    const meta: BookMeta = {
-      id,
+    const uploaded = await uploadUserLibraryBook(file, {
       title: parsed.title,
       author: parsed.author,
-      cover: coverBlob(parsed),
-      addedAt: Date.now(),
-      format: 'epub',
-    };
-    await addBook(meta, bytes);
+      language: parsed.language === 'en' || parsed.language === 'es' ? parsed.language : undefined,
+    });
     await refresh();
-    return { id, format: 'epub', processing: false };
+    return { id: uploaded.id, format: 'epub', processing: false };
   }, [refresh]);
 
   const remove = useCallback(async (id: string) => {
     cancelComicOcr(id);
-    await deleteBook(id);
+    const book = books.find((candidate) => candidate.id === id);
+    if (book?.source === 'server') await deleteUserLibraryBook(id);
+    else await deleteBook(id);
     await refresh();
-  }, [refresh]);
+  }, [books, refresh]);
 
   const retryOcr = useCallback(async (id: string) => {
     await retryComicOcr(id);

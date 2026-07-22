@@ -146,8 +146,9 @@ test('teacher deletion removes the metadata and the one shared stored file', asy
     getClassroom: async () => classroom,
     removeStored: async (key, options) => { removed = { key, options }; },
   });
-  assert.equal(queries.length, 2);
+  assert.equal(queries.length, 3);
   assert.match(queries[1], /DELETE FROM classroom_books/);
+  assert.match(queries[2], /DELETE FROM library_book_progress/);
   assert.deepEqual(removed, {
     key: '33333333-3333-4333-8333-333333333333.epub',
     options: { ignoreMissing: true },

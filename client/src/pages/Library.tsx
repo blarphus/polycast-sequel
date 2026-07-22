@@ -217,7 +217,9 @@ export default function Library() {
           file.name.toLowerCase().endsWith('.cbz') ? comicLanguage : undefined,
         );
       }
-      if (files.length === 1 && lastImport && !lastImport.processing) navigate(`/books/${lastImport.id}`);
+      if (files.length === 1 && lastImport && !lastImport.processing) {
+        navigate(`/books/${lastImport.id}?source=${lastImport.format === 'epub' ? 'personal' : 'device'}`);
+      }
     } catch (err) {
       runtimeLog.error('Failed to import book:', err);
       setUploadError(err instanceof Error ? err.message : 'Could not import that book.');
@@ -234,8 +236,16 @@ export default function Library() {
 
   const handleOpen = async (entry: LibraryEntry) => {
     if (downloadProgress[entry.book.id] !== undefined) return;
+    if (entry.classBook?.format === 'epub') {
+      navigate(`/books/${entry.book.id}?source=class`);
+      return;
+    }
+    if (entry.book.source === 'server') {
+      navigate(`/books/${entry.book.id}?source=personal`);
+      return;
+    }
     if (!entry.classBook || entry.downloaded) {
-      navigate(`/books/${entry.book.id}`);
+      navigate(`/books/${entry.book.id}?source=device`);
       return;
     }
     const id = entry.classBook.id;
@@ -245,7 +255,7 @@ export default function Library() {
       const imported = await addFromClass(entry.classBook, (fraction) => {
         setDownloadProgress((current) => ({ ...current, [id]: fraction }));
       });
-      if (!imported.processing) navigate(`/books/${imported.id}`);
+      if (!imported.processing) navigate(`/books/${imported.id}?source=device`);
     } catch (err) {
       runtimeLog.error('Failed to download class book:', err);
       setUploadError(err instanceof Error ? err.message : 'Could not download that class book.');
@@ -263,7 +273,7 @@ export default function Library() {
       <div className="epub-library-header">
         <div>
           <h1 className="epub-library-title">Books</h1>
-          <p className="epub-library-subtitle">Read EPUBs or upload a CBZ. Polycast selects text from every comic page on this device, and completed pages become clickable immediately.</p>
+          <p className="epub-library-subtitle">EPUBs are saved privately to your Polycast profile. Books shared by a teacher appear automatically; CBZ text processing remains on this device.</p>
         </div>
         <div className="epub-upload-actions">
           <label className="epub-comic-language">
