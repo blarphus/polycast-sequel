@@ -7,6 +7,9 @@
 
 .pc-popup {
   width: 316px;
+  min-height: min(430px, var(--pc-popup-available-height, calc(100vh - 16px)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: #1a1a2e;
   border: 1px solid rgba(108, 99, 255, 0.35);
   border-radius: 14px;

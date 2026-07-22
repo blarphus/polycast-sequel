@@ -198,9 +198,15 @@
     const explainBox = popup.querySelector('.pc-popup-explanation');
     const saveBtn = popup.querySelector('.pc-popup-save');
 
-    // -- Positioning: prefer above, use below only when above does not fit, and
-    // never leave an expanding popup below when it would overflow the viewport.
-    // Re-run as async content changes its height.
+    // -- Positioning ---------------------------------------------------------
+    // Choose the side with the most room once and keep the edge nearest the
+    // clicked word anchored there. The old implementation reconsidered the
+    // side after every async resize, so a small loading shell could start below
+    // a word and jump above it when the definition arrived.
+    const availableAbove = Math.max(0, anchorRect.top - 16);
+    const availableBelow = Math.max(0, window.innerHeight - anchorRect.bottom - 16);
+    const placement = availableAbove >= availableBelow ? 'above' : 'below';
+    popup.dataset.placement = placement;
     position();
     function position() {
       const width = popup.offsetWidth || POPUP_WIDTH;
@@ -208,14 +214,17 @@
       left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
       popup.style.left = `${left}px`;
 
-      const height = popup.offsetHeight;
-      const belowTop = anchorRect.bottom + 8;
-      const aboveTop = anchorRect.top - height - 8;
-      const fitsBelow = belowTop + height <= window.innerHeight - 8;
-      const fitsAbove = aboveTop >= 8;
-      const top = !fitsAbove && fitsBelow ? belowTop : Math.max(8, aboveTop);
-      popup.style.top = `${top}px`;
-      popup.style.bottom = '';
+      if (placement === 'above') {
+        popup.style.top = '';
+        popup.style.bottom = `${Math.max(8, window.innerHeight - anchorRect.top + 8)}px`;
+        popup.style.setProperty('--pc-popup-available-height', `${Math.max(120, availableAbove)}px`);
+        popup.style.maxHeight = `var(--pc-popup-available-height)`;
+      } else {
+        popup.style.top = `${Math.max(8, anchorRect.bottom + 8)}px`;
+        popup.style.bottom = '';
+        popup.style.setProperty('--pc-popup-available-height', `${Math.max(120, availableBelow)}px`);
+        popup.style.maxHeight = `var(--pc-popup-available-height)`;
+      }
     }
 
     const resizeObserver = new ResizeObserver(position);

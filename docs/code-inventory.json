@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 542,
-    "lines": 87186,
-    "declarations": 2402,
+    "files": 543,
+    "lines": 87266,
+    "declarations": 2403,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 39,
     "zeroCallerCandidates": 3
@@ -1242,7 +1242,9 @@
       "sideEffects": [
         "network"
       ],
-      "testCoverage": [],
+      "testCoverage": [
+        "extension/test/popup-position-stability.test.mjs"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
@@ -2300,6 +2302,7 @@
       ],
       "testCoverage": [
         "extension/test/popup-performance.test.mjs",
+        "extension/test/popup-position-stability.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/UITests/ReaderPopupUITests.swift"
@@ -4276,6 +4279,7 @@
         "client/src/test/offlineDictionary.test.ts",
         "client/src/test/runtimeDiagnostics.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
+        "extension/test/popup-position-stability.test.mjs",
         "extension/test/selection.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/authResponse.test.js",
@@ -8014,6 +8018,7 @@
         "extension/test/localization.test.mjs",
         "extension/test/page-highlights.test.mjs",
         "extension/test/popup-performance.test.mjs",
+        "extension/test/popup-position-stability.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/transcript-contract.test.mjs",
         "extension/test/word-popup-localized-definition.test.mjs",
@@ -8359,6 +8364,7 @@
         "extension/test/background.test.mjs",
         "extension/test/localization.test.mjs",
         "extension/test/popup-performance.test.mjs",
+        "extension/test/popup-position-stability.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/UITests/PolycastUITests.swift"
@@ -8499,7 +8505,7 @@
     },
     {
       "file": "extension/shared/wordPopupCore.js",
-      "lines": 608,
+      "lines": 617,
       "responsibility": "extension runtime/UI",
       "sideEffects": [
         "network",
@@ -8511,6 +8517,7 @@
         "client/src/test/bottomToolbar.test.tsx",
         "extension/test/localization.test.mjs",
         "extension/test/popup-performance.test.mjs",
+        "extension/test/popup-position-stability.test.mjs",
         "extension/test/word-popup-localized-definition.test.mjs"
       ],
       "disposition": "reviewed-retain",
@@ -8557,6 +8564,7 @@
           "callers": 6,
           "testReferences": [
             "extension/test/popup-performance.test.mjs",
+            "extension/test/popup-position-stability.test.mjs",
             "extension/test/word-popup-localized-definition.test.mjs"
           ],
           "disposition": "retain"
@@ -8604,6 +8612,7 @@
           "callers": 11,
           "testReferences": [
             "extension/test/popup-performance.test.mjs",
+            "extension/test/popup-position-stability.test.mjs",
             "extension/test/word-popup-localized-definition.test.mjs"
           ],
           "disposition": "retain"
@@ -8709,6 +8718,27 @@
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": []
+    },
+    {
+      "file": "extension/test/popup-position-stability.test.mjs",
+      "lines": 71,
+      "responsibility": "test",
+      "sideEffects": [],
+      "testCoverage": [
+        "extension/test/popup-position-stability.test.mjs"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "makeDom",
+          "callers": 0,
+          "testReferences": [
+            "extension/test/popup-position-stability.test.mjs"
+          ],
+          "disposition": "retain"
+        }
+      ]
     },
     {
       "file": "extension/test/selection.test.mjs",
@@ -9123,6 +9153,7 @@
         "client/src/test/sessionExpiration.test.tsx",
         "extension/test/background.test.mjs",
         "extension/test/page-highlights.test.mjs",
+        "extension/test/popup-position-stability.test.mjs",
         "server/lib/gemini.test.js",
         "server/services/dictionaryMediaService.test.js",
         "server/test/ttsService.test.js"
@@ -9133,7 +9164,9 @@
         {
           "name": "news",
           "callers": 68,
-          "testReferences": [],
+          "testReferences": [
+            "extension/test/popup-position-stability.test.mjs"
+          ],
           "disposition": "retain"
         },
         {
@@ -11324,6 +11357,7 @@
         "client/src/test/sessionExpiration.test.tsx",
         "extension/test/page-highlights.test.mjs",
         "extension/test/popup-performance.test.mjs",
+        "extension/test/popup-position-stability.test.mjs",
         "extension/test/word-popup-localized-definition.test.mjs",
         "server/lib/srsAlgorithm.test.js",
         "server/lib/srsUpdate.test.js",
@@ -11370,6 +11404,7 @@
           "callers": 36,
           "testReferences": [
             "extension/test/popup-performance.test.mjs",
+            "extension/test/popup-position-stability.test.mjs",
             "extension/test/word-popup-localized-definition.test.mjs"
           ],
           "disposition": "retain"
@@ -11648,7 +11683,7 @@
         },
         {
           "name": "start",
-          "callers": 186,
+          "callers": 187,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "client/src/test/groupCallProvider.test.tsx",
@@ -12040,6 +12075,7 @@
         "extension/test/fallback-toast.test.mjs",
         "extension/test/page-highlights.test.mjs",
         "extension/test/popup-performance.test.mjs",
+        "extension/test/popup-position-stability.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/word-popup-localized-definition.test.mjs",
         "server/lib/gemini.test.js",
@@ -12098,6 +12134,7 @@
             "extension/test/fallback-toast.test.mjs",
             "extension/test/page-highlights.test.mjs",
             "extension/test/popup-performance.test.mjs",
+            "extension/test/popup-position-stability.test.mjs",
             "extension/test/selection.test.mjs",
             "extension/test/word-popup-localized-definition.test.mjs",
             "server/lib/gemini.test.js",
@@ -12853,6 +12890,7 @@
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs",
         "extension/test/popup-performance.test.mjs",
+        "extension/test/popup-position-stability.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
@@ -12883,6 +12921,7 @@
             "extension/test/activation.test.mjs",
             "extension/test/background.test.mjs",
             "extension/test/popup-performance.test.mjs",
+            "extension/test/popup-position-stability.test.mjs",
             "extension/test/selection.test.mjs",
             "extension/test/word-popup-localized-definition.test.mjs",
             "ios/Polycast/Tests/PolycastTests.swift",
@@ -13432,6 +13471,7 @@
       "testCoverage": [
         "client/src/test/cbz.test.ts",
         "extension/test/popup-performance.test.mjs",
+        "extension/test/popup-position-stability.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
@@ -13493,6 +13533,7 @@
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "extension/test/popup-performance.test.mjs",
+            "extension/test/popup-position-stability.test.mjs",
             "extension/test/selection.test.mjs",
             "extension/test/word-popup-localized-definition.test.mjs",
             "ios/Polycast/Tests/PolycastTests.swift",
@@ -14445,6 +14486,7 @@
         "extension/test/app-bridge.test.mjs",
         "extension/test/fallback-toast.test.mjs",
         "extension/test/popup-performance.test.mjs",
+        "extension/test/popup-position-stability.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
@@ -14604,6 +14646,7 @@
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
             "extension/test/popup-performance.test.mjs",
+            "extension/test/popup-position-stability.test.mjs",
             "extension/test/selection.test.mjs",
             "extension/test/word-popup-localized-definition.test.mjs",
             "ios/Polycast/Tests/PolycastTests.swift"
@@ -14761,6 +14804,7 @@
         "extension/test/localization.test.mjs",
         "extension/test/page-highlights.test.mjs",
         "extension/test/popup-performance.test.mjs",
+        "extension/test/popup-position-stability.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/word-popup-localized-definition.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
@@ -14785,7 +14829,7 @@
         },
         {
           "name": "content",
-          "callers": 154,
+          "callers": 153,
           "testReferences": [
             "client/src/test/epub.test.ts",
             "client/src/test/groupCallProvider.test.tsx",
@@ -14796,6 +14840,7 @@
             "extension/test/fallback-toast.test.mjs",
             "extension/test/localization.test.mjs",
             "extension/test/page-highlights.test.mjs",
+            "extension/test/popup-position-stability.test.mjs",
             "extension/test/selection.test.mjs",
             "ios/Polycast/Tests/PolycastTests.swift",
             "server/lib/gemini.test.js",
@@ -14993,6 +15038,7 @@
             "client/src/test/epub.test.ts",
             "extension/test/localization.test.mjs",
             "extension/test/popup-performance.test.mjs",
+            "extension/test/popup-position-stability.test.mjs",
             "extension/test/word-popup-localized-definition.test.mjs"
           ],
           "disposition": "retain"
@@ -20739,7 +20785,9 @@
       "sideEffects": [
         "network"
       ],
-      "testCoverage": [],
+      "testCoverage": [
+        "extension/test/popup-position-stability.test.mjs"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
