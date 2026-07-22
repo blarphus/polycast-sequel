@@ -30,18 +30,63 @@ export interface BookImportResult {
   processing: boolean;
 }
 
+function formatTransferBytes(bytes: number) {
+  if (bytes < 1024) return `${Math.round(bytes)} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function migrationProgress(title: string, fraction: number, totalBytes: number) {
+  const bounded = Math.max(0, Math.min(1, fraction));
+  const transferred = Math.min(totalBytes, Math.round(totalBytes * bounded));
+  return `Moving “${title}” to your profile… ${(bounded * 100).toFixed(1)}% · ${formatTransferBytes(transferred)} / ${formatTransferBytes(totalBytes)}`;
+}
+
 export function useBooks() {
   const [books, setBooks] = useState<BookMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [migrationStatus, setMigrationStatus] = useState('');
 
   const refresh = useCallback(async () => {
     try {
       let localBooks = await listBooks();
       let serverBooks = await getUserLibraryBooks();
-      const legacyEpubs = localBooks.filter((book) => book.format === 'epub' && book.source !== 'class');
+      const publishBooks = () => {
+        const localByServerId = new Map(
+          localBooks
+            .filter((book) => book.source === 'server')
+            .map((book) => [book.serverBookId || book.id, book]),
+        );
+        const remote = serverBooks.map((book): BookMeta => ({
+          ...(book.format === 'cbz' ? localByServerId.get(book.id) : undefined),
+          id: book.id,
+          title: book.title,
+          author: book.author || '',
+          cover: book.format === 'cbz' ? localByServerId.get(book.id)?.cover || null : null,
+          addedAt: new Date(book.created_at).getTime(),
+          format: book.format === 'cbz' ? 'comic' : 'epub',
+          language: book.language || undefined,
+          source: 'server',
+          serverBookId: book.id,
+          originalFilename: book.original_filename,
+          byteSize: book.byte_size,
+        }));
+        const visibleLocal = localBooks.filter((book) => book.source !== 'server');
+        setBooks([...remote, ...visibleLocal].sort((a, b) => b.addedAt - a.addedAt));
+      };
+
+      // Show the library as soon as its local and server indexes arrive. Large
+      // legacy uploads continue below without holding the entire page loader.
+      publishBooks();
+      setError('');
+      setLoading(false);
+      const legacyEpubs = localBooks.filter((book) => (
+        book.format === 'epub' && book.source !== 'class' && book.source !== 'server'
+      ));
       for (const legacy of legacyEpubs) {
         try {
+          setMigrationStatus(`Moving “${legacy.title}” to your profile…`);
           const stored = await getStoredBook(legacy.id);
           if (!stored || stored.format === 'comic') continue;
           const file = new File(
@@ -51,6 +96,8 @@ export function useBooks() {
           );
           await uploadUserLibraryBook(file, {
             title: legacy.title, author: legacy.author, language: legacy.language,
+          }, (fraction) => {
+            setMigrationStatus(migrationProgress(legacy.title, fraction, file.size));
           });
           await deleteBook(legacy.id);
         } catch (err) {
@@ -69,6 +116,7 @@ export function useBooks() {
       for (const legacy of legacyComics) {
         let uploadedId: string | null = null;
         try {
+          setMigrationStatus(`Moving “${legacy.title}” to your profile…`);
           const stored = await getStoredBook(legacy.id);
           if (!stored || stored.format !== 'comic' || !stored.comic.archive) continue;
           const language = legacy.language || stored.comic.language;
@@ -82,6 +130,8 @@ export function useBooks() {
           );
           const uploaded = await uploadUserLibraryBook(file, {
             title: legacy.title, author: legacy.author, language,
+          }, (fraction) => {
+            setMigrationStatus(migrationProgress(legacy.title, fraction, file.size));
           });
           uploadedId = uploaded.id;
           const { comic, cover } = await prepareCbzForOcr(file, language);
@@ -133,33 +183,13 @@ export function useBooks() {
         localBooks = await listBooks();
         serverBooks = await getUserLibraryBooks();
       }
-      const localByServerId = new Map(
-        localBooks
-          .filter((book) => book.source === 'server')
-          .map((book) => [book.serverBookId || book.id, book]),
-      );
-      const remote = serverBooks.map((book): BookMeta => ({
-        ...(book.format === 'cbz' ? localByServerId.get(book.id) : undefined),
-        id: book.id,
-        title: book.title,
-        author: book.author || '',
-        cover: book.format === 'cbz' ? localByServerId.get(book.id)?.cover || null : null,
-        addedAt: new Date(book.created_at).getTime(),
-        format: book.format === 'cbz' ? 'comic' : 'epub',
-        language: book.language || undefined,
-        source: 'server',
-        serverBookId: book.id,
-        originalFilename: book.original_filename,
-        byteSize: book.byte_size,
-      }));
-      const visibleLocal = localBooks.filter((book) => book.source !== 'server');
-      setBooks([...remote, ...visibleLocal]
-        .sort((a, b) => b.addedAt - a.addedAt));
+      publishBooks();
       setError('');
     } catch (err) {
       runtimeLog.error('Failed to load books:', err);
       setError('Could not open your book library.');
     } finally {
+      setMigrationStatus('');
       setLoading(false);
     }
   }, []);
@@ -326,5 +356,5 @@ export function useBooks() {
     return { id: classBook.id, format: 'epub', processing: false };
   }, [refresh]);
 
-  return { books, loading, error, refresh, addFromFile, addFromClass, remove, retryOcr };
+  return { books, loading, error, migrationStatus, refresh, addFromFile, addFromClass, remove, retryOcr };
 }

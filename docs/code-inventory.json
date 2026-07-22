@@ -2,8 +2,8 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 544,
-    "lines": 87503,
-    "declarations": 2404,
+    "lines": 87534,
+    "declarations": 2406,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 39,
     "zeroCallerCandidates": 3
@@ -3582,13 +3582,25 @@
     },
     {
       "file": "client/src/hooks/useBooks.ts",
-      "lines": 331,
+      "lines": 361,
       "responsibility": "application support",
       "sideEffects": [],
       "testCoverage": [],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
+        {
+          "name": "formatTransferBytes",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "migrationProgress",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
         {
           "name": "useBooks",
           "callers": 4,
@@ -4759,7 +4771,7 @@
     },
     {
       "file": "client/src/pages/Library.tsx",
-      "lines": 338,
+      "lines": 339,
       "responsibility": "web route UI",
       "sideEffects": [],
       "testCoverage": [
@@ -10753,7 +10765,7 @@
         },
         {
           "name": "string",
-          "callers": 1897,
+          "callers": 1898,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
