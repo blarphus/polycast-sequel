@@ -1,10 +1,7 @@
 (() => {
   function createActivationHandlers({
     makeFallbackDiagnostic,
-    sendTabMessageSafe,
     surfaceBackgroundDiagnostic,
-    SITE_HIGHLIGHT_OVERRIDES_KEY,
-    SITE_CONTENT_SCRIPTS_KEY,
   }) {
     const SELECTION_RUNTIME_FILES = [
       'shared/textTokens.js',
@@ -13,70 +10,6 @@
       'content/selection.js',
     ];
     const SELECTION_RUNTIME_CSS = ['shared/wordPopup.css', 'overlay.css'];
-
-    function contentScriptId(origin) {
-      let hash = 2166136261;
-      for (const character of origin) {
-        hash ^= character.charCodeAt(0);
-        hash = Math.imul(hash, 16777619);
-      }
-      return `polycast-site-${(hash >>> 0).toString(16)}`;
-    }
-
-    function optionalSiteFromUrl(pageUrl, expectedHostname) {
-      let url;
-      try { url = new URL(pageUrl); } catch { throw new Error('The active page URL is invalid'); }
-      if (!['http:', 'https:'].includes(url.protocol) || url.hostname !== expectedHostname) {
-        throw new Error('The requested site origin does not match the active page');
-      }
-      return { origin: url.origin, pattern: `${url.origin}/*` };
-    }
-
-    async function activateOptionalSite({ pageUrl, hostname, tabId }) {
-      if (!chrome.scripting || !chrome.permissions) throw new Error('This browser does not support on-demand content activation');
-      const { origin, pattern } = optionalSiteFromUrl(pageUrl, hostname);
-      const permitted = await chrome.permissions.contains({ origins: [pattern] });
-      if (!permitted) throw new Error(`Permission for ${origin} has not been granted`);
-      const stored = await chrome.storage.local.get(SITE_CONTENT_SCRIPTS_KEY);
-      const registrations = { ...(stored[SITE_CONTENT_SCRIPTS_KEY] || {}) };
-      const id = registrations[origin] || contentScriptId(origin);
-      const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [id] });
-      const registeredNow = existing.length === 0;
-      if (registeredNow) {
-        await chrome.scripting.registerContentScripts([{
-          id,
-          matches: [pattern],
-          js: ['shared/textTokens.js', 'shared/wordPopupCore.js', 'content/shared.js', 'content/selection.js', 'content/pageHighlights.js'],
-          css: ['shared/wordPopup.css', 'overlay.css'],
-          runAt: 'document_idle',
-          persistAcrossSessions: true,
-        }]);
-      }
-      registrations[origin] = id;
-      await chrome.storage.local.set({ [SITE_CONTENT_SCRIPTS_KEY]: registrations });
-      // Registration affects future navigations. Inject once into the active tab
-      // so the explicit user action takes effect immediately.
-      if (registeredNow && Number.isInteger(tabId)) {
-        await chrome.scripting.insertCSS({ target: { tabId }, files: ['shared/wordPopup.css', 'overlay.css'] });
-        await chrome.scripting.executeScript({
-          target: { tabId },
-          files: ['shared/textTokens.js', 'shared/wordPopupCore.js', 'content/shared.js', 'content/selection.js', 'content/pageHighlights.js'],
-        });
-      }
-      return { origin, pattern, id };
-    }
-
-    async function deactivateOptionalSite(pageUrl, hostname) {
-      if (!pageUrl || !chrome.scripting) return;
-      const { origin } = optionalSiteFromUrl(pageUrl, hostname);
-      const stored = await chrome.storage.local.get(SITE_CONTENT_SCRIPTS_KEY);
-      const registrations = { ...(stored[SITE_CONTENT_SCRIPTS_KEY] || {}) };
-      const id = registrations[origin];
-      if (!id) return;
-      await chrome.scripting.unregisterContentScripts({ ids: [id] });
-      delete registrations[origin];
-      await chrome.storage.local.set({ [SITE_CONTENT_SCRIPTS_KEY]: registrations });
-    }
 
     function frameMessageOptions(frameId) {
       return Number.isInteger(frameId) ? { frameId } : undefined;
@@ -247,7 +180,7 @@
     });
 
 
-    return { activateOptionalSite, deactivateOptionalSite };
+    return {};
   }
   globalThis.PolycastActivationHandlers = { create: createActivationHandlers };
 })();

@@ -127,7 +127,31 @@ function optionSet(words, correct, field) {
   return { options, correctId };
 }
 
-function makeExercise(kind, word, words, targetLanguage, generatedSentence = null) {
+function practiceLabels(nativeLanguage) {
+  if (String(nativeLanguage || '').toLowerCase().split(/[-_]/)[0] === 'es') {
+    return {
+      listenMeaning: 'Escucha y elige el significado',
+      chooseMeaning: 'Elige el significado',
+      chooseWord: 'Elige la palabra',
+      chooseMissing: 'Elige la palabra que falta',
+      listenType: 'Escucha y escribe la palabra',
+      typeMissing: 'Escribe la palabra que falta',
+      matchWords: 'Relaciona las palabras',
+    };
+  }
+  return {
+    listenMeaning: 'Listen and choose the meaning',
+    chooseMeaning: 'Choose the meaning',
+    chooseWord: 'Choose the word',
+    chooseMissing: 'Choose the missing word',
+    listenType: 'Listen and type the word',
+    typeMissing: 'Type the missing word',
+    matchWords: 'Match the words',
+  };
+}
+
+function makeExercise(kind, word, words, targetLanguage, generatedSentence = null, nativeLanguage = 'en') {
+  const labels = practiceLabels(nativeLanguage);
   if (kind === 'meaning_choice' || kind === 'listen_meaning') {
     const choice = optionSet(words.filter((entry) => entry.id !== word.id), word, 'translation');
     if (!choice) return null;
@@ -135,8 +159,8 @@ function makeExercise(kind, word, words, targetLanguage, generatedSentence = nul
       kind,
       savedWordId: word.id,
       prompt: kind === 'listen_meaning'
-        ? { instruction: 'Listen and choose the meaning', audioText: word.word, language: targetLanguage, options: choice.options }
-        : { instruction: 'Choose the meaning', word: word.word, options: choice.options },
+        ? { instruction: labels.listenMeaning, audioText: word.word, language: targetLanguage, options: choice.options }
+        : { instruction: labels.chooseMeaning, word: word.word, options: choice.options },
       answer: { type: 'option', optionId: choice.correctId, label: word.translation },
     };
   }
@@ -147,7 +171,7 @@ function makeExercise(kind, word, words, targetLanguage, generatedSentence = nul
     return {
       kind,
       savedWordId: word.id,
-      prompt: { instruction: 'Choose the word', meaning: word.translation || word.definition, options: choice.options },
+      prompt: { instruction: labels.chooseWord, meaning: word.translation || word.definition, options: choice.options },
       answer: { type: 'option', optionId: choice.correctId, label: word.word },
     };
   }
@@ -160,7 +184,7 @@ function makeExercise(kind, word, words, targetLanguage, generatedSentence = nul
       kind,
       savedWordId: word.id,
       prompt: {
-        instruction: 'Choose the missing word',
+        instruction: labels.chooseMissing,
         sentence,
         meaning: word.translation,
         imageUrl: word.image_url || null,
@@ -177,9 +201,9 @@ function makeExercise(kind, word, words, targetLanguage, generatedSentence = nul
       kind,
       savedWordId: word.id,
       prompt: kind === 'listen_type'
-        ? { instruction: 'Listen and type the word', audioText: word.word, language: targetLanguage }
+        ? { instruction: labels.listenType, audioText: word.word, language: targetLanguage }
         : {
-          instruction: 'Type the missing word',
+          instruction: labels.typeMissing,
           sentence,
           meaning: word.translation,
           imageUrl: word.image_url || null,
@@ -201,7 +225,7 @@ function makeExercise(kind, word, words, targetLanguage, generatedSentence = nul
       kind,
       savedWordId: word.id,
       prompt: {
-        instruction: 'Match the words',
+        instruction: labels.matchWords,
         left: shuffle(pairs.map((pair) => ({ id: pair.leftId, text: pair.word }))),
         right: shuffle(pairs.map((pair) => ({ id: pair.rightId, text: pair.meaning }))),
       },
@@ -277,7 +301,9 @@ export async function createLearningSession(pool, userId, { kind, sourceVideoId 
     distinctWords.push(word);
   }
   if (distinctWords.length < CHOICE_COUNT) {
-    const error = new Error('Save at least four words with distinct meanings before starting Practice.');
+    const error = new Error(String(nativeLanguage || '').toLowerCase().startsWith('es')
+      ? 'Guarda al menos cuatro palabras con significados distintos antes de comenzar la práctica.'
+      : 'Save at least four words with distinct meanings before starting Practice.');
     error.status = 400;
     throw error;
   }
@@ -341,9 +367,9 @@ export async function createLearningSession(pool, userId, { kind, sourceVideoId 
   for (let position = 0; position < SESSION_SIZE; position += 1) {
     const preferredKind = BASE_KINDS[position];
     const word = candidates[position % candidates.length];
-    let exercise = makeExercise(preferredKind, word, words, targetLanguage, generatedSentences.get(word.id));
+    let exercise = makeExercise(preferredKind, word, words, targetLanguage, generatedSentences.get(word.id), nativeLanguage);
     if (!exercise) {
-      exercise = makeExercise(position % 2 ? 'word_choice' : 'meaning_choice', word, words, targetLanguage);
+      exercise = makeExercise(position % 2 ? 'word_choice' : 'meaning_choice', word, words, targetLanguage, null, nativeLanguage);
       if (!sentenceFallbackAdded && (preferredKind === 'context_choice' || preferredKind === 'context_type')) {
         sentenceFallbackAdded = true;
         diagnostics.push({

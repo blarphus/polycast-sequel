@@ -89,5 +89,8 @@ export function setFallbackDiagnosticHeader(res, diagnostic) {
     'X-Polycast-Fallback-Diagnostics',
     Buffer.from(JSON.stringify(diagnostics)).toString('base64url'),
   );
+  // Fallback diagnostics describe this specific execution. Caching the header
+  // can replay an already-resolved notice on later requests or navigations.
+  res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Access-Control-Expose-Headers', 'X-Polycast-Fallback-Diagnostics, X-Correlation-ID');
 }

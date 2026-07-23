@@ -308,7 +308,7 @@ final class PolycastTests: XCTestCase {
         XCTAssertEqual(transcript.segments.first?.words.last?.offset, 450)
         XCTAssertEqual(signal.roomId, "22222222-2222-4222-8222-222222222222")
         XCTAssertEqual(callSignal.callId, "55555555-5555-4555-8555-555555555555")
-        XCTAssertEqual(extensionMessage.hostname, "example.test")
+        XCTAssertEqual(extensionMessage.tokens, ["hola", "mundo"])
 
         let missingDuration = apiGoldenTranscriptResponseJSON.replacingOccurrences(of: "\"duration\":900,", with: "")
         XCTAssertThrowsError(try decoder.decode(APIContractTranscriptResponse.self, from: Data(missingDuration.utf8)))

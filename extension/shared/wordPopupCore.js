@@ -13,7 +13,7 @@
 // ---------------------------------------------------------------------------
 
 (function () {
-  const POPUP_WIDTH = 300;
+  const POPUP_WIDTH = 680;
 
   function logPopupDiagnostic(code, operation, message, error) {
     console.info('[polycast:diagnostic]', {
@@ -185,10 +185,14 @@
         </div>
       </div>
       <div class="pc-popup-lemma" hidden></div>
-      <div class="pc-popup-body"><div class="pc-spinner"></div></div>
-      <button class="pc-popup-save" hidden>${escapeHtml(labels.addToDictionary)}</button>
-      <button class="pc-popup-explain" hidden>${EXPLAIN_SVG}${escapeHtml(labels.explainInContext)}</button>
-      <div class="pc-popup-explanation" hidden></div>
+      <div class="pc-popup-main">
+        <div class="pc-popup-body"><div class="pc-spinner"></div></div>
+        <div class="pc-popup-side">
+          <button class="pc-popup-save" hidden>${escapeHtml(labels.addToDictionary)}</button>
+          <button class="pc-popup-explain" hidden>${EXPLAIN_SVG}${escapeHtml(labels.explainInContext)}</button>
+          <div class="pc-popup-explanation" hidden></div>
+        </div>
+      </div>
     `;
 
     container.appendChild(popup);

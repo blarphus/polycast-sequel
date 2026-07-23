@@ -9,7 +9,6 @@
     "128": "icons/icon128.png"
   },
   "permissions": ["storage", "contextMenus", "activeTab", "scripting"],
-  "optional_host_permissions": ["http://*/*", "https://*/*"],
   "host_permissions": [
     "*://*.youtube.com/*",
     "https://*.netflix.com/*",
@@ -26,13 +25,13 @@
   "content_scripts": [
     {
       "matches": ["*://*.youtube.com/*"],
-      "js": ["shared/textTokens.js", "shared/wordPopupCore.js", "content/shared.js", "content/youtube.js", "content/selection.js", "content/pageHighlights.js"],
+      "js": ["shared/textTokens.js", "shared/wordPopupCore.js", "content/shared.js", "content/youtube.js", "content/selection.js"],
       "css": ["shared/wordPopup.css", "overlay.css"],
       "run_at": "document_idle"
     },
     {
       "matches": ["https://*.netflix.com/*"],
-      "js": ["shared/textTokens.js", "shared/wordPopupCore.js", "content/shared.js", "content/netflix.js", "content/selection.js", "content/pageHighlights.js"],
+      "js": ["shared/textTokens.js", "shared/wordPopupCore.js", "content/shared.js", "content/netflix.js", "content/selection.js"],
       "css": ["shared/wordPopup.css", "overlay.css"],
       "run_at": "document_idle"
     },

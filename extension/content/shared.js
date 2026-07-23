@@ -587,8 +587,6 @@ function openWordPopup({
             el.classList.add('pc-saved');
           }
         });
-        // Recolor plain page text right away too (not just caption spans).
-        globalThis.PolycastContent?.addPageHighlights?.([word.toLowerCase(), savedForm]);
         const previousGoal = dailyGoalSnapshot;
         const optimisticAdded = previousGoal.added + 1;
         const optimisticGoal = {
@@ -651,118 +649,6 @@ function openWordPopup({
   globalThis.PolycastWordPopup?.setFlameLevel(goal.querySelector('.pc-popup-goal-flame'), goalFlameRatio(dailyGoalSnapshot));
 }
 
-function openRecallWordPopup({ challenge, word, sentence, anchorRect }) {
-  removePopup();
-  const popup = document.createElement('div');
-  popup.className = 'pc-popup pc-popup-recall-mode';
-  popup.style.position = 'fixed';
-  popup.style.zIndex = '2147483647';
-
-  const header = document.createElement('div');
-  header.className = 'pc-popup-header';
-  const wordEl = document.createElement('span');
-  wordEl.className = 'pc-popup-word';
-  wordEl.textContent = word;
-  const languageChip = document.createElement('span');
-  languageChip.className = 'pc-popup-language';
-  languageChip.textContent = languageName(targetLanguage);
-  const close = document.createElement('button');
-  close.className = 'pc-popup-close';
-  close.title = 'Close';
-  close.textContent = '×';
-  const actions = document.createElement('div');
-  actions.className = 'pc-popup-header-actions';
-  actions.append(close);
-  header.append(wordEl, languageChip, actions);
-
-  const goal = document.createElement('div');
-  goal.className = `pc-popup-goal${dailyGoalSnapshot.complete ? ' pc-popup-goal--complete' : ''}`;
-  goal.innerHTML = goalMarkup(dailyGoalSnapshot);
-
-  const body = document.createElement('div');
-  body.className = 'pc-popup-body pc-popup-recall-body';
-  const prompt = document.createElement('strong');
-  prompt.textContent = `What does ${word} mean?`;
-  const options = document.createElement('div');
-  options.className = 'pc-popup-recall-options';
-  const feedback = document.createElement('div');
-  feedback.className = 'pc-popup-recall-feedback';
-  feedback.setAttribute('aria-live', 'polite');
-  body.append(prompt, options, feedback);
-  popup.append(header, goal, body);
-  document.body.append(popup);
-  const clickPromise = sendMessageAsync({ type: 'CLICK_WILD_RECALL', challengeId: challenge.id })
-    .then((result) => {
-      if (result?.capped) {
-        feedback.textContent = 'Three recall words completed today.';
-        options.querySelectorAll('button').forEach((item) => { item.disabled = true; });
-      }
-      return result;
-    })
-    .catch((err) => {
-      feedback.textContent = `Wild Recall fallback used: ${err.message}`;
-      options.querySelectorAll('button').forEach((item) => { item.disabled = true; });
-      return { capped: true };
-    });
-
-  function position() {
-    const width = popup.offsetWidth || 320;
-    const height = popup.offsetHeight || 260;
-    const left = Math.max(8, Math.min(anchorRect.left + anchorRect.width / 2 - width / 2, window.innerWidth - width - 8));
-    const below = anchorRect.bottom + 8;
-    const top = below + height <= window.innerHeight - 8 ? below : Math.max(8, anchorRect.top - height - 8);
-    popup.style.left = `${left}px`;
-    popup.style.top = `${top}px`;
-  }
-  position();
-  const resizeObserver = new ResizeObserver(position);
-  resizeObserver.observe(popup);
-  const destroy = () => {
-    resizeObserver.disconnect();
-    window.removeEventListener('resize', position);
-    popup.remove();
-  };
-  activePopup = { el: popup, destroy };
-  close.addEventListener('click', (event) => { event.stopPropagation(); removePopup(); });
-  window.addEventListener('resize', position);
-
-  for (const option of challenge.options || []) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = option.text;
-    button.addEventListener('click', async (event) => {
-      event.stopPropagation();
-      const clickResult = await clickPromise;
-      if (clickResult?.capped) return;
-      options.querySelectorAll('button').forEach((item) => { item.disabled = true; });
-      feedback.textContent = 'Checking...';
-      try {
-        const result = await sendMessageAsync({
-          type: 'ANSWER_WILD_RECALL', challengeId: challenge.id, optionId: option.id,
-        });
-        if (result?.capped) {
-          feedback.textContent = 'Three recall words completed today.';
-        } else if (result?.correct) {
-          feedback.textContent = result.awardedXp ? `Correct · +${result.awardedXp} XP` : 'Correct';
-          popup.classList.add('pc-popup-recall-mode--correct');
-        } else {
-          feedback.textContent = `Answer: ${result?.correctAnswer || ''}`;
-          popup.classList.add('pc-popup-recall-mode--incorrect');
-        }
-      } catch (err) {
-        feedback.textContent = `Wild Recall fallback used: ${err.message}`;
-      }
-      window.setTimeout(() => {
-        if (activePopup?.el !== popup) return;
-        removePopup();
-        openWordPopup({ word, sentence, anchorRect });
-      }, 1200);
-    });
-    options.append(button);
-  }
-  globalThis.PolycastWordPopup?.setFlameLevel(goal.querySelector('.pc-popup-goal-flame'), goalFlameRatio(dailyGoalSnapshot));
-}
-
 function handleWordClick(word, sentence, anchorEl) {
   openWordPopup({
     word,
@@ -776,6 +662,5 @@ globalThis.PolycastContent = {
   cleanCaptionText,
   isWordToken,
   openWordPopup,
-  openRecallWordPopup,
   sendMessageAsync,
 };

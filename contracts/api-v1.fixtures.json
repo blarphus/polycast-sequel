@@ -67,9 +67,9 @@
     "occurredAt": "2026-07-12T00:00:00.000Z"
   },
   "extensionMessage": {
-    "type": "GET_PAGE_HIGHLIGHT_CONFIG",
+    "type": "MATCH_PAGE_TOKENS",
     "correlationId": "contract-correlation-3",
     "occurredAt": "2026-07-12T00:00:00.000Z",
-    "hostname": "example.test"
+    "tokens": ["hola", "mundo"]
   }
 }

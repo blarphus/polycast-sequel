@@ -6,8 +6,9 @@
    --------------------------------------------------------------------------- */
 
 .pc-popup {
-  width: 316px;
-  min-height: min(430px, var(--pc-popup-available-height, calc(100vh - 16px)));
+  width: min(680px, calc(100vw - 16px));
+  min-height: 0;
+  max-height: var(--pc-popup-available-height, calc(100vh - 16px));
   overflow-y: auto;
   overscroll-behavior: contain;
   background: #1a1a2e;
@@ -224,7 +225,7 @@
   font-weight: 700;
   cursor: pointer;
   padding: 11px 10px;
-  margin-top: 12px;
+  margin-top: 0;
   transition: all 0.2s ease;
 }
 
@@ -317,7 +318,7 @@
   font-weight: 700;
   cursor: pointer;
   padding: 10px 0;
-  margin-top: 10px;
+  margin-top: 0;
   transition: all 0.2s ease;
 }
 
@@ -332,7 +333,10 @@
 }
 
 .pc-popup-explanation {
-  margin-top: 8px;
+  min-height: 0;
+  max-height: 220px;
+  margin-top: 0;
+  overflow-y: auto;
   font-size: 13px;
   color: #d0d0e0;
   line-height: 1.45;
@@ -348,6 +352,40 @@
 
 .pc-popup-body {
   min-height: 40px;
+}
+
+.pc-popup-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(230px, .85fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.pc-popup-side {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding-left: 18px;
+  border-left: 1px solid rgba(255, 255, 255, .1);
+}
+
+@media (max-width: 560px) {
+  .pc-popup {
+    width: min(420px, calc(100vw - 16px));
+  }
+
+  .pc-popup-main {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .pc-popup-side {
+    padding-top: 12px;
+    padding-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, .1);
+    border-left: 0;
+  }
 }
 
 .pc-popup-translation {
@@ -535,22 +573,3 @@
 @keyframes pc-spin {
   to { transform: rotate(360deg); }
 }
-
-.pc-popup-recall-body > strong { display: block; margin-bottom: 12px; font-size: 16px; }
-.pc-popup-recall-options { display: grid; gap: 8px; }
-.pc-popup-recall-options button {
-  min-height: 42px;
-  padding: 9px 11px;
-  border: 1px solid rgba(139, 128, 255, .55);
-  border-radius: 7px;
-  background: #23213d;
-  color: #f8f7ff;
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-}
-.pc-popup-recall-options button:hover:not(:disabled) { border-color: #74e7d7; background: #2b2949; }
-.pc-popup-recall-options button:disabled { opacity: .65; cursor: default; }
-.pc-popup-recall-feedback { min-height: 18px; margin-top: 10px; color: #c9c6df; font-size: 12px; }
-.pc-popup-recall-mode--correct { border-color: #4ade80; }
-.pc-popup-recall-mode--incorrect { border-color: #fb7185; }

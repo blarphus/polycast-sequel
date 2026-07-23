@@ -8,14 +8,11 @@ const BONUS_XP_PER_WORD = 10;
 const DAILY_GOAL_KEY = 'dailyWordGoal';
 const DAILY_PROGRESS_KEY = 'dailyWordProgress';
 const RECALL_CATALOG_KEY = 'wildRecallCatalog';
-const RECALL_CHALLENGE_KEY = 'wildRecallChallenge';
 const OFFLINE_MODE_KEY = 'offlineMode';
 const OFFLINE_WORDS_KEY = 'offlineDictionaryWords';
 const SELECTION_CONTEXT_MENU_ID = 'polycast-lookup-selection';
-const SITE_HIGHLIGHT_OVERRIDES_KEY = 'siteHighlightOverrides';
-const SITE_CONTENT_SCRIPTS_KEY = 'siteContentScriptIds';
 const PAGE_CONTENT_TAB_PATTERNS = ['*://*.youtube.com/*', 'https://*.netflix.com/*'];
-const PAGE_CUE_DATE_KEY = 'pageCueDate';
+const LEGACY_HIGHLIGHT_STORAGE_KEYS = ['siteHighlightOverrides', 'siteContentScriptIds', 'pageCueDate'];
 const DEFAULT_OFFLINE_USER = {
   id: 'offline-local-user',
   username: 'offline',
@@ -29,7 +26,7 @@ const DEFAULT_OFFLINE_USER = {
 };
 const SESSION_SCOPED_STORAGE_KEYS = [
   'authToken', 'user', 'savedWords', RECALL_CATALOG_KEY,
-  RECALL_CHALLENGE_KEY, 'progression', OFFLINE_MODE_KEY,
+  'progression', OFFLINE_MODE_KEY,
 ];
 
 if (typeof importScripts === 'function') importScripts('generated/messageContract.js', 'background/messageRouter.js', 'background/activation.js');
@@ -118,8 +115,26 @@ function installContextMenus() {
   return contextMenuInstallPromise;
 }
 
-chrome.runtime.onInstalled.addListener(installContextMenus);
-chrome.runtime.onStartup.addListener(installContextMenus);
+async function initializeExtensionRuntime() {
+  await installContextMenus();
+  try {
+    await removeLegacyPageHighlights();
+  } catch (error) {
+    await broadcastFallbackNotice(
+      'Old page highlights could not be removed',
+      'Polycast could not finish removing a previously registered page-highlighting script and will retry at browser startup.',
+      {
+        code: 'legacy_page_highlight_cleanup_failed',
+        operation: 'remove-page-highlighting',
+        detail: error?.message || String(error),
+        severity: 'error',
+      },
+    );
+  }
+}
+
+chrome.runtime.onInstalled.addListener(() => { void initializeExtensionRuntime(); });
+chrome.runtime.onStartup.addListener(() => { void initializeExtensionRuntime(); });
 
 function makeFallbackDiagnostic({ code, title, message, source = 'extension.background', operation, pipeline, stage, language, selectedAction, detail, severity = 'warning', correlationId, occurredAt }) {
   return {
@@ -148,6 +163,38 @@ async function surfaceBackgroundDiagnostic(diagnostic) {
   }
 }
 
+async function removeLegacyPageHighlights() {
+  const stored = await chrome.storage.local.get(LEGACY_HIGHLIGHT_STORAGE_KEYS);
+  const legacyRegistrations = stored.siteContentScriptIds || {};
+  const registered = chrome.scripting
+    ? await chrome.scripting.getRegisteredContentScripts()
+    : [];
+  const ids = [...new Set([
+    ...Object.values(legacyRegistrations),
+    ...registered.filter((entry) => String(entry.id || '').startsWith('polycast-site-')).map((entry) => entry.id),
+  ].filter(Boolean))];
+
+  for (const origin of Object.keys(legacyRegistrations)) {
+    const tabs = await chrome.tabs.query({ url: `${origin}/*` });
+    for (const tab of tabs) {
+      if (!Number.isInteger(tab.id)) continue;
+      try {
+        await chrome.tabs.sendMessage(tab.id, {
+          type: 'SITE_HIGHLIGHT_OVERRIDE_UPDATED',
+          override: 'off',
+        });
+      } catch (error) {
+        if (!/receiving end does not exist|could not establish connection/i.test(error?.message || '')) {
+          throw error;
+        }
+      }
+    }
+  }
+
+  if (ids.length) await chrome.scripting.unregisterContentScripts({ ids });
+  await chrome.storage.local.remove(LEGACY_HIGHLIGHT_STORAGE_KEYS);
+}
+
 async function sendTabMessageSafe(tabId, payload, operation) {
   if (!Number.isInteger(tabId)) return undefined;
   try {
@@ -168,23 +215,13 @@ async function sendTabMessageSafe(tabId, payload, operation) {
 }
 
 async function getPageContentTabs() {
-  const stored = await chrome.storage.local.get(SITE_CONTENT_SCRIPTS_KEY);
-  const optionalPatterns = Object.keys(stored[SITE_CONTENT_SCRIPTS_KEY] || {})
-    .map((origin) => `${origin}/*`);
-  return chrome.tabs.query({ url: [...PAGE_CONTENT_TAB_PATTERNS, ...optionalPatterns] });
+  return chrome.tabs.query({ url: PAGE_CONTENT_TAB_PATTERNS });
 }
 
-
-
-const { activateOptionalSite, deactivateOptionalSite } = globalThis.PolycastActivationHandlers.create({
+globalThis.PolycastActivationHandlers.create({
   makeFallbackDiagnostic,
-  sendTabMessageSafe,
   surfaceBackgroundDiagnostic,
-  SITE_HIGHLIGHT_OVERRIDES_KEY,
-  SITE_CONTENT_SCRIPTS_KEY,
 });
-globalThis.activateOptionalSite = activateOptionalSite;
-globalThis.deactivateOptionalSite = deactivateOptionalSite;
 
 async function getApiBase() {
   const { apiBase } = await chrome.storage.local.get('apiBase');
@@ -524,15 +561,6 @@ async function broadcastFallbackNotice(title, message, options = {}) {
     await sendTabMessageSafe(tab.id, { type: 'POLYCAST_FALLBACK_NOTICE', diagnostic }, 'broadcast-fallback-notice');
   }
   return diagnostic;
-}
-
-async function broadcastWildRecallUpdated(challenge, progression = null, diagnostic = null) {
-  const tabs = await getPageContentTabs();
-  for (const tab of tabs) {
-    await sendTabMessageSafe(tab.id, {
-      type: 'WILD_RECALL_UPDATED', challenge, progression, diagnostic,
-    }, 'broadcast-wild-recall');
-  }
 }
 
 async function storeProgression(progression, { justAdded = false, awardedXp = 0 } = {}) {
@@ -951,153 +979,9 @@ async function handleMessage(msg, sender = {}) {
       return { matches, revision: savedTokenRevision };
     }
 
-    case 'GET_PAGE_HIGHLIGHT_CONFIG': {
-      const hostname = String(msg.hostname || '').toLocaleLowerCase();
-      const stored = await chrome.storage.local.get(['user', SITE_HIGHLIGHT_OVERRIDES_KEY]);
-      return {
-        targetLanguage: stored.user?.target_language || null,
-        override: stored[SITE_HIGHLIGHT_OVERRIDES_KEY]?.[hostname] || 'auto',
-      };
-    }
-
-    case 'SET_SITE_HIGHLIGHT_OVERRIDE': {
-      const hostname = String(msg.hostname || '').toLocaleLowerCase();
-      if (!['auto', 'on', 'off'].includes(msg.override)) throw new Error('Page highlight mode must be auto, on, or off');
-      const override = msg.override;
-      if (!hostname) throw new Error('No active site');
-      const optionalSite = msg.pageUrl && !/(^|\.)youtube\.com$|(^|\.)netflix\.com$/.test(hostname);
-      if (optionalSite && override !== 'off') await activateOptionalSite({ pageUrl: msg.pageUrl, hostname, tabId: Number(msg.tabId) });
-      if (optionalSite && override === 'off') await deactivateOptionalSite(msg.pageUrl, hostname);
-      const stored = await chrome.storage.local.get(SITE_HIGHLIGHT_OVERRIDES_KEY);
-      const overrides = { ...(stored[SITE_HIGHLIGHT_OVERRIDES_KEY] || {}), [hostname]: override };
-      if (override === 'auto') delete overrides[hostname];
-      await chrome.storage.local.set({ [SITE_HIGHLIGHT_OVERRIDES_KEY]: overrides });
-      const tabId = Number(msg.tabId) || sender.tab?.id;
-      if (tabId) await sendTabMessageSafe(tabId, { type: 'SITE_HIGHLIGHT_OVERRIDE_UPDATED', override }, 'update-site-highlight-override');
-      return { hostname, override };
-    }
-
-    case 'CLAIM_PAGE_CUE': {
-      const stored = await chrome.storage.local.get([PAGE_CUE_DATE_KEY, 'progression']);
-      const today = localDateKey();
-      if (stored[PAGE_CUE_DATE_KEY] === today) return { show: false };
-      await chrome.storage.local.set({ [PAGE_CUE_DATE_KEY]: today });
-      return { show: true, remaining: Number(stored.progression?.dailyGoal?.remaining) || 0 };
-    }
-
     case 'GET_SAVED_WORDS': {
       const { savedWords } = await chrome.storage.local.get('savedWords');
       return { savedWords: savedWords || [] };
-    }
-
-    case 'GET_WILD_RECALL_STATE': {
-      const token = await getAuthToken();
-      const { [OFFLINE_MODE_KEY]: offlineMode, [RECALL_CHALLENGE_KEY]: cachedChallenge, progression } =
-        await chrome.storage.local.get([OFFLINE_MODE_KEY, RECALL_CHALLENGE_KEY, 'progression']);
-      if (!token || offlineMode) {
-        const diagnostic = makeFallbackDiagnostic({
-          code: 'wild_recall_offline_unavailable',
-          title: 'Wild Recall unavailable offline',
-          message: 'Wild Recall requires the account-backed XP service, so no challenge is available in offline mode.',
-          operation: 'get-wild-recall-state',
-        });
-        return {
-          challenge: null,
-          progression: progression || null,
-          diagnostic,
-        };
-      }
-      try {
-        await fetchSavedWords();
-        const remote = await apiFetch(`/api/progression?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`);
-        const challenge = remote.activeChallenge || null;
-        await chrome.storage.local.set({ [RECALL_CHALLENGE_KEY]: challenge, progression: remote });
-        const { [RECALL_CATALOG_KEY]: catalog = [] } = await chrome.storage.local.get(RECALL_CATALOG_KEY);
-        return { challenge, progression: remote, catalog };
-      } catch (err) {
-        if (isSessionExpiredError(err)) throw err;
-        const diagnostic = await broadcastFallbackNotice(
-          'Wild Recall catalog fallback used',
-          'The live recall catalog could not be loaded, so the extension kept the last cached challenge and progression.',
-          {
-            code: 'wild_recall_catalog_fallback',
-            operation: 'get-wild-recall-state',
-            detail: err?.message || String(err),
-          },
-        );
-        return {
-          challenge: cachedChallenge || null,
-          progression: progression || null,
-          diagnostic,
-        };
-      }
-    }
-
-    case 'MAYBE_ARM_WILD_RECALL': {
-      const token = await getAuthToken();
-      if (!token) return {
-        challenge: null,
-        diagnostic: makeFallbackDiagnostic({
-          code: 'wild_recall_signin_required',
-          title: 'Wild Recall unavailable',
-          message: 'Wild Recall is unavailable until you sign in.',
-          operation: 'arm-wild-recall',
-        }),
-      };
-      const { [RECALL_CHALLENGE_KEY]: existing } = await chrome.storage.local.get(RECALL_CHALLENGE_KEY);
-      if (existing) return { challenge: existing };
-      const { [RECALL_CATALOG_KEY]: catalog = [] } = await chrome.storage.local.get(RECALL_CATALOG_KEY);
-      const candidateIds = new Set(Array.isArray(msg.wordIds) ? msg.wordIds : []);
-      const choices = catalog.filter((word) => word.last_reviewed_at && candidateIds.has(word.id));
-      if (!choices.length) return { challenge: null };
-      const choice = choices[Math.floor(Math.random() * choices.length)];
-      try {
-        const result = await apiFetch('/api/progression/wild-recall/arm', {
-          method: 'POST',
-          body: { wordId: choice.id, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
-        });
-        await chrome.storage.local.set({ [RECALL_CHALLENGE_KEY]: result.challenge || null, progression: result.progression || null });
-        await broadcastWildRecallUpdated(result.challenge || null, result.progression || null, result.unavailable || null);
-        return result;
-      } catch (err) {
-        if (isSessionExpiredError(err)) throw err;
-        const diagnostic = makeFallbackDiagnostic({
-          code: 'wild_recall_preparation_fallback',
-          title: 'Wild Recall preparation fallback used',
-          message: 'The recall challenge could not be prepared, so this page will continue without one.',
-          operation: 'arm-wild-recall',
-          detail: err?.message || String(err),
-        });
-        await broadcastWildRecallUpdated(null, null, diagnostic);
-        return { challenge: null, diagnostic };
-      }
-    }
-
-    case 'ANSWER_WILD_RECALL': {
-      const result = await apiFetch('/api/progression/wild-recall/answer', {
-        method: 'POST',
-        body: {
-          challengeId: msg.challengeId,
-          optionId: msg.optionId,
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        },
-      });
-      await chrome.storage.local.set({ [RECALL_CHALLENGE_KEY]: null, progression: result.progression || null });
-      await storeProgression(result.progression, { awardedXp: result.awardedXp || 0 });
-      await broadcastWildRecallUpdated(null, result.progression || null);
-      return result;
-    }
-
-    case 'CLICK_WILD_RECALL': {
-      const result = await apiFetch('/api/progression/wild-recall/click', {
-        method: 'POST',
-        body: {
-          challengeId: msg.challengeId,
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        },
-      });
-      if (result.progression) await chrome.storage.local.set({ progression: result.progression });
-      return result;
     }
 
     case 'GET_OFFLINE_DICTIONARY_FULL': {

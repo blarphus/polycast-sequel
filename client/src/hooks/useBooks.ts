@@ -1,11 +1,11 @@
 import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
 const runtimeLog = createScopedRuntimeLogger('web.hooks.usebooks');
 // ---------------------------------------------------------------------------
-// hooks/useBooks.ts -- Manage profile books plus resumable local CBZ OCR caches.
+// hooks/useBooks.ts -- Manage profile books plus derived CBZ processing caches.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from 'react';
-import { listBooks, addBook, deleteBook, getStoredBook, updateBookMeta, type BookMeta } from '../utils/bookStore';
+import { listBooks, addBook, deleteBook, getStoredBook, type BookMeta } from '../utils/bookStore';
 import { parseEpub, coverBlob } from '../utils/epub';
 import { prepareCbzForOcr } from '../utils/cbz';
 import {
@@ -30,23 +30,10 @@ export interface BookImportResult {
   processing: boolean;
 }
 
-function formatTransferBytes(bytes: number) {
-  if (bytes < 1024) return `${Math.round(bytes)} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-function migrationProgress(title: string, fraction: number, totalBytes: number) {
-  const bounded = Math.max(0, Math.min(1, fraction));
-  const transferred = Math.min(totalBytes, Math.round(totalBytes * bounded));
-  return `Moving “${title}” to your profile… ${(bounded * 100).toFixed(1)}% · ${formatTransferBytes(transferred)} / ${formatTransferBytes(totalBytes)}`;
-}
-
 export function useBooks() {
   const [books, setBooks] = useState<BookMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [migrationStatus, setMigrationStatus] = useState('');
 
   const refresh = useCallback(async () => {
     try {
@@ -76,110 +63,28 @@ export function useBooks() {
         setBooks([...remote, ...visibleLocal].sort((a, b) => b.addedAt - a.addedAt));
       };
 
-      // Show the library as soon as its local and server indexes arrive. Large
-      // legacy uploads continue below without holding the entire page loader.
-      publishBooks();
-      setError('');
-      setLoading(false);
-      const legacyEpubs = localBooks.filter((book) => (
-        book.format === 'epub' && book.source !== 'class' && book.source !== 'server'
+      // Personal books are server-owned. Remove obsolete device-only entries
+      // instead of uploading them into whichever profile happens to open this
+      // browser. Server and assigned-class caches remain scoped by their IDs.
+      const legacyLocalBooks = localBooks.filter((book) => (
+        book.source !== 'class' && book.source !== 'server'
       ));
-      for (const legacy of legacyEpubs) {
+      for (const legacy of legacyLocalBooks) {
         try {
-          setMigrationStatus(`Moving “${legacy.title}” to your profile…`);
-          const stored = await getStoredBook(legacy.id);
-          if (!stored || stored.format === 'comic') continue;
-          const file = new File(
-            [stored.bytes as BlobPart],
-            legacy.originalFilename || `${legacy.title}.epub`,
-            { type: 'application/epub+zip' },
-          );
-          await uploadUserLibraryBook(file, {
-            title: legacy.title, author: legacy.author, language: legacy.language,
-          }, (fraction) => {
-            setMigrationStatus(migrationProgress(legacy.title, fraction, file.size));
-          });
           await deleteBook(legacy.id);
         } catch (err) {
           emitFallbackDiagnostic({
-            code: 'legacy_epub_cloud_migration_failed',
+            code: 'legacy_local_book_cleanup_failed',
             severity: 'warning',
-            title: 'Book still stored on this device',
-            message: `“${legacy.title}” could not be moved to your profile library yet.`,
+            title: 'Local book could not be removed',
+            message: `“${legacy.title}” is an obsolete device-only entry and could not be cleared from this browser.`,
             detail: err instanceof Error ? err.message : String(err),
-          }, { source: 'web.library', operation: 'migrate-legacy-epub' });
-        }
-      }
-      const legacyComics = localBooks.filter((book) => (
-        book.format === 'comic' && book.source !== 'class' && book.source !== 'server'
-      ));
-      for (const legacy of legacyComics) {
-        let uploadedId: string | null = null;
-        try {
-          setMigrationStatus(`Moving “${legacy.title}” to your profile…`);
-          const stored = await getStoredBook(legacy.id);
-          if (!stored || stored.format !== 'comic' || !stored.comic.archive) continue;
-          const language = legacy.language || stored.comic.language;
-          if (language !== 'en' && language !== 'es') {
-            throw new Error('[legacy_cbz_language_missing] Choose English or Spanish before this comic can move to your profile.');
-          }
-          const file = new File(
-            [stored.comic.archive],
-            legacy.originalFilename || stored.comic.sourceFileName || `${legacy.title}.cbz`,
-            { type: 'application/vnd.comicbook+zip' },
-          );
-          const uploaded = await uploadUserLibraryBook(file, {
-            title: legacy.title, author: legacy.author, language,
-          }, (fraction) => {
-            setMigrationStatus(migrationProgress(legacy.title, fraction, file.size));
-          });
-          uploadedId = uploaded.id;
-          const { comic, cover } = await prepareCbzForOcr(file, language);
-          await addBook({
-            ...legacy,
-            id: uploaded.id,
-            cover,
-            addedAt: new Date(uploaded.created_at).getTime(),
-            source: 'server',
-            serverBookId: uploaded.id,
-            originalFilename: uploaded.original_filename,
-            byteSize: uploaded.byte_size,
-            ocr: comic.ocr,
-            pageCount: comic.pages.length,
-          }, comic);
-          await deleteBook(legacy.id);
-          startComicOcr(uploaded.id);
-        } catch (err) {
-          if (uploadedId) {
-            try {
-              await deleteBook(legacy.id);
-            } catch (cleanupError) {
-              try {
-                await updateBookMeta(legacy.id, { source: 'server', serverBookId: uploadedId });
-              } catch (markError) {
-                emitFallbackDiagnostic({
-                  code: 'legacy_cbz_migration_cleanup_failed', severity: 'warning',
-                  title: 'Old comic cache could not be marked',
-                  message: 'The CBZ is safely in your profile, but this browser may try to migrate its old cache again.',
-                  detail: `cleanup=${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}; mark=${markError instanceof Error ? markError.message : String(markError)}`,
-                }, { source: 'web.library', operation: 'finalize-legacy-cbz-migration' });
-              }
-            }
-          }
-          emitFallbackDiagnostic({
-            code: 'legacy_cbz_cloud_migration_failed',
-            severity: 'warning',
-            title: uploadedId ? 'Comic uploaded; OCR cache unavailable' : 'Comic still stored on this device',
-            message: uploadedId
-              ? `“${legacy.title}” is in your profile library, but its browser OCR cache could not be prepared.`
-              : `“${legacy.title}” could not be moved to your profile library yet.`,
-            detail: err instanceof Error ? err.message : String(err),
-          }, { source: 'web.library', operation: 'migrate-legacy-cbz' });
+          }, { source: 'web.library', operation: 'remove-legacy-local-book' });
         }
       }
       const cachedClassEpubs = localBooks.filter((book) => book.format === 'epub' && book.source === 'class');
       await Promise.all(cachedClassEpubs.map((book) => deleteBook(book.id)));
-      if (legacyEpubs.length || legacyComics.length || cachedClassEpubs.length) {
+      if (legacyLocalBooks.length || cachedClassEpubs.length) {
         localBooks = await listBooks();
         serverBooks = await getUserLibraryBooks();
       }
@@ -189,7 +94,6 @@ export function useBooks() {
       runtimeLog.error('Failed to load books:', err);
       setError('Could not open your book library.');
     } finally {
-      setMigrationStatus('');
       setLoading(false);
     }
   }, []);
@@ -356,5 +260,5 @@ export function useBooks() {
     return { id: classBook.id, format: 'epub', processing: false };
   }, [refresh]);
 
-  return { books, loading, error, migrationStatus, refresh, addFromFile, addFromClass, remove, retryOcr };
+  return { books, loading, error, refresh, addFromFile, addFromClass, remove, retryOcr };
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
 import { parseCbzPrototype, prepareCbzForOcr } from '../utils/cbz';
-import { ocrPageToLines } from '../utils/comicOcr';
+import { ocrPageToLines, shouldResumeComicOcr } from '../utils/comicOcr';
 
 describe('CBZ prototype importer', () => {
   const streamedFile = (archive: Uint8Array, name: string) => {
@@ -46,6 +46,28 @@ describe('CBZ prototype importer', () => {
 });
 
 describe('full CBZ OCR importer', () => {
+  it('resumes only incomplete OCR work and never requeues a completed comic', () => {
+    const progress = {
+      status: 'processing' as const,
+      processedPages: 201,
+      totalPages: 224,
+      currentPage: 202,
+      pageProgress: 0,
+      overallProgress: 201 / 224,
+      stage: 'Opening page 202 of 224',
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+      estimatedSecondsRemaining: 60,
+      diagnosticCode: null,
+      diagnosticMessage: null,
+      diagnosticDetail: null,
+    };
+
+    expect(shouldResumeComicOcr(progress)).toBe(true);
+    expect(shouldResumeComicOcr({ ...progress, processedPages: 224, currentPage: null })).toBe(false);
+    expect(shouldResumeComicOcr({ ...progress, status: 'ready' })).toBe(false);
+  });
+
   it('indexes every image page in natural reading order and queues the whole archive', async () => {
     const archive = zipSync({
       'comic-10.jpg': strToU8('ten'),

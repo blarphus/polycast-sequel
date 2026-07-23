@@ -14,12 +14,14 @@ import {
 import { CheckCircleIcon, CloseIcon, SpeakerIcon } from '../components/icons';
 import { playAiSpeech } from '../utils/aiSpeech';
 import { playCompleteSound, playCorrectSound, playIncorrectSound } from '../utils/sounds';
+import { useI18n } from '../hooks/useI18n';
 
 type Feedback = { correct: boolean; correctAnswer: string; next: VocabularyExercise | null };
 
 export default function Practice() {
   const { videoId } = useParams<{ videoId: string }>();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [session, setSession] = useState<LearningSession | null>(null);
   const [exercise, setExercise] = useState<VocabularyExercise | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
@@ -52,11 +54,13 @@ export default function Practice() {
       setDiagnostics(created.diagnostics || []);
       resetAnswer();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Practice could not start');
+      setError(err instanceof Error && /at least four words|al menos cuatro palabras/i.test(err.message)
+        ? t('practice.minimumWords')
+        : t('practice.startFailed'));
     } finally {
       setLoading(false);
     }
-  }, [resetAnswer, videoId]);
+  }, [resetAnswer, t, videoId]);
 
   useEffect(() => { void start(); }, [start]);
 
@@ -85,7 +89,7 @@ export default function Practice() {
       setFeedback({ correct: answered.correct, correctAnswer: answered.correctAnswer, next: answered.nextExercise });
       if (answered.correct) playCorrectSound(); else playIncorrectSound();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Answer could not be saved');
+      setError(t('practice.answerFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -104,7 +108,7 @@ export default function Practice() {
       setResult({ awardedXp: completed.awardedXp, correct: session.correct_count, total: session.total_items });
       playCompleteSound();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Session could not be completed');
+      setError(t('practice.completeFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -122,7 +126,7 @@ export default function Practice() {
   }
 
   if (loading) {
-    return <div className="practice-page"><div className="loading-spinner" /><p className="practice-status">Preparing practice...</p></div>;
+    return <div className="practice-page"><div className="loading-spinner" /><p className="practice-status">{t('practice.preparing')}</p></div>;
   }
 
   if (result) {
@@ -131,14 +135,14 @@ export default function Practice() {
       <div className="practice-page">
         <div className="practice-complete">
           <CheckCircleIcon size={52} />
-          <h1>Practice complete</h1>
+          <h1>{t('practice.complete')}</h1>
           <div className="practice-complete-stats">
-            <span><strong>{result.correct}/{result.total}</strong> correct</span>
-            <span><strong>{percent}%</strong> accuracy</span>
-            <span><strong>{result.awardedXp ? `+${result.awardedXp}` : 'Capped'}</strong> XP</span>
+            <span>{t('practice.correctCount', { correct: result.correct, total: result.total })}</span>
+            <span><strong>{percent}%</strong> {t('practice.accuracy')}</span>
+            <span><strong>{result.awardedXp ? `+${result.awardedXp}` : t('practice.capped')}</strong> XP</span>
           </div>
-          <button className="btn btn-primary" onClick={() => void start()}>Practice again</button>
-          <button className="btn btn-secondary" onClick={() => navigate('/learn')}>Flashcards</button>
+          <button className="btn btn-primary" onClick={() => void start()}>{t('practice.again')}</button>
+          <button className="btn btn-secondary" onClick={() => navigate('/learn')}>{t('practice.flashcards')}</button>
         </div>
       </div>
     );
@@ -148,9 +152,9 @@ export default function Practice() {
     return (
       <div className="practice-page">
         <div className="practice-empty">
-          <h1>Practice</h1>
-          <p>{error || 'No exercise is available.'}</p>
-          <button className="btn btn-primary" onClick={() => navigate('/dictionary')}>Open dictionary</button>
+          <h1>{t('practice.title')}</h1>
+          <p>{error || t('practice.unavailable')}</p>
+          <button className="btn btn-primary" onClick={() => navigate('/dictionary')}>{t('practice.openDictionary')}</button>
         </div>
       </div>
     );
@@ -162,7 +166,7 @@ export default function Practice() {
   return (
     <div className="practice-page">
       <header className="practice-session-header">
-        <button className="practice-close" onClick={() => navigate(videoId ? `/watch/${videoId}` : '/learn')} aria-label="Close practice">
+        <button className="practice-close" onClick={() => navigate(videoId ? `/watch/${videoId}` : '/learn')} aria-label={t('practice.close')}>
           <CloseIcon size={20} />
         </button>
         <div className="practice-progress" aria-label={`${exercise.position + 1} of ${exercise.total}`}>
@@ -182,10 +186,10 @@ export default function Practice() {
 
       <main className="practice-exercise">
         <h1>{exercise.prompt.instruction}</h1>
-        {exercise.retryOf && <p className="practice-retry-label">Try this word again</p>}
+        {exercise.retryOf && <p className="practice-retry-label">{t('practice.retry')}</p>}
 
         {exercise.prompt.audioText && (
-          <button className="practice-audio" onClick={() => void playAiSpeech(exercise.prompt.audioText!, exercise.prompt.language || undefined)} aria-label="Play word">
+          <button className="practice-audio" onClick={() => void playAiSpeech(exercise.prompt.audioText!, exercise.prompt.language || undefined)} aria-label={t('practice.playWord')}>
             <SpeakerIcon size={30} />
           </button>
         )}
@@ -201,7 +205,7 @@ export default function Practice() {
                 onError={(event) => { event.currentTarget.style.display = 'none'; }}
               />
             )}
-            {exercise.prompt.meaning && <p><span>Meaning</span>{exercise.prompt.meaning}</p>}
+            {exercise.prompt.meaning && <p><span>{t('practice.meaning')}</span>{exercise.prompt.meaning}</p>}
           </div>
         )}
         {exercise.prompt.sentence && <div className="practice-sentence">{exercise.prompt.sentence}</div>}
@@ -253,12 +257,12 @@ export default function Practice() {
       <footer className={`practice-action-bar${feedback ? feedback.correct ? ' correct' : ' incorrect' : ''}`}>
         {feedback ? (
           <div className="practice-feedback-copy" aria-live="polite">
-            <strong>{feedback.correct ? 'Correct' : 'Not quite'}</strong>
-            {!feedback.correct && <span>Answer: {feedback.correctAnswer}</span>}
+            <strong>{feedback.correct ? t('practice.correct') : t('practice.notQuite')}</strong>
+            {!feedback.correct && <span>{t('practice.answer', { answer: feedback.correctAnswer })}</span>}
           </div>
         ) : <span />}
         <button className="btn btn-primary" disabled={feedback ? submitting : !response || submitting} onClick={() => void (feedback ? next() : submit())}>
-          {submitting ? 'Saving...' : feedback ? (feedback.next ? 'Next' : 'Finish') : 'Check'}
+          {submitting ? t('common.saving') : feedback ? (feedback.next ? t('practice.next') : t('practice.finish')) : t('practice.check')}
         </button>
       </footer>
     </div>

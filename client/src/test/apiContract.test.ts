@@ -18,6 +18,6 @@ describe('generated API contract fixtures', () => {
     expect(transcript.segments[0].words[1]).toEqual({ text: 'mundo', offset: 450 });
     expect(signal.roomId).toBe('22222222-2222-4222-8222-222222222222');
     expect(callSignal.callId).toBe('55555555-5555-4555-8555-555555555555');
-    expect(extension.type).toBe('GET_PAGE_HIGHLIGHT_CONFIG');
+    expect(extension.type).toBe('MATCH_PAGE_TOKENS');
   });
 });

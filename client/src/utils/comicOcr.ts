@@ -329,10 +329,35 @@ export function cancelComicOcr(bookId: string) {
   }
 }
 
+export function shouldResumeComicOcr(progress: ComicOcrProgress | null | undefined) {
+  if (!progress) return false;
+  return (progress.status === 'queued' || progress.status === 'processing')
+    && progress.processedPages < progress.totalPages;
+}
+
 export async function resumePendingComicOcr() {
   const books = await listBooks();
   for (const book of books) {
-    if (book.format === 'comic' && (book.ocr?.status === 'queued' || book.ocr?.status === 'processing')) {
+    if (book.format !== 'comic' || !book.ocr) continue;
+    if (book.ocr.processedPages >= book.ocr.totalPages && book.ocr.status !== 'ready') {
+      const completedProgress: ComicOcrProgress = {
+        ...book.ocr,
+        status: 'ready',
+        processedPages: book.ocr.totalPages,
+        currentPage: null,
+        pageProgress: 0,
+        overallProgress: 1,
+        stage: 'Text selection ready',
+        estimatedSecondsRemaining: 0,
+        updatedAt: Date.now(),
+        diagnosticCode: null,
+        diagnosticMessage: null,
+        diagnosticDetail: null,
+      };
+      await persistProgress(book.id, completedProgress);
+      continue;
+    }
+    if (shouldResumeComicOcr(book.ocr)) {
       startComicOcr(book.id);
     }
   }

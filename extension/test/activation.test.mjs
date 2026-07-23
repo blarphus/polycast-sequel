@@ -3,13 +3,13 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
-async function loadBackground({ permitted = true, sendMessage = async () => undefined } = {}) {
+async function loadBackground({ sendMessage = async () => undefined, initialStorage = {}, registeredScripts = [] } = {}) {
   const generated = await readFile(new URL('../generated/messageContract.js', import.meta.url), 'utf8');
   const router = await readFile(new URL('../background/messageRouter.js', import.meta.url), 'utf8');
   const activation = await readFile(new URL('../background/activation.js', import.meta.url), 'utf8');
   const source = `${generated}\n${router}\n${activation}\n${await readFile(new URL('../background.js', import.meta.url), 'utf8')}`;
-  const storage = {};
-  const registered = new Map();
+  const storage = { ...initialStorage };
+  const registered = new Map(registeredScripts.map((entry) => [entry.id, entry]));
   const executed = [];
   const insertedCss = [];
   const unregistered = [];
@@ -31,9 +31,12 @@ async function loadBackground({ permitted = true, sendMessage = async () => unde
       async remove(keys) { for (const key of Array.isArray(keys) ? keys : [keys]) delete storage[key]; },
     } },
     tabs: { query: async () => [], sendMessage, create: async () => {} },
-    permissions: { contains: async () => permitted },
     scripting: {
-      async getRegisteredContentScripts({ ids }) { return ids.map((id) => registered.get(id)).filter(Boolean); },
+      async getRegisteredContentScripts(options = {}) {
+        return options.ids
+          ? options.ids.map((id) => registered.get(id)).filter(Boolean)
+          : [...registered.values()];
+      },
       async registerContentScripts(entries) { for (const entry of entries) registered.set(entry.id, entry); },
       async unregisterContentScripts({ ids }) { for (const id of ids) { registered.delete(id); unregistered.push(id); } },
       async executeScript(options) { executed.push(options); },
@@ -45,27 +48,26 @@ async function loadBackground({ permitted = true, sendMessage = async () => unde
   return { context, registered, executed, insertedCss, unregistered, contextMenuListeners, storage };
 }
 
-test('ordinary-site activation is exact-origin, user-permitted, persistent, and non-duplicating', async () => {
-  const fixture = await loadBackground();
-  const request = { pageUrl: 'https://learn.example.test/article?id=1', hostname: 'learn.example.test', tabId: 42 };
-  const first = await fixture.context.activateOptionalSite(request);
+test('extension upgrade unregisters and forgets legacy page highlighters', async () => {
+  const fixture = await loadBackground({
+    initialStorage: {
+      siteContentScriptIds: { 'https://learn.example.test': 'polycast-site-abc' },
+      siteHighlightOverrides: { 'learn.example.test': 'on' },
+      pageCueDate: '2026-07-22',
+    },
+    registeredScripts: [{
+      id: 'polycast-site-abc',
+      matches: ['https://learn.example.test/*'],
+    }],
+  });
 
-  assert.equal(first.origin, 'https://learn.example.test');
-  assert.equal(first.pattern, 'https://learn.example.test/*');
-  assert.equal(fixture.registered.size, 1);
-  const registration = [...fixture.registered.values()][0];
-  assert.equal(registration.matches[0], 'https://learn.example.test/*');
-  assert.equal(registration.persistAcrossSessions, true);
-  assert.equal(fixture.executed.length, 1);
-  assert.equal(fixture.insertedCss.length, 1);
+  await fixture.context.removeLegacyPageHighlights();
 
-  await fixture.context.activateOptionalSite(request);
-  assert.equal(fixture.registered.size, 1);
-  assert.equal(fixture.executed.length, 1, 'repeat activation must not install a second listener set');
-
-  await fixture.context.deactivateOptionalSite(request.pageUrl, request.hostname);
+  assert.deepEqual(fixture.unregistered, ['polycast-site-abc']);
   assert.equal(fixture.registered.size, 0);
-  assert.deepEqual(fixture.unregistered, [first.id]);
+  assert.equal(fixture.storage.siteContentScriptIds, undefined);
+  assert.equal(fixture.storage.siteHighlightOverrides, undefined);
+  assert.equal(fixture.storage.pageCueDate, undefined);
 });
 
 test('right-click lookup injects a one-time runtime when an ordinary page has no listener', async () => {
@@ -129,14 +131,4 @@ test('an injected listener rejection does not add a misleading unavailable notic
 
   assert.equal(fixture.executed.length, 1, 'only the runtime bundle should be injected');
   assert.equal(fixture.storage.lastFallbackDiagnostic.code, 'selection_popup_not_opened');
-});
-
-test('ordinary-site activation fails visibly when optional permission is absent', async () => {
-  const fixture = await loadBackground({ permitted: false });
-  await assert.rejects(
-    fixture.context.activateOptionalSite({ pageUrl: 'https://example.test/page', hostname: 'example.test', tabId: 1 }),
-    /Permission for https:\/\/example\.test has not been granted/,
-  );
-  assert.equal(fixture.registered.size, 0);
-  assert.equal(fixture.executed.length, 0);
 });

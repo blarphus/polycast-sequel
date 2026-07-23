@@ -34,23 +34,15 @@ const dailyGoalMessageEl = document.getElementById('daily-goal-message');
 const dailyGoalInputEl = document.getElementById('daily-goal-input');
 const openAppBtn = document.getElementById('open-app-btn');
 const logoutBtn = document.getElementById('logout-btn');
-const siteHighlightDetailEl = document.getElementById('site-highlight-detail');
-const siteHighlightButtons = [...document.querySelectorAll('[data-highlight-override]')];
-let activePageStatus = null;
-
 const POPUP_MESSAGES = {
   en: {
     username: 'Username', password: 'Password', signIn: 'Sign In', signingIn: 'Signing in...',
     apiServer: 'API server', saveApi: 'Save API', useRender: 'Use Render', native: 'Native', learning: 'Learning',
     savedWords: 'saved words', dailyActivity: 'Daily activity', dailyWordGoal: 'Daily word goal', goal: 'Goal',
-    pageHighlights: 'Page highlights', auto: 'Auto', on: 'On', off: 'Off', learningLanguage: 'Learning language',
+    learningLanguage: 'Learning language',
     hint: 'Click words in video subtitles to look them up.', openWebApp: 'Open Web App', signOut: 'Sign Out',
     goalComplete: 'Goal complete!', leftToday: (count) => `${count} ${count === 1 ? 'word' : 'words'} left today`,
     level: (number) => `Level ${number}`, rewards: (count) => `${count} session reward${count === 1 ? '' : 's'} left`,
-    pageChecking: 'Checking this page...', pageOff: 'Highlights off for this site',
-    pageOn: 'Highlights on · language checked in context when clicked', pageUnavailable: 'Page status unavailable',
-    browserPageUnavailable: 'Page status unavailable on this browser page',
-    grantAccess: (host) => `Not active on ${host} · choose Auto or On to grant access`,
     saving: 'Saving...', saved: 'Saved', extensionReloaded: 'Extension reloaded - reopen popup',
     noResponse: 'No response - try again', savingApi: 'Saving API...', couldNotSaveApi: 'Could not save API',
     apiSaved: 'API saved. Sign in to continue.', details: 'Diagnostic details', attention: 'Polycast needs your attention',
@@ -59,14 +51,10 @@ const POPUP_MESSAGES = {
     username: 'Usuario', password: 'Contraseña', signIn: 'Iniciar sesión', signingIn: 'Iniciando sesión...',
     apiServer: 'Servidor API', saveApi: 'Guardar API', useRender: 'Usar Render', native: 'Nativo', learning: 'Aprendiendo',
     savedWords: 'palabras guardadas', dailyActivity: 'Actividad diaria', dailyWordGoal: 'Meta diaria de palabras', goal: 'Meta',
-    pageHighlights: 'Resaltados de página', auto: 'Auto', on: 'Activados', off: 'Desactivados', learningLanguage: 'Idioma que aprendes',
+    learningLanguage: 'Idioma que aprendes',
     hint: 'Haz clic en palabras de los subtítulos para buscarlas.', openWebApp: 'Abrir aplicación web', signOut: 'Cerrar sesión',
     goalComplete: '¡Meta completada!', leftToday: (count) => `${count} ${count === 1 ? 'palabra pendiente' : 'palabras pendientes'} hoy`,
     level: (number) => `Nivel ${number}`, rewards: (count) => `${count} recompensa${count === 1 ? '' : 's'} de sesión pendiente${count === 1 ? '' : 's'}`,
-    pageChecking: 'Comprobando esta página...', pageOff: 'Resaltados desactivados en este sitio',
-    pageOn: 'Resaltados activados · el idioma se comprueba en contexto al hacer clic', pageUnavailable: 'Estado de página no disponible',
-    browserPageUnavailable: 'Estado no disponible en esta página del navegador',
-    grantAccess: (host) => `No está activo en ${host} · elige Auto o Activados para conceder acceso`,
     saving: 'Guardando...', saved: 'Guardado', extensionReloaded: 'La extensión se recargó; vuelve a abrirla',
     noResponse: 'Sin respuesta; inténtalo de nuevo', savingApi: 'Guardando API...', couldNotSaveApi: 'No se pudo guardar la API',
     apiSaved: 'API guardada. Inicia sesión para continuar.', details: 'Detalles del diagnóstico', attention: 'Polycast necesita tu atención',
@@ -100,7 +88,6 @@ function applyPopupLocale(nativeLanguage) {
 }
 
 applyPopupLocale(popupLocale);
-siteHighlightDetailEl.textContent = tr('pageChecking');
 
 function consumeRuntimeError() {
   return chrome.runtime.lastError?.message || '';
@@ -198,7 +185,6 @@ chrome.runtime.sendMessage({ type: 'GET_STATUS' }, (res) => {
         true,
       );
     }
-    loadPageHighlightStatus();
   } else {
     showView(loginView);
     if (res?.diagnostic) {
@@ -271,56 +257,6 @@ function showStatus(user, wordCount, dailyGoal, progression) {
   showView(statusView);
 }
 
-function renderPageHighlightStatus(status) {
-  activePageStatus = status;
-  siteHighlightButtons.forEach((button) => button.classList.toggle('selected', button.dataset.highlightOverride === status.override));
-  if (status.activationRequired) {
-    siteHighlightDetailEl.textContent = tr('grantAccess', status.hostname);
-    return;
-  }
-  if (!status.enabled) {
-    siteHighlightDetailEl.textContent = tr('pageOff');
-    return;
-  }
-  siteHighlightDetailEl.textContent = tr('pageOn');
-}
-
-function loadPageHighlightStatus() {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (consumeRuntimeError() || !tabs[0]?.id) {
-      siteHighlightDetailEl.textContent = tr('pageUnavailable');
-      return;
-    }
-    const activeTab = tabs[0];
-    chrome.tabs.sendMessage(activeTab.id, { type: 'GET_PAGE_HIGHLIGHT_STATUS' }, (status) => {
-      const error = consumeRuntimeError();
-      if (error || !status) {
-        try {
-          const url = new URL(activeTab.url || '');
-          if (['http:', 'https:'].includes(url.protocol)) {
-            renderPageHighlightStatus({
-              hostname: url.hostname,
-              pageUrl: url.href,
-              tabId: activeTab.id,
-              override: 'off',
-              enabled: false,
-              targetLanguage: null,
-              validationMode: 'click-context',
-              activationRequired: true,
-            });
-            return;
-          }
-        } catch (parseError) {
-          setSettingsMessage(`Page activation diagnostic · popup_page_url_invalid · ${crypto.randomUUID()} · ${parseError?.message || String(parseError)}`, true);
-        }
-        siteHighlightDetailEl.textContent = tr('browserPageUnavailable');
-        return;
-      }
-      renderPageHighlightStatus({ ...status, pageUrl: activeTab.url || '', tabId: activeTab.id });
-    });
-  });
-}
-
 // Login
 loginForm.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -368,59 +304,6 @@ dailyGoalInputEl.addEventListener('change', () => {
     if (res?.snapshot) renderDailyGoal(res.snapshot);
   });
 });
-
-siteHighlightButtons.forEach((button) => button.addEventListener('click', () => {
-  if (!activePageStatus?.hostname || !activePageStatus?.tabId) return;
-  siteHighlightButtons.forEach((item) => { item.disabled = true; });
-  const applyOverride = () => chrome.runtime.sendMessage({
-      type: 'SET_SITE_HIGHLIGHT_OVERRIDE',
-      hostname: activePageStatus.hostname,
-      pageUrl: activePageStatus.pageUrl || '',
-      tabId: activePageStatus.tabId,
-      override: button.dataset.highlightOverride,
-    }, (result) => {
-    siteHighlightButtons.forEach((item) => { item.disabled = false; });
-    const error = consumeRuntimeError();
-    if (error || result?.error) {
-      const diagnostic = result?.diagnostic;
-      setSettingsMessage(diagnostic
-        ? `${diagnostic.title}: ${diagnostic.message} · ${diagnostic.code} · ${diagnostic.correlationId}${diagnostic.detail ? ` · ${diagnostic.detail}` : ''}`
-        : `Highlight setting fallback used: ${error || result.error}`, true);
-      return;
-    }
-    renderPageHighlightStatus({ ...activePageStatus, activationRequired: false, override: result.override, enabled: result.override !== 'off', validationMode: 'click-context' });
-  });
-
-  if (!activePageStatus.activationRequired || button.dataset.highlightOverride === 'off') {
-    applyOverride();
-    return;
-  }
-  let pattern;
-  try {
-    pattern = `${new URL(activePageStatus.pageUrl).origin}/*`;
-  } catch (error) {
-    siteHighlightButtons.forEach((item) => { item.disabled = false; });
-    setSettingsMessage(`Site permission request rejected · popup_site_url_invalid · ${crypto.randomUUID()} · ${error?.message || String(error)}`, true);
-    return;
-  }
-  chrome.permissions.request({ origins: [pattern] }, (granted) => {
-    const error = consumeRuntimeError();
-    if (!granted || error) {
-      siteHighlightButtons.forEach((item) => { item.disabled = false; });
-      const correlationId = crypto.randomUUID();
-      console.info('[polycast:fallback]', {
-        code: 'site_activation_permission_denied', severity: 'warning',
-        title: 'Site activation permission not granted',
-        message: `Polycast remains inactive on ${activePageStatus.hostname} because site access was not granted.`,
-        source: 'extension.popup', operation: 'request-site-permission', correlationId,
-        occurredAt: new Date().toISOString(), detail: error || `origin=${pattern}`,
-      });
-      setSettingsMessage(`Site activation permission not granted · site_activation_permission_denied · ${correlationId} · ${error || pattern}`, true);
-      return;
-    }
-    applyOverride();
-  });
-}));
 
 // Logout
 logoutBtn.addEventListener('click', () => {

@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-22T19:27:30.973Z",
+  "generatedAt": "2026-07-23T16:53:34.700Z",
   "totals": {
-    "occurrences": 64,
-    "uniqueCodes": 61,
+    "occurrences": 57,
+    "uniqueCodes": 54,
     "incompleteOccurrences": 0
   },
   "entries": [
@@ -97,7 +97,7 @@
     {
       "code": "extension_offline_dictionary_save_used",
       "file": "extension/background.js",
-      "line": 847,
+      "line": 875,
       "structured": true,
       "logged": true,
       "visible": true
@@ -105,7 +105,7 @@
     {
       "code": "extension_offline_login_used",
       "file": "extension/background.js",
-      "line": 622,
+      "line": 650,
       "structured": true,
       "logged": true,
       "visible": true
@@ -113,7 +113,7 @@
     {
       "code": "extension_offline_status_used",
       "file": "extension/background.js",
-      "line": 684,
+      "line": 712,
       "structured": true,
       "logged": true,
       "visible": true
@@ -191,22 +191,6 @@
       "visible": true
     },
     {
-      "code": "highlight_dom_mutation_fallback",
-      "file": "extension/content/pageHighlights.js",
-      "line": 236,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "highlight_range_lookup_fallback",
-      "file": "extension/content/pageHighlights.js",
-      "line": 370,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
       "code": "language_display_name_fallback",
       "file": "extension/content/shared.js",
       "line": 204,
@@ -233,7 +217,7 @@
     {
       "code": "login_error_payload_fallback",
       "file": "extension/background.js",
-      "line": 638,
+      "line": 666,
       "structured": true,
       "logged": true,
       "visible": true
@@ -249,7 +233,7 @@
     {
       "code": "offline_daily_goal_used",
       "file": "extension/background.js",
-      "line": 872,
+      "line": 900,
       "structured": true,
       "logged": true,
       "visible": true
@@ -287,14 +271,6 @@
       "visible": true
     },
     {
-      "code": "page_highlight_runtime_fallback",
-      "file": "extension/content/pageHighlights.js",
-      "line": 82,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
       "code": "pixabay_provider_unconfigured",
       "file": "server/lib/imageSearch.js",
       "line": 9,
@@ -313,7 +289,7 @@
     {
       "code": "popup_language_name_fallback",
       "file": "extension/popup/popup.js",
-      "line": 123,
+      "line": 110,
       "structured": true,
       "logged": true,
       "visible": true
@@ -321,7 +297,7 @@
     {
       "code": "PRACTICE_IMAGE_UNAVAILABLE",
       "file": "server/services/learningSessionService.js",
-      "line": 335,
+      "line": 361,
       "structured": true,
       "logged": true,
       "visible": true
@@ -329,7 +305,7 @@
     {
       "code": "PRACTICE_SENTENCE_FALLBACK",
       "file": "server/services/learningSessionService.js",
-      "line": 328,
+      "line": 354,
       "structured": true,
       "logged": true,
       "visible": true
@@ -337,7 +313,7 @@
     {
       "code": "PRACTICE_SENTENCE_FALLBACK",
       "file": "server/services/learningSessionService.js",
-      "line": 350,
+      "line": 376,
       "structured": true,
       "logged": true,
       "visible": true
@@ -345,15 +321,7 @@
     {
       "code": "PRACTICE_VIDEO_POOL_FALLBACK",
       "file": "server/services/learningSessionService.js",
-      "line": 297,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "recall_forms_parser_fallback",
-      "file": "extension/content/pageHighlights.js",
-      "line": 148,
+      "line": 323,
       "structured": true,
       "logged": true,
       "visible": true
@@ -377,7 +345,7 @@
     {
       "code": "selection_popup_unavailable",
       "file": "extension/background/activation.js",
-      "line": 234,
+      "line": 167,
       "structured": true,
       "logged": true,
       "visible": true
@@ -385,7 +353,7 @@
     {
       "code": "selection_top_frame_fallback",
       "file": "extension/background/activation.js",
-      "line": 211,
+      "line": 144,
       "structured": true,
       "logged": true,
       "visible": true
@@ -457,7 +425,7 @@
     {
       "code": "tts_provider_fallback",
       "file": "client/src/components/FallbackToast.tsx",
-      "line": 31,
+      "line": 34,
       "structured": true,
       "logged": true,
       "visible": true
@@ -466,30 +434,6 @@
       "code": "widget_cached_snapshot_fallback",
       "file": "ios/Polycast/Sources/App/SessionStore.swift",
       "line": 202,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "wild_recall_catalog_fallback",
-      "file": "extension/background.js",
-      "line": 1023,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "wild_recall_offline_unavailable",
-      "file": "extension/background.js",
-      "line": 999,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "wild_recall_preparation_fallback",
-      "file": "extension/background.js",
-      "line": 1065,
       "structured": true,
       "logged": true,
       "visible": true

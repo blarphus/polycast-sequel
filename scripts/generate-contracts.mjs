@@ -63,7 +63,7 @@ assertExactFields(apiFixtures.transcriptResponse.segments[0], apiContract.compon
 assertExactFields(apiFixtures.transcriptResponse.segments[0].words[0], apiContract.components.schemas.TranscriptWord.required, 'transcriptWord fixture');
 assertExactFields(apiFixtures.groupCallSignal, apiContract.components.schemas.GroupCallSignal.required, 'groupCallSignal fixture');
 assertExactFields(apiFixtures.callSignal, apiContract.components.schemas.CallSignal.required, 'callSignal fixture');
-assertExactFields(apiFixtures.extensionMessage, [...apiContract.components.schemas.ExtensionMessage.required, 'hostname'], 'extensionMessage fixture');
+assertExactFields(apiFixtures.extensionMessage, [...apiContract.components.schemas.ExtensionMessage.required, 'tokens'], 'extensionMessage fixture');
 for (const schemaName of ['AuthUser', 'AuthSession', 'TranscriptWord', 'TranscriptSegment', 'TranscriptResponse', 'SocketEnvelope', 'CallSignal', 'GroupCallSignal', 'ExtensionMessage']) {
   if (apiContract.components.schemas[schemaName].additionalProperties !== false) {
     throw new Error(`${schemaName} must reject undocumented extra fields`);
@@ -312,7 +312,7 @@ struct APIContractExtensionMessage: Codable, Equatable {
     let type: String
     let correlationId: String
     let occurredAt: String
-    let hostname: String?
+    let tokens: [String]?
 }
 
 let apiGoldenFallbackDiagnosticJSON = ${swiftString(JSON.stringify(apiFixtures.fallbackDiagnostic))}

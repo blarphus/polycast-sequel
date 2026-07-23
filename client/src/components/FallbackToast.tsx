@@ -16,9 +16,12 @@ function languageName(languageCode?: string) {
 export default function FallbackToast() {
   const [notice, setNotice] = useState<FallbackDiagnostic | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shownCorrelationIds = useRef(new Set<string>());
 
   useEffect(() => {
     const showNotice = (next: FallbackDiagnostic) => {
+      if (shownCorrelationIds.current.has(next.correlationId)) return;
+      shownCorrelationIds.current.add(next.correlationId);
       setNotice(next);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setNotice(null), 7000);

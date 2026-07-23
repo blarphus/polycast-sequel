@@ -28,5 +28,5 @@ test('server consumes the canonical fallback, transcript, socket, and extension 
   assert.equal(API_GOLDEN_FIXTURES.fallbackDiagnostic.correlationId, 'contract-correlation-1');
   assert.equal(API_GOLDEN_FIXTURES.groupCallSignal.roomId, '22222222-2222-4222-8222-222222222222');
   assert.equal(API_GOLDEN_FIXTURES.callSignal.callId, '55555555-5555-4555-8555-555555555555');
-  assert.equal(API_GOLDEN_FIXTURES.extensionMessage.type, 'GET_PAGE_HIGHLIGHT_CONFIG');
+  assert.equal(API_GOLDEN_FIXTURES.extensionMessage.type, 'MATCH_PAGE_TOKENS');
 });
