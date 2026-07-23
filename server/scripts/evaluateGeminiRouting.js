@@ -89,6 +89,21 @@ The translation and definition must describe the exact meaning used in the sente
 The definition must be in ${sample.native}, brief, and no more than 15 words.
 The translation should be 1-4 words.`;
   }
+  if (variant === 'teen-v2') {
+    return `${common}
+
+Write for a 14-year-old language learner:
+- Give the reusable meaning of the word in this sense, not a paraphrase of the whole example sentence.
+- The definition must also work in a different sentence using the same sense.
+- Use one direct, complete sentence of 6-14 ordinary ${sample.native} words.
+- Include the essential difference from other common senses, but nothing more.
+- Do not invent a cause, result, intention, intensity, ownership, manner, or object that the word itself does not express.
+- Do not begin with "this word", "means", "significa", or similar framing.
+- Avoid circular wording, grammar jargon, unnecessary detail, and words harder than the term being explained.
+- Give a canonical 1-4 word dictionary translation, not a sentence-specific inflection.
+- For verb translations, prefer an infinitive when ${sample.native} normally uses one.
+- part_of_speech must be exactly one of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle.`;
+  }
   return `${common}
 
 Write for a 14-year-old language learner:
@@ -160,7 +175,9 @@ async function evaluateDefinition(sample, model, variant) {
       definitionWords,
       withinRequestedLength: variant === 'teen'
         ? definitionWords >= 8 && definitionWords <= 16
-        : definitionWords > 0 && definitionWords <= 15,
+        : variant === 'teen-v2'
+          ? definitionWords >= 6 && definitionWords <= 14
+          : definitionWords > 0 && definitionWords <= 15,
       partOfSpeechPresent: Boolean(parsed?.part_of_speech?.trim()),
       parseError,
     },
