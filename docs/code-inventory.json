@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 548,
-    "lines": 86892,
-    "declarations": 2380,
+    "files": 549,
+    "lines": 87144,
+    "declarations": 2392,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 3
@@ -7251,7 +7251,7 @@
         },
         {
           "name": "wordCount",
-          "callers": 18,
+          "callers": 22,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -8670,7 +8670,7 @@
         },
         {
           "name": "application",
-          "callers": 58,
+          "callers": 59,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "client/src/test/epub.test.ts",
@@ -9033,7 +9033,7 @@
       "symbols": [
         {
           "name": "news",
-          "callers": 68,
+          "callers": 69,
           "testReferences": [
             "extension/test/popup-position-stability.test.mjs"
           ],
@@ -11311,7 +11311,7 @@
         },
         {
           "name": "on",
-          "callers": 274,
+          "callers": 278,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -11798,7 +11798,7 @@
         },
         {
           "name": "close",
-          "callers": 79,
+          "callers": 80,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "server/test/auth.integration.test.js",
@@ -14450,7 +14450,7 @@
         },
         {
           "name": "close",
-          "callers": 79,
+          "callers": 80,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "server/test/auth.integration.test.js",
@@ -14552,7 +14552,7 @@
         },
         {
           "name": "trim",
-          "callers": 292,
+          "callers": 299,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "server/lib/httpErrors.test.js"
@@ -16372,7 +16372,7 @@
         },
         {
           "name": "callGemini",
-          "callers": 48,
+          "callers": 51,
           "testReferences": [
             "server/lib/gemini.test.js"
           ],
@@ -16524,7 +16524,7 @@
         },
         {
           "name": "main",
-          "callers": 73,
+          "callers": 75,
           "testReferences": [
             "extension/test/popup-landscape-layout.test.mjs"
           ],
@@ -17123,7 +17123,7 @@
       "symbols": [
         {
           "name": "main",
-          "callers": 73,
+          "callers": 75,
           "testReferences": [
             "extension/test/popup-landscape-layout.test.mjs"
           ],
@@ -17871,7 +17871,7 @@
         },
         {
           "name": "callGemini",
-          "callers": 48,
+          "callers": 51,
           "testReferences": [
             "server/lib/gemini.test.js"
           ],
@@ -21050,7 +21050,7 @@
         },
         {
           "name": "main",
-          "callers": 73,
+          "callers": 75,
           "testReferences": [
             "extension/test/popup-landscape-layout.test.mjs"
           ],
@@ -21075,7 +21075,7 @@
       "symbols": [
         {
           "name": "parseArgs",
-          "callers": 1,
+          "callers": 3,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -21123,7 +21123,7 @@
         },
         {
           "name": "mean",
-          "callers": 17,
+          "callers": 19,
           "testReferences": [
             "client/src/test/learnReviewLayout.test.ts"
           ],
@@ -21155,7 +21155,7 @@
         },
         {
           "name": "main",
-          "callers": 73,
+          "callers": 75,
           "testReferences": [
             "extension/test/popup-landscape-layout.test.mjs"
           ],
@@ -21227,6 +21227,103 @@
       "symbols": []
     },
     {
+      "file": "server/scripts/evaluateGeminiRouting.js",
+      "lines": 252,
+      "responsibility": "application support",
+      "sideEffects": [
+        "logging"
+      ],
+      "testCoverage": [
+        "client/src/test/learnReviewLayout.test.ts",
+        "extension/test/popup-landscape-layout.test.mjs",
+        "server/lib/gemini.test.js",
+        "server/test/learningSessionService.test.js"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "parseArgs",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "thinkingLevel",
+          "callers": 29,
+          "testReferences": [
+            "server/lib/gemini.test.js",
+            "server/test/learningSessionService.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "stripFence",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "parseJson",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "wordCount",
+          "callers": 22,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "buildDefinitionPrompt",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "buildPracticePrompt",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "practiceValid",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "evaluateDefinition",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "evaluatePractice",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "mean",
+          "callers": 19,
+          "testReferences": [
+            "client/src/test/learnReviewLayout.test.ts"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "main",
+          "callers": 75,
+          "testReferences": [
+            "extension/test/popup-landscape-layout.test.mjs"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
       "file": "server/scripts/exportWordfreq.py",
       "lines": 51,
       "responsibility": "application support",
@@ -21270,7 +21367,7 @@
         },
         {
           "name": "main",
-          "callers": 73,
+          "callers": 75,
           "testReferences": [
             "extension/test/popup-landscape-layout.test.mjs"
           ],
@@ -21316,7 +21413,7 @@
         },
         {
           "name": "main",
-          "callers": 73,
+          "callers": 75,
           "testReferences": [
             "extension/test/popup-landscape-layout.test.mjs"
           ],
@@ -21372,7 +21469,7 @@
         },
         {
           "name": "main",
-          "callers": 73,
+          "callers": 75,
           "testReferences": [
             "extension/test/popup-landscape-layout.test.mjs"
           ],
