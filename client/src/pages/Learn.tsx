@@ -581,10 +581,12 @@ export default function Learn() {
             </div>
             {card.image_url && (
               <img
+                key={`${card.id}:${card.image_url}`}
                 className="flashcard-image learn-review-image"
                 src={proxyImageUrl(card.image_url)!}
                 alt={card.word}
                 loading="lazy"
+                onLoad={(event) => { event.currentTarget.classList.add('is-loaded'); }}
                 onError={(event) => { event.currentTarget.style.display = 'none'; }}
               />
             )}

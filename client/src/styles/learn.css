@@ -911,8 +911,15 @@
   margin: 0;
   border: 0;
   border-radius: 13px;
-  object-fit: cover;
+  background: var(--bg-elevated);
+  object-fit: contain;
+  opacity: 0;
   box-shadow: 0 8px 22px rgba(23, 25, 45, 0.12);
+  transition: opacity 0.18s ease;
+}
+
+.learn-review-image.flashcard-image.is-loaded {
+  opacity: 1;
 }
 
 .learn-review-reveal-hint {
@@ -935,6 +942,20 @@
   display: flex;
   flex-direction: column;
   padding: clamp(1rem, 2vw, 1.5rem);
+  transition:
+    border-color 0.24s ease,
+    box-shadow 0.24s ease,
+    background-color 0.24s ease;
+}
+
+.learn-review-workspace.is-revealed .learn-review-answer-panel {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--accent) 9%, transparent) 0, transparent 38%),
+    var(--bg-surface);
+  box-shadow:
+    0 18px 48px rgba(26, 27, 53, 0.12),
+    inset 0 3px 0 color-mix(in srgb, var(--accent) 70%, transparent);
 }
 
 .learn-review-answer {
@@ -982,10 +1003,33 @@
 }
 
 .learn-review-answer-translation {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: clamp(1.05rem, 1.7vw, 1.35rem);
-  line-height: 1.35;
+  position: relative;
+  width: min(100%, 360px);
+  margin: 0.15rem 0 0;
+  padding: 0.9rem 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-surface));
+  color: color-mix(in srgb, var(--accent) 76%, var(--text-primary));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 13%, transparent);
+  font-size: clamp(1.55rem, 2.35vw, 2.1rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  animation: learnTranslationReveal 0.42s 0.08s cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+@keyframes learnTranslationReveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .learn-review-answer-context {
@@ -1224,6 +1268,10 @@
   .learn-review-answer-panel {
     min-height: 440px;
     padding: 1rem;
+  }
+
+  .learn-review-answer-translation {
+    font-size: clamp(1.45rem, 7vw, 1.9rem);
   }
 }
 

@@ -27,6 +27,18 @@ describe('flashcard review workspace', () => {
     expect(css).toMatch(/\.learn-review-answer-panel \.flashcard-answer-buttons\s*\{[^}]*grid-template-columns:\s*1fr/s);
   });
 
+  it('makes the revealed translation the visual focus of the answer panel', () => {
+    expect(css).toContain('.learn-review-workspace.is-revealed .learn-review-answer-panel');
+    expect(css).toMatch(/\.learn-review-answer-translation\s*\{[\s\S]*font-size:\s*clamp\(1\.55rem,\s*2\.35vw,\s*2\.1rem\)/);
+    expect(css).toContain('@keyframes learnTranslationReveal');
+  });
+
+  it('remounts each card image and preserves its full aspect ratio', () => {
+    expect(source).toContain('key={`${card.id}:${card.image_url}`}');
+    expect(source).toContain("classList.add('is-loaded')");
+    expect(css).toMatch(/\.learn-review-image\.flashcard-image\s*\{[\s\S]*object-fit:\s*contain/);
+  });
+
   it('supports reveal, incorrect, and correct keyboard controls', () => {
     expect(source).toContain("event.key === ' ' || event.key === 'Enter'");
     expect(source).toContain("event.key === '1'");
