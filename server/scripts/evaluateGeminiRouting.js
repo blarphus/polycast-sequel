@@ -104,6 +104,22 @@ Write for a 14-year-old language learner:
 - For verb translations, prefer an infinitive when ${sample.native} normally uses one.
 - part_of_speech must be exactly one of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle.`;
   }
+  if (variant === 'teen-v3') {
+    return `${common}
+
+Write for a 14-year-old language learner:
+- Define the reusable meaning of the word in this sense, not what happens in the example.
+- Use one direct sentence of 5-12 common ${sample.native} words.
+- Every detail must be true in every ordinary use of this exact sense.
+- Remove details that are merely typical of this example, including force, difficulty, direction, ownership, intention, timing, or physical position unless the word itself requires them.
+- Do not compare or contrast this sense with unrelated meanings of the word.
+- Prefer familiar everyday words over technical or abstract vocabulary.
+- Do not begin with "this word", "means", "significa", or similar framing.
+- Avoid circular wording and grammar jargon.
+- Give a canonical 1-4 word dictionary translation, not a sentence-specific inflection.
+- For verb translations, prefer an infinitive when ${sample.native} normally uses one.
+- part_of_speech must be exactly one of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle.`;
+  }
   return `${common}
 
 Write for a 14-year-old language learner:
@@ -177,6 +193,8 @@ async function evaluateDefinition(sample, model, variant) {
         ? definitionWords >= 8 && definitionWords <= 16
         : variant === 'teen-v2'
           ? definitionWords >= 6 && definitionWords <= 14
+          : variant === 'teen-v3'
+            ? definitionWords >= 5 && definitionWords <= 12
           : definitionWords > 0 && definitionWords <= 15,
       partOfSpeechPresent: Boolean(parsed?.part_of_speech?.trim()),
       parseError,
