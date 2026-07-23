@@ -6,7 +6,18 @@
 
 import { catalogEntryToWordFields, lookupFrequencyCatalog, persistProvisionalSense } from './lib/frequencyCatalog.js';
 import { normalizeLemma, normalizeForms } from './lib/normalizeWordFields.js';
-import { callGemini, callGeminiVision, parseGeminiJson } from './lib/gemini.js';
+import {
+  callGemini,
+  callGeminiRoutine,
+  callGeminiVision,
+  parseGeminiJson,
+  GEMINI_DICTIONARY_MODEL,
+  GEMINI_DICTIONARY_THINKING_LEVEL,
+} from './lib/gemini.js';
+import {
+  learnerDefinitionRules,
+  learnerTranslationRules,
+} from './lib/learnerDefinitionPrompt.js';
 import { searchAllImages } from './lib/imageSearch.js';
 import { pickBestImage } from './lib/imagePick.js';
 import { generateWordImage } from './lib/imageGenerate.js';
@@ -368,6 +379,25 @@ ${FIELD_LEMMA}`;
 export async function enrichWord(word, sentence, nativeLang, targetLang, senseIndex = null, options = {}) {
   const _t0 = Date.now();
   const fallback_notices = [];
+  async function callRoutineEnrichment(prompt, {
+    task,
+    expectedParts,
+    maxOutputTokens = 256,
+  }) {
+    const routed = await callGeminiRoutine(prompt, {
+      generationConfig: { maxOutputTokens, responseMimeType: 'text/plain' },
+      strongGenerationConfig: { maxOutputTokens: Math.max(maxOutputTokens, 512) },
+      validate: (text) => String(text || '').split('//').map((part) => part.trim())
+        .filter(Boolean).length >= expectedParts,
+      onFallback: (diagnostic) => fallback_notices.push(diagnostic),
+      task,
+      source: 'server.enrichment',
+      operation: 'enrich-word',
+      language: targetLang,
+      correlationId: options.correlationId,
+    });
+    return routed.text;
+  }
   const definitionHint = options.matched_gloss || options.definition || null;
   const partOfSpeechHint = options.part_of_speech || null;
   let definitionSource = options.definition_source || null;
@@ -439,7 +469,10 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       senseListBlock: '',
     });
 
-    const raw = await callGemini(prompt);
+    const raw = await callRoutineEnrichment(prompt, {
+      task: 'word translation and image term',
+      expectedParts: 3,
+    });
     const _t2 = Date.now();
     logger.info('[enrich-timing] %s — Gemini (definition hint): %dms', word, _t2 - _t1);
     const parts = raw.split('//').map((s) => s.trim());
@@ -471,7 +504,10 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       senseListBlock: '',
     });
 
-    const raw = await callGemini(prompt);
+    const raw = await callRoutineEnrichment(prompt, {
+      task: 'word translation and image term',
+      expectedParts: 3,
+    });
     const _t2 = Date.now();
     logger.info('[enrich-timing] %s — Gemini (Path C): %dms', word, _t2 - _t1);
     const parts = raw.split('//').map((s) => s.trim());
@@ -495,12 +531,24 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       const prompt = buildEnrichPrompt({
         word, sentence, nativeLang, targetLang,
         fieldNames: 'TRANSLATION // SENSE_INDEX // IMAGE_TERM // FALLBACK_DEFINITION // LEMMA',
-        extraFieldDescs: `- SENSE_INDEX: The integer index (0-${wiktSenses.length - 1}) of the sense that best matches how "${word}" is used in the sentence. If NONE of the senses match, return -1.\n- FALLBACK_DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown. Used when SENSE_INDEX is -1.\n`,
+        extraFieldDescs: `- SENSE_INDEX: The integer index (0-${wiktSenses.length - 1}) of the sense that best matches how "${word}" is used in the sentence. If NONE of the senses match, return -1.
+- FALLBACK_DEFINITION: Define the reusable meaning of this exact sense in ${nativeLang}. Used when SENSE_INDEX is -1.
+${learnerTranslationRules(nativeLang, { field: 'TRANSLATION' })}
+${learnerDefinitionRules(nativeLang, { field: 'FALLBACK_DEFINITION', translationField: 'TRANSLATION' })}
+`,
         contextLine: '',
         senseListBlock: `\nHere are the dictionary senses for "${word}":\n${senseList}\n`,
       });
 
-      const raw = await callGemini(prompt);
+      const raw = await callGemini(
+        prompt,
+        {
+          thinkingConfig: { thinkingLevel: GEMINI_DICTIONARY_THINKING_LEVEL },
+          maxOutputTokens: 384,
+          responseMimeType: 'text/plain',
+        },
+        GEMINI_DICTIONARY_MODEL,
+      );
       const _t2 = Date.now();
       logger.info('[enrich-timing] %s — Gemini (Path A): %dms', word, _t2 - _t1);
 
@@ -546,12 +594,20 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
       const prompt = buildEnrichPrompt({
         word, sentence, nativeLang, targetLang,
         fieldNames: 'TRANSLATION // DEFINITION // PART_OF_SPEECH // IMAGE_TERM // LEMMA',
-        extraFieldDescs: `- DEFINITION: A brief explanation of how this word is used in the given sentence, in ${nativeLang}. 15 words max. No markdown.\n- PART_OF_SPEECH: One of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle. Lowercase English.\n`,
+        extraFieldDescs: `- DEFINITION: Define the reusable meaning of this exact sense in ${nativeLang}.
+${learnerTranslationRules(nativeLang, { field: 'TRANSLATION' })}
+${learnerDefinitionRules(nativeLang, { field: 'DEFINITION', translationField: 'TRANSLATION' })}
+- PART_OF_SPEECH: One of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle. Lowercase English.
+`,
         contextLine: '',
         senseListBlock: '',
       });
 
-      const raw = await callGemini(prompt);
+      const raw = await callRoutineEnrichment(prompt, {
+        task: 'learner dictionary entry',
+        expectedParts: 5,
+        maxOutputTokens: 384,
+      });
       const _t2 = Date.now();
       logger.info('[enrich-timing] %s — Gemini (Path B): %dms', word, _t2 - _t1);
 

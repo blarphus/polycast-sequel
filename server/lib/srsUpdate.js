@@ -134,7 +134,10 @@ export async function applySrsReview(
     const existingStages = stageStageList(card.stage_sentences);
     if (!existingStages.includes(newStage)) {
       try {
-        await onAdvanceToNewStage({ db, card, newStage });
+        const stageResult = await onAdvanceToNewStage({ db, card, newStage });
+        if (Array.isArray(stageResult?.fallback_notices)) {
+          fallbackNotices.push(...stageResult.fallback_notices);
+        }
       } catch (err) {
         const diagnostic = normalizeFallbackDiagnostic({
           code: 'stage_sentence_generation_fallback',

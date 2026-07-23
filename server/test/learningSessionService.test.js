@@ -71,6 +71,10 @@ test('practice sentence generation uses Flash Lite and retries an empty token-ca
       assert.deepEqual(request.body.generationConfig.thinkingConfig, {
         thinkingLevel: GEMINI_FLASH_LITE_THINKING_LEVEL,
       });
+      const prompt = request.body.contents[0].parts[0].text;
+      assert.match(prompt, /familiar to a 14-year-old/);
+      assert.match(prompt, /A2-B1/);
+      assert.match(prompt, /accent marks/);
     }
   } finally {
     globalThis.fetch = previousFetch;

@@ -1,5 +1,5 @@
 import logger from '../logger.js';
-import { callGemini } from './gemini.js';
+import { callGeminiRoutine } from './gemini.js';
 
 /**
  * Generate a new example sentence for a card at the next stage, using a
@@ -34,6 +34,7 @@ export async function generateStageSentence({
   targetLang,
   nativeLang,
   previousSentences = [],
+  correlationId,
 }) {
   const usedForms = previousSentences
     .map((entry) => extractTilded(entry.example))
@@ -73,8 +74,34 @@ Where:
 
 Only return the two fields. Nothing else.`;
 
-  const raw = await callGemini(prompt);
-  const parts = raw.split('//').map((s) => s.trim());
+  const fallbackNotices = [];
+  const outputValid = (text) => {
+    const fields = String(text || '').split('//').map((value) => value.trim());
+    const cleanExample = stripTildes(fields[0] || '');
+    const exampleWords = cleanExample.split(/\s+/).filter(Boolean).length;
+    const markedForm = extractTilded(fields[0] || '');
+    return fields.length >= 2
+      && Boolean(fields[0])
+      && Boolean(fields[1])
+      && fields[0].includes('~')
+      && fields[1].includes('~')
+      && exampleWords > 0
+      && exampleWords < 15
+      && !usedSentences.some((used) => used.toLocaleLowerCase() === cleanExample.toLocaleLowerCase())
+      && !usedForms.some((used) => used.toLocaleLowerCase() === markedForm?.toLocaleLowerCase());
+  };
+  const routed = await callGeminiRoutine(prompt, {
+    generationConfig: { maxOutputTokens: 256, responseMimeType: 'text/plain' },
+    strongGenerationConfig: { maxOutputTokens: 512 },
+    validate: outputValid,
+    onFallback: (diagnostic) => fallbackNotices.push(diagnostic),
+    task: 'stage practice sentence',
+    source: 'server.srs',
+    operation: 'generate-stage-sentence',
+    language: targetLang,
+    correlationId,
+  });
+  const parts = routed.text.split('//').map((s) => s.trim());
   if (parts.length < 2) {
     throw new Error(`Stage-sentence Gemini returned ${parts.length} parts (expected 2)`);
   }
@@ -86,7 +113,7 @@ Only return the two fields. Nothing else.`;
   if (!example.includes('~') || !translationOut.includes('~')) {
     throw new Error('Stage-sentence Gemini returned fields without tilde-wrapped form');
   }
-  return { example, translation: translationOut };
+  return { example, translation: translationOut, fallback_notices: fallbackNotices };
 }
 
 function extractTilded(sentence) {

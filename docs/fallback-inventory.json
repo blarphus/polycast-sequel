@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-23T17:38:43.440Z",
+  "generatedAt": "2026-07-23T18:08:31.269Z",
   "totals": {
     "occurrences": 57,
     "uniqueCodes": 54,
@@ -161,7 +161,7 @@
     {
       "code": "gemini_definition_fallback_used",
       "file": "server/enrichWord.js",
-      "line": 527,
+      "line": 575,
       "structured": true,
       "logged": true,
       "visible": true
@@ -169,7 +169,7 @@
     {
       "code": "gemini_dictionary_entry_fallback_used",
       "file": "server/enrichWord.js",
-      "line": 567,
+      "line": 623,
       "structured": true,
       "logged": true,
       "visible": true
@@ -297,7 +297,7 @@
     {
       "code": "PRACTICE_IMAGE_UNAVAILABLE",
       "file": "server/services/learningSessionService.js",
-      "line": 381,
+      "line": 385,
       "structured": true,
       "logged": true,
       "visible": true
@@ -305,7 +305,7 @@
     {
       "code": "PRACTICE_SENTENCE_FALLBACK",
       "file": "server/services/learningSessionService.js",
-      "line": 374,
+      "line": 378,
       "structured": true,
       "logged": true,
       "visible": true
@@ -313,7 +313,7 @@
     {
       "code": "PRACTICE_SENTENCE_FALLBACK",
       "file": "server/services/learningSessionService.js",
-      "line": 396,
+      "line": 400,
       "structured": true,
       "logged": true,
       "visible": true
@@ -321,7 +321,7 @@
     {
       "code": "PRACTICE_VIDEO_POOL_FALLBACK",
       "file": "server/services/learningSessionService.js",
-      "line": 343,
+      "line": 347,
       "structured": true,
       "logged": true,
       "visible": true
@@ -393,7 +393,7 @@
     {
       "code": "stage_sentence_generation_fallback",
       "file": "server/lib/srsUpdate.js",
-      "line": 140,
+      "line": 143,
       "structured": true,
       "logged": true,
       "visible": true

@@ -43,6 +43,7 @@ export async function scheduleStageSentence({ db, card, newStage }) {
   } finally {
     client.release();
   }
+  return { fallback_notices: generated.fallback_notices || [] };
 }
 
 export function createDictionaryStudyService({

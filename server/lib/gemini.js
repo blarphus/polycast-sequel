@@ -1,4 +1,5 @@
 import logger from '../logger.js';
+import { normalizeFallbackDiagnostic } from './fallbackDiagnostics.js';
 
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
 const GEMINI_MAX_ATTEMPTS = 3;
@@ -96,6 +97,103 @@ export async function callGemini(prompt, generationConfig = {}, model = GEMINI_G
     throw new Error('Gemini returned no text content');
   }
   return text;
+}
+
+/**
+ * Run a routine text task on Flash-Lite, validate locally, and retry once.
+ * A stronger-model escalation is never silent: callers must provide
+ * `onFallback`, which receives the structured diagnostic shown by the UI.
+ */
+export async function callGeminiRoutine(
+  prompt,
+  {
+    generationConfig = {},
+    validate = (text) => Boolean(String(text || '').trim()),
+    retryPrompt,
+    onFallback,
+    task = 'language task',
+    source = 'server.gemini',
+    operation = 'generate-routine-text',
+    language,
+    correlationId,
+    strongModel = GEMINI_GENERAL_MODEL,
+    strongGenerationConfig = {},
+  } = {},
+) {
+  if (typeof validate !== 'function') {
+    throw new TypeError('callGeminiRoutine validate must be a function');
+  }
+
+  let lastError;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const raw = await callGemini(
+        attempt === 1
+          ? prompt
+          : (retryPrompt || `${prompt}\n\nRetry: the previous response was invalid. Follow every output rule exactly.`),
+        {
+          ...generationConfig,
+          thinkingConfig: {
+            ...(generationConfig.thinkingConfig || {}),
+            thinkingLevel: GEMINI_FLASH_LITE_THINKING_LEVEL,
+          },
+        },
+        GEMINI_FLASH_LITE_MODEL,
+      );
+      if (validate(raw)) {
+        return { text: raw, model: GEMINI_FLASH_LITE_MODEL, attempts: attempt, fallbackNotices: [] };
+      }
+      lastError = new Error(`${task} failed local output validation`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (typeof onFallback !== 'function') {
+    throw new Error(
+      `${task} failed twice on ${GEMINI_FLASH_LITE_MODEL}; refusing a silent stronger-model fallback`,
+      { cause: lastError },
+    );
+  }
+
+  const diagnostic = normalizeFallbackDiagnostic({
+    code: 'gemini_flash_lite_escalation_used',
+    severity: 'warning',
+    title: 'Stronger language model used',
+    message: `Flash-Lite could not produce a valid ${task} after two attempts, so Polycast used Gemini 3.6 Flash.`,
+    source,
+    operation,
+    pipeline: 'gemini_routing',
+    stage: 'flash-lite-validation',
+    language,
+    selectedAction: 'retry-with-gemini-3.6-flash',
+    correlationId,
+    detail: `task=${task}; reason=${lastError?.message || 'invalid output'}`,
+  });
+  onFallback(diagnostic);
+  logger.warn({ fallback: diagnostic, err: lastError }, 'Gemini Flash-Lite escalation used');
+
+  const text = await callGemini(
+    prompt,
+    {
+      ...generationConfig,
+      ...strongGenerationConfig,
+      thinkingConfig: {
+        ...(strongGenerationConfig.thinkingConfig || {}),
+        thinkingLevel: GEMINI_GENERAL_THINKING_LEVEL,
+      },
+    },
+    strongModel,
+  );
+  if (!validate(text)) {
+    throw new Error(`${task} failed local output validation after stronger-model escalation`);
+  }
+  return {
+    text,
+    model: strongModel,
+    attempts: 3,
+    fallbackNotices: [diagnostic],
+  };
 }
 
 /**

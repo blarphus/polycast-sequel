@@ -170,3 +170,18 @@ test('hook errors are swallowed and do not crash the review', async () => {
   assert.ok(result, 'review response should still be returned');
   assert.equal(result.id, 'card-1');
 });
+
+test('stage generation model escalations remain visible in the review response', async () => {
+  const db = makeFakeDb({ existingPromptStage: 3 });
+  const diagnostic = {
+    code: 'gemini_flash_lite_escalation_used',
+    title: 'Stronger language model used',
+    message: 'Flash-Lite output was invalid.',
+  };
+
+  const result = await applySrsReview(db, 'card-1', 'user-1', 'good', 'UTC', {
+    onAdvanceToNewStage: async () => ({ fallback_notices: [diagnostic] }),
+  });
+
+  assert.deepEqual(result.fallback_notices, [diagnostic]);
+});

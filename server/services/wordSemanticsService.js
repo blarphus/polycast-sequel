@@ -14,6 +14,10 @@ import pool from '../db.js';
 import { fetchUserSavedSensesForWord } from '../lib/dictionaryQueries.js';
 import { translateText } from '../lib/googleTranslate.js';
 import { strictValidityRule, strictSensePickRule } from '../lib/targetLanguageGuard.js';
+import {
+  learnerDefinitionRules,
+  learnerTranslationRules,
+} from '../lib/learnerDefinitionPrompt.js';
 
 function makeContextError(message, context = {}) {
   const error = new Error(message);
@@ -68,7 +72,10 @@ Pick the sense that best matches how "${word}" is used here. IMPORTANT: if ANY s
 - ${strictSensePickRule({ word, targetLang })}
 
 Reply with exactly ONE line in the form:  PICK | TRANSLATION | DEFINITION
-where PICK is the token chosen above (an index number, a single base word, or -1), TRANSLATION is the best 1–3 word ${nativeLang} translation of "${word}" as used here, and DEFINITION is a plain, concise ${nativeLang} explanation of that exact sense in 12 words or fewer. Do not copy the candidate gloss unless it is already in ${nativeLang}.`,
+where PICK is the token chosen above (an index number, a single base word, or -1), TRANSLATION is the best 1–4 word ${nativeLang} dictionary translation of "${word}" in this sense, and DEFINITION follows every learner-facing rule below. Do not copy the candidate gloss unless it is already in ${nativeLang}.
+
+${learnerTranslationRules(nativeLang, { field: 'TRANSLATION' })}
+${learnerDefinitionRules(nativeLang, { field: 'DEFINITION', translationField: 'TRANSLATION' })}`,
     {
       thinkingConfig: { thinkingLevel: GEMINI_DICTIONARY_THINKING_LEVEL },
       maxOutputTokens: 80,
@@ -357,8 +364,9 @@ ${jsonKeys}
 
 - target_word: the target-language word to save. If "${word}" is already in the target language, return it unchanged.
 - valid: true if this is a real word, false otherwise.
-- translation: the standard ${nativeLang} translation of the target-language word in this sense, 1-3 words max.
-- definition: define the word itself in ${nativeLang}, 12 words max.
+- ${learnerTranslationRules(nativeLang)}
+- definition: define the target-language word itself in ${nativeLang}.
+${learnerDefinitionRules(nativeLang)}
 - part_of_speech: one of noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle.
 ${senseInstruction}
 - lemma: the dictionary/base form of the target-language word.
@@ -368,7 +376,7 @@ ${senseInstruction}
 - is_phrase: true ONLY if "${word}" is being used here as part of a fixed multi-word expression, idiom, or slang phrase whose meaning is NOT obvious from the individual words (e.g. "kick the bucket", "darse cuenta", "echar de menos"). For ordinary literal words or free word combinations, set false.
 - phrase: when is_phrase is true, the full expression in ${targetLang || 'the target language'}, in its base/dictionary form (e.g. "darse cuenta", not "se dio cuenta"). Empty string when is_phrase is false.
 - phrase_translation: when is_phrase is true, the ${nativeLang} translation of the whole phrase, 1-4 words. Empty otherwise.
-- phrase_definition: when is_phrase is true, a short ${nativeLang} definition of the phrase, 12 words max. Empty otherwise.`,
+- phrase_definition: when is_phrase is true, define the reusable meaning of the whole phrase in ${nativeLang} using the same learner-facing definition rules above. Empty otherwise.`,
     {
       thinkingConfig: { thinkingLevel: GEMINI_DICTIONARY_THINKING_LEVEL },
       maxOutputTokens: 350,

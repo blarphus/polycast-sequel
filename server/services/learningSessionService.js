@@ -94,6 +94,10 @@ The learner must supply the exact saved word "${word.word}". Its ${nativeLanguag
 Rules:
 - Use the exact saved word "${word.word}" once. Do not inflect or replace it.
 - Make a natural, standalone sentence of 6-14 words.
+- Use an everyday situation familiar to a 14-year-old, such as school, home, friends, hobbies, travel, food, or sports.
+- Keep the surrounding vocabulary at an A2-B1 level.
+- Use correct spelling, punctuation, and accent marks throughout the sentence.
+- Preserve every accent mark in the exact saved word.
 - Do not quote, reuse, clip, or closely paraphrase any source sentence below.
 - Do not include tildes, blanks, explanations, or markdown.
 
