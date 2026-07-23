@@ -2,7 +2,7 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 549,
-    "lines": 87179,
+    "lines": 87205,
     "declarations": 2392,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
@@ -8433,7 +8433,7 @@
         },
         {
           "name": "position",
-          "callers": 138,
+          "callers": 139,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx"
           ],
@@ -9289,7 +9289,7 @@
         },
         {
           "name": "friends",
-          "callers": 49,
+          "callers": 50,
           "testReferences": [
             "ios/Polycast/Tests/PolycastTests.swift"
           ],
@@ -13871,7 +13871,7 @@
         },
         {
           "name": "send",
-          "callers": 25,
+          "callers": 26,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -21228,7 +21228,7 @@
     },
     {
       "file": "server/scripts/evaluateGeminiRouting.js",
-      "lines": 287,
+      "lines": 313,
       "responsibility": "application support",
       "sideEffects": [
         "logging"

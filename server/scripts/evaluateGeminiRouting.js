@@ -120,6 +120,26 @@ Write for a 14-year-old language learner:
 - For verb translations, prefer an infinitive when ${sample.native} normally uses one.
 - part_of_speech must be exactly one of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle.`;
   }
+  if (variant === 'teen-v4') {
+    return `${common}
+
+Write for a 14-year-old language learner:
+- Define the reusable core meaning of this exact sense, not the example's story.
+- Use one direct sentence of 5-11 common ${sample.native} words.
+- Every detail must be required by the word itself in this sense.
+- Do not add typical details such as force, difficulty, direction, ownership, intention, timing, or position.
+- Do not compare this sense with another meaning of the word.
+- Do not repeat the translation, the target word, or an obvious same-root form in the definition.
+- Replace technical or abstract labels with familiar words whenever meaning stays accurate.
+- Do not begin with "this word", "means", "significa", or similar framing.
+- Give a canonical 1-4 word dictionary translation; use an infinitive for verbs when natural.
+- part_of_speech must be exactly one of: noun, verb, adjective, adverb, pronoun, preposition, conjunction, interjection, article, particle.
+
+Quality examples:
+- Too specific: "To throw a ball forcefully." Better: "To send something through the air with your hand."
+- Circular: translation "worried"; definition "Feeling worried." Better: "Feeling uneasy because something may be wrong."
+- Too technical: "A financial institution." Better: "A business that keeps and manages people's money."`;
+  }
   return `${common}
 
 Write for a 14-year-old language learner:
@@ -141,6 +161,10 @@ The learner must supply the exact saved word "${sample.word}". Its ${sample.nati
 Rules:
 - Use the exact saved word "${sample.word}" once. Do not inflect or replace it.
 - Make a natural, standalone sentence of 6-14 words.
+- Use an everyday situation familiar to a 14-year-old, such as school, home, friends, hobbies, travel, food, or sports.
+- Keep the surrounding vocabulary at an A2-B1 level.
+- Use correct spelling, punctuation, and accent marks throughout the sentence.
+- Preserve every accent mark in the exact saved word.
 - Do not include tildes, blanks, explanations, or markdown.
 
 Return only the sentence. Nothing else.`;
@@ -195,6 +219,8 @@ async function evaluateDefinition(sample, model, variant) {
           ? definitionWords >= 6 && definitionWords <= 14
           : variant === 'teen-v3'
             ? definitionWords >= 5 && definitionWords <= 12
+            : variant === 'teen-v4'
+              ? definitionWords >= 5 && definitionWords <= 11
           : definitionWords > 0 && definitionWords <= 15,
       partOfSpeechPresent: Boolean(parsed?.part_of_speech?.trim()),
       parseError,
