@@ -212,7 +212,7 @@ async function evaluateDefinition(sample, model, variant) {
           : variant === 'teen-v3'
             ? definitionWords >= 5 && definitionWords <= 12
             : variant === 'teen-v4'
-              ? definitionWords >= 5 && definitionWords <= 11
+              ? definitionWords >= 4 && definitionWords <= 11
           : definitionWords > 0 && definitionWords <= 15,
       partOfSpeechPresent: Boolean(parsed?.part_of_speech?.trim()),
       parseError,

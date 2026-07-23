@@ -15,13 +15,14 @@ test('learner definition rules encode the bilingual teen quality criteria', () =
 
   for (const prompt of [english, spanish]) {
     assert.match(prompt, /14-year-old/);
-    assert.match(prompt, /5-11/);
+    assert.match(prompt, /4-11/);
     assert.match(prompt, /reusable core meaning/);
     assert.match(prompt, /selected word or phrase itself/);
     assert.match(prompt, /part of speech/);
     assert.match(prompt, /same-root/);
     assert.match(prompt, /technical or abstract/);
     assert.match(prompt, /Too specific/);
+    assert.match(prompt, /Elevated land beside a river/);
     assert.match(prompt, /Circular/);
     assert.match(prompt, /count the words/);
   }

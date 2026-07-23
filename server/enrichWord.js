@@ -612,7 +612,7 @@ ${learnerDefinitionRules(nativeLang, { field: 'DEFINITION', translationField: 'T
         maxOutputTokens: 384,
         validateParts: (parts) => {
           const definitionWords = String(parts[1] || '').split(/\s+/).filter(Boolean).length;
-          return definitionWords >= 5 && definitionWords <= 11;
+          return definitionWords >= 4 && definitionWords <= 11;
         },
       });
       const _t2 = Date.now();

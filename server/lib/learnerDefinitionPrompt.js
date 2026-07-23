@@ -15,7 +15,7 @@ export function learnerDefinitionRules(nativeLanguage, {
 - Define the reusable core meaning of this exact sense, not the example's story.
 - Define the selected word or phrase itself, not the nearby noun, person, or action it describes.
 - Keep the definition consistent with the selected word's part of speech.
-- Use one direct sentence of 5-11 common ${language} words.
+- Use one direct sentence of 4-11 common ${language} words.
 - Every detail must be required by the word itself in this sense.
 - Do not add typical details such as force, difficulty, direction, ownership, intention, timing, or position.
 - Do not compare this sense with another meaning of the word.
@@ -26,6 +26,7 @@ export function learnerDefinitionRules(nativeLanguage, {
 
 Quality examples:
 - Too specific: "To throw a ball forcefully." Better: "To send something through the air with your hand."
+- Invented detail: "Elevated land beside a river." Better: "Land beside a river."
 - Circular: translation "worried"; definition "Feeling worried." Better: "Feeling uneasy because something may be wrong."
 - Too technical: "A financial institution." Better: "A business that keeps and manages people's money."`;
 }
