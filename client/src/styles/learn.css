@@ -669,3 +669,590 @@
   color: var(--accent);
   margin-bottom: 0.3rem;
 }
+
+/* ==========================================================================
+   Landscape review workspace
+   ========================================================================== */
+
+.learn-review-page {
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 1.2rem;
+  padding: clamp(1rem, 2.2vw, 2rem);
+  background:
+    radial-gradient(circle at 48% 0%, rgba(108, 99, 255, 0.08), transparent 34%),
+    #f7f7fb;
+  overflow: auto;
+}
+
+.learn-review-page.learn-page--recognition {
+  background:
+    radial-gradient(circle at 48% 0%, rgba(56, 189, 248, 0.08), transparent 34%),
+    #f7f9fc;
+}
+
+.learn-review-header {
+  width: min(1280px, 100%);
+  min-height: 48px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(220px, 1.3fr) minmax(120px, 1fr);
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1rem;
+}
+
+.learn-review-page .flashcard-progress,
+.learn-review-page .learn-test-stages-btn {
+  position: static;
+  transform: none;
+}
+
+.learn-review-page .flashcard-progress {
+  justify-self: start;
+  font-size: 0.92rem;
+  padding: 0.42rem 1.05rem;
+  box-shadow: 0 4px 16px rgba(43, 45, 66, 0.04);
+}
+
+.learn-review-page .learn-test-stages-btn {
+  justify-self: end;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.78rem;
+}
+
+.learn-review-session-progress {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.learn-review-session-progress > span:first-child {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+}
+
+.learn-review-session-progress > span:last-child {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-surface);
+}
+
+.learn-review-session-progress > div {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 18%, transparent);
+}
+
+.learn-review-session-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), #8b7cf6);
+  transition: width 0.25s ease;
+}
+
+.learn-review-workspace {
+  --card-drag-x: 0px;
+  --card-drag-rotate: 0deg;
+  --swipe-color: transparent;
+  width: min(1280px, 100%);
+  min-height: min(720px, calc(100dvh - 132px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.72fr) minmax(300px, 0.92fr);
+  gap: clamp(1rem, 1.8vw, 1.5rem);
+  transform: translateX(var(--card-drag-x)) rotate(var(--card-drag-rotate));
+  transition: transform 0.18s ease, filter 0.18s ease;
+  touch-action: pan-y;
+  will-change: transform;
+}
+
+.learn-review-workspace.is-revealed {
+  cursor: grab;
+}
+
+.learn-review-workspace.is-revealed:active {
+  cursor: grabbing;
+}
+
+.learn-review-study-panel,
+.learn-review-answer-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, var(--accent));
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-surface) 96%, var(--accent) 4%);
+  box-shadow:
+    0 22px 56px rgba(43, 45, 66, 0.08),
+    0 2px 8px rgba(43, 45, 66, 0.04),
+    0 0 0 2px var(--swipe-color);
+}
+
+.learn-review-study-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.learn-review-question {
+  min-height: 88px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.learn-review-question h1 {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(1.2rem, 2vw, 1.65rem);
+  font-weight: 820;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.learn-review-question-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--accent);
+  border-radius: 50% 50% 50% 12%;
+  color: var(--accent);
+  font-size: 1.1rem;
+  font-weight: 850;
+}
+
+.learn-review-stage {
+  white-space: nowrap;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  padding: 0.35rem 0.65rem;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.learn-review-prompt {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 2.2vh, 1.5rem);
+  padding: clamp(1.25rem, 2.7vw, 2.2rem);
+  position: relative;
+}
+
+.learn-review-prompt:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  outline-offset: -5px;
+}
+
+.learn-review-prompt-copy {
+  flex: none;
+  min-height: 3.2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.learn-review-prompt-copy .flashcard-sentence {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  line-height: 1.45;
+  text-align: left;
+}
+
+.learn-review-prompt-copy .flashcard-native-hint {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
+  font-style: normal;
+  font-weight: 650;
+}
+
+.learn-review-prompt-copy .flashcard-native-subhint {
+  margin: 0.4rem 0 0;
+}
+
+.learn-review-image.flashcard-image {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  min-height: 220px;
+  flex: 1 1 auto;
+  margin: 0;
+  border: 0;
+  border-radius: 13px;
+  object-fit: cover;
+  box-shadow: 0 8px 22px rgba(23, 25, 45, 0.12);
+}
+
+.learn-review-reveal-hint {
+  position: absolute;
+  right: 2.2rem;
+  bottom: 2.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  background: rgba(18, 20, 38, 0.76);
+  color: #fff;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+}
+
+.learn-review-answer-panel {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1rem, 2vw, 1.5rem);
+}
+
+.learn-review-answer {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  text-align: center;
+  overflow: auto;
+}
+
+.learn-review-answer.is-visible {
+  animation: learnAnswerReveal 0.25s ease-out;
+}
+
+@keyframes learnAnswerReveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.learn-review-answer .flashcard-audio-btn {
+  width: 48px;
+  height: 48px;
+  background: color-mix(in srgb, var(--accent) 11%, var(--bg-surface));
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.learn-review-answer-word {
+  max-width: 100%;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(2rem, 3.2vw, 3.15rem);
+  font-weight: 850;
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.learn-review-answer-divider {
+  width: min(180px, 56%);
+  border-top: 1px solid var(--border);
+}
+
+.learn-review-answer-translation {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(1.05rem, 1.7vw, 1.35rem);
+  line-height: 1.35;
+}
+
+.learn-review-answer-context {
+  width: 100%;
+  max-height: 7.2em;
+  overflow: auto;
+  margin: 0.15rem 0 0;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.learn-review-answer-context .flashcard-sentence {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.learn-review-reveal-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg-surface));
+  color: var(--accent);
+  padding: 0.7rem 0.9rem 0.7rem 1rem;
+  font: inherit;
+  font-size: 0.83rem;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.learn-review-reveal-button:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-surface));
+}
+
+.learn-review-reveal-button kbd,
+.learn-review-shortcuts kbd {
+  min-width: 26px;
+  height: 26px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 7px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  padding: 0 0.4rem;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.learn-review-answer-panel .flashcard-answer-buttons {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  padding: 1rem 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.learn-review-answer-panel .flashcard-btn {
+  max-width: none;
+  min-height: 78px;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 0.9rem;
+  border-radius: 11px;
+  padding: 0.85rem 1rem;
+  text-align: left;
+}
+
+.learn-review-answer-panel .flashcard-btn > svg {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  padding: 0.55rem;
+}
+
+.learn-review-answer-panel .flashcard-btn > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.learn-review-answer-panel .flashcard-btn-label {
+  font-size: 1rem;
+}
+
+.learn-review-answer-panel .flashcard-btn small {
+  font-size: 0.72rem;
+  font-weight: 650;
+  opacity: 0.75;
+}
+
+.learn-review-answer-panel .flashcard-btn--again {
+  background: #e93638;
+}
+
+.learn-review-answer-panel .flashcard-btn--good {
+  background: #159447;
+}
+
+.learn-review-answer-panel .flashcard-btn:disabled {
+  filter: grayscale(0.45);
+  opacity: 0.32;
+}
+
+.learn-review-shortcuts {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.8rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.learn-review-shortcuts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.learn-review-workspace.card-enter {
+  animation: cardEnter 0.34s cubic-bezier(0.2, 0.78, 0.2, 1);
+}
+
+.learn-review-workspace.card-exit-right {
+  animation: cardExitRight 0.42s cubic-bezier(0.34, 0.78, 0.34, 1) forwards;
+  pointer-events: none;
+}
+
+.learn-review-workspace.card-exit-left {
+  animation: cardExitLeft 0.42s cubic-bezier(0.34, 0.78, 0.34, 1) forwards;
+  pointer-events: none;
+}
+
+@media (max-width: 960px) {
+  .learn-review-page {
+    overflow: auto;
+  }
+
+  .learn-review-header {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .learn-review-workspace {
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .learn-review-study-panel {
+    min-height: 520px;
+  }
+
+  .learn-review-answer-panel {
+    min-height: 480px;
+  }
+}
+
+@media (max-width: 640px) {
+  .learn-review-page {
+    gap: 0.8rem;
+    padding: 0.75rem 0.7rem 5.5rem;
+  }
+
+  .learn-review-header {
+    grid-template-columns: 1fr auto;
+    gap: 0.55rem;
+    padding-bottom: 0.7rem;
+  }
+
+  .learn-review-session-progress {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .learn-review-page .learn-test-stages-btn {
+    font-size: 0.68rem;
+  }
+
+  .learn-review-workspace {
+    gap: 0.8rem;
+  }
+
+  .learn-review-study-panel {
+    min-height: 440px;
+  }
+
+  .learn-review-question {
+    min-height: 74px;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.65rem;
+    padding: 0.9rem;
+  }
+
+  .learn-review-question h1 {
+    font-size: 1.05rem;
+  }
+
+  .learn-review-question-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .learn-review-stage {
+    display: none;
+  }
+
+  .learn-review-prompt {
+    padding: 1rem;
+  }
+
+  .learn-review-prompt-copy .flashcard-sentence,
+  .learn-review-prompt-copy .flashcard-native-hint {
+    font-size: 1.2rem;
+  }
+
+  .learn-review-image.flashcard-image {
+    min-height: 210px;
+  }
+
+  .learn-review-reveal-hint {
+    right: 1.5rem;
+    bottom: 1.5rem;
+  }
+
+  .learn-review-answer-panel {
+    min-height: 440px;
+    padding: 1rem;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 961px) {
+  .learn-review-page {
+    gap: 0.8rem;
+    padding-block: 0.75rem;
+  }
+
+  .learn-review-header {
+    min-height: 40px;
+    padding-bottom: 0.7rem;
+  }
+
+  .learn-review-workspace {
+    min-height: calc(100dvh - 92px);
+  }
+
+  .learn-review-question {
+    min-height: 70px;
+    padding-block: 0.8rem;
+  }
+
+  .learn-review-prompt {
+    gap: 0.8rem;
+    padding-block: 1rem;
+  }
+
+  .learn-review-answer-panel .flashcard-btn {
+    min-height: 66px;
+  }
+}

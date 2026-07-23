@@ -17,7 +17,7 @@ import {
   isNewCard,
   nextPromptStage,
 } from '../utils/srs';
-import { renderTildeHighlight, stripTildes } from '../utils/tildeMarkup';
+import { renderTildeHighlight, stripTildes, tildeWord } from '../utils/tildeMarkup';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
 import WordPopup from '../components/WordPopup';
@@ -43,11 +43,18 @@ export function getPromptType(card: SavedWord): PromptType {
   return hasExample && hasSentenceTranslation ? 'sentence-production' : 'word-production';
 }
 
-export function getInstructionText(promptType: PromptType): string {
-  if (promptType === 'meet-word') return 'What does the highlighted word mean?';
-  if (promptType === 'sentence-meaning') return 'What does this sentence mean?';
+export function getInstructionText(promptType: PromptType, highlightedPhrase = ''): string {
+  if (promptType === 'meet-word' || promptType === 'sentence-meaning') {
+    return highlightedPhrase
+      ? `What does “${highlightedPhrase}” mean?`
+      : 'What does the highlighted part mean?';
+  }
   if (promptType === 'word-production') return 'How do you say this?';
   return 'How do you say this sentence?';
+}
+
+export function getHighlightedPrompt(card: Pick<SavedWord, 'word' | 'example_sentence'>): string {
+  return tildeWord(card.example_sentence || '') || card.word;
 }
 
 function isBlueGradient(promptType: PromptType): boolean {
@@ -303,6 +310,30 @@ export default function Learn() {
     window.setTimeout(() => setIsEntering(false), 350);
   }, [cards, currentCard, currentIndex, submitting, isFlipped, learningSessionId]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!currentCard) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.matches('input, textarea, select, button, [contenteditable="true"]')) return;
+      if (!isFlipped && (event.key === ' ' || event.key === 'Enter')) {
+        event.preventDefault();
+        playFlipSound();
+        setIsFlipped(true);
+        return;
+      }
+      if (!isFlipped || submitting) return;
+      if (event.key === '1') {
+        event.preventDefault();
+        void handleAnswer('again');
+      } else if (event.key === '2') {
+        event.preventDefault();
+        void handleAnswer('good');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentCard, handleAnswer, isFlipped, submitting]);
+
   // ---------------------------------------------------------------------------
   // Touch / swipe gestures
   // ---------------------------------------------------------------------------
@@ -459,185 +490,185 @@ export default function Learn() {
   const counts = getStudyQueueCounts(cards.slice(currentIndex));
   const currentBucket = getStudyQueueBucket(card);
   const displayStage = Math.min(Math.max(card.prompt_stage ?? 0, 0), 20);
+  const highlightedPhrase = getHighlightedPrompt(card);
+  const instructionText = promptType === 'meet-word' || promptType === 'sentence-meaning'
+    ? t('learn.phraseMeaning', { phrase: highlightedPhrase })
+    : promptType === 'word-production'
+      ? t('learn.wordProduction')
+      : t('learn.sentenceProduction');
+  const revealCard = () => {
+    if (isFlipped || submitting) return;
+    playFlipSound();
+    setIsFlipped(true);
+  };
 
   return (
-    <div className={`learn-page${useBlue ? ' learn-page--recognition' : ''}`}>
-      {/* Test stages link */}
-      <button className="learn-test-stages-btn" onClick={() => navigate('/learn/preview')}>
-        {t('learn.testStages')}
-      </button>
+    <div className={`learn-page learn-review-page${useBlue ? ' learn-page--recognition' : ''}`}>
+      <header className="learn-review-header">
+        <div className="flashcard-progress" aria-label={t('learn.queueCounts')}>
+          <span className={`srs-count srs-count--new${currentBucket === 'new' ? ' is-current' : ''}`}>{counts.new}</span>
+          <span className="srs-count-sep">+</span>
+          <span className={`srs-count srs-count--learning${currentBucket === 'learning' ? ' is-current' : ''}`}>{counts.learning}</span>
+          <span className="srs-count-sep">+</span>
+          <span className={`srs-count srs-count--review${currentBucket === 'review' ? ' is-current' : ''}`}>{counts.review}</span>
+        </div>
+        <div className="learn-review-session-progress" aria-hidden="true">
+          <span>{currentIndex + 1}</span>
+          <div><i style={{ width: `${Math.max(6, ((currentIndex + 1) / Math.max(cards.length, 1)) * 100)}%` }} /></div>
+          <span>{cards.length}</span>
+        </div>
+        <button className="learn-test-stages-btn" onClick={() => navigate('/learn/preview')}>
+          {t('learn.testStages')}
+        </button>
+      </header>
 
-      {/* Anki-style progress counts */}
-      <div className="flashcard-progress">
-        <span className={`srs-count srs-count--new${currentBucket === 'new' ? ' is-current' : ''}`}>{counts.new}</span>
-        <span className="srs-count-sep">+</span>
-        <span className={`srs-count srs-count--learning${currentBucket === 'learning' ? ' is-current' : ''}`}>{counts.learning}</span>
-        <span className="srs-count-sep">+</span>
-        <span className={`srs-count srs-count--review${currentBucket === 'review' ? ' is-current' : ''}`}>{counts.review}</span>
-      </div>
+      <div
+        className={`learn-review-workspace${isFlipped ? ' is-revealed' : ''}${isExiting ? ` card-exit-${exitDirection}` : ''}${isEntering ? ' card-enter' : ''}`}
+        style={{
+          '--card-drag-x': `${dragTranslateX}px`,
+          '--card-drag-rotate': `${dragRotation}deg`,
+          '--swipe-color': dragState.isDragging
+            ? dragState.deltaX < 0
+              ? `rgba(231, 76, 94, ${0.25 + swipeIntensity * 0.75})`
+              : `rgba(34, 165, 94, ${0.25 + swipeIntensity * 0.75})`
+            : 'transparent',
+        } as React.CSSProperties}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        <section className="learn-review-study-panel">
+          <div className="learn-review-question">
+            <span className="learn-review-question-icon" aria-hidden="true">?</span>
+            <h1>{instructionText}</h1>
+            <span className="learn-review-stage">
+              {t('learn.stage', { stage: displayStage })}{cardIsNew ? ` · ${t('learn.new')}` : ''}
+            </span>
+          </div>
 
-      {/* Card instruction */}
-      <p className="flashcard-instruction">
-        {{
-          'meet-word': t('learn.meetWord'),
-          'sentence-meaning': t('learn.sentenceMeaning'),
-          'word-production': t('learn.wordProduction'),
-          'sentence-production': t('learn.sentenceProduction'),
-        }[promptType]}
-      </p>
-
-      {/* Card container */}
-      <div className="flashcard-container">
-        <div
-          className={`flashcard${isFlipped ? ' is-revealed' : ''}${isExiting ? ` card-exit-${exitDirection}` : ''}${isEntering ? ' card-enter' : ''}`}
-          style={{
-            '--card-drag-x': `${dragTranslateX}px`,
-            '--card-drag-rotate': `${dragRotation}deg`,
-            borderColor: dragState.isDragging
-              ? dragState.deltaX < 0
-                ? `rgba(231, 76, 94, ${0.25 + swipeIntensity * 0.75})`
-                : `rgba(34, 165, 94, ${0.25 + swipeIntensity * 0.75})`
-              : undefined,
-          } as React.CSSProperties}
-          onClick={() => { if (!isFlipped && !submitting) { playFlipSound(); setIsFlipped(true); } }}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          <div className={`flashcard-flip-wrapper${isFlipped ? ' flipped' : ''}`}>
-            {/* Front */}
-            <div className={`flashcard-front${useBlue ? ' flashcard-front--recognition' : ''}`}>
-              <span className="flashcard-new-badge">{t('learn.stage', { stage: displayStage })}</span>
-              {cardIsNew && <span className="flashcard-card-state">{t('learn.new')}</span>}
-
+          <div
+            className="learn-review-prompt"
+            role="button"
+            tabIndex={0}
+            onClick={revealCard}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                event.stopPropagation();
+                revealCard();
+              }
+            }}
+            aria-label={isFlipped ? instructionText : `${instructionText} ${t('learn.tapReveal')}`}
+          >
+            <div className="learn-review-prompt-copy">
               {promptType === 'meet-word' && (
-                <>
-                  {hasExample
-                    ? <TappableFlashcardSentence text={card.example_sentence!} savedWords={savedWordsSet} onWordClick={handleWordClick} />
-                    : <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>}
-                  {card.image_url && (
-                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  )}
-                </>
+                hasExample
+                  ? <TappableFlashcardSentence text={card.example_sentence!} savedWords={savedWordsSet} onWordClick={handleWordClick} />
+                  : <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
               )}
-
               {promptType === 'sentence-meaning' && (
                 <TappableFlashcardSentence text={card.example_sentence!} savedWords={savedWordsSet} onWordClick={handleWordClick} />
               )}
-
               {promptType === 'word-production' && (
                 <>
                   <p className="flashcard-native-hint">{card.translation}</p>
                   {card.definition && <p className="flashcard-native-subhint">{card.definition}</p>}
-                  {card.image_url && (
-                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  )}
                 </>
               )}
-
               {promptType === 'sentence-production' && (
-                <>
-                  <p className="flashcard-sentence">{renderTildeHighlight(card.sentence_translation!, 'flashcard-highlighted')}</p>
-                  {card.image_url && (
-                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  )}
-                </>
+                <p className="flashcard-sentence">{renderTildeHighlight(card.sentence_translation!, 'flashcard-highlighted')}</p>
               )}
-
-              <p className="flashcard-hint">
-                <TapIcon size={14} />
+            </div>
+            {card.image_url && (
+              <img
+                className="flashcard-image learn-review-image"
+                src={proxyImageUrl(card.image_url)!}
+                alt={card.word}
+                loading="lazy"
+                onError={(event) => { event.currentTarget.style.display = 'none'; }}
+              />
+            )}
+            {!isFlipped && (
+              <span className="learn-review-reveal-hint">
+                <TapIcon size={15} />
                 {t('learn.tapReveal')}
-              </p>
-            </div>
-
-            {/* Back */}
-            <div className={`flashcard-back${useBlue ? ' flashcard-back--recognition' : ''}`}>
-
-              {promptType === 'meet-word' && (
-                <>
-                  <p className="flashcard-recognition-translation">{card.translation}</p>
-                  {card.image_url && (
-                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  )}
-                  {card.definition && (
-                    <p className="flashcard-back-definition">{card.definition}</p>
-                  )}
-                  {card.sentence_translation && (
-                    <p className="flashcard-sentence-translation">{stripTildes(card.sentence_translation)}</p>
-                  )}
-                </>
-              )}
-
-              {promptType === 'sentence-meaning' && (
-                <>
-                  <p className="flashcard-sentence">{renderTildeHighlight(card.sentence_translation!, 'flashcard-highlighted')}</p>
-                  {card.image_url && (
-                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  )}
-                  <p className="flashcard-back-translation"><strong>{card.word}</strong> -- {card.translation}</p>
-                </>
-              )}
-
-              {promptType === 'word-production' && (
-                <>
-                  <p className="flashcard-word-large flashcard-highlighted">{card.word}</p>
-                  {card.image_url && (
-                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  )}
-                  {card.definition && <p className="flashcard-back-definition">{card.definition}</p>}
-                  {hasExample && <TappableFlashcardSentence text={card.example_sentence!} savedWords={savedWordsSet} onWordClick={handleWordClick} />}
-                </>
-              )}
-
-              {promptType === 'sentence-production' && (
-                <>
-                  <TappableFlashcardSentence text={card.example_sentence!} savedWords={savedWordsSet} onWordClick={handleWordClick} />
-                  {card.image_url && (
-                    <img className="flashcard-image" src={proxyImageUrl(card.image_url)!} alt={card.word} loading="lazy" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  )}
-                  <p className="flashcard-back-translation"><strong>{card.word}</strong> -- {card.translation}</p>
-                </>
-              )}
-
-              {spokenText(card, promptType, true) && (
-                <button
-                  className="flashcard-audio-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const text = spokenText(card, promptType, true)!;
-                    playAudio(text, card.target_language, text === card.word ? card.id : undefined);
-                  }}
-                >
-                  <SpeakerIcon size={20} />
-                </button>
-              )}
-            </div>
+              </span>
+            )}
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Answer buttons — Incorrect / Correct */}
-      <div className="flashcard-answer-buttons">
-        <button
-          className="flashcard-btn flashcard-btn--again"
-          disabled={!isFlipped || submitting}
-          onClick={() => handleAnswer('again')}
-        >
-          <CloseIcon size={18} strokeWidth={2.5} />
-          <span className="flashcard-btn-label">{t('learn.incorrect')}</span>
-          <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'again')}</span>
-          <span className="flashcard-btn-stage">{t('learn.stage', { stage: nextPromptStage(card, 'again') })}</span>
-        </button>
-        <button
-          className="flashcard-btn flashcard-btn--good"
-          disabled={!isFlipped || submitting}
-          onClick={() => handleAnswer('good')}
-        >
-          <CheckIcon size={18} strokeWidth={2.5} />
-          <span className="flashcard-btn-label">{t('learn.correct')}</span>
-          <span className="flashcard-btn-time">{getButtonTimeLabel(card, 'good')}</span>
-          <span className="flashcard-btn-stage">{t('learn.stage', { stage: nextPromptStage(card, 'good') })}</span>
-        </button>
+        <aside className="learn-review-answer-panel" aria-live="polite">
+          <div className={`learn-review-answer${isFlipped ? ' is-visible' : ''}`}>
+            {isFlipped ? (
+              <>
+                {spokenText(card, promptType, true) && (
+                  <button
+                    className="flashcard-audio-btn"
+                    aria-label={t('learn.playAnswer')}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      const text = spokenText(card, promptType, true)!;
+                      playAudio(text, card.target_language, text === card.word ? card.id : undefined);
+                    }}
+                  >
+                    <SpeakerIcon size={20} />
+                  </button>
+                )}
+                <p className="learn-review-answer-word">
+                  {promptType === 'meet-word' ? card.translation : card.word}
+                </p>
+                <span className="learn-review-answer-divider" />
+                <p className="learn-review-answer-translation">
+                  {promptType === 'meet-word' ? (card.definition || card.word) : card.translation}
+                </p>
+                {promptType === 'sentence-meaning' && card.sentence_translation && (
+                  <p className="learn-review-answer-context">{stripTildes(card.sentence_translation)}</p>
+                )}
+                {(promptType === 'word-production' || promptType === 'sentence-production') && hasExample && (
+                  <div className="learn-review-answer-context">
+                    <TappableFlashcardSentence text={card.example_sentence!} savedWords={savedWordsSet} onWordClick={handleWordClick} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <button type="button" className="learn-review-reveal-button" onClick={revealCard}>
+                <TapIcon size={18} />
+                {t('learn.tapReveal')}
+                <kbd>{t('learn.revealKey')}</kbd>
+              </button>
+            )}
+          </div>
+
+          <div className="flashcard-answer-buttons">
+            <button
+              className="flashcard-btn flashcard-btn--again"
+              disabled={!isFlipped || submitting}
+              onClick={() => handleAnswer('again')}
+            >
+              <CloseIcon size={22} strokeWidth={2.5} />
+              <span>
+                <strong className="flashcard-btn-label">{t('learn.incorrect')}</strong>
+                <small>{getButtonTimeLabel(card, 'again')} · {t('learn.stage', { stage: nextPromptStage(card, 'again') })}</small>
+              </span>
+            </button>
+            <button
+              className="flashcard-btn flashcard-btn--good"
+              disabled={!isFlipped || submitting}
+              onClick={() => handleAnswer('good')}
+            >
+              <CheckIcon size={22} strokeWidth={2.5} />
+              <span>
+                <strong className="flashcard-btn-label">{t('learn.correct')}</strong>
+                <small>{getButtonTimeLabel(card, 'good')} · {t('learn.stage', { stage: nextPromptStage(card, 'good') })}</small>
+              </span>
+            </button>
+          </div>
+
+          <div className="learn-review-shortcuts" aria-hidden="true">
+            <span><kbd>1</kbd>{t('learn.incorrect')}</span>
+            <span><kbd>2</kbd>{t('learn.correct')}</span>
+          </div>
+        </aside>
       </div>
 
       {/* Feedback overlay */}

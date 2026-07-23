@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 547,
-    "lines": 86707,
-    "declarations": 2377,
+    "files": 548,
+    "lines": 86778,
+    "declarations": 2378,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 3
@@ -899,7 +899,7 @@
         },
         {
           "name": "proxyImageUrl",
-          "callers": 27,
+          "callers": 21,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -2175,7 +2175,7 @@
         },
         {
           "name": "handleWordClick",
-          "callers": 25,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -2194,7 +2194,7 @@
       "symbols": [
         {
           "name": "TappableFlashcardSentence",
-          "callers": 7,
+          "callers": 6,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -2250,7 +2250,7 @@
         },
         {
           "name": "handleWordClick",
-          "callers": 25,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -3089,7 +3089,7 @@
         },
         {
           "name": "TapIcon",
-          "callers": 4,
+          "callers": 5,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -4125,7 +4125,7 @@
     },
     {
       "file": "client/src/i18n.ts",
-      "lines": 180,
+      "lines": 184,
       "responsibility": "application support",
       "sideEffects": [],
       "testCoverage": [
@@ -4423,7 +4423,7 @@
         },
         {
           "name": "handleWordClick",
-          "callers": 25,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -4649,13 +4649,14 @@
     },
     {
       "file": "client/src/pages/Learn.tsx",
-      "lines": 668,
+      "lines": 699,
       "responsibility": "web route UI",
       "sideEffects": [
         "network",
         "UI"
       ],
       "testCoverage": [
+        "client/src/test/learnReviewLayout.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/srs.test.ts",
         "ios/Polycast/Tests/PolycastTests.swift"
@@ -4674,7 +4675,17 @@
         {
           "name": "getInstructionText",
           "callers": 4,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/learnReviewLayout.test.ts"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "getHighlightedPrompt",
+          "callers": 1,
+          "testReferences": [
+            "client/src/test/learnReviewLayout.test.ts"
+          ],
           "disposition": "retain"
         },
         {
@@ -4692,7 +4703,9 @@
         {
           "name": "Learn",
           "callers": 8,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/learnReviewLayout.test.ts"
+          ],
           "disposition": "retain"
         }
       ]
@@ -4982,7 +4995,7 @@
         },
         {
           "name": "handleWordClick",
-          "callers": 25,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -5153,7 +5166,7 @@
       "symbols": [
         {
           "name": "Test",
-          "callers": 9,
+          "callers": 8,
           "testReferences": [
             "client/src/test/epub.test.ts"
           ],
@@ -5192,7 +5205,7 @@
         },
         {
           "name": "handleWordClick",
-          "callers": 25,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -5494,6 +5507,16 @@
       "symbols": []
     },
     {
+      "file": "client/src/test/learnReviewLayout.test.ts",
+      "lines": 36,
+      "responsibility": "test",
+      "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
       "file": "client/src/test/libraryCardLayout.test.ts",
       "lines": 9,
       "responsibility": "test",
@@ -5615,7 +5638,7 @@
       "symbols": [
         {
           "name": "card",
-          "callers": 843,
+          "callers": 821,
           "testReferences": [
             "client/src/test/libraryCardLayout.test.ts",
             "client/src/test/srs.test.ts",
@@ -6905,7 +6928,7 @@
         },
         {
           "name": "playFlipSound",
-          "callers": 4,
+          "callers": 5,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -7142,7 +7165,7 @@
       "symbols": [
         {
           "name": "renderTildeHighlight",
-          "callers": 21,
+          "callers": 20,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -7154,7 +7177,7 @@
         },
         {
           "name": "tildeWord",
-          "callers": 4,
+          "callers": 6,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -8039,7 +8062,7 @@
         },
         {
           "name": "handleWordClick",
-          "callers": 25,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -9015,7 +9038,7 @@
         },
         {
           "name": "savedWords",
-          "callers": 86,
+          "callers": 85,
           "testReferences": [
             "extension/test/background.test.mjs"
           ],
@@ -10594,7 +10617,7 @@
         },
         {
           "name": "string",
-          "callers": 1897,
+          "callers": 1898,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
@@ -10786,7 +10809,7 @@
         },
         {
           "name": "SavedWord",
-          "callers": 164,
+          "callers": 165,
           "testReferences": [
             "client/src/test/dictionaryGroups.test.ts",
             "client/src/test/offlineDictionary.test.ts",
@@ -11005,6 +11028,7 @@
         "UI"
       ],
       "testCoverage": [
+        "client/src/test/learnReviewLayout.test.ts",
         "client/src/test/srs.test.ts",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/srsAlgorithm.test.js",
@@ -11044,7 +11068,9 @@
         {
           "name": "getInstructionText",
           "callers": 4,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/learnReviewLayout.test.ts"
+          ],
           "disposition": "retain"
         },
         {
@@ -11396,13 +11422,13 @@
         },
         {
           "name": "tildeWord",
-          "callers": 4,
+          "callers": 6,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "renderTildeHighlight",
-          "callers": 21,
+          "callers": 20,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -13082,7 +13108,7 @@
         },
         {
           "name": "handleAnswer",
-          "callers": 19,
+          "callers": 22,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -13498,7 +13524,7 @@
         },
         {
           "name": "section",
-          "callers": 82,
+          "callers": 84,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -14326,6 +14352,7 @@
         "client/src/test/cbz.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
+        "client/src/test/learnReviewLayout.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "extension/test/app-bridge.test.mjs",
         "extension/test/fallback-toast.test.mjs",
@@ -14486,10 +14513,11 @@
         },
         {
           "name": "width",
-          "callers": 287,
+          "callers": 288,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
+            "client/src/test/learnReviewLayout.test.ts",
             "extension/test/popup-landscape-layout.test.mjs",
             "extension/test/popup-performance.test.mjs",
             "extension/test/popup-position-stability.test.mjs",
@@ -16049,7 +16077,7 @@
         },
         {
           "name": "SavedWord",
-          "callers": 164,
+          "callers": 165,
           "testReferences": [
             "client/src/test/dictionaryGroups.test.ts",
             "client/src/test/offlineDictionary.test.ts",
@@ -21007,6 +21035,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/learnReviewLayout.test.ts",
         "extension/test/popup-landscape-layout.test.mjs"
       ],
       "disposition": "intentionally standalone",
@@ -21062,8 +21091,10 @@
         },
         {
           "name": "mean",
-          "callers": 16,
-          "testReferences": [],
+          "callers": 17,
+          "testReferences": [
+            "client/src/test/learnReviewLayout.test.ts"
+          ],
           "disposition": "retain"
         },
         {
