@@ -1,6 +1,10 @@
 import crypto from 'crypto';
 import logger from '../logger.js';
-import { callGemini } from '../lib/gemini.js';
+import {
+  callGemini,
+  GEMINI_FLASH_LITE_MODEL,
+  GEMINI_FLASH_LITE_THINKING_LEVEL,
+} from '../lib/gemini.js';
 import { normalizeFallbackDiagnostic } from '../lib/fallbackDiagnostics.js';
 import { awardLearningSessionXp, progressionSnapshot } from '../lib/progression.js';
 
@@ -83,7 +87,7 @@ function fallbackReason(error) {
 
 async function generatePracticeSentence(word, targetLanguage, nativeLanguage) {
   const sources = sourceSentencesFor(word);
-  const prompt = `Write one NEW, short sentence for a vocabulary exercise in ${targetLanguage || 'the target language'}.
+  const basePrompt = `Write one NEW, short sentence for a vocabulary exercise in ${targetLanguage || 'the target language'}.
 
 The learner must supply the exact saved word "${word.word}". Its ${nativeLanguage || 'native-language'} meaning is "${word.translation}"${word.definition ? ` and its definition is "${word.definition}"` : ''}.
 
@@ -98,13 +102,29 @@ ${sources.length ? sources.map((source, index) => `${index + 1}. ${source}`).joi
 
 Return only the sentence. Nothing else.`;
 
-  const raw = await callGemini(prompt, {
-    thinkingConfig: { thinkingLevel: 'LOW' },
-    maxOutputTokens: 96,
-  });
-  const sentence = ensureFreshPracticeSentence(raw, word);
-  if (!sentence) throw new Error('Practice sentence generation returned an invalid or reused sentence');
-  return sentence;
+  let lastError;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const prompt = attempt === 1
+      ? basePrompt
+      : `${basePrompt}\n\nRetry: the previous response was rejected. Follow every rule exactly.`;
+    try {
+      const raw = await callGemini(
+        prompt,
+        {
+          thinkingConfig: { thinkingLevel: GEMINI_FLASH_LITE_THINKING_LEVEL },
+          maxOutputTokens: 256,
+        },
+        GEMINI_FLASH_LITE_MODEL,
+      );
+      const sentence = ensureFreshPracticeSentence(raw, word);
+      if (sentence) return sentence;
+      lastError = new Error('Practice sentence generation returned an invalid or reused sentence');
+    } catch (error) {
+      lastError = error;
+      if (!/Gemini returned no text content/.test(fallbackReason(error))) throw error;
+    }
+  }
+  throw lastError;
 }
 
 function optionSet(words, correct, field) {
@@ -586,4 +606,13 @@ export async function completeLearningSession(pool, userId, sessionId, timeZone)
   }
 }
 
-export const __test = { blankSentence, ensureFreshPracticeSentence, fallbackReason, makeExercise, normalize, parseForms, responseIsCorrect };
+export const __test = {
+  blankSentence,
+  ensureFreshPracticeSentence,
+  fallbackReason,
+  generatePracticeSentence,
+  makeExercise,
+  normalize,
+  parseForms,
+  responseIsCorrect,
+};

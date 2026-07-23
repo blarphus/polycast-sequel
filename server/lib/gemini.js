@@ -5,8 +5,10 @@ const GEMINI_MAX_ATTEMPTS = 3;
 
 export const GEMINI_GENERAL_MODEL = 'gemini-3.6-flash';
 export const GEMINI_DICTIONARY_MODEL = 'gemini-3.5-flash';
+export const GEMINI_FLASH_LITE_MODEL = 'gemini-3.5-flash-lite';
 export const GEMINI_GENERAL_THINKING_LEVEL = 'LOW';
 export const GEMINI_DICTIONARY_THINKING_LEVEL = 'MINIMAL';
+export const GEMINI_FLASH_LITE_THINKING_LEVEL = 'MINIMAL';
 
 function withDefaultThinkingLevel(generationConfig, defaultThinkingLevel) {
   const thinkingConfig = generationConfig.thinkingConfig || {};

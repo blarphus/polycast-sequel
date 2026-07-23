@@ -2,8 +2,8 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 548,
-    "lines": 86792,
-    "declarations": 2378,
+    "lines": 86892,
+    "declarations": 2380,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 3
@@ -9025,6 +9025,7 @@
         "extension/test/popup-position-stability.test.mjs",
         "server/lib/gemini.test.js",
         "server/services/dictionaryMediaService.test.js",
+        "server/test/learningSessionService.test.js",
         "server/test/ttsService.test.js"
       ],
       "disposition": "reviewed-retain",
@@ -9132,6 +9133,7 @@
             "extension/test/background.test.mjs",
             "server/lib/gemini.test.js",
             "server/services/dictionaryMediaService.test.js",
+            "server/test/learningSessionService.test.js",
             "server/test/ttsService.test.js"
           ],
           "disposition": "retain"
@@ -9803,6 +9805,7 @@
         "server/lib/gemini.test.js",
         "server/lib/idempotency.test.js",
         "server/test/groupCallSocket.test.js",
+        "server/test/learningSessionService.test.js",
         "server/test/ttsService.test.js",
         "server/test/userLibraryBookService.test.js"
       ],
@@ -9923,6 +9926,7 @@
             "server/lib/gemini.test.js",
             "server/lib/idempotency.test.js",
             "server/test/groupCallSocket.test.js",
+            "server/test/learningSessionService.test.js",
             "server/test/ttsService.test.js"
           ],
           "disposition": "retain"
@@ -10484,6 +10488,7 @@
         "server/services/dictionaryWordService.test.js",
         "server/test/callSignaling.test.js",
         "server/test/groupCallSocket.test.js",
+        "server/test/learningSessionService.test.js",
         "server/test/ttsService.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -10544,6 +10549,7 @@
             "server/lib/gemini.test.js",
             "server/lib/idempotency.test.js",
             "server/test/groupCallSocket.test.js",
+            "server/test/learningSessionService.test.js",
             "server/test/ttsService.test.js"
           ],
           "disposition": "retain"
@@ -11954,6 +11960,7 @@
         "server/services/dictionaryWordService.test.js",
         "server/test/auth.integration.test.js",
         "server/test/correlation.test.js",
+        "server/test/learningSessionService.test.js",
         "server/test/ttsService.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -12012,6 +12019,7 @@
             "server/services/dictionaryWordService.test.js",
             "server/test/auth.integration.test.js",
             "server/test/correlation.test.js",
+            "server/test/learningSessionService.test.js",
             "server/test/ttsService.test.js"
           ],
           "disposition": "retain"
@@ -12549,6 +12557,7 @@
         "server/lib/gemini.test.js",
         "server/lib/idempotency.test.js",
         "server/test/groupCallSocket.test.js",
+        "server/test/learningSessionService.test.js",
         "server/test/ttsService.test.js"
       ],
       "disposition": "reviewed-retain",
@@ -12659,6 +12668,7 @@
             "server/lib/gemini.test.js",
             "server/lib/idempotency.test.js",
             "server/test/groupCallSocket.test.js",
+            "server/test/learningSessionService.test.js",
             "server/test/ttsService.test.js"
           ],
           "disposition": "retain"
@@ -14687,7 +14697,8 @@
         "ios/Polycast/Tests/PolycastTests.swift",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/lib/gemini.test.js",
-        "server/services/dictionaryMediaService.test.js"
+        "server/services/dictionaryMediaService.test.js",
+        "server/test/learningSessionService.test.js"
       ],
       "disposition": "reviewed-retain",
       "dispositionReason": "One stateful screen/component lifecycle; reusable domain, card, popup, and transport seams are extracted.",
@@ -14706,7 +14717,7 @@
         },
         {
           "name": "content",
-          "callers": 145,
+          "callers": 146,
           "testReferences": [
             "client/src/test/epub.test.ts",
             "client/src/test/groupCallProvider.test.tsx",
@@ -14722,7 +14733,8 @@
             "extension/test/selection.test.mjs",
             "ios/Polycast/Tests/PolycastTests.swift",
             "server/lib/gemini.test.js",
-            "server/services/dictionaryMediaService.test.js"
+            "server/services/dictionaryMediaService.test.js",
+            "server/test/learningSessionService.test.js"
           ],
           "disposition": "retain"
         },
@@ -16799,6 +16811,7 @@
         "server/test/auth.integration.test.js",
         "server/test/classBookService.test.js",
         "server/test/correlation.test.js",
+        "server/test/learningSessionService.test.js",
         "server/test/userLibraryBookService.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -17813,7 +17826,7 @@
     },
     {
       "file": "server/lib/gemini.js",
-      "lines": 258,
+      "lines": 260,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "network",
@@ -17823,7 +17836,8 @@
         "ios/Polycast/UITests/PolycastUITests.swift",
         "ios/Polycast/UITests/ReaderPopupUITests.swift",
         "server/lib/gemini.test.js",
-        "server/test/dictionaryFallbackNotice.test.js"
+        "server/test/dictionaryFallbackNotice.test.js",
+        "server/test/learningSessionService.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -17908,6 +17922,14 @@
           "disposition": "retain"
         },
         {
+          "name": "GEMINI_FLASH_LITE_MODEL",
+          "callers": 2,
+          "testReferences": [
+            "server/test/learningSessionService.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
           "name": "GEMINI_GENERAL_THINKING_LEVEL",
           "callers": 3,
           "testReferences": [],
@@ -17918,6 +17940,14 @@
           "callers": 6,
           "testReferences": [
             "server/lib/gemini.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "GEMINI_FLASH_LITE_THINKING_LEVEL",
+          "callers": 2,
+          "testReferences": [
+            "server/test/learningSessionService.test.js"
           ],
           "disposition": "retain"
         }
@@ -21849,7 +21879,7 @@
     },
     {
       "file": "server/services/learningSessionService.js",
-      "lines": 590,
+      "lines": 619,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "database",
@@ -21903,7 +21933,7 @@
         },
         {
           "name": "fallbackReason",
-          "callers": 2,
+          "callers": 3,
           "testReferences": [
             "server/test/learningSessionService.test.js"
           ],
@@ -21911,8 +21941,10 @@
         },
         {
           "name": "generatePracticeSentence",
-          "callers": 1,
-          "testReferences": [],
+          "callers": 2,
+          "testReferences": [
+            "server/test/learningSessionService.test.js"
+          ],
           "disposition": "retain"
         },
         {
@@ -22996,6 +23028,7 @@
         "server/services/dictionaryWordService.test.js",
         "server/test/classroomEnrollment.test.js",
         "server/test/dictionaryQueries.test.js",
+        "server/test/learningSessionService.test.js",
         "server/test/userLibraryBookService.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -23633,9 +23666,11 @@
     },
     {
       "file": "server/test/learningSessionService.test.js",
-      "lines": 55,
+      "lines": 124,
       "responsibility": "test",
-      "sideEffects": [],
+      "sideEffects": [
+        "network"
+      ],
       "testCoverage": [],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",

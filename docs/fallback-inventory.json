@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-23T16:53:34.700Z",
+  "generatedAt": "2026-07-23T17:38:43.440Z",
   "totals": {
     "occurrences": 57,
     "uniqueCodes": 54,
@@ -297,7 +297,7 @@
     {
       "code": "PRACTICE_IMAGE_UNAVAILABLE",
       "file": "server/services/learningSessionService.js",
-      "line": 361,
+      "line": 381,
       "structured": true,
       "logged": true,
       "visible": true
@@ -305,7 +305,7 @@
     {
       "code": "PRACTICE_SENTENCE_FALLBACK",
       "file": "server/services/learningSessionService.js",
-      "line": 354,
+      "line": 374,
       "structured": true,
       "logged": true,
       "visible": true
@@ -313,7 +313,7 @@
     {
       "code": "PRACTICE_SENTENCE_FALLBACK",
       "file": "server/services/learningSessionService.js",
-      "line": 376,
+      "line": 396,
       "structured": true,
       "logged": true,
       "visible": true
@@ -321,7 +321,7 @@
     {
       "code": "PRACTICE_VIDEO_POOL_FALLBACK",
       "file": "server/services/learningSessionService.js",
-      "line": 323,
+      "line": 343,
       "structured": true,
       "logged": true,
       "visible": true
