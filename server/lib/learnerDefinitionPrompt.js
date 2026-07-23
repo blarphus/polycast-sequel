@@ -13,6 +13,8 @@ export function learnerDefinitionRules(nativeLanguage, {
   return `Learner-facing ${field} rules:
 - Write for a 14-year-old language learner.
 - Define the reusable core meaning of this exact sense, not the example's story.
+- Define the selected word or phrase itself, not the nearby noun, person, or action it describes.
+- Keep the definition consistent with the selected word's part of speech.
 - Use one direct sentence of 5-11 common ${language} words.
 - Every detail must be required by the word itself in this sense.
 - Do not add typical details such as force, difficulty, direction, ownership, intention, timing, or position.
@@ -20,6 +22,7 @@ export function learnerDefinitionRules(nativeLanguage, {
 - Do not repeat the ${translationField}, the target word, or an obvious same-root form in the ${field}.
 - Replace technical or abstract labels with familiar words whenever meaning stays accurate.
 - Do not begin with "this word", "means", "significa", or similar framing.
+- Before returning, count the words and remove any detail not required by the meaning.
 
 Quality examples:
 - Too specific: "To throw a ball forcefully." Better: "To send something through the air with your hand."

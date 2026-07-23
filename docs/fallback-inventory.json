@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-23T18:08:31.269Z",
+  "generatedAt": "2026-07-23T18:11:57.203Z",
   "totals": {
     "occurrences": 57,
     "uniqueCodes": 54,
@@ -161,7 +161,7 @@
     {
       "code": "gemini_definition_fallback_used",
       "file": "server/enrichWord.js",
-      "line": 575,
+      "line": 578,
       "structured": true,
       "logged": true,
       "visible": true
@@ -169,7 +169,7 @@
     {
       "code": "gemini_dictionary_entry_fallback_used",
       "file": "server/enrichWord.js",
-      "line": 623,
+      "line": 630,
       "structured": true,
       "logged": true,
       "visible": true

@@ -2,7 +2,7 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 551,
-    "lines": 87598,
+    "lines": 87611,
     "declarations": 2396,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
@@ -11916,7 +11916,7 @@
         },
         {
           "name": "remove",
-          "callers": 85,
+          "callers": 86,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -12275,7 +12275,7 @@
         },
         {
           "name": "remove",
-          "callers": 85,
+          "callers": 86,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -17001,7 +17001,7 @@
     },
     {
       "file": "server/enrichWord.js",
-      "lines": 847,
+      "lines": 854,
       "responsibility": "application support",
       "sideEffects": [
         "database",
@@ -18504,7 +18504,7 @@
     },
     {
       "file": "server/lib/learnerDefinitionPrompt.js",
-      "lines": 35,
+      "lines": 38,
       "responsibility": "server domain/integration",
       "sideEffects": [],
       "testCoverage": [
@@ -18533,7 +18533,7 @@
     },
     {
       "file": "server/lib/learnerDefinitionPrompt.test.js",
-      "lines": 35,
+      "lines": 38,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],

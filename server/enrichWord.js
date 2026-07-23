@@ -383,12 +383,15 @@ export async function enrichWord(word, sentence, nativeLang, targetLang, senseIn
     task,
     expectedParts,
     maxOutputTokens = 256,
+    validateParts = () => true,
   }) {
     const routed = await callGeminiRoutine(prompt, {
       generationConfig: { maxOutputTokens, responseMimeType: 'text/plain' },
       strongGenerationConfig: { maxOutputTokens: Math.max(maxOutputTokens, 512) },
-      validate: (text) => String(text || '').split('//').map((part) => part.trim())
-        .filter(Boolean).length >= expectedParts,
+      validate: (text) => {
+        const parts = String(text || '').split('//').map((part) => part.trim());
+        return parts.filter(Boolean).length >= expectedParts && validateParts(parts);
+      },
       onFallback: (diagnostic) => fallback_notices.push(diagnostic),
       task,
       source: 'server.enrichment',
@@ -607,6 +610,10 @@ ${learnerDefinitionRules(nativeLang, { field: 'DEFINITION', translationField: 'T
         task: 'learner dictionary entry',
         expectedParts: 5,
         maxOutputTokens: 384,
+        validateParts: (parts) => {
+          const definitionWords = String(parts[1] || '').split(/\s+/).filter(Boolean).length;
+          return definitionWords >= 5 && definitionWords <= 11;
+        },
       });
       const _t2 = Date.now();
       logger.info('[enrich-timing] %s — Gemini (Path B): %dms', word, _t2 - _t1);
