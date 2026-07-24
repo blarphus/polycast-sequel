@@ -3,11 +3,11 @@ import { mergeForm, normalizeLemma } from '../lib/normalizeWordFields.js';
 import { catalogEntryToWordFields, lookupFrequencyCatalog, persistProvisionalSense } from '../lib/frequencyCatalog.js';
 import { awardWordSaveXp } from '../lib/progression.js';
 import { NotFoundError, ValidationError } from '../lib/httpErrors.js';
-import { refreshDictionarySchedule } from './dictionaryScheduleService.js';
+import { runDictionaryScheduleMutation } from './dictionaryScheduleService.js';
 
 export function createDictionaryWordService({
   db = pool,
-  refreshSchedule = refreshDictionarySchedule,
+  scheduleMutation = runDictionaryScheduleMutation,
   awardSaveXp = awardWordSaveXp,
   resolveCatalog = lookupFrequencyCatalog,
   createProvisionalSense = persistProvisionalSense,
@@ -57,14 +57,6 @@ export function createDictionaryWordService({
         }
         if (catalogEntry) catalogFields = { ...catalogFields, ...catalogEntryToWordFields(catalogEntry) };
       }
-      const refreshWord = async (id) => {
-        const schedule = await refreshSchedule({
-          db, userId, timeZone, correlationId, source: 'mutation',
-        });
-        const { rows } = await db.query('SELECT * FROM saved_words WHERE id = $1 AND user_id = $2', [id, userId]);
-        return { word: rows[0], diagnostic: schedule.diagnostic };
-      };
-
       const { rows: existing } = await db.query(
         `SELECT * FROM saved_words WHERE user_id = $1
          AND target_language IS NOT DISTINCT FROM $2
@@ -103,41 +95,54 @@ export function createDictionaryWordService({
         };
       }
 
-      const { rows } = await db.query(
-        `INSERT INTO saved_words (
-           user_id, word, translation, definition, target_language, sentence_context,
-           frequency, example_sentence, sentence_translation, part_of_speech, image_url,
-           lemma, forms, frequency_count, image_term, shared_entry_id,
-           catalog_lemma_key, catalog_wiktionary_id, catalog_sense_index, catalog_gloss_index,
-           catalog_provisional_sense_id, rank_version_id, lemma_frequency_rank, sense_rank,
-           lemma_occurrences_per_billion, frequency_confidence, frequency_sources, ranking_diagnostics
-         ) VALUES (
-           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-           $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27::jsonb, $28::jsonb
-         ) RETURNING *`,
-        [
-          userId, canonicalWord, translation || '', definition || '', target_language || null,
-          sentence_context || null, catalogFields.frequency ?? null, example_sentence || null,
-          sentence_translation || null, part_of_speech || null, image_url || null,
-          canonicalWord, mergedForms, catalogFields.frequency_count ?? null, image_term || null,
-          shared_entry_id || null, catalogFields.catalog_lemma_key || null,
-          catalogFields.catalog_wiktionary_id || null, catalogFields.catalog_sense_index ?? null,
-          catalogFields.catalog_gloss_index ?? null, catalogFields.catalog_provisional_sense_id || null,
-          catalogFields.rank_version_id || null, catalogFields.lemma_frequency_rank ?? null,
-          catalogFields.sense_rank ?? null, catalogFields.lemma_occurrences_per_billion ?? null,
-          catalogFields.frequency_confidence || null,
-          JSON.stringify(catalogFields.frequency_sources || []), JSON.stringify(diagnostics),
-        ],
+      const { result: insertedId, schedule } = await scheduleMutation({
+        db,
+        userId,
+        timeZone,
+        correlationId,
+        mutate: async (client) => {
+          const { rows } = await client.query(
+            `INSERT INTO saved_words (
+               user_id, word, translation, definition, target_language, sentence_context,
+               frequency, example_sentence, sentence_translation, part_of_speech, image_url,
+               lemma, forms, frequency_count, image_term, shared_entry_id,
+               catalog_lemma_key, catalog_wiktionary_id, catalog_sense_index, catalog_gloss_index,
+               catalog_provisional_sense_id, rank_version_id, lemma_frequency_rank, sense_rank,
+               lemma_occurrences_per_billion, frequency_confidence, frequency_sources, ranking_diagnostics
+             ) VALUES (
+               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+               $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27::jsonb, $28::jsonb
+             ) RETURNING id`,
+            [
+              userId, canonicalWord, translation || '', definition || '', target_language || null,
+              sentence_context || null, catalogFields.frequency ?? null, example_sentence || null,
+              sentence_translation || null, part_of_speech || null, image_url || null,
+              canonicalWord, mergedForms, catalogFields.frequency_count ?? null, image_term || null,
+              shared_entry_id || null, catalogFields.catalog_lemma_key || null,
+              catalogFields.catalog_wiktionary_id || null, catalogFields.catalog_sense_index ?? null,
+              catalogFields.catalog_gloss_index ?? null, catalogFields.catalog_provisional_sense_id || null,
+              catalogFields.rank_version_id || null, catalogFields.lemma_frequency_rank ?? null,
+              catalogFields.sense_rank ?? null, catalogFields.lemma_occurrences_per_billion ?? null,
+              catalogFields.frequency_confidence || null,
+              JSON.stringify(catalogFields.frequency_sources || []), JSON.stringify(diagnostics),
+            ],
+          );
+          return rows[0].id;
+        },
+      });
+      const { rows: scheduledRows } = await db.query(
+        'SELECT * FROM saved_words WHERE id = $1 AND user_id = $2',
+        [insertedId, userId],
       );
-      const scheduled = await refreshWord(rows[0].id);
-      const reward = await awardSaveXp(db, userId, scheduled.word, timeZone);
+      const scheduledWord = scheduledRows[0];
+      const reward = await awardSaveXp(db, userId, scheduledWord, timeZone);
       return {
         status: 201,
         body: {
-          ...scheduled.word, created: true, _created: true, ...reward,
+          ...scheduledWord, created: true, _created: true, ...reward,
           ...(diagnostics.length ? { fallback_notices: diagnostics } : {}),
         },
-        diagnostic: scheduled.diagnostic,
+        diagnostic: schedule.diagnostic,
       };
     },
 
@@ -167,9 +172,20 @@ export function createDictionaryWordService({
       return rows[0];
     },
 
-    async remove(userId, id) {
-      const { rowCount } = await db.query('DELETE FROM saved_words WHERE id = $1 AND user_id = $2', [id, userId]);
-      if (!rowCount) throw new NotFoundError('Word not found', { code: 'dictionary_word_not_found' });
+    async remove(userId, id, { timeZone = 'UTC', correlationId } = {}) {
+      await scheduleMutation({
+        db,
+        userId,
+        timeZone,
+        correlationId,
+        mutate: async (client) => {
+          const { rowCount } = await client.query(
+            'DELETE FROM saved_words WHERE id = $1 AND user_id = $2',
+            [id, userId],
+          );
+          if (!rowCount) throw new NotFoundError('Word not found', { code: 'dictionary_word_not_found' });
+        },
+      });
     },
   };
 }

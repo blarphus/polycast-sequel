@@ -22,6 +22,8 @@ import {
 } from '../lib/profileSessions.js';
 import { serializeAuthUser } from '../lib/authResponse.js';
 import { supportedLanguageSchema } from '../lib/languagePolicy.js';
+import { validTimeZone } from '../lib/srsUpdate.js';
+import { runDictionaryScheduleMutation } from '../services/dictionaryScheduleService.js';
 
 const signupSchema = z.object({
   username: z.string().min(1, 'Username is required').max(40, 'Username must be 40 characters or fewer').trim(),
@@ -44,6 +46,7 @@ const settingsSchema = z.object({
   daily_new_limit: z.number().optional(),
   daily_word_goal: z.number().int().min(1).max(50).optional(),
   cefr_level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).nullable().optional(),
+  timeZone: z.string().max(100).optional(),
 }).strict();
 
 const router = Router();
@@ -269,7 +272,9 @@ router.get('/api/me', authMiddleware, async (req, res) => {
  */
 router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema }), async (req, res) => {
   try {
-    const { native_language, target_language, daily_new_limit, daily_word_goal, cefr_level } = req.body;
+    const {
+      native_language, target_language, daily_new_limit, daily_word_goal, cefr_level, timeZone,
+    } = req.body;
 
     // Build SET clauses and params dynamically
     const sets = ['native_language = $1', 'target_language = $2'];
@@ -293,13 +298,20 @@ router.patch('/api/me/settings', authMiddleware, validate({ body: settingsSchema
       idx++;
     }
 
-    const result = await pool.query(
-      `UPDATE users SET ${sets.join(', ')} WHERE id = $3
-       RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit, daily_word_goal, total_xp, account_type, cefr_level`,
-      params,
-    );
-
-    const user = result.rows[0];
+    const { result: user } = await runDictionaryScheduleMutation({
+      db: pool,
+      userId: req.userId,
+      timeZone: validTimeZone(timeZone),
+      correlationId: req.id,
+      mutate: async (client) => {
+        const result = await client.query(
+          `UPDATE users SET ${sets.join(', ')} WHERE id = $3
+           RETURNING id, username, display_name, created_at, native_language, target_language, daily_new_limit, daily_word_goal, total_xp, account_type, cefr_level`,
+          params,
+        );
+        return result.rows[0];
+      },
+    });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });

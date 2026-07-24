@@ -86,6 +86,8 @@ export interface StudentStats {
   totalReviews: number;
   accuracy: number | null;
   lastReviewedAt: string | null;
+  reviewHistoryPartial: boolean;
+  reviewHistoryAccurateFrom: string | null;
   streak: number;
 }
 
@@ -313,5 +315,9 @@ export function removeClassroomStudent(classroomIdOrStudentId: string, maybeStud
 export function getStudentStats(classroomIdOrStudentId: string, maybeStudentId?: string) {
   const classroomId = maybeStudentId ? classroomIdOrStudentId : undefined;
   const studentId = maybeStudentId ?? classroomIdOrStudentId;
-  return request<StudentDetail>(withClassroomQuery(`/classroom/students/${studentId}/stats`, requireClassroomId(classroomId)));
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return request<StudentDetail>(withClassroomQuery(
+    `/classroom/students/${studentId}/stats?timeZone=${encodeURIComponent(timeZone)}`,
+    requireClassroomId(classroomId),
+  ));
 }

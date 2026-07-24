@@ -342,7 +342,31 @@ export async function removeStudentFromClassroom(classroomId, studentId, actorTe
   }
 }
 
-export async function getClassroomStudentStats(classroomId, studentId, actorTeacherId) {
+export const MASTERED_INTERVAL_SECONDS = 21 * 24 * 60 * 60;
+
+export function classifyStudentWordStage(word) {
+  if (word.srs_interval === 0 && word.learning_step === null && !word.last_reviewed_at) return 'new';
+  if (word.learning_step !== null) return 'learning';
+  if (word.srs_interval >= MASTERED_INTERVAL_SECONDS) return 'mastered';
+  return 'review';
+}
+
+function localDay(date, timeZone) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+function shiftDay(day, amount) {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+}
+
+export async function getClassroomStudentStats(classroomId, studentId, actorTeacherId, timeZone = 'UTC') {
   const relationship = await pool.query(
     `SELECT 1
      FROM classroom_teachers ct
@@ -382,63 +406,61 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
   const wordsDue = words.filter((w) => w.due_at && new Date(w.due_at) <= now).length;
   const wordsNew = words.filter((w) => w.srs_interval === 0 && w.learning_step === null && !w.last_reviewed_at).length;
   const wordsInLearning = words.filter((w) => w.learning_step !== null).length;
-  const wordsMastered = words.filter((w) => w.srs_interval >= 21).length;
+  const wordsMastered = words.filter((w) => w.srs_interval >= MASTERED_INTERVAL_SECONDS).length;
   const totalCorrect = words.reduce((sum, w) => sum + (w.correct_count || 0), 0);
   const totalIncorrect = words.reduce((sum, w) => sum + (w.incorrect_count || 0), 0);
   const totalReviews = totalCorrect + totalIncorrect;
   const accuracy = totalReviews > 0 ? totalCorrect / totalReviews : null;
-  const reviewDates = words.map((w) => w.last_reviewed_at).filter(Boolean);
-  const lastReviewedAt = reviewDates.length > 0
-    ? reviewDates.reduce((latest, date) => (new Date(date) > new Date(latest) ? date : latest))
-    : null;
+  const reviewSummaryResult = await pool.query(
+    `SELECT MAX(reviewed_at) AS last_reviewed_at,
+            (COUNT(DISTINCT (reviewed_at AT TIME ZONE $2)::date)
+              FILTER (WHERE reviewed_at >= NOW() - INTERVAL '7 days'))::int AS active_days,
+            COALESCE(BOOL_OR(source = 'legacy_latest'), FALSE) AS review_history_partial,
+            (SELECT applied_at FROM schema_migrations WHERE version = 47) AS review_history_accurate_from
+       FROM dictionary_review_events
+      WHERE user_id = $1`,
+    [studentId, timeZone],
+  );
+  const lastReviewedAt = reviewSummaryResult.rows[0]?.last_reviewed_at || null;
+  const daysActiveThisWeek = reviewSummaryResult.rows[0]?.active_days || 0;
 
-  // Days active this week (distinct dates with reviews in last 7 days)
-  const weekAgo = new Date(now);
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const activeDates = new Set();
-  for (const w of words) {
-    if (w.last_reviewed_at && new Date(w.last_reviewed_at) >= weekAgo) {
-      activeDates.add(new Date(w.last_reviewed_at).toISOString().slice(0, 10));
-    }
-  }
-  const daysActiveThisWeek = activeDates.size;
-
-  // Daily activity for the last 30 days (reviews, words, learning sessions, drills, voice practice)
+  // Daily activity for 90 days. The client uses the final 30 days for the
+  // calendar and the full result for the explicitly labelled 90-day summary.
   const activityResult = await pool.query(
     `WITH review_days AS (
-       SELECT last_reviewed_at::date AS day,
+       SELECT (reviewed_at AT TIME ZONE $2)::date AS day,
               COUNT(*) AS reviews,
-              SUM(correct_count) AS correct,
-              SUM(incorrect_count) AS incorrect
-       FROM saved_words
-       WHERE user_id = $1 AND last_reviewed_at IS NOT NULL
-         AND last_reviewed_at >= NOW() - INTERVAL '30 days'
-       GROUP BY last_reviewed_at::date
+              COUNT(*) FILTER (WHERE answer = 'good') AS correct,
+              COUNT(*) FILTER (WHERE answer = 'again') AS incorrect
+       FROM dictionary_review_events
+       WHERE user_id = $1
+         AND reviewed_at >= NOW() - INTERVAL '90 days'
+       GROUP BY (reviewed_at AT TIME ZONE $2)::date
      ),
      added_days AS (
-       SELECT created_at::date AS day, COUNT(*) AS words_added
+       SELECT (created_at AT TIME ZONE $2)::date AS day, COUNT(*) AS words_added
        FROM saved_words
-       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '30 days'
-       GROUP BY created_at::date
+       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '90 days'
+       GROUP BY (created_at AT TIME ZONE $2)::date
      ),
      practice_days AS (
-       SELECT completed_at::date AS day, COUNT(*) AS practice_sessions,
+       SELECT (completed_at AT TIME ZONE $2)::date AS day, COUNT(*) AS practice_sessions,
               SUM(correct_count) AS practice_correct, SUM(total_items) AS practice_total
        FROM learning_sessions
-       WHERE user_id = $1 AND status = 'completed' AND completed_at >= NOW() - INTERVAL '30 days'
-       GROUP BY completed_at::date
+       WHERE user_id = $1 AND status = 'completed' AND completed_at >= NOW() - INTERVAL '90 days'
+       GROUP BY (completed_at AT TIME ZONE $2)::date
      ),
      drill_days AS (
-       SELECT created_at::date AS day, COUNT(*) AS drills
+       SELECT (created_at AT TIME ZONE $2)::date AS day, COUNT(*) AS drills
        FROM drill_sessions
-       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '30 days'
-       GROUP BY created_at::date
+       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '90 days'
+       GROUP BY (created_at AT TIME ZONE $2)::date
      ),
      voice_days AS (
-       SELECT created_at::date AS day, COUNT(*) AS voice_sessions
+       SELECT (created_at AT TIME ZONE $2)::date AS day, COUNT(*) AS voice_sessions
        FROM voice_practice_sessions
-       WHERE user_id = $1 AND completed_at IS NOT NULL AND created_at >= NOW() - INTERVAL '30 days'
-       GROUP BY created_at::date
+       WHERE user_id = $1 AND completed_at IS NOT NULL AND created_at >= NOW() - INTERVAL '90 days'
+       GROUP BY (created_at AT TIME ZONE $2)::date
      ),
      all_days AS (
        SELECT day FROM review_days
@@ -462,21 +484,21 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
      LEFT JOIN drill_days dr ON dr.day = d.day
      LEFT JOIN voice_days v ON v.day = d.day
      ORDER BY d.day ASC`,
-    [studentId],
+    [studentId, timeZone],
   );
 
-  // Words reviewed/added per day (last 30 days) for day-detail drill-down
+  // Words reviewed/added per day for the 90-day summary and 30-day drill-down.
   const dailyWordsResult = await pool.query(
-    `(SELECT last_reviewed_at::date AS day, 'reviewed' AS action, word, translation
-      FROM saved_words
-      WHERE user_id = $1 AND last_reviewed_at IS NOT NULL
-        AND last_reviewed_at >= NOW() - INTERVAL '30 days')
+    `(SELECT (reviewed_at AT TIME ZONE $2)::date AS day, 'reviewed' AS action, word, translation
+      FROM dictionary_review_events
+      WHERE user_id = $1
+        AND reviewed_at >= NOW() - INTERVAL '90 days')
      UNION ALL
-     (SELECT created_at::date AS day, 'added' AS action, word, translation
+     (SELECT (created_at AT TIME ZONE $2)::date AS day, 'added' AS action, word, translation
       FROM saved_words
-      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '30 days')
+      WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '90 days')
      ORDER BY day DESC, action ASC, word ASC`,
-    [studentId],
+    [studentId, timeZone],
   );
 
   // Group daily words by date
@@ -490,15 +512,11 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
   // Compute current streak (consecutive days ending today or yesterday)
   const activityDays = new Set(activityResult.rows.map((r) => r.day.toISOString().slice(0, 10)));
   let streak = 0;
-  const streakStart = new Date(now);
-  // Allow streak to start from today or yesterday
-  if (!activityDays.has(streakStart.toISOString().slice(0, 10))) {
-    streakStart.setDate(streakStart.getDate() - 1);
-  }
-  const d = new Date(streakStart);
-  while (activityDays.has(d.toISOString().slice(0, 10))) {
+  const today = localDay(now, timeZone);
+  let streakDay = activityDays.has(today) ? today : shiftDay(today, -1);
+  while (activityDays.has(streakDay)) {
     streak++;
-    d.setDate(d.getDate() - 1);
+    streakDay = shiftDay(streakDay, -1);
   }
 
   // Word lists assigned to this classroom, with completion status for this student
@@ -543,14 +561,6 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
     [studentId],
   );
 
-  // Compute SRS stage per word
-  function srsStage(word) {
-    if (word.srs_interval === 0 && word.learning_step === null && !word.last_reviewed_at) return 'new';
-    if (word.learning_step !== null) return 'learning';
-    if (word.srs_interval >= 21) return 'mastered';
-    return 'review';
-  }
-
   return {
     student,
     stats: {
@@ -564,6 +574,8 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
       totalReviews,
       accuracy,
       lastReviewedAt,
+      reviewHistoryPartial: reviewSummaryResult.rows[0]?.review_history_partial || false,
+      reviewHistoryAccurateFrom: reviewSummaryResult.rows[0]?.review_history_accurate_from || null,
       streak,
     },
     activity: activityResult.rows.map((r) => {
@@ -601,7 +613,7 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
       word: word.word,
       translation: word.translation,
       part_of_speech: word.part_of_speech,
-      srs_stage: srsStage(word),
+      srs_stage: classifyStudentWordStage(word),
     })),
   };
 }

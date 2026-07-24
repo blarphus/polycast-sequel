@@ -36,6 +36,13 @@ function relativeTime(dateStr: string) {
   return formatShortDate(dateStr);
 }
 
+function localDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 const SESSION_LABELS: Record<string, { label: string; color: string }> = {
   vocabulary: { label: 'Practice', color: '#6366f1' },
   flashcards: { label: 'Flashcards', color: '#14b8a6' },
@@ -71,7 +78,7 @@ function MonthCalendar({ activity, accountCreated, selectedDay, onSelectDay }: {
 }) {
   const activityMap = new Map(activity.map((d) => [d.day, d]));
   const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = localDateKey(today);
   const createdStr = accountCreated.slice(0, 10);
 
   type Cell = { date: string; day: number; status: DayStatus } | null;
@@ -79,7 +86,7 @@ function MonthCalendar({ activity, accountCreated, selectedDay, onSelectDay }: {
   for (let i = 29; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
+    const dateStr = localDateKey(d);
     const beforeAccount = dateStr < createdStr;
     const data = activityMap.get(dateStr);
     days.push({ date: dateStr, weekday: d.getDay(), day: d.getDate(), status: dayStatus(data, beforeAccount) });
@@ -119,7 +126,7 @@ function MonthCalendar({ activity, accountCreated, selectedDay, onSelectDay }: {
       ))}
       <div className="sd-heatmap-legend">
         <span className="sd-heatmap-legend-cell sd-heatmap-cell--completed" />
-        <span className="sd-heatmap-legend-label">Reviewed</span>
+        <span className="sd-heatmap-legend-label">Review activity</span>
         <span className="sd-heatmap-legend-cell sd-heatmap-cell--partial" />
         <span className="sd-heatmap-legend-label">Some activity</span>
         <span className="sd-heatmap-legend-cell sd-heatmap-cell--skipped" />
@@ -339,6 +346,13 @@ export default function StudentDetail() {
           <span className="sd-metric-label">Due now</span>
         </div>
       </div>
+      {stats.reviewHistoryPartial && (
+        <div className="sd-history-notice" role="status">
+          Detailed review history is exact from{' '}
+          {stats.reviewHistoryAccurateFrom ? formatShortDate(stats.reviewHistoryAccurateFrom) : 'this update'} onward.
+          Earlier dates can show only each word&apos;s latest recorded review.
+        </div>
+      )}
 
       {/* Two-column layout */}
       <div className="sd-grid">

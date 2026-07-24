@@ -14,7 +14,7 @@ import { applySrsReview } from '../lib/srsUpdate.js';
 import { generateStageSentence } from '../lib/stageSentence.js';
 import { recordFlashcardReview } from './learningSessionService.js';
 import logger from '../logger.js';
-import { refreshDictionarySchedule } from './dictionaryScheduleService.js';
+import { runDictionaryScheduleMutation } from './dictionaryScheduleService.js';
 
 export async function scheduleStageSentence({ db, card, newStage }) {
   const { rows: langRows } = await db.query(
@@ -31,27 +31,35 @@ export async function scheduleStageSentence({ db, card, newStage }) {
     nativeLang: langRows[0]?.native_language || 'en',
     previousSentences: Array.isArray(card.stage_sentences) ? card.stage_sentences : [],
   });
-  const client = await db.connect();
-  try {
-    await client.query(
-      `UPDATE saved_words
-       SET stage_sentences = COALESCE(stage_sentences, '[]'::jsonb) || $1::jsonb
-       WHERE id = $2 AND user_id = $3`,
-      [JSON.stringify([{ stage: newStage, example: generated.example, translation: generated.translation }]), card.id, card.user_id],
-    );
-    logger.info({ cardId: card.id, stage: newStage }, 'stage-sentence generated');
-  } finally {
-    client.release();
-  }
+  await db.query(
+    `UPDATE saved_words
+     SET stage_sentences = COALESCE(stage_sentences, '[]'::jsonb) || $1::jsonb
+     WHERE id = $2 AND user_id = $3`,
+    [JSON.stringify([{ stage: newStage, example: generated.example, translation: generated.translation }]), card.id, card.user_id],
+  );
+  logger.info({ cardId: card.id, stage: newStage }, 'stage-sentence generated');
   return { fallback_notices: generated.fallback_notices || [] };
+}
+
+export async function recordDictionaryReviewEvent(db, userId, wordId, answer) {
+  await db.query(
+    `INSERT INTO dictionary_review_events (
+       user_id, saved_word_id, word, translation, answer
+     )
+     SELECT user_id, id, word, translation, $3
+       FROM saved_words
+      WHERE id = $1 AND user_id = $2`,
+    [wordId, userId, answer],
+  );
 }
 
 export function createDictionaryStudyService({
   db = pool,
   reviewCard = applySrsReview,
   recordReview = recordFlashcardReview,
+  recordReviewEvent = recordDictionaryReviewEvent,
   idempotentMutation = runIdempotentMutation,
-  refreshSchedule = refreshDictionarySchedule,
+  scheduleMutation = runDictionaryScheduleMutation,
 } = {}) {
   return {
     calendar(userId, year, month, timeZone) {
@@ -137,17 +145,21 @@ export function createDictionaryStudyService({
         operation: 'review-word',
         body: { wordId, answer, timeZone, learningSessionId: learningSessionId || null },
       }, async () => {
-        const updated = await reviewCard(db, wordId, userId, answer, timeZone, {
-          onAdvanceToNewStage: scheduleStageSentence,
-        });
-        if (!updated) return { status: 404, body: { error: 'Word not found', code: 'dictionary_word_not_found' } };
-        await recordReview(db, userId, learningSessionId, answer === 'good');
-        await refreshSchedule({
+        const { result: updated } = await scheduleMutation({
           db,
           userId,
           timeZone,
-          source: 'mutation',
+          mutate: async (client) => {
+            const reviewed = await reviewCard(client, wordId, userId, answer, timeZone, {
+              onAdvanceToNewStage: scheduleStageSentence,
+            });
+            if (!reviewed) return null;
+            await recordReviewEvent(client, userId, wordId, answer);
+            await recordReview(client, userId, learningSessionId, answer === 'good');
+            return reviewed;
+          },
         });
+        if (!updated) return { status: 404, body: { error: 'Word not found', code: 'dictionary_word_not_found' } };
         return { status: 200, body: updated };
       });
     },

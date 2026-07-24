@@ -267,7 +267,8 @@ export function saveWord(data: SaveWordData) {
 }
 
 export function deleteSavedWord(id: string) {
-  return request<void>(`/dictionary/words/${id}`, { method: 'DELETE' });
+  const params = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  return request<void>(`/dictionary/words/${id}?${params}`, { method: 'DELETE' });
 }
 
 export function searchImages(query: string) {

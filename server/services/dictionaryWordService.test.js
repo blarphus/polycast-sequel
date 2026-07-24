@@ -21,12 +21,12 @@ test('dictionary word save creates, schedules, and awards through one service pi
     { rows: [{ id: 'word-1', word: 'hola' }] },
     { rows: [{ id: 'word-1', word: 'hola', next_review_date: '2026-07-12' }] },
   ]);
-  const refreshCalls = [];
+  const mutationCalls = [];
   const service = createDictionaryWordService({
     db,
-    refreshSchedule: async (input) => {
-      refreshCalls.push(input);
-      return { diagnostic: null };
+    scheduleMutation: async (input) => {
+      mutationCalls.push(input);
+      return { result: await input.mutate(db), schedule: { diagnostic: null } };
     },
     awardSaveXp: async () => ({ xpEarned: 5 }),
   });
@@ -41,8 +41,8 @@ test('dictionary word save creates, schedules, and awards through one service pi
     created: true, _created: true, xpEarned: 5,
   });
   assert.equal(result.diagnostic, null);
-  assert.equal(refreshCalls[0].correlationId, 'correlation-1');
-  assert.equal(refreshCalls[0].source, 'mutation');
+  assert.equal(mutationCalls[0].correlationId, 'correlation-1');
+  assert.equal(mutationCalls[0].timeZone, 'America/Chicago');
   assert.equal(db.calls[1].values[12], '["hola"]');
 });
 
@@ -51,10 +51,13 @@ test('dictionary word save reuses an existing definition without awarding duplic
     { rows: [{ id: 'word-1', word: 'hola', forms: null }] },
   ]);
   let awards = 0;
-  let refreshes = 0;
+  let scheduleMutations = 0;
   const service = createDictionaryWordService({
     db,
-    refreshSchedule: async () => { refreshes += 1; return { diagnostic: null }; },
+    scheduleMutation: async () => {
+      scheduleMutations += 1;
+      return { result: null, schedule: { diagnostic: null } };
+    },
     awardSaveXp: async () => { awards += 1; return {}; },
   });
 
@@ -65,7 +68,7 @@ test('dictionary word save reuses an existing definition without awarding duplic
   assert.equal(result.status, 200);
   assert.equal(result.body.created, false);
   assert.equal(awards, 0);
-  assert.equal(refreshes, 0);
+  assert.equal(scheduleMutations, 0);
   assert.equal(db.calls.length, 1);
 });
 
@@ -81,7 +84,13 @@ test('dictionary word update rejects an empty patch before querying', async () =
 
 test('dictionary word deletion reports a typed not-found error', async () => {
   const db = scriptedDb([{ rowCount: 0 }]);
-  const service = createDictionaryWordService({ db });
+  const service = createDictionaryWordService({
+    db,
+    scheduleMutation: async (input) => ({
+      result: await input.mutate(db),
+      schedule: { diagnostic: null },
+    }),
+  });
   await assert.rejects(
     () => service.remove('user-1', 'word-1'),
     (error) => error.code === 'dictionary_word_not_found' && error.status === 404,

@@ -67,9 +67,12 @@ test('study review keeps idempotency, SRS, and session accounting in one pipelin
     recordReview: async (_db, userId, sessionId, correct) => {
       calls.push({ operation: 'record', userId, sessionId, correct });
     },
-    refreshSchedule: async (options) => {
+    recordReviewEvent: async (_db, userId, wordId, answer) => {
+      calls.push({ operation: 'event', userId, wordId, answer });
+    },
+    scheduleMutation: async (options) => {
       calls.push({ operation: 'schedule', options });
-      return { diagnostic: null };
+      return { result: await options.mutate({ name: 'client' }), schedule: { diagnostic: null } };
     },
     idempotentMutation: async (_db, options, mutation) => {
       calls.push({ operation: 'idempotency', options });
@@ -81,8 +84,13 @@ test('study review keeps idempotency, SRS, and session accounting in one pipelin
   });
   assert.equal(result.status, 200);
   assert.equal(calls[0].options.key, 'key-1');
-  assert.equal(calls[1].operation, 'review');
-  assert.deepEqual(calls[2], { operation: 'record', userId: 'user-1', sessionId: 'session-1', correct: true });
-  assert.equal(calls[3].operation, 'schedule');
-  assert.equal(calls[3].options.source, 'mutation');
+  assert.equal(calls[1].operation, 'schedule');
+  assert.equal(calls[1].options.timeZone, 'UTC');
+  assert.equal(calls[2].operation, 'review');
+  assert.deepEqual(calls[3], {
+    operation: 'event', userId: 'user-1', wordId: 'word-1', answer: 'good',
+  });
+  assert.deepEqual(calls[4], {
+    operation: 'record', userId: 'user-1', sessionId: 'session-1', correct: true,
+  });
 });

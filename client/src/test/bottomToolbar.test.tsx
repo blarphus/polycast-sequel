@@ -8,9 +8,11 @@ import studentsStyles from '../styles/students.css?raw';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+const authState = vi.hoisted(() => ({ accountType: 'student' as 'student' | 'teacher' }));
+
 vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({
-    user: { id: 'user-1', account_type: 'student' },
+    user: { id: 'user-1', account_type: authState.accountType },
     savedAccounts: [],
     switchAccount: vi.fn(),
     forgetSavedAccount: vi.fn(),
@@ -26,6 +28,7 @@ describe('BottomToolbar', () => {
   let root: Root | undefined;
 
   beforeEach(() => {
+    authState.accountType = 'student';
     const storage = new Map<string, string>();
     Object.defineProperty(window, 'localStorage', {
       configurable: true,
@@ -79,6 +82,26 @@ describe('BottomToolbar', () => {
     expect(expandedLabels).toContain('Social');
     expect(expandedLabels).toContain('Watch');
     expect(expandedLabels).toContain('Settings');
+  });
+
+  it('shows Home as the first teacher destination and links it to the teacher landing page', () => {
+    authState.accountType = 'teacher';
+    act(() => {
+      root?.render(
+        <MemoryRouter
+          initialEntries={['/classes']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <BottomToolbar />
+        </MemoryRouter>,
+      );
+    });
+
+    const destinationLabels = Array.from(
+      container.querySelectorAll(':scope > nav > button .toolbar-label'),
+    ).map((label) => label.textContent?.trim());
+    expect(destinationLabels[0]).toBe('Home');
+    expect(container.querySelector('nav > button.active .toolbar-label')?.textContent).toBe('Home');
   });
 });
 

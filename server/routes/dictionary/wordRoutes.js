@@ -64,8 +64,11 @@ export function createDictionaryWordRoutes({ service = dictionaryWordService } =
     return res.json(await service.addForm(req.userId, req.params.id, req.body.form));
   }));
 
-  router.delete('/api/dictionary/words/:id', authMiddleware, validate({ params: uuidParam }), asyncHandler(async (req, res) => {
-    await service.remove(req.userId, req.params.id);
+  router.delete('/api/dictionary/words/:id', authMiddleware, validate({ params: uuidParam, query: listWordsQuery.pick({ timeZone: true }) }), asyncHandler(async (req, res) => {
+    await service.remove(req.userId, req.params.id, {
+      timeZone: validTimeZone(req.query.timeZone),
+      correlationId: req.id,
+    });
     return res.status(204).end();
   }));
 

@@ -6,7 +6,9 @@ import { enrichWord } from '../enrichWord.js';
 import { callGemini, parseGeminiJson } from '../lib/gemini.js';
 import { fetchWordImage } from '../lib/imageSearch.js';
 import { validate } from '../lib/validate.js';
+import { validTimeZone } from '../lib/srsUpdate.js';
 import { ensureStudentHasLegacyPostAccess } from '../services/classroomService.js';
+import { runDictionaryScheduleMutation } from '../services/dictionaryScheduleService.js';
 import { batchTranslateWordList, lookupWordsForPreview } from '../services/wordSemanticsService.js';
 
 const router = Router();
@@ -36,6 +38,7 @@ const knownBody = z.object({
   postWordId: z.string().uuid('Invalid post word ID'),
   known: z.boolean(),
 });
+const timeZoneQuery = z.object({ timeZone: z.string().max(100).optional() });
 
 // ---------------------------------------------------------------------------
 // POST /api/stream/words/example — generate a single example sentence (teacher)
@@ -197,7 +200,7 @@ router.post('/api/stream/posts/:postId/known', authMiddleware, validate({ params
 // POST /api/stream/posts/:postId/add-to-dictionary — student adds unknown words
 // ---------------------------------------------------------------------------
 
-router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, validate({ params: postIdParam }), async (req, res) => {
+router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, validate({ params: postIdParam, query: timeZoneQuery }), async (req, res) => {
   try {
     const { rows: postExistsRows } = await pool.query(
       'SELECT 1 FROM stream_posts WHERE id = $1',
@@ -232,42 +235,51 @@ router.post('/api/stream/posts/:postId/add-to-dictionary', authMiddleware, valid
     );
     const targetLanguage = accessiblePost.target_language || studentRows[0]?.target_language || null;
 
-    let added = 0;
-    let skipped = 0;
     const fallbackNotices = [];
-
-    for (const w of wordsToAdd) {
+    const resolvedWords = [];
+    for (const word of wordsToAdd) {
+      const w = { ...word };
       const imageUrl = w.image_url !== null ? w.image_url : await fetchWordImage(
         w.image_term || w.translation || w.word,
         null,
         (diagnostic) => fallbackNotices.push(diagnostic),
       );
-      const { rowCount } = await pool.query(
-        `INSERT INTO saved_words
-           (user_id, word, translation, definition, target_language, part_of_speech,
-            frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term, shared_entry_id, priority)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,true)
-         ON CONFLICT DO NOTHING`,
-        [
-          req.userId, w.word, w.translation, w.definition, targetLanguage, w.part_of_speech,
-          w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
-          w.sentence_translation ?? null, imageUrl, w.lemma ?? null, w.forms ?? null,
-          w.image_term ?? null, w.shared_entry_id ?? null,
-        ],
-      );
-      if (rowCount > 0) {
-        added++;
-      } else {
-        skipped++;
-      }
+      resolvedWords.push({ ...w, image_url: imageUrl });
     }
-
-    await pool.query(
-      `INSERT INTO stream_word_list_completions (student_id, post_id)
-       VALUES ($1, $2)
-       ON CONFLICT DO NOTHING`,
-      [req.userId, req.params.postId],
-    );
+    const { result: { added, skipped } } = await runDictionaryScheduleMutation({
+      db: pool,
+      userId: req.userId,
+      timeZone: validTimeZone(req.query.timeZone),
+      correlationId: req.id,
+      mutate: async (client) => {
+        let inserted = 0;
+        let duplicates = 0;
+        for (const w of resolvedWords) {
+          const { rowCount } = await client.query(
+            `INSERT INTO saved_words
+               (user_id, word, translation, definition, target_language, part_of_speech,
+                frequency, frequency_count, example_sentence, sentence_translation, image_url, lemma, forms, image_term, shared_entry_id, priority)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,true)
+             ON CONFLICT DO NOTHING`,
+            [
+              req.userId, w.word, w.translation, w.definition, targetLanguage, w.part_of_speech,
+              w.frequency ?? null, w.frequency_count ?? null, w.example_sentence ?? null,
+              w.sentence_translation ?? null, w.image_url, w.lemma ?? null, w.forms ?? null,
+              w.image_term ?? null, w.shared_entry_id ?? null,
+            ],
+          );
+          if (rowCount > 0) inserted++;
+          else duplicates++;
+        }
+        await client.query(
+          `INSERT INTO stream_word_list_completions (student_id, post_id)
+           VALUES ($1, $2)
+           ON CONFLICT DO NOTHING`,
+          [req.userId, req.params.postId],
+        );
+        return { added: inserted, skipped: duplicates };
+      },
+    });
 
     return res.json({ added, skipped, fallback_notices: fallbackNotices });
   } catch (err) {

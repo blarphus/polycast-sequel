@@ -22,6 +22,7 @@ import {
   linkCatalogBuildVersion,
   updateCatalogBuildProgress,
 } from '../lib/catalogBuildProgress.js';
+import { ensureScheduleCurrent } from '../lib/dictionaryQueries.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 dotenv.config({ path: path.join(root, '.env') });
@@ -905,6 +906,15 @@ try {
       WHERE id = $1`,
     [catalog.id, activate ? 'active' : 'retired', JSON.stringify(manifest), JSON.stringify(diagnostics)],
   );
+  const { rows: schedulesToRefresh } = await client.query(
+    `SELECT user_id
+       FROM user_schedule_state
+      WHERE schedule_version IS DISTINCT FROM scheduled_version
+      ORDER BY user_id`,
+  );
+  for (const { user_id: userId } of schedulesToRefresh) {
+    await ensureScheduleCurrent(client, userId, 'UTC', { withinTransaction: true });
+  }
   await client.query('COMMIT');
   await linkCatalogBuildVersion({ db: progressPool, runId, catalogVersionId: catalog.id });
   await reportProgress({

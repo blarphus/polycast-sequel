@@ -101,11 +101,18 @@ export async function ensureCardsScheduled(db, userId, timeZone = 'UTC') {
  * calendar day changed. The advisory transaction lock guarantees concurrent
  * readers cannot run duplicate repairs.
  */
-export async function ensureScheduleCurrent(db, userId, timeZone = 'UTC', { force = false } = {}) {
-  const client = typeof db.connect === 'function' ? await db.connect() : db;
-  const shouldRelease = client !== db;
+export async function ensureScheduleCurrent(
+  db,
+  userId,
+  timeZone = 'UTC',
+  { force = false, withinTransaction = false } = {},
+) {
+  const client = withinTransaction
+    ? db
+    : (typeof db.connect === 'function' ? await db.connect() : db);
+  const shouldRelease = !withinTransaction && client !== db;
   try {
-    await client.query('BEGIN');
+    if (!withinTransaction) await client.query('BEGIN');
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`schedule:${userId}`]);
     const { rows: [state] } = await client.query(
       `SELECT schedule_version, scheduled_version, local_day,
@@ -117,7 +124,7 @@ export async function ensureScheduleCurrent(db, userId, timeZone = 'UTC', { forc
     const dirty = !state || Number(state.schedule_version) !== Number(state.scheduled_version);
     const dayChanged = !state?.local_day || String(state.local_day).slice(0, 10) !== String(state.current_day).slice(0, 10);
     if (!force && !dirty && !dayChanged) {
-      await client.query('COMMIT');
+      if (!withinTransaction) await client.query('COMMIT');
       return { used: false, reason: null, changedCount: 0 };
     }
 
@@ -132,14 +139,14 @@ export async function ensureScheduleCurrent(db, userId, timeZone = 'UTC', { forc
          scheduled_at = NOW()`,
       [userId, timeZone],
     );
-    await client.query('COMMIT');
+    if (!withinTransaction) await client.query('COMMIT');
     return {
       used: true,
       reason: force ? 'explicit-mutation' : (dirty ? 'dirty-mutation' : 'local-day-boundary'),
       changedCount,
     };
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (!withinTransaction) await client.query('ROLLBACK');
     throw error;
   } finally {
     if (shouldRelease) client.release();

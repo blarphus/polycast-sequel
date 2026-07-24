@@ -53,3 +53,41 @@ export async function refreshDictionarySchedule({
   logger.info({ diagnostic, userId }, 'Study schedule alternate maintenance path used');
   return { repair, diagnostic };
 }
+
+/**
+ * Commit a schedule-affecting write and its schedule refresh as one unit.
+ *
+ * The saved_words/users triggers deliberately mark the schedule dirty. Keeping
+ * that write and ensureScheduleCurrent in the same transaction means a crash
+ * can never commit the dirty flag without also committing the repaired queue.
+ * The read-side repair remains available and visible for genuinely out-of-band
+ * writes, but ordinary application mutations do not depend on it.
+ */
+export async function runDictionaryScheduleMutation({
+  db = pool,
+  userId,
+  timeZone = 'UTC',
+  correlationId,
+  mutate,
+}) {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await mutate(client);
+    const schedule = await refreshDictionarySchedule({
+      db: client,
+      userId,
+      timeZone,
+      correlationId,
+      source: 'mutation',
+      options: { withinTransaction: true },
+    });
+    await client.query('COMMIT');
+    return { result, schedule };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}

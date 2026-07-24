@@ -87,7 +87,7 @@ export default function BottomToolbar() {
     return () => { cancelled = true; };
   }, [isStudent]);
 
-  const isHome = location.pathname === '/home';
+  const isHome = isTeacher ? location.pathname === '/classes' : location.pathname === '/home';
   const isDictionary = location.pathname === '/' || location.pathname === '/dictionary';
   const isFlashcards = location.pathname === '/learn' || location.pathname.startsWith('/learn/');
   const isPractice = location.pathname === '/practice' || location.pathname.startsWith('/practice/');
@@ -130,6 +130,15 @@ export default function BottomToolbar() {
           {collapsed ? <ChevronRightIcon size={16} /> : <ChevronLeftIcon size={16} />}
         </button>
       </div>
+      {isTeacher && (
+        <button
+          className={`toolbar-tab toolbar-tab--blue${isHome ? ' active' : ''}`}
+          onClick={() => navigate('/classes')}
+        >
+          <HomeIcon size={22} />
+          <span className="toolbar-label">{t('nav.home')}</span>
+        </button>
+      )}
       <button
         className={`toolbar-tab toolbar-tab--red${isDictionary ? ' active' : ''}`}
         onClick={() => navigate('/dictionary')}
@@ -177,13 +186,15 @@ export default function BottomToolbar() {
         </button>
         {inProgressOpen && (
           <div className="sidebar-in-progress-items">
-            <button
-              className={`toolbar-tab toolbar-tab--blue${isHome ? ' active' : ''}`}
-              onClick={() => navigateFromMenu('/home')}
-            >
-              <HomeIcon size={22} />
-              <span className="toolbar-label">{t('nav.home')}</span>
-            </button>
+            {!isTeacher && (
+              <button
+                className={`toolbar-tab toolbar-tab--blue${isHome ? ' active' : ''}`}
+                onClick={() => navigateFromMenu('/home')}
+              >
+                <HomeIcon size={22} />
+                <span className="toolbar-label">{t('nav.home')}</span>
+              </button>
+            )}
             <button
               className={`toolbar-tab toolbar-tab--purple${isSocial ? ' active' : ''}`}
               onClick={() => navigateFromMenu('/chats')}

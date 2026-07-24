@@ -170,7 +170,8 @@ export function toggleWordKnown(postId: string, postWordId: string, known: boole
 }
 
 export function addPostToDictionary(postId: string) {
-  return request<{ added: number; skipped: number }>(`/stream/posts/${postId}/add-to-dictionary`, {
+  const params = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  return request<{ added: number; skipped: number }>(`/stream/posts/${postId}/add-to-dictionary?${params}`, {
     method: 'POST',
   });
 }

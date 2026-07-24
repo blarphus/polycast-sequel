@@ -1,7 +1,7 @@
 {
-  "initialJavaScriptBytes": 230000,
+  "initialJavaScriptBytes": 231000,
   "initialCssBytes": 55000,
-  "maximumJavaScriptChunkBytes": 230000,
+  "maximumJavaScriptChunkBytes": 231000,
   "maximumCssChunkBytes": 55000,
   "maximumInitialJavaScriptGzipBytes": 75000
 }

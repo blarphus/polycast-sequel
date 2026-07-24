@@ -64,6 +64,7 @@ export function updateSettings(
   void account_type;
   if (cefr_level !== undefined) body.cefr_level = cefr_level;
   if (daily_word_goal !== undefined) body.daily_word_goal = daily_word_goal;
+  body.timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return request<AuthUser>('/me/settings', {
     method: 'PATCH',
     body,

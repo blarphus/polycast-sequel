@@ -18,6 +18,7 @@ import {
   updateClassroom,
 } from '../services/classroomService.js';
 import { supportedLanguageSchema } from '../lib/languagePolicy.js';
+import { validTimeZone } from '../lib/srsUpdate.js';
 
 const router = Router();
 
@@ -53,7 +54,9 @@ const createTopicBody = z.object({
 });
 const legacyClassroomQuery = z.object({
   classroomId: z.string().uuid('Invalid classroom ID').optional(),
+  timeZone: z.string().max(100).optional(),
 });
+const statsQuery = z.object({ timeZone: z.string().max(100).optional() });
 
 
 function normalizeOptionalText(value) {
@@ -164,8 +167,8 @@ router.delete('/api/classrooms/:id/students/:studentId', authMiddleware, validat
   return res.status(204).end();
 }));
 
-router.get('/api/classrooms/:id/students/:studentId/stats', authMiddleware, validate({ params: classroomIdParam.merge(studentIdParam) }), asyncHandler(async (req, res) => {
-  return res.json(await getClassroomStudentStats(req.params.id, req.params.studentId, req.userId));
+router.get('/api/classrooms/:id/students/:studentId/stats', authMiddleware, validate({ params: classroomIdParam.merge(studentIdParam), query: statsQuery }), asyncHandler(async (req, res) => {
+  return res.json(await getClassroomStudentStats(req.params.id, req.params.studentId, req.userId, validTimeZone(req.query.timeZone)));
 }));
 
 router.get('/api/classroom/students', authMiddleware, requireTeacher, validate({ query: legacyClassroomQuery }), asyncHandler(async (req, res) => {
@@ -188,7 +191,7 @@ router.delete('/api/classroom/students/:studentId', authMiddleware, requireTeach
 
 router.get('/api/classroom/students/:studentId/stats', authMiddleware, requireTeacher, validate({ params: studentIdParam, query: legacyClassroomQuery }), asyncHandler(async (req, res) => {
   const classroom = await resolveTeacherClassroomOrThrow(req.userId, req.query.classroomId);
-  return res.json(await getClassroomStudentStats(classroom.id, req.params.studentId, req.userId));
+  return res.json(await getClassroomStudentStats(classroom.id, req.params.studentId, req.userId, validTimeZone(req.query.timeZone)));
 }));
 
 export default router;

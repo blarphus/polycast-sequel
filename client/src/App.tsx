@@ -154,7 +154,7 @@ export default function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Navigate to="/learn" replace />
+              <Navigate to={user.account_type === 'teacher' ? '/classes' : '/learn'} replace />
             </ProtectedRoute>
           }
         />
