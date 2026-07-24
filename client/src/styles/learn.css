@@ -691,6 +691,13 @@
     #f7f9fc;
 }
 
+[data-bg-texture="dots"] .learn-review-page,
+[data-bg-texture="lines"] .learn-review-page,
+[data-bg-texture="noise"] .learn-review-page,
+[data-bg-texture="grid"] .learn-review-page {
+  background: transparent;
+}
+
 .learn-review-header {
   width: min(1280px, 100%);
   min-height: 48px;

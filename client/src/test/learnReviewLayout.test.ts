@@ -4,6 +4,12 @@ import source from '../pages/Learn.tsx?raw';
 import { getHighlightedPrompt, getInstructionText } from '../pages/Learn';
 
 describe('flashcard review workspace', () => {
+  it('keeps selected theme textures visible behind the review workspace', () => {
+    expect(css).toContain('[data-bg-texture="dots"] .learn-review-page');
+    expect(css).toContain('[data-bg-texture="grid"] .learn-review-page');
+    expect(css).toMatch(/\[data-bg-texture="grid"\] \.learn-review-page\s*\{\s*background:\s*transparent;/);
+  });
+
   it('asks about the highlighted phrase rather than the whole sentence', () => {
     const phrase = getHighlightedPrompt({
       word: 'manage',

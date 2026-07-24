@@ -2,7 +2,7 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 573,
-    "lines": 89092,
+    "lines": 89098,
     "declarations": 2420,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
@@ -5533,7 +5533,7 @@
     },
     {
       "file": "client/src/test/learnReviewLayout.test.ts",
-      "lines": 61,
+      "lines": 67,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
@@ -7633,6 +7633,7 @@
         "client/src/test/dailyGoal.test.ts",
         "client/src/test/dictionaryImageLayout.test.ts",
         "client/src/test/flashcardBackgroundPreload.test.ts",
+        "client/src/test/learnReviewLayout.test.ts",
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs",
         "extension/test/no-page-highlights.test.mjs",
@@ -10732,6 +10733,7 @@
         "client/src/test/epub.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
+        "client/src/test/learnReviewLayout.test.ts",
         "client/src/test/onlineDictionaryOnly.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/watchTranscript.test.ts",
@@ -10770,6 +10772,7 @@
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
+            "client/src/test/learnReviewLayout.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
             "extension/test/localization.test.mjs",
             "ios/Polycast/Tests/PolycastTests.swift",
