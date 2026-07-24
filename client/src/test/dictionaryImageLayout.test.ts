@@ -8,8 +8,8 @@ describe('dictionary detail image layout', () => {
 
     expect(css).toMatch(/\.dict-hero-image\s*\{[\s\S]*height:\s*clamp\(/);
     expect(css).toMatch(
-      /\.dict-hero-image\s*>\s*img\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*object-fit:\s*contain[\s\S]*object-position:\s*center/,
+      /\.dict-image-viewer\s*\{[\s\S]*background-position:\s*center[\s\S]*background-repeat:\s*no-repeat[\s\S]*background-size:\s*contain/,
     );
-    expect(css).not.toMatch(/\.dict-hero-image\s*>\s*img\s*\{[\s\S]*?object-fit:\s*cover/);
+    expect(css).not.toMatch(/\.dict-image-viewer\s*\{[\s\S]*?background-size:\s*cover/);
   });
 });

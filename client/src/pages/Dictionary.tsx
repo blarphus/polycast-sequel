@@ -450,7 +450,7 @@ export default function Dictionary() {
                     {selectedEntry.image_url ? (
                       <>
                         <img
-                          className={loadedImageKey === selectedImageKey ? 'is-ready' : 'is-loading'}
+                          className="dict-image-load-probe"
                           src={proxyImageUrl(selectedEntry.image_url)!}
                           alt={selectedEntry.word}
                           onLoad={() => {
@@ -458,10 +458,18 @@ export default function Dictionary() {
                             setFailedImageKey(null);
                           }}
                           onError={() => setFailedImageKey(selectedImageKey)}
-                          onClick={() => {
-                            if (loadedImageKey === selectedImageKey) setLightboxUrl(selectedEntry.image_url);
-                          }}
                         />
+                        {loadedImageKey === selectedImageKey && (
+                          <button
+                            type="button"
+                            className="dict-image-viewer"
+                            style={{
+                              backgroundImage: `url(${JSON.stringify(proxyImageUrl(selectedEntry.image_url))})`,
+                            }}
+                            aria-label={`Enlarge image for ${selectedEntry.word}`}
+                            onClick={() => setLightboxUrl(selectedEntry.image_url)}
+                          />
+                        )}
                         {loadedImageKey !== selectedImageKey && failedImageKey !== selectedImageKey && (
                           <div className="dict-image-loading" role="status" aria-label={`Loading image for ${selectedEntry.word}`}>
                             <span className="dict-image-spinner" />
