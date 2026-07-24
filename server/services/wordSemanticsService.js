@@ -46,22 +46,20 @@ async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   return { translation: fallback.trim(), usedFallback: true };
 }
 
-// pickBestSense — Gemini reads the sentence and candidate senses and, in ONE call, returns both
+// pickBestSense — Gemini reads the sentence and candidate senses and, in ONE call, returns
 // (a) a PICK token — the INDEX number of the sense that states the meaning, the BASE word when the
 // best sense only points to another word (e.g. "plural of mão", "gerund of atenuar combined
 // with se", "alternative form of caracterizar", or a bare grammatical label), or -1 when none
 // fit — and
-// (b) a short native-language TRANSLATION of the word that is consistent with the sense it picked,
-// and (c) a concise native-language DEFINITION of that exact sense.
-// Word translation comes from here (not Google Translate) so the displayed translation never
-// disagrees with the chosen definition for polysemous words.
-// Returns { index, translation, definition } | { base, translation, definition }.
-async function pickBestSense(word, sentence, targetLang, nativeLang, senses) {
+// (b) a short native-language TRANSLATION consistent with that sense.
+// The definition is deliberately not generated here: a successful fast lookup uses the selected
+// Wiktionary gloss, and the full Gemini lookup generates a definition only when no gloss fits.
+// Returns { index, translation } | { base, translation }.
+export function buildBestSensePrompt(word, sentence, targetLang, nativeLang, senses) {
   const senseList = senses
     .map((s, i) => `${i}: [${s.pos}] ${s.gloss}${s.source === 'user' ? "  (already in the learner's dictionary)" : ''}`)
     .join('\n');
-  const raw = await callGemini(
-    `The word "${word}" appears in this sentence: "${sentence}" (${targetLang}).
+  return `The word "${word}" appears in this sentence: "${sentence}" (${targetLang}).
 Candidate dictionary senses:
 ${senseList}
 
@@ -71,44 +69,56 @@ Pick the sense that best matches how "${word}" is used here. IMPORTANT: if ANY s
 - If NONE of the senses actually conveys the meaning of "${word}" as it is used in this sentence — e.g. it is used figuratively, idiomatically, or as part of a multi-word expression and no listed sense captures that meaning — the PICK is -1. Do NOT force a sense that doesn't fit.
 - ${strictSensePickRule({ word, targetLang })}
 
-Reply with exactly ONE line in the form:  PICK | TRANSLATION | DEFINITION
-where PICK is the token chosen above (an index number, a single base word, or -1), TRANSLATION is the best 1–4 word ${nativeLang} dictionary translation of "${word}" in this sense, and DEFINITION follows every learner-facing rule below. Do not copy the candidate gloss unless it is already in ${nativeLang}.
+Reply with exactly ONE line in the form:  PICK | TRANSLATION
+where PICK is the token chosen above (an index number, a single base word, or -1), and TRANSLATION is the best 1–4 word ${nativeLang} dictionary translation of "${word}" in this sense.
 
-${learnerTranslationRules(nativeLang, { field: 'TRANSLATION' })}
-${learnerDefinitionRules(nativeLang, { field: 'DEFINITION', translationField: 'TRANSLATION' })}`,
-    {
-      thinkingConfig: { thinkingLevel: GEMINI_DICTIONARY_THINKING_LEVEL },
-      maxOutputTokens: 80,
-      responseMimeType: 'text/plain',
-    },
-    GEMINI_DICTIONARY_MODEL,
-  );
+${learnerTranslationRules(nativeLang, { field: 'TRANSLATION' })}`;
+}
 
+export function parseBestSenseReply(raw, { word, targetLang, nativeLang, senseCount }) {
   const reply = raw.trim();
   const parts = reply.split('|').map((part) => part.trim());
   const pickToken = parts[0] || '';
   const translation = parts[1] || '';
-  const definition = parts.slice(2).join('|').trim();
-  if (!translation || !definition) {
-    throw makeContextError('Gemini sense pick omitted its native-language translation or definition', {
+  if (parts.length !== 2 || !translation) {
+    throw makeContextError('Gemini sense pick did not return exactly PICK and TRANSLATION', {
       word, targetLang, nativeLang, raw: reply,
     });
   }
 
   if (/^-?\d+$/.test(pickToken)) {
     const index = Number.parseInt(pickToken, 10);
-    if (index < -1 || index >= senses.length) {
+    if (index < -1 || index >= senseCount) {
       throw makeContextError('Gemini sense pick returned an out-of-range index', {
-        word, targetLang, raw: reply, senseCount: senses.length,
+        word, targetLang, raw: reply, senseCount,
       });
     }
-    return { index, translation, definition };
+    return { index, translation };
   }
   if (/^[\p{L}'-]+$/u.test(pickToken)) {
-    return { base: pickToken.toLowerCase(), translation, definition };
+    return { base: pickToken.toLowerCase(), translation };
   }
   throw makeContextError('Gemini sense pick reply was neither a number nor a single word', {
     word, targetLang, raw: reply,
+  });
+}
+
+async function pickBestSense(word, sentence, targetLang, nativeLang, senses) {
+  const raw = await callGemini(
+    buildBestSensePrompt(word, sentence, targetLang, nativeLang, senses),
+    {
+      thinkingConfig: { thinkingLevel: GEMINI_DICTIONARY_THINKING_LEVEL },
+      maxOutputTokens: 48,
+      responseMimeType: 'text/plain',
+    },
+    GEMINI_DICTIONARY_MODEL,
+  );
+
+  return parseBestSenseReply(raw, {
+    word,
+    targetLang,
+    nativeLang,
+    senseCount: senses.length,
   });
 }
 
@@ -224,7 +234,7 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
     target_word: word,
     valid: true,
     translation,
-    definition: pick.definition,
+    definition: resolved.definition,
     gemini_definition: null,
     part_of_speech: resolved.part_of_speech,
     sense_index: resolved.sense_index ?? null,

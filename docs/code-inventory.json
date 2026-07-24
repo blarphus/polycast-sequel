@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 575,
-    "lines": 89201,
-    "declarations": 2421,
+    "files": 576,
+    "lines": 89268,
+    "declarations": 2423,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 5
@@ -268,7 +268,8 @@
         "server/test/auth.integration.test.js",
         "server/test/dictionaryPagination.integration.test.js",
         "server/test/dictionaryQueries.test.js",
-        "server/test/userLibraryBookService.test.js"
+        "server/test/userLibraryBookService.test.js",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -1156,7 +1157,8 @@
         "server/test/auth.integration.test.js",
         "server/test/dictionaryPagination.integration.test.js",
         "server/test/dictionaryQueries.test.js",
-        "server/test/userLibraryBookService.test.js"
+        "server/test/userLibraryBookService.test.js",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -7992,7 +7994,8 @@
         "client/src/test/readerSelection.test.ts",
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs",
-        "extension/test/selection.test.mjs"
+        "extension/test/selection.test.mjs",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -9725,7 +9728,7 @@
         },
         {
           "name": "Word",
-          "callers": 59,
+          "callers": 58,
           "testReferences": [
             "client/src/test/dictionaryEntryEditor.test.tsx"
           ],
@@ -13049,7 +13052,7 @@
         },
         {
           "name": "lookup",
-          "callers": 193,
+          "callers": 195,
           "testReferences": [
             "extension/test/activation.test.mjs",
             "extension/test/background.test.mjs",
@@ -14830,7 +14833,7 @@
         },
         {
           "name": "trim",
-          "callers": 307,
+          "callers": 306,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "server/lib/httpErrors.test.js"
@@ -17422,7 +17425,8 @@
         "server/test/auth.integration.test.js",
         "server/test/dictionaryPagination.integration.test.js",
         "server/test/dictionaryQueries.test.js",
-        "server/test/userLibraryBookService.test.js"
+        "server/test/userLibraryBookService.test.js",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -18806,7 +18810,7 @@
       "symbols": [
         {
           "name": "learnerDefinitionRules",
-          "callers": 11,
+          "callers": 10,
           "testReferences": [
             "server/lib/learnerDefinitionPrompt.test.js"
           ],
@@ -23815,10 +23819,12 @@
     },
     {
       "file": "server/services/wordSemanticsService.js",
-      "lines": 568,
+      "lines": 578,
       "responsibility": "server domain/integration",
       "sideEffects": [],
-      "testCoverage": [],
+      "testCoverage": [
+        "server/test/wordSemanticsSensePicker.test.js"
+      ],
       "disposition": "reviewed-retain",
       "dispositionReason": "One server domain pipeline; transport, persistence/query, provider, and diagnostic seams are already separated and tested.",
       "symbols": [
@@ -23838,6 +23844,22 @@
           "name": "translateWordInSentence",
           "callers": 1,
           "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "buildBestSensePrompt",
+          "callers": 1,
+          "testReferences": [
+            "server/test/wordSemanticsSensePicker.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "parseBestSenseReply",
+          "callers": 1,
+          "testReferences": [
+            "server/test/wordSemanticsSensePicker.test.js"
+          ],
           "disposition": "retain"
         },
         {
@@ -24209,7 +24231,8 @@
         "server/test/auth.integration.test.js",
         "server/test/dictionaryPagination.integration.test.js",
         "server/test/dictionaryQueries.test.js",
-        "server/test/userLibraryBookService.test.js"
+        "server/test/userLibraryBookService.test.js",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -24770,6 +24793,16 @@
       "sideEffects": [
         "database"
       ],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
+      "file": "server/test/wordSemanticsSensePicker.test.js",
+      "lines": 57,
+      "responsibility": "test",
+      "sideEffects": [],
       "testCoverage": [],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
