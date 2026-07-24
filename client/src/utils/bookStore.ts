@@ -2,8 +2,8 @@
 // utils/bookStore.ts -- Browser processing cache for books (IndexedDB).
 //
 // Large processing artifacts live in IndexedDB rather than localStorage.
-// Profile and class books remain server-authorized; CBZ archives,
-// OCR results, and covers may be cached here so expensive OCR can resume.
+// Personal CBZ archives and their OCR results live only here. Cloud EPUBs and
+// class books remain server-authorized; class CBZs are cached after download.
 // ---------------------------------------------------------------------------
 
 import type { ComicDocument, ComicOcrProgress } from './cbz';

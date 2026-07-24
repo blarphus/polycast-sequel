@@ -35,35 +35,17 @@ test('personal EPUB upload is owned by the authenticated profile and stored once
   assert.match(promoted.key, /^[a-f0-9-]+\.epub$/);
 });
 
-test('personal CBZ upload is profile-owned and requires its OCR language', async () => {
-  const rows = [];
-  const db = {
-    async query(_sql, values) {
-      rows.push(values);
-      return { rows: [{
-        id: values[0], owner_user_id: values[1], title: values[2], author: values[3],
-        original_filename: values[4], format: values[5], mime_type: values[6],
-        byte_size: values[7], storage_key: values[8], language: values[9], created_at: new Date().toISOString(),
-      }] };
-    },
-  };
-  const result = await addUserLibraryBook({
-    userId, file: { path: '/tmp/comic-upload', originalname: 'comic.cbz', size: 8192 },
-    title: 'Comic', author: '', language: 'en',
-  }, {
-    db, inspectZip: async () => true, promoteUpload: async () => {},
-    removeStored: async () => assert.fail('successful upload must remain stored'),
-  });
-  assert.equal(result.format, 'cbz');
-  assert.equal(result.mime_type, 'application/vnd.comicbook+zip');
-  assert.match(rows[0][8], /^[a-f0-9-]+\.cbz$/);
-
+test('personal CBZ uploads are rejected because comics stay on the importing device', async () => {
   await assert.rejects(
     addUserLibraryBook({
-      userId, file: { path: '/tmp/no-language', originalname: 'comic.cbz', size: 10 },
-      title: 'Comic', author: '', language: null,
-    }, { db, inspectZip: async () => true }),
-    /Choose English or Spanish/,
+      userId, file: { path: '/tmp/comic-upload', originalname: 'comic.cbz', size: 8192 },
+      title: 'Comic', author: '', language: 'en',
+    }, {
+      db: { query: async () => assert.fail('CBZ metadata must not reach the database') },
+      inspectZip: async () => true,
+      promoteUpload: async () => assert.fail('CBZ data must not reach cloud storage'),
+    }),
+    /CBZ comics stay on the importing device/,
   );
 });
 

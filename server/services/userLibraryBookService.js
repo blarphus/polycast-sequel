@@ -28,21 +28,18 @@ export async function addUserLibraryBook({ userId, file, title, author, language
   removeStored = removeStoredClassBook, inspectZip = isZipArchive,
 } = {}) {
   if (!file?.path || !file?.originalname || !file?.size) {
-    throw new ValidationError([{ path: 'body.book', message: 'Choose an EPUB or CBZ file' }]);
+    throw new ValidationError([{ path: 'body.book', message: 'Choose an EPUB file' }]);
   }
   const extension = file.originalname.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1];
-  if (extension !== 'epub' && extension !== 'cbz') {
-    throw new ValidationError([{ path: 'body.book', message: 'Personal cloud books must be EPUB or CBZ files' }]);
-  }
-  if (extension === 'cbz' && language !== 'en' && language !== 'es') {
-    throw new ValidationError([{ path: 'body.language', message: 'Choose English or Spanish for CBZ text recognition' }]);
+  if (extension !== 'epub') {
+    throw new ValidationError([{ path: 'body.book', message: 'Personal cloud storage accepts EPUB files; CBZ comics stay on the importing device' }]);
   }
   if (!await inspectZip(file.path)) {
     throw new ValidationError([{ path: 'body.book', message: 'The uploaded file is not a valid ZIP-based EPUB or CBZ archive' }]);
   }
   const id = crypto.randomUUID();
   const storageKey = createStorageKey(id, extension);
-  const mimeType = extension === 'epub' ? 'application/epub+zip' : 'application/vnd.comicbook+zip';
+  const mimeType = 'application/epub+zip';
   let promoted = false;
   try {
     await promoteUpload(file.path, storageKey);

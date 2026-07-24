@@ -1,8 +1,8 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 573,
-    "lines": 89098,
+    "files": 574,
+    "lines": 89081,
     "declarations": 2420,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
@@ -261,6 +261,7 @@
       ],
       "testCoverage": [
         "client/src/test/cbz.test.ts",
+        "client/src/test/localCbzStorage.test.ts",
         "extension/test/background.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "server/services/dictionaryStudyService.test.js",
@@ -1148,6 +1149,7 @@
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/cbz.test.ts",
+        "client/src/test/localCbzStorage.test.ts",
         "extension/test/background.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "server/services/dictionaryStudyService.test.js",
@@ -1167,7 +1169,9 @@
       "sideEffects": [
         "network"
       ],
-      "testCoverage": [],
+      "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
@@ -1179,8 +1183,10 @@
         },
         {
           "name": "uploadUserLibraryBook",
-          "callers": 3,
-          "testReferences": [],
+          "callers": 2,
+          "testReferences": [
+            "client/src/test/localCbzStorage.test.ts"
+          ],
           "disposition": "retain"
         },
         {
@@ -1191,7 +1197,7 @@
         },
         {
           "name": "download",
-          "callers": 12,
+          "callers": 13,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -3505,17 +3511,21 @@
     },
     {
       "file": "client/src/hooks/useBooks.ts",
-      "lines": 265,
+      "lines": 248,
       "responsibility": "application support",
       "sideEffects": [],
-      "testCoverage": [],
+      "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "useBooks",
           "callers": 4,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/localCbzStorage.test.ts"
+          ],
           "disposition": "retain"
         }
       ]
@@ -4714,11 +4724,12 @@
     },
     {
       "file": "client/src/pages/Library.tsx",
-      "lines": 338,
+      "lines": 339,
       "responsibility": "web route UI",
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/libraryCardLayout.test.ts",
+        "client/src/test/localCbzStorage.test.ts",
         "server/test/classBookService.test.js",
         "server/test/userLibraryBookService.test.js"
       ],
@@ -5552,6 +5563,16 @@
       "symbols": []
     },
     {
+      "file": "client/src/test/localCbzStorage.test.ts",
+      "lines": 20,
+      "responsibility": "test",
+      "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
       "file": "client/src/test/onlineDictionaryOnly.test.ts",
       "lines": 20,
       "responsibility": "test",
@@ -5919,7 +5940,9 @@
       "sideEffects": [
         "persistence"
       ],
-      "testCoverage": [],
+      "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
@@ -5962,7 +5985,9 @@
         {
           "name": "addBook",
           "callers": 6,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/localCbzStorage.test.ts"
+          ],
           "disposition": "retain"
         },
         {
@@ -6016,6 +6041,7 @@
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/cbz.test.ts",
+        "client/src/test/localCbzStorage.test.ts",
         "server/test/classBookService.test.js",
         "server/test/userLibraryBookService.test.js"
       ],
@@ -6688,7 +6714,7 @@
         },
         {
           "name": "emitFallbackDiagnostic",
-          "callers": 59,
+          "callers": 58,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -8814,7 +8840,7 @@
         },
         {
           "name": "application",
-          "callers": 61,
+          "callers": 60,
           "testReferences": [
             "client/src/test/cbz.test.ts",
             "client/src/test/epub.test.ts",
@@ -10743,7 +10769,8 @@
         "server/lib/gemini.test.js",
         "server/lib/httpErrors.test.js",
         "server/lib/sharedDictionaryEntries.test.js",
-        "server/services/dictionaryMediaService.test.js"
+        "server/services/dictionaryMediaService.test.js",
+        "server/test/userLibraryBookService.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -10778,7 +10805,8 @@
             "ios/Polycast/Tests/PolycastTests.swift",
             "server/lib/gemini.test.js",
             "server/lib/sharedDictionaryEntries.test.js",
-            "server/services/dictionaryMediaService.test.js"
+            "server/services/dictionaryMediaService.test.js",
+            "server/test/userLibraryBookService.test.js"
           ],
           "disposition": "retain"
         },
@@ -11397,6 +11425,7 @@
         "client/src/test/dictionaryEntryEditor.test.tsx",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
+        "client/src/test/localCbzStorage.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/settingsControls.test.ts",
         "client/src/test/ttsFallbackToast.test.tsx",
@@ -11411,7 +11440,8 @@
         "server/test/dictionaryPagination.integration.test.js",
         "server/test/dictionaryScheduleDiagnostic.test.js",
         "server/test/groupCallSocket.test.js",
-        "server/test/scheduleTriggerMigration.test.js"
+        "server/test/scheduleTriggerMigration.test.js",
+        "server/test/userLibraryBookService.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -11480,11 +11510,12 @@
         },
         {
           "name": "on",
-          "callers": 281,
+          "callers": 286,
           "testReferences": [
             "client/src/test/dictionaryEntryEditor.test.tsx",
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
+            "client/src/test/localCbzStorage.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
             "client/src/test/settingsControls.test.ts",
             "client/src/test/ttsFallbackToast.test.tsx",
@@ -11494,7 +11525,8 @@
             "server/test/callSignaling.test.js",
             "server/test/dictionaryScheduleDiagnostic.test.js",
             "server/test/groupCallSocket.test.js",
-            "server/test/scheduleTriggerMigration.test.js"
+            "server/test/scheduleTriggerMigration.test.js",
+            "server/test/userLibraryBookService.test.js"
           ],
           "disposition": "retain"
         },
@@ -12181,7 +12213,7 @@
         },
         {
           "name": "body",
-          "callers": 673,
+          "callers": 672,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -16395,7 +16427,9 @@
       "sideEffects": [
         "UI"
       ],
-      "testCoverage": [],
+      "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts"
+      ],
       "disposition": "reviewed-retain",
       "dispositionReason": "Cohesive application support owner with no duplicate authoritative invariant.",
       "symbols": [
@@ -16506,7 +16540,9 @@
         {
           "name": "cleaned",
           "callers": 24,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/localCbzStorage.test.ts"
+          ],
           "disposition": "retain"
         }
       ]
@@ -17327,6 +17363,7 @@
       ],
       "testCoverage": [
         "client/src/test/cbz.test.ts",
+        "client/src/test/localCbzStorage.test.ts",
         "extension/test/background.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs",
         "extension/test/popup-performance.test.mjs",
@@ -18462,7 +18499,7 @@
         },
         {
           "name": "ValidationError",
-          "callers": 25,
+          "callers": 24,
           "testReferences": [
             "server/lib/httpErrors.test.js"
           ],
@@ -19641,6 +19678,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/migrate.test.js",
@@ -19653,6 +19691,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19669,6 +19708,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19680,6 +19720,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19696,6 +19737,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19707,6 +19749,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19723,6 +19766,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19740,6 +19784,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19756,6 +19801,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19767,6 +19813,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19783,6 +19830,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19794,6 +19842,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19810,6 +19859,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19821,6 +19871,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19837,6 +19888,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19848,6 +19900,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19864,6 +19917,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19875,6 +19929,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19891,6 +19946,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19902,6 +19958,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19918,6 +19975,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19929,6 +19987,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19945,6 +20004,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19956,6 +20016,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -19972,6 +20033,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -19983,6 +20045,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20000,6 +20063,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20011,6 +20075,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20028,6 +20093,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20039,6 +20105,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20055,6 +20122,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20066,6 +20134,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20082,6 +20151,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20093,6 +20163,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20109,6 +20180,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20120,6 +20192,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20136,6 +20209,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20147,6 +20221,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20163,6 +20238,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20174,6 +20250,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20190,6 +20267,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20201,6 +20279,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20217,6 +20296,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20228,6 +20308,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20245,6 +20326,7 @@
         "logging"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20256,6 +20338,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20272,6 +20355,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20283,6 +20367,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20299,6 +20384,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20310,6 +20396,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20326,6 +20413,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20337,6 +20425,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20353,6 +20442,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20364,6 +20454,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20380,6 +20471,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20391,6 +20483,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20407,6 +20500,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20418,6 +20512,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20434,6 +20529,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20445,6 +20541,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20461,6 +20558,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20472,6 +20570,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20488,6 +20587,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20499,6 +20599,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20515,6 +20616,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20526,6 +20628,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20542,6 +20645,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20553,6 +20657,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20569,6 +20674,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20580,6 +20686,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20596,6 +20703,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20607,6 +20715,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20623,6 +20732,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20634,6 +20744,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20650,6 +20761,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20661,6 +20773,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20677,6 +20790,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20688,6 +20802,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20704,6 +20819,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20715,6 +20831,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20731,6 +20848,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20748,6 +20866,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20764,6 +20883,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20775,6 +20895,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20791,6 +20912,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20802,6 +20924,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20818,6 +20941,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20829,6 +20953,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20845,6 +20970,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20856,6 +20982,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20872,6 +20999,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20883,6 +21011,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20899,6 +21028,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20910,6 +21040,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20926,6 +21057,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20943,6 +21075,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -20959,6 +21092,7 @@
         "database"
       ],
       "testCoverage": [
+        "client/src/test/localCbzStorage.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "server/test/frequencyFamilyMigration.test.js",
         "server/test/scheduleTriggerMigration.test.js"
@@ -20976,6 +21110,7 @@
           "name": "up",
           "callers": 117,
           "testReferences": [
+            "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
             "server/test/frequencyFamilyMigration.test.js",
             "server/test/scheduleTriggerMigration.test.js"
@@ -23019,7 +23154,7 @@
     },
     {
       "file": "server/services/userLibraryBookService.js",
-      "lines": 114,
+      "lines": 111,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "database"
@@ -24016,6 +24151,7 @@
       ],
       "testCoverage": [
         "client/src/test/cbz.test.ts",
+        "client/src/test/localCbzStorage.test.ts",
         "extension/test/background.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "server/services/dictionaryStudyService.test.js",
@@ -24578,7 +24714,7 @@
     },
     {
       "file": "server/test/userLibraryBookService.test.js",
-      "lines": 110,
+      "lines": 92,
       "responsibility": "test",
       "sideEffects": [
         "database"

@@ -82,6 +82,7 @@ function BookCard({ book, classBook, downloaded, downloadProgress, onOpen, onDel
             CBZ{book.pageCount != null ? ` · ${book.pageCount} pages` : ''}
             {languageLabel(book.language) ? ` · ${languageLabel(book.language)}` : ''}
             {ocr?.status === 'ready' ? ' · text ready' : ''}
+            {!classBook && book.source !== 'server' ? ' · saved on this device' : ''}
           </div>
         )}
         {ocr && ocr.status !== 'ready' && ocr.status !== 'error' && (
@@ -276,7 +277,7 @@ export default function Library() {
         </div>
         <div className="epub-upload-actions">
           <label className="epub-comic-language">
-            <span>CBZ text</span>
+            <span>CBZ text · stored on this device</span>
             <select
               value={comicLanguage}
               onChange={(event) => setComicLanguage(event.target.value as 'en' | 'es')}

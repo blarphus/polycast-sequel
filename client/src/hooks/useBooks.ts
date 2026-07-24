@@ -1,7 +1,7 @@
 import { createScopedRuntimeLogger } from '../utils/scopedRuntimeLogger';
 const runtimeLog = createScopedRuntimeLogger('web.hooks.usebooks');
 // ---------------------------------------------------------------------------
-// hooks/useBooks.ts -- Manage profile books plus derived CBZ processing caches.
+// hooks/useBooks.ts -- Manage cloud EPUBs and on-device CBZ comics.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from 'react';
@@ -63,11 +63,11 @@ export function useBooks() {
         setBooks([...remote, ...visibleLocal].sort((a, b) => b.addedAt - a.addedAt));
       };
 
-      // Personal books are server-owned. Remove obsolete device-only entries
-      // instead of uploading them into whichever profile happens to open this
-      // browser. Server and assigned-class caches remain scoped by their IDs.
+      // Personal EPUBs are server-owned. Retain personal CBZs on this device;
+      // older device-only EPUB entries are obsolete and can be removed.
       const legacyLocalBooks = localBooks.filter((book) => (
         book.source !== 'class' && book.source !== 'server'
+        && book.format !== 'comic'
       ));
       for (const legacy of legacyLocalBooks) {
         try {
@@ -123,42 +123,25 @@ export function useBooks() {
         throw new Error('[cbz_ocr_language_required] Choose the language printed in this comic before uploading it.');
       }
       const { comic, cover } = await prepareCbzForOcr(file, comicLanguage);
-      const uploaded = await uploadUserLibraryBook(file, {
-        title: comic.title,
-        author: comic.author,
-        language: comicLanguage,
-      });
+      const id = globalThis.crypto.randomUUID();
       const meta: BookMeta = {
-        id: uploaded.id,
+        id,
         title: comic.title,
         author: comic.author,
         cover,
-        addedAt: new Date(uploaded.created_at).getTime(),
+        addedAt: Date.now(),
         format: 'comic',
         pageCount: comic.pages.length,
         language: comicLanguage,
         ocr: comic.ocr,
-        source: 'server',
-        serverBookId: uploaded.id,
-        originalFilename: uploaded.original_filename,
-        byteSize: uploaded.byte_size,
+        source: 'personal',
+        originalFilename: file.name,
+        byteSize: file.size,
       };
-      try {
-        await addBook(meta, comic);
-      } catch (error) {
-        emitFallbackDiagnostic({
-          code: 'cbz_ocr_cache_failed',
-          severity: 'warning',
-          title: 'Comic uploaded; OCR cache unavailable',
-          message: `“${comic.title}” is saved to your profile, but this browser could not prepare its text cache.`,
-          detail: error instanceof Error ? error.message : String(error),
-        }, { source: 'web.library', operation: 'cache-profile-cbz-for-ocr' });
-        await refresh();
-        return { id: uploaded.id, format: 'comic', processing: false };
-      }
+      await addBook(meta, comic);
       await refresh();
-      startComicOcr(uploaded.id);
-      return { id: uploaded.id, format: 'comic', processing: true };
+      startComicOcr(id);
+      return { id, format: 'comic', processing: true };
     }
 
     const bytes = new Uint8Array(await file.arrayBuffer());
