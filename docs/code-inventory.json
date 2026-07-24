@@ -2,7 +2,7 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 566,
-    "lines": 89175,
+    "lines": 89186,
     "declarations": 2435,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
@@ -2313,7 +2313,7 @@
     },
     {
       "file": "client/src/components/WordFormsDialog.tsx",
-      "lines": 322,
+      "lines": 320,
       "responsibility": "web component UI",
       "sideEffects": [],
       "testCoverage": [
@@ -5790,7 +5790,7 @@
     },
     {
       "file": "client/src/test/wordFormsDialog.test.tsx",
-      "lines": 98,
+      "lines": 111,
       "responsibility": "test",
       "sideEffects": [
         "UI"
@@ -10747,7 +10747,7 @@
         },
         {
           "name": "string",
-          "callers": 1926,
+          "callers": 1927,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",

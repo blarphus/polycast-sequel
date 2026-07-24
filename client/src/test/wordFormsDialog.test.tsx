@@ -86,6 +86,19 @@ describe('WordFormsDialog', () => {
     expect(modal?.textContent).toContain('saqué');
     expect(modal?.textContent).toContain('sacaron');
 
+    const nonFinite = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.dict-conjugation-moods button'),
+    ).find((button) => button.textContent === 'Non-finite');
+    act(() => nonFinite?.click());
+
+    const gerund = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.dict-conjugation-tenses button'),
+    ).find((button) => button.textContent === 'Gerund');
+    act(() => gerund?.click());
+
+    expect(modal?.textContent).toContain('sacando');
+    expect(modal?.textContent).not.toContain('sacado');
+
     const additionalForms = Array.from(
       container.querySelectorAll<HTMLButtonElement>('.dict-conjugation-moods button'),
     ).find((button) => button.textContent === 'Additional forms');

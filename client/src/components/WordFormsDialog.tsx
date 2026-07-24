@@ -283,12 +283,10 @@ export default function WordFormsDialog({
 
                       {mood === 'Impersonal' ? (
                         <div className="dict-nonfinite-grid">
-                          {Object.entries(moodTable ?? {}).map(([label, form]) => (
-                            <div key={label}>
-                              <span>{TENSE_LABELS[label] ?? label}</span>
-                              <strong>{displayForm(String(form))}</strong>
-                            </div>
-                          ))}
+                          <div>
+                            <span>{TENSE_LABELS[tense] ?? tense}</span>
+                            <strong>{displayForm(typeof selectedForms === 'string' ? selectedForms : undefined)}</strong>
+                          </div>
                         </div>
                       ) : (
                         <table className="dict-conjugation-table">
