@@ -251,51 +251,6 @@ export default function Home() {
 
   return (
     <div className="home-page">
-      <section className="home-review-first" aria-labelledby="home-review-title">
-        <div className="home-review-first-copy">
-          <span className="home-review-first-kicker">Today&apos;s review</span>
-          <div className="home-review-first-heading">
-            <strong>{dueWords.length}</strong>
-            <div>
-              <h1 id="home-review-title">{dueWords.length === 1 ? 'word to review' : 'words to review'}</h1>
-              <p>{dueWords.length > 0 ? 'A quick session keeps these words from slipping.' : 'You are all caught up for today.'}</p>
-            </div>
-          </div>
-          <button
-            className="home-review-first-action"
-            onClick={() => navigate('/learn')}
-            disabled={dueWords.length === 0}
-          >
-            {dueWords.length > 0 ? 'Start today’s review' : 'Review complete'}
-            {dueWords.length > 0 && <ChevronRightIcon size={18} />}
-          </button>
-        </div>
-        <div className="home-review-preview" aria-label="Review word preview">
-          <span className="home-review-preview-label">Up next</span>
-          {loading ? (
-            Array.from({ length: 3 }, (_, index) => <div className="home-review-preview-row is-loading" key={index} />)
-          ) : dueWords.length === 0 ? (
-            <div className="home-review-preview-empty">No scheduled cards remain today.</div>
-          ) : (
-            dueWords.slice(0, 4).map((word) => (
-              <div className="home-review-preview-row" key={word.id}>
-                {word.image_url ? (
-                  <img src={proxyImageUrl(word.image_url) ?? undefined} alt="" />
-                ) : (
-                  <span className="home-review-preview-letter">{word.word.charAt(0).toLocaleUpperCase()}</span>
-                )}
-                <span className="home-review-preview-term">
-                  <strong>{word.word}</strong>
-                  <small>{word.translation || 'No translation'}</small>
-                </span>
-                <FrequencyDots frequency={word.frequency} />
-              </div>
-            ))
-          )}
-          {dueWords.length > 4 && <span className="home-review-preview-more">+{dueWords.length - 4} more today</span>}
-        </div>
-      </section>
-
       {/* Pending friend requests */}
       <FriendRequests />
 
@@ -312,6 +267,53 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      <section className="home-review-first" aria-labelledby="home-review-title">
+        <div className="home-review-first-copy">
+          <span className="home-review-first-kicker">Today&apos;s review</span>
+          <div className="home-review-first-heading">
+            <strong>{dueWords.length}</strong>
+            <div>
+              <h1 id="home-review-title">{dueWords.length === 1 ? 'word to review' : 'words to review'}</h1>
+              <p>{dueWords.length > 0 ? 'Keep these words from slipping.' : 'You are all caught up for today.'}</p>
+            </div>
+          </div>
+          <button
+            className="home-review-first-action"
+            onClick={() => navigate('/learn')}
+            disabled={dueWords.length === 0}
+          >
+            {dueWords.length > 0 ? 'Start review' : 'Review complete'}
+            {dueWords.length > 0 && <ChevronRightIcon size={16} />}
+          </button>
+        </div>
+        <div className="home-review-preview" aria-label="Review word preview">
+          <span className="home-review-preview-label">Up next</span>
+          <div className="home-review-preview-list">
+            {loading ? (
+              Array.from({ length: 3 }, (_, index) => <div className="home-review-preview-row is-loading" key={index} />)
+            ) : dueWords.length === 0 ? (
+              <div className="home-review-preview-empty">No scheduled cards remain today.</div>
+            ) : (
+              dueWords.slice(0, 3).map((word) => (
+                <div className="home-review-preview-row" key={word.id}>
+                  {word.image_url ? (
+                    <img src={proxyImageUrl(word.image_url) ?? undefined} alt="" />
+                  ) : (
+                    <span className="home-review-preview-letter">{word.word.charAt(0).toLocaleUpperCase()}</span>
+                  )}
+                  <span className="home-review-preview-term">
+                    <strong>{word.word}</strong>
+                    <small>{word.translation || 'No translation'}</small>
+                  </span>
+                  <FrequencyDots frequency={word.frequency} />
+                </div>
+              ))
+            )}
+          </div>
+          {dueWords.length > 3 && <span className="home-review-preview-more">+{dueWords.length - 3} more today</span>}
+        </div>
+      </section>
 
       {/* Dashboard grid */}
       <div className="home-dashboard-grid">
