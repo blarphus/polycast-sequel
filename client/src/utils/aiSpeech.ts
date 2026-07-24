@@ -158,10 +158,6 @@ async function playPreparedSpeech(
 export async function playAiSpeech(text: string, languageCode?: string, preloaded?: PreloadedSpeech) {
   cleanup();
 
-  if (typeof window !== 'undefined' && window.localStorage.getItem('polycast.offline.enabled') === 'true') {
-    return;
-  }
-
   if (preloaded?.url) {
     // Don't revoke preloaded URLs — they're managed by the caller
     await playPreparedSpeech(preloaded, languageCode);
@@ -210,10 +206,6 @@ export async function playAiSpeech(text: string, languageCode?: string, preloade
  * Returns an object URL that can be passed to playAiSpeech.
  */
 export async function preloadCardAudio(wordId: string): Promise<PreloadedSpeech> {
-  if (typeof window !== 'undefined' && window.localStorage.getItem('polycast.offline.enabled') === 'true') {
-    return { url: '', usedFallback: false, startOffsetSeconds: 0 };
-  }
-
   const res = await fetch(`/api/dictionary/words/${wordId}/audio`, {
     credentials: 'include',
   });
@@ -231,10 +223,6 @@ export async function preloadCardAudio(wordId: string): Promise<PreloadedSpeech>
  * sentences, which are not covered by the saved word's cached audio endpoint.
  */
 export async function preloadAiSpeech(text: string, languageCode?: string): Promise<PreloadedSpeech> {
-  if (typeof window !== 'undefined' && window.localStorage.getItem('polycast.offline.enabled') === 'true') {
-    return { url: '', usedFallback: false, startOffsetSeconds: 0 };
-  }
-
   const trimmed = String(text || '').trim();
   if (!trimmed) return { url: '', usedFallback: false, startOffsetSeconds: 0 };
 

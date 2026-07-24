@@ -96,7 +96,7 @@ This ledger records the post-refactor owner, intentional primary path, bounded a
 
 - Owners: generated message contract/router, activation module, background session dispatcher, isolated content-script lifecycles.
 - Primary: exact page permission/registration → language detection → indexed token match → popup lookup/save → account sync.
-- Alternates: declared language, DOM-range highlighting, top-frame selection, offline dictionary/status, and delivery failure are all visible. Background-only failures persist to popup storage and action badge/title.
+- Alternates: declared language, DOM-range highlighting, top-frame selection, and delivery failure are all visible. Background-only failures persist to popup storage and action badge/title.
 - Efficiency: one saved-token index, bounded message sizes/token batches, no HTML injection, no duplicate site registration.
 - Evidence: activation, performance, hostile-toast, session-expiry, contract, and tokenizer tests.
 

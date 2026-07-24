@@ -5,7 +5,7 @@
   "messages": {
     "LOGIN": { "strings": { "username": 200, "password": 2000 }, "required": ["username", "password"] },
     "LOGOUT": {}, "GET_STATUS": {}, "GET_DAILY_GOAL": {}, "GET_SAVED_WORDS": {},
-    "GET_OFFLINE_DICTIONARY_FULL": {}, "GET_TARGET_LANGUAGE": {}, "OPEN_WEB_APP": {}, "GET_API_BASE": {},
+    "GET_TARGET_LANGUAGE": {}, "OPEN_WEB_APP": {}, "GET_API_BASE": {},
     "LOOKUP_WORD": { "strings": { "word": 500, "sentence": 20000 }, "required": ["word"] },
     "EXPLAIN_WORD": { "strings": { "word": 500, "sentence": 20000, "context": 100000 }, "required": ["word"] },
     "SAVE_WORD": { "strings": { "word": 500, "targetWord": 500, "lemma": 500, "sentence": 20000, "definition": 20000, "part_of_speech": 200, "definition_source": 500, "matched_gloss": 20000 }, "required": ["word"] },
@@ -13,7 +13,6 @@
     "ADD_WORD_FORM": { "strings": { "form": 500, "savedWordId": 200 }, "required": ["form"] },
     "REMOVE_WORD": { "strings": { "word": 500, "savedWordId": 200 } },
     "MATCH_PAGE_TOKENS": { "arrays": { "tokens": 1500 }, "required": ["tokens"] },
-    "UPDATE_OFFLINE_DICTIONARY": { "arrays": { "words": 10000 }, "required": ["words"] },
     "SET_TARGET_LANGUAGE": { "strings": { "targetLanguage": 100 }, "required": ["targetLanguage"] },
     "CAPTION_LANGUAGE_DETECTED": { "strings": { "languageCode": 100 }, "required": ["languageCode"] },
     "SET_API_BASE": { "strings": { "apiBase": 2048 }, "required": ["apiBase"] }

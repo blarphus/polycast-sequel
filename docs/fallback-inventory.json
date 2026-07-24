@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-24T13:43:19.913Z",
+  "generatedAt": "2026-07-24T15:07:16.270Z",
   "totals": {
-    "occurrences": 60,
-    "uniqueCodes": 56,
+    "occurrences": 57,
+    "uniqueCodes": 53,
     "incompleteOccurrences": 0
   },
   "entries": [
@@ -73,7 +73,7 @@
     {
       "code": "dictionary_conjugation_generator_fallback",
       "file": "client/src/components/WordFormsDialog.tsx",
-      "line": 128,
+      "line": 143,
       "structured": true,
       "logged": true,
       "visible": true
@@ -103,25 +103,9 @@
       "visible": true
     },
     {
-      "code": "extension_offline_dictionary_save_used",
+      "code": "extension_login_unavailable",
       "file": "extension/background.js",
-      "line": 875,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "extension_offline_login_used",
-      "file": "extension/background.js",
-      "line": 650,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "extension_offline_status_used",
-      "file": "extension/background.js",
-      "line": 712,
+      "line": 492,
       "structured": true,
       "logged": true,
       "visible": true
@@ -129,7 +113,7 @@
     {
       "code": "fallback_header_invalid",
       "file": "client/src/api/core.ts",
-      "line": 59,
+      "line": 53,
       "structured": true,
       "logged": true,
       "visible": true
@@ -138,6 +122,30 @@
       "code": "fallback_header_invalid",
       "file": "ios/Polycast/Sources/Core/APIClient.swift",
       "line": 128,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "flashcard_background_preload_fallback",
+      "file": "client/src/utils/flashcardPreload.ts",
+      "line": 50,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "flashcard_prepared_audio_playback_fallback",
+      "file": "client/src/pages/Learn.tsx",
+      "line": 206,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "flashcard_route_background_preload_fallback",
+      "file": "client/src/App.tsx",
+      "line": 142,
       "structured": true,
       "logged": true,
       "visible": true
@@ -225,7 +233,7 @@
     {
       "code": "login_error_payload_fallback",
       "file": "extension/background.js",
-      "line": 666,
+      "line": 508,
       "structured": true,
       "logged": true,
       "visible": true
@@ -234,46 +242,6 @@
       "code": "network_retry_used",
       "file": "ios/Polycast/Sources/Core/APIClient.swift",
       "line": 197,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "offline_daily_goal_used",
-      "file": "extension/background.js",
-      "line": 900,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "offline_dictionary_storage_repaired",
-      "file": "client/src/api/offlineDictionary.ts",
-      "line": 100,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "offline_dictionary_used",
-      "file": "client/src/api/core.ts",
-      "line": 83,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "offline_frequency_rank_unavailable",
-      "file": "client/src/api/offlineDictionary.ts",
-      "line": 251,
-      "structured": true,
-      "logged": true,
-      "visible": true
-    },
-    {
-      "code": "offline_profile_storage_repaired",
-      "file": "client/src/api/offlineDictionary.ts",
-      "line": 58,
       "structured": true,
       "logged": true,
       "visible": true
@@ -401,7 +369,7 @@
     {
       "code": "speech_error_payload_fallback",
       "file": "client/src/utils/aiSpeech.ts",
-      "line": 77,
+      "line": 189,
       "structured": true,
       "logged": true,
       "visible": true
@@ -410,6 +378,14 @@
       "code": "speech_preload_fallback",
       "file": "ios/Polycast/Sources/Core/AudioPlayer.swift",
       "line": 164,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "speech_silence_analysis_fallback",
+      "file": "client/src/utils/aiSpeech.ts",
+      "line": 98,
       "structured": true,
       "logged": true,
       "visible": true

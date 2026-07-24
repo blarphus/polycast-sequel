@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:offline": "VITE_POLYCAST_OFFLINE=1 vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",

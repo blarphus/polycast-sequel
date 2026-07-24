@@ -182,7 +182,7 @@ test('an authenticated 401 clears account state and broadcasts one detailed expi
   const stored = {
     authToken: 'expired-token', user: { id: 'user-1' }, savedWords: ['hola'],
     wildRecallCatalog: [{ id: 'word-1' }], wildRecallChallenge: { id: 'challenge-1' },
-    progression: { totalXp: 12 }, offlineMode: false,
+    progression: { totalXp: 12 },
   };
   const tabMessages = [];
   const diagnostics = [];

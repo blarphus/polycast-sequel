@@ -7,12 +7,6 @@
       if (typeof msg.type !== 'string' || !contract.messages[msg.type]) throw new Error(`Unknown extension message type: ${String(msg.type || '(missing)')}`);
       if (sender.id && chrome.runtime.id && sender.id !== chrome.runtime.id) throw new Error('Extension message sender is not this extension');
       if (popupOnly.has(msg.type) && sender.tab) throw new Error(`${msg.type} is only accepted from the extension popup`);
-      if (msg.type === 'UPDATE_OFFLINE_DICTIONARY') {
-        const url = String(sender.tab?.url || '');
-        if (sender.tab && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(url)) {
-          throw new Error('Offline dictionary updates are only accepted from the local Polycast app');
-        }
-      }
       let serialized;
       try { serialized = JSON.stringify(msg); } catch { throw new Error('Extension message is not serializable'); }
       if (serialized.length > contract.maxBytes) throw new Error(`Extension message exceeds ${contract.maxBytes} bytes`);

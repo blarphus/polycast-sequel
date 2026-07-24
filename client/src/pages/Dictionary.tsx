@@ -160,11 +160,6 @@ export default function Dictionary() {
   }, [loadInitial]);
 
   useEffect(() => {
-    window.addEventListener('polycast-offline-dictionary-external-sync', loadInitial);
-    return () => window.removeEventListener('polycast-offline-dictionary-external-sync', loadInitial);
-  }, [loadInitial]);
-
-  useEffect(() => {
     if (wordGroups.length === 0) {
       setSelectedKey(null);
       setSelectedEntryId(null);

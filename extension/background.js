@@ -8,25 +8,13 @@ const BONUS_XP_PER_WORD = 10;
 const DAILY_GOAL_KEY = 'dailyWordGoal';
 const DAILY_PROGRESS_KEY = 'dailyWordProgress';
 const RECALL_CATALOG_KEY = 'wildRecallCatalog';
-const OFFLINE_MODE_KEY = 'offlineMode';
-const OFFLINE_WORDS_KEY = 'offlineDictionaryWords';
 const SELECTION_CONTEXT_MENU_ID = 'polycast-lookup-selection';
 const PAGE_CONTENT_TAB_PATTERNS = ['*://*.youtube.com/*', 'https://*.netflix.com/*'];
 const LEGACY_HIGHLIGHT_STORAGE_KEYS = ['siteHighlightOverrides', 'siteContentScriptIds', 'pageCueDate'];
-const DEFAULT_OFFLINE_USER = {
-  id: 'offline-local-user',
-  username: 'offline',
-  display_name: 'Offline Mode',
-  native_language: 'en',
-  target_language: 'es',
-  daily_new_limit: 20,
-  account_type: 'student',
-  cefr_level: null,
-  offline: true,
-};
+const RETIRED_STORAGE_KEYS = ['offlineMode', 'offlineDictionaryWords'];
 const SESSION_SCOPED_STORAGE_KEYS = [
   'authToken', 'user', 'savedWords', RECALL_CATALOG_KEY,
-  'progression', OFFLINE_MODE_KEY,
+  'progression',
 ];
 
 if (typeof importScripts === 'function') importScripts('generated/messageContract.js', 'background/messageRouter.js', 'background/activation.js');
@@ -69,13 +57,9 @@ function indexSavedWord(word) {
 
 async function ensureSavedTokenIndex() {
   if (savedTokenIndex.size) return;
-  const stored = await chrome.storage.local.get([RECALL_CATALOG_KEY, OFFLINE_WORDS_KEY]);
+  const stored = await chrome.storage.local.get(RECALL_CATALOG_KEY);
   const catalog = stored[RECALL_CATALOG_KEY];
-  if (Array.isArray(catalog) && catalog.length) {
-    rebuildSavedTokenIndex(catalog);
-    return;
-  }
-  if (Array.isArray(stored[OFFLINE_WORDS_KEY])) rebuildSavedTokenIndex(stored[OFFLINE_WORDS_KEY]);
+  if (Array.isArray(catalog) && catalog.length) rebuildSavedTokenIndex(catalog);
 }
 
 function installContextMenus() {
@@ -117,6 +101,7 @@ function installContextMenus() {
 
 async function initializeExtensionRuntime() {
   await installContextMenus();
+  await chrome.storage.local.remove(RETIRED_STORAGE_KEYS);
   try {
     await removeLegacyPageHighlights();
   } catch (error) {
@@ -277,16 +262,7 @@ async function seedDailyGoalProgress(count, serverGoal = null) {
 
 async function syncDailyGoalFromServer() {
   const token = await getAuthToken();
-  if (!token) {
-    const words = await getOfflineWords();
-    const now = new Date();
-    return seedDailyGoalProgress(words.filter((word) => {
-      const created = new Date(word.created_at || 0);
-      return created.getFullYear() === now.getFullYear()
-        && created.getMonth() === now.getMonth()
-        && created.getDate() === now.getDate();
-    }).length);
-  }
+  if (!token) return getDailyGoalSnapshot();
   try {
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const progression = await apiFetch(`/api/progression?timeZone=${encodeURIComponent(zone)}`);
@@ -297,18 +273,6 @@ async function syncDailyGoalFromServer() {
     await broadcastFallbackNotice('Daily goal fallback', `Using cached goal progress because the account sync failed: ${err.message}`);
     return getDailyGoalSnapshot();
   }
-}
-
-async function recordDailyGoalWord() {
-  const before = await getDailyGoalSnapshot();
-  await chrome.storage.local.set({ [DAILY_PROGRESS_KEY]: { date: localDateKey(), count: before.added + 1 } });
-  const after = await getDailyGoalSnapshot();
-  const justCompleted = !before.complete && after.complete;
-  // Offline saves cannot earn account XP. The visible offline diagnostic names
-  // this fallback, and the optimistic UI must never imply that XP was synced.
-  const bonusXpEarned = 0;
-  await broadcastDailyGoalUpdated(after, { justAdded: true, justCompleted, bonusXpEarned });
-  return { ...after, justAdded: true, justCompleted, bonusXpEarned };
 }
 
 function isSessionExpiredError(error) {
@@ -416,128 +380,6 @@ async function fetchSavedWords() {
   return wordList;
 }
 
-function uuid() {
-  return crypto.randomUUID ? crypto.randomUUID() : `offline-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function basicDefinition(word, sentence) {
-  const context = sentence && sentence.trim();
-  return context ? `Saved offline from: ${context}` : `Saved offline: ${word}`;
-}
-
-async function getOfflineWords() {
-  const { [OFFLINE_WORDS_KEY]: words } = await chrome.storage.local.get(OFFLINE_WORDS_KEY);
-  return Array.isArray(words) ? words : [];
-}
-
-async function setOfflineWords(words) {
-  const tokens = savedWordTokens(words);
-  await chrome.storage.local.set({
-    [OFFLINE_WORDS_KEY]: words,
-    savedWords: tokens,
-  });
-  rebuildSavedTokenIndex(words);
-  await broadcastWordsUpdated(tokens);
-  await syncOfflineWordsToAppTabs(words);
-}
-
-function makeOfflineSavedWord({ word, sentence, user, definition, translation }) {
-  const now = new Date().toISOString();
-  return {
-    id: uuid(),
-    word,
-    translation: translation || '',
-    definition: definition || basicDefinition(word, sentence),
-    target_language: user.target_language || null,
-    sentence_context: sentence || null,
-    created_at: now,
-    frequency: null,
-    frequency_count: null,
-    rank_version_id: null,
-    lemma_frequency_rank: null,
-    sense_rank: null,
-    lemma_occurrences_per_billion: null,
-    frequency_confidence: 'unavailable',
-    frequency_sources: [],
-    example_sentence: sentence || null,
-    sentence_translation: null,
-    part_of_speech: null,
-    srs_interval: 0,
-    due_at: null,
-    last_reviewed_at: null,
-    correct_count: 0,
-    incorrect_count: 0,
-    ease_factor: 2.5,
-    learning_step: null,
-    image_url: null,
-    lemma: null,
-    forms: null,
-    prompt_stage: 0,
-    priority: false,
-    image_term: null,
-    queue_position: null,
-    introduced_date: null,
-  };
-}
-
-function makeOfflineLookup(word, sentence) {
-  return {
-    word,
-    target_word: word,
-    valid: true,
-    translation: '',
-    definition: basicDefinition(word, sentence),
-    gemini_definition: null,
-    part_of_speech: null,
-    sense_index: null,
-    matched_gloss: null,
-    lemma: null,
-    is_native: false,
-    definition_source: 'offline',
-    example: sentence || null,
-    example_translation: null,
-    sentence_translation: null,
-  };
-}
-
-async function saveOfflineWord(word, sentence) {
-  const { user = DEFAULT_OFFLINE_USER } = await chrome.storage.local.get('user');
-  const words = await getOfflineWords();
-  const existing = words.find((entry) =>
-    String(entry.word || '').toLowerCase() === word.toLowerCase() &&
-    entry.target_language === (user.target_language || null));
-  if (existing) return { ...existing, _created: false };
-
-  const saved = makeOfflineSavedWord({ word, sentence, user });
-  await setOfflineWords([saved, ...words]);
-  return { ...saved, _created: true };
-}
-
-async function startOfflineMode(username) {
-  const user = {
-    ...DEFAULT_OFFLINE_USER,
-    username: username || 'offline',
-    display_name: username || 'Offline Mode',
-  };
-  await chrome.storage.local.set({ [OFFLINE_MODE_KEY]: true, user });
-  await setOfflineWords(await getOfflineWords());
-  return user;
-}
-
-async function syncOfflineWordsToAppTabs(words) {
-  const tabs = await chrome.tabs.query({
-    url: [
-      'http://localhost:5173/*',
-      'http://127.0.0.1:5173/*',
-      'http://localhost:3000/*',
-      'http://127.0.0.1:3000/*',
-    ],
-  });
-  for (const tab of tabs) {
-    await sendTabMessageSafe(tab.id, { type: 'SYNC_OFFLINE_DICTIONARY_TO_APP', words }, 'sync-offline-dictionary');
-  }
-}
-
 async function broadcastWordsUpdated(savedWords) {
   const tabs = await getPageContentTabs();
   for (const tab of tabs) {
@@ -643,17 +485,17 @@ async function handleMessage(msg, sender = {}) {
           body: JSON.stringify({ username: msg.username, password: msg.password }),
         });
       } catch (error) {
-        const diagnostic = await broadcastFallbackNotice(
-          'Offline sign-in fallback used',
-          'The Polycast server could not be reached, so the extension entered local offline mode. Account XP and synchronization are unavailable.',
+        await broadcastFallbackNotice(
+          'Polycast sign-in unavailable',
+          'The extension could not reach the Polycast server. No local account was created; retry when the service is available.',
           {
-            code: 'extension_offline_login_used',
+            code: 'extension_login_unavailable',
             operation: 'login',
             detail: error?.message || String(error),
+            severity: 'error',
           },
         );
-        const user = await startOfflineMode(msg.username);
-        return { success: true, user, offline: true, fallback_notices: [diagnostic] };
+        throw new Error(`Could not reach Polycast: ${error?.message || String(error)}`);
       }
 
       if (!res.ok) {
@@ -680,7 +522,6 @@ async function handleMessage(msg, sender = {}) {
         authToken: token,
         user: { id, username, display_name, native_language, target_language, daily_word_goal, total_xp },
       });
-      await chrome.storage.local.remove(OFFLINE_MODE_KEY);
       sessionExpirationPromise = null;
 
       const savedWords = await fetchSavedWords();
@@ -700,22 +541,7 @@ async function handleMessage(msg, sender = {}) {
 
     case 'GET_STATUS': {
       const token = await getAuthToken();
-      if (!token) {
-        const { user = DEFAULT_OFFLINE_USER, [OFFLINE_MODE_KEY]: offlineMode } =
-          await chrome.storage.local.get(['user', OFFLINE_MODE_KEY]);
-        if (!offlineMode) {
-          return { loggedIn: false };
-        }
-        const words = await getOfflineWords();
-        await chrome.storage.local.set({ user, savedWords: savedWordTokens(words) });
-        const diagnostic = makeFallbackDiagnostic({
-          code: 'extension_offline_status_used',
-          title: 'Offline account status used',
-          message: 'The extension is using local status. Account XP and cross-device synchronization are unavailable.',
-          operation: 'get-status',
-        });
-        return { loggedIn: true, user, savedWordCount: words.length, dailyGoal: await syncDailyGoalFromServer(), offline: true, diagnostic };
-      }
+      if (!token) return { loggedIn: false };
 
       try {
         const user = await apiFetch('/api/me');
@@ -728,29 +554,14 @@ async function handleMessage(msg, sender = {}) {
         if (isSessionExpiredError(err)) {
           return { loggedIn: false, error: err.message, diagnostic: err.diagnostic, fallback_notices: [err.diagnostic] };
         }
-        const { user = DEFAULT_OFFLINE_USER } = await chrome.storage.local.get('user');
-        const words = await getOfflineWords();
-        const diagnostic = await broadcastFallbackNotice(
-          'Cached extension status used',
-          'The live account status could not be loaded, so the extension is showing cached local status.',
-          {
-            code: 'extension_cached_status_used',
-            operation: 'get-status',
-            detail: err?.message || String(err),
-          },
-        );
-        return { loggedIn: true, user: { ...user, offline: true }, savedWordCount: words.length, dailyGoal: await getDailyGoalSnapshot(), offline: true, diagnostic };
+        throw err;
       }
     }
 
     case 'LOOKUP_WORD': {
-      const { user = DEFAULT_OFFLINE_USER, [OFFLINE_MODE_KEY]: offlineMode } =
-        await chrome.storage.local.get(['user', OFFLINE_MODE_KEY]);
+      const { user = {} } = await chrome.storage.local.get('user');
       const token = await getAuthToken();
-      if (!token) {
-        if (offlineMode) return makeOfflineLookup(msg.word, msg.sentence);
-        throw new Error('Sign in to Polycast to use AI lookup');
-      }
+      if (!token) throw new Error('Sign in to Polycast to use AI lookup');
 
       const nativeLang = user.native_language || 'en';
       const targetLang = user.target_language;
@@ -762,15 +573,11 @@ async function handleMessage(msg, sender = {}) {
       });
       if (targetLang) params.set('targetLang', targetLang);
 
-      // A logged-in lookup must reflect the server's answer. If the request fails (e.g. a
-      // server cold-start timeout or transient error), surface that error so the popup shows
-      // it and the user can retry — never fabricate a "Saved offline from …" definition. The
-      // genuinely-offline case is handled by the no-token branch above.
       return await apiFetch(`/api/dictionary/lookup?${params}`);
     }
 
     case 'EXPLAIN_WORD': {
-      const { user = DEFAULT_OFFLINE_USER } = await chrome.storage.local.get(['user']);
+      const { user = {} } = await chrome.storage.local.get(['user']);
       const token = await getAuthToken();
       if (!token) throw new Error('Sign in to Polycast to use AI explanations');
 
@@ -792,15 +599,9 @@ async function handleMessage(msg, sender = {}) {
     }
 
     case 'SAVE_WORD': {
-      const { user = DEFAULT_OFFLINE_USER, [OFFLINE_MODE_KEY]: offlineMode } =
-        await chrome.storage.local.get(['user', OFFLINE_MODE_KEY]);
+      const { user = {} } = await chrome.storage.local.get('user');
       const token = await getAuthToken();
-      if (!token) {
-        if (!offlineMode) throw new Error('Sign in to Polycast to save words');
-        const saved = await saveOfflineWord(msg.word, msg.sentence);
-        const dailyGoal = saved._created ? await recordDailyGoalWord() : await getDailyGoalSnapshot();
-        return { success: true, saved, dailyGoal, offline: true };
-      }
+      if (!token) throw new Error('Sign in to Polycast to save words');
 
       try {
         // Enrich first
@@ -868,18 +669,17 @@ async function handleMessage(msg, sender = {}) {
         };
       } catch (err) {
         if (isSessionExpiredError(err)) throw err;
-        const diagnostic = await broadcastFallbackNotice(
-          'Offline dictionary save fallback used',
-          'The server save failed, so the word was stored locally without a catalog rank. This remains visible until synchronization succeeds.',
+        await broadcastFallbackNotice(
+          'Dictionary save failed',
+          'The extension could not save this word to Polycast. Nothing was stored locally; retry after the service recovers.',
           {
-            code: 'extension_offline_dictionary_save_used',
+            code: 'extension_dictionary_save_failed',
             operation: 'save-word',
             detail: `language=${user.target_language || 'unknown'}; word=${msg.word}; reason=${err?.message || String(err)}`,
+            severity: 'error',
           },
         );
-        const saved = await saveOfflineWord(msg.word, msg.sentence);
-        const dailyGoal = saved._created ? await recordDailyGoalWord() : await getDailyGoalSnapshot();
-        return { success: true, saved, dailyGoal, offline: true, warning: err.message, diagnostic, fallback_notices: [diagnostic] };
+        throw err;
       }
     }
 
@@ -889,21 +689,9 @@ async function handleMessage(msg, sender = {}) {
 
     case 'SET_DAILY_GOAL': {
       const goal = Math.min(50, Math.max(1, Math.round(Number(msg.goal) || DEFAULT_DAILY_WORD_GOAL)));
-      const { user = DEFAULT_OFFLINE_USER, [OFFLINE_MODE_KEY]: offlineMode } =
-        await chrome.storage.local.get(['user', OFFLINE_MODE_KEY]);
+      const { user = {} } = await chrome.storage.local.get('user');
       const token = await getAuthToken();
-      if (!token || offlineMode) {
-        await chrome.storage.local.set({ [DAILY_GOAL_KEY]: goal });
-        const snapshot = await getDailyGoalSnapshot();
-        await broadcastDailyGoalUpdated(snapshot);
-        const diagnostic = makeFallbackDiagnostic({
-          code: 'offline_daily_goal_used',
-          title: 'Local daily goal used',
-          message: 'The daily goal was saved locally because account XP cannot synchronize in offline mode.',
-          operation: 'set-daily-goal',
-        });
-        return { snapshot, offline: true, diagnostic };
-      }
+      if (!token) throw new Error('Sign in to Polycast to update your daily goal');
       const updatedUser = await apiFetch('/api/me/settings', {
         method: 'PATCH',
         body: { native_language: user.native_language || null, target_language: user.target_language || null, daily_word_goal: goal },
@@ -919,52 +707,27 @@ async function handleMessage(msg, sender = {}) {
     case 'ADD_WORD_FORM': {
       const form = String(msg.form || '').trim().toLowerCase();
       if (!form) return { success: false };
-
-      const { savedWords: current } = await chrome.storage.local.get('savedWords');
-      const updated = [...new Set([...(current || []), form])];
-      await chrome.storage.local.set({ savedWords: updated });
-      savedTokenIndex.set(form, { wordId: msg.savedWordId || null, reviewed: false });
-      savedTokenRevision += 1;
-      await broadcastWordsUpdated(updated);
-
-      // Persist server-side when signed in and the word is a real (non-offline) save.
       const token = await getAuthToken();
-      if (token && msg.savedWordId && !String(msg.savedWordId).startsWith('offline-')) {
-        try {
-          await apiFetch(`/api/dictionary/words/${msg.savedWordId}/forms`, {
-            method: 'POST',
-            body: { form },
-          });
-        } catch (err) {
-          if (isSessionExpiredError(err)) throw err;
-          // Local highlight already applied; persistence will retry next tap.
-          return { success: true, persisted: false, warning: err.message };
-        }
-      }
+      if (!token) throw new Error('Sign in to Polycast to add word forms');
+      if (!msg.savedWordId) throw new Error('No saved dictionary entry to update');
+      await apiFetch(`/api/dictionary/words/${msg.savedWordId}/forms`, {
+        method: 'POST',
+        body: { form },
+      });
+      const updated = await fetchSavedWords();
+      await broadcastWordsUpdated(updated);
       return { success: true, persisted: true };
     }
 
     case 'REMOVE_WORD': {
       const token = await getAuthToken();
       const savedWordId = msg.savedWordId ? String(msg.savedWordId) : '';
-
-      if (token && savedWordId && !savedWordId.startsWith('offline-')) {
-        await apiFetch(`/api/dictionary/words/${savedWordId}`, { method: 'DELETE' });
-        const savedWords = await fetchSavedWords();
-        await broadcastWordsUpdated(savedWords);
-        return { success: true };
-      }
-
-      const lower = String(msg.word || '').trim().toLowerCase();
-      if (!lower && !savedWordId) throw new Error('No saved dictionary entry to remove');
-      const words = await getOfflineWords();
-      const next = words.filter((entry) => {
-        if (savedWordId && entry.id === savedWordId) return false;
-        return String(entry.word || '').toLowerCase() !== lower;
-      });
-      if (next.length === words.length) throw new Error('No saved dictionary entry to remove');
-      await setOfflineWords(next);
-      return { success: true, offline: true };
+      if (!token) throw new Error('Sign in to Polycast to remove words');
+      if (!savedWordId) throw new Error('No saved dictionary entry to remove');
+      await apiFetch(`/api/dictionary/words/${savedWordId}`, { method: 'DELETE' });
+      const savedWords = await fetchSavedWords();
+      await broadcastWordsUpdated(savedWords);
+      return { success: true };
     }
 
     case 'MATCH_PAGE_TOKENS': {
@@ -984,18 +747,8 @@ async function handleMessage(msg, sender = {}) {
       return { savedWords: savedWords || [] };
     }
 
-    case 'GET_OFFLINE_DICTIONARY_FULL': {
-      return { words: await getOfflineWords() };
-    }
-
-    case 'UPDATE_OFFLINE_DICTIONARY': {
-      const words = Array.isArray(msg.words) ? msg.words : [];
-      await setOfflineWords(words);
-      return { success: true };
-    }
-
     case 'GET_TARGET_LANGUAGE': {
-      const { user = DEFAULT_OFFLINE_USER } = await chrome.storage.local.get('user');
+      const { user = {} } = await chrome.storage.local.get('user');
       return { targetLanguage: user?.target_language || null };
     }
 
@@ -1003,38 +756,23 @@ async function handleMessage(msg, sender = {}) {
       const targetLanguage = String(msg.targetLanguage || '').trim();
       if (!targetLanguage) throw new Error('Choose a language');
 
-      const { user = DEFAULT_OFFLINE_USER, [OFFLINE_MODE_KEY]: offlineMode } =
-        await chrome.storage.local.get(['user', OFFLINE_MODE_KEY]);
+      const { user = {} } = await chrome.storage.local.get('user');
       const token = await getAuthToken();
-      const storeLocally = offlineMode || !token;
-      let updatedUser;
+      if (!token) throw new Error('Sign in to Polycast to change your target language');
+      const updatedUser = await apiFetch('/api/me/settings', {
+        method: 'PATCH',
+        body: {
+          native_language: user.native_language || null,
+          target_language: targetLanguage,
+        },
+      });
+      await chrome.storage.local.set({ user: updatedUser });
 
-      if (storeLocally) {
-        updatedUser = { ...user, target_language: targetLanguage };
-        await chrome.storage.local.set({ user: updatedUser });
-      } else {
-        updatedUser = await apiFetch('/api/me/settings', {
-          method: 'PATCH',
-          body: {
-            native_language: user.native_language || null,
-            target_language: targetLanguage,
-          },
-        });
-        await chrome.storage.local.set({ user: updatedUser });
-      }
-
-      const savedWords = storeLocally
-        ? (await getOfflineWords()).map((word) => String(word.word || '').toLowerCase()).filter(Boolean)
-        : await fetchSavedWords().catch(async () => {
-          const { savedWords: current = [] } = await chrome.storage.local.get('savedWords');
-          return current;
-        });
+      const savedWords = await fetchSavedWords();
       await broadcastWordsUpdated(savedWords);
       await broadcastTargetLanguageUpdated(targetLanguage);
       const storedCatalog = await chrome.storage.local.get(RECALL_CATALOG_KEY);
-      const savedWordCount = storeLocally
-        ? (await getOfflineWords()).length
-        : (storedCatalog[RECALL_CATALOG_KEY] || []).length;
+      const savedWordCount = (storedCatalog[RECALL_CATALOG_KEY] || []).length;
       return { success: true, user: updatedUser, savedWordCount };
     }
 
@@ -1046,7 +784,7 @@ async function handleMessage(msg, sender = {}) {
       const lang = String(msg.languageCode || '').trim().toLowerCase();
       if (!lang) return { success: true, switched: false };
 
-      const { user = DEFAULT_OFFLINE_USER } = await chrome.storage.local.get('user');
+      const { user = {} } = await chrome.storage.local.get('user');
       const native = (user?.native_language || '').toLowerCase();
       const target = (user?.target_language || '').toLowerCase();
       if (lang === native || lang === target) return { success: true, switched: false };

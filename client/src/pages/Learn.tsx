@@ -66,6 +66,24 @@ function isBlueGradient(promptType: PromptType): boolean {
   return promptType === 'meet-word';
 }
 
+export function isAutoplayBlocked(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const named = error as { name?: unknown; message?: unknown };
+  const name = String(named.name || '');
+  const message = String(named.message || '').toLowerCase();
+  return name === 'NotAllowedError'
+    || message.includes("user didn't interact")
+    || message.includes('user did not interact')
+    || message.includes('play() failed because');
+}
+
+function browserHasReceivedUserInteraction(): boolean {
+  const activation = (navigator as Navigator & {
+    userActivation?: { hasBeenActive?: boolean };
+  }).userActivation;
+  return activation?.hasBeenActive === true;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -180,6 +198,9 @@ export default function Learn() {
       await playAiSpeech(text, card.target_language || undefined, preloaded);
     } catch (error) {
       if (!shouldPlay()) return;
+      // Browser autoplay policy is an instruction to wait for a user gesture,
+      // not evidence that the prepared clip is bad. Never discard/refetch it.
+      if (isAutoplayBlocked(error)) return;
       runtimeLog.error(`Prepared audio playback failed for ${card.id}:`, error);
       emitFallbackDiagnostic({
         code: 'flashcard_prepared_audio_playback_fallback',
@@ -204,9 +225,25 @@ export default function Learn() {
     if (audioPlayedRef.current.has(key)) return;
     const text = spokenText(currentCard, pt, back);
     if (!text) return;
-    audioPlayedRef.current.add(key);
-    void playCardAudio(currentCard, text, () => !cancelled);
-    return () => { cancelled = true; };
+    const playOnce = () => {
+      if (cancelled || audioPlayedRef.current.has(key)) return;
+      audioPlayedRef.current.add(key);
+      void playCardAudio(currentCard, text, () => !cancelled);
+    };
+
+    if (browserHasReceivedUserInteraction()) {
+      playOnce();
+    } else {
+      // A direct page load has no autoplay permission. Keep the already
+      // prepared clip and start it on the first real interaction.
+      window.addEventListener('pointerdown', playOnce, { once: true, capture: true });
+      window.addEventListener('keydown', playOnce, { once: true, capture: true });
+    }
+    return () => {
+      cancelled = true;
+      window.removeEventListener('pointerdown', playOnce, true);
+      window.removeEventListener('keydown', playOnce, true);
+    };
   }, [isFlipped, currentIndex, currentCard, loading, playCardAudio]);
 
   // Play celebratory sound when session is complete

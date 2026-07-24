@@ -2,7 +2,7 @@
   "generatedAt": "deterministic-from-runtime-registration",
   "summary": {
     "apiRoutes": 153,
-    "extensionMessages": 20,
+    "extensionMessages": 18,
     "socketRegistrations": 12
   },
   "routes": [
@@ -629,7 +629,6 @@
     "EXPLAIN_WORD",
     "GET_API_BASE",
     "GET_DAILY_GOAL",
-    "GET_OFFLINE_DICTIONARY_FULL",
     "GET_SAVED_WORDS",
     "GET_STATUS",
     "GET_TARGET_LANGUAGE",
@@ -642,8 +641,7 @@
     "SAVE_WORD",
     "SET_API_BASE",
     "SET_DAILY_GOAL",
-    "SET_TARGET_LANGUAGE",
-    "UPDATE_OFFLINE_DICTIONARY"
+    "SET_TARGET_LANGUAGE"
   ],
   "socketRegistrations": [
     {

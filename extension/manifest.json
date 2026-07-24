@@ -34,16 +34,6 @@
       "js": ["shared/textTokens.js", "shared/wordPopupCore.js", "content/shared.js", "content/netflix.js", "content/selection.js"],
       "css": ["shared/wordPopup.css", "overlay.css"],
       "run_at": "document_idle"
-    },
-    {
-      "matches": [
-        "http://localhost:5173/*",
-        "http://127.0.0.1:5173/*",
-        "http://localhost:3000/*",
-        "http://127.0.0.1:3000/*"
-      ],
-      "js": ["content/app-bridge.js"],
-      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
