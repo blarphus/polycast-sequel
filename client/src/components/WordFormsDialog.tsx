@@ -92,7 +92,7 @@ export default function WordFormsDialog({
   const result = results[variantIndex] ?? null;
   const availableMoods = useMemo<MoodKey[]>(() => {
     const moods: MoodKey[] = result
-      ? (['Impersonal', 'Indicativo', 'Subjuntivo', 'Imperativo'] as const)
+      ? (['Indicativo', 'Impersonal', 'Subjuntivo', 'Imperativo'] as const)
           .filter((key) => Object.keys(result.conjugation[key] ?? {}).length > 0)
       : [];
     if (forms.length > 0) moods.push('Saved');

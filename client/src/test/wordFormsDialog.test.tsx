@@ -74,6 +74,9 @@ describe('WordFormsDialog', () => {
 
     const modal = container.querySelector('.dict-conjugation-modal');
     expect(modal).not.toBeNull();
+    expect(
+      container.querySelector<HTMLButtonElement>('.dict-conjugation-moods button')?.textContent,
+    ).toBe('Indicative');
     expect(modal?.textContent).toContain('Present');
     expect(modal?.textContent).toContain('saco');
     expect(modal?.textContent).toContain('sacáis');
