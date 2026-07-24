@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-23T18:15:20.427Z",
+  "generatedAt": "2026-07-24T13:43:19.913Z",
   "totals": {
-    "occurrences": 57,
-    "uniqueCodes": 54,
+    "occurrences": 60,
+    "uniqueCodes": 56,
     "incompleteOccurrences": 0
   },
   "entries": [
@@ -71,9 +71,17 @@
       "visible": true
     },
     {
+      "code": "dictionary_conjugation_generator_fallback",
+      "file": "client/src/components/WordFormsDialog.tsx",
+      "line": 128,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
       "code": "dictionary_forms_display_fallback",
       "file": "client/src/pages/Dictionary.tsx",
-      "line": 112,
+      "line": 80,
       "structured": true,
       "logged": true,
       "visible": true
@@ -161,7 +169,7 @@
     {
       "code": "gemini_definition_fallback_used",
       "file": "server/enrichWord.js",
-      "line": 578,
+      "line": 579,
       "structured": true,
       "logged": true,
       "visible": true
@@ -169,7 +177,7 @@
     {
       "code": "gemini_dictionary_entry_fallback_used",
       "file": "server/enrichWord.js",
-      "line": 630,
+      "line": 631,
       "structured": true,
       "logged": true,
       "visible": true
@@ -249,7 +257,7 @@
     {
       "code": "offline_dictionary_used",
       "file": "client/src/api/core.ts",
-      "line": 70,
+      "line": 83,
       "structured": true,
       "logged": true,
       "visible": true
@@ -362,6 +370,22 @@
       "code": "session_token_refresh_fallback",
       "file": "ios/Polycast/Sources/App/SessionStore.swift",
       "line": 166,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "spanish_conjugation_unavailable",
+      "file": "server/services/spanishConjugationService.js",
+      "line": 15,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
+      "code": "spanish_conjugation_unavailable",
+      "file": "server/services/spanishConjugationService.js",
+      "line": 29,
       "structured": true,
       "logged": true,
       "visible": true

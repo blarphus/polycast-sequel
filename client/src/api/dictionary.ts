@@ -74,6 +74,32 @@ export interface WiktLookupResult {
   senses: WiktSense[];
 }
 
+export interface SpanishConjugationTable {
+  Impersonal: Record<string, string>;
+  Indicativo: Record<string, string[]>;
+  Subjuntivo: Record<string, string[]>;
+  Imperativo: Record<string, string[]>;
+}
+
+export interface SpanishConjugationResult {
+  verb: string;
+  region: string;
+  variants: Array<{
+    info: {
+      model: string;
+      region: string;
+      defective?: boolean;
+      ortho?: string;
+    };
+    conjugation: SpanishConjugationTable;
+  }>;
+}
+
+export function getSpanishConjugations(verb: string) {
+  const params = new URLSearchParams({ verb, region: 'castellano' });
+  return request<SpanishConjugationResult>(`/dictionary/conjugations?${params}`);
+}
+
 export function wiktLookup(word: string, targetLang: string, nativeLang: string) {
   const params = new URLSearchParams({ word, targetLang, nativeLang });
   return request<WiktLookupResult>(`/dictionary/wikt-lookup?${params}`);

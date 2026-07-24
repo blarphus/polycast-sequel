@@ -1,7 +1,7 @@
 {
   "generatedAt": "deterministic-from-runtime-registration",
   "summary": {
-    "apiRoutes": 152,
+    "apiRoutes": 153,
     "extensionMessages": 20,
     "socketRegistrations": 12
   },
@@ -109,6 +109,10 @@
     {
       "method": "GET",
       "path": "/api/dictionary/calendar/:date"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dictionary/conjugations"
     },
     {
       "method": "GET",

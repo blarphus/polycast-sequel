@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@extractus/article-extractor": "^8.0.20",
+    "@jirimracek/conjugate-esp": "^2.3.6",
     "bcrypt": "^6.0.0",
     "cookie": "^1.1.1",
     "cookie-parser": "^1.4.6",

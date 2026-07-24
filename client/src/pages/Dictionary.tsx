@@ -9,6 +9,7 @@ import { renderTildeHighlight } from '../utils/tildeMarkup';
 import { buildDictionaryGroups } from '../utils/dictionaryGroups';
 import WordLookupModal from '../components/WordLookupModal';
 import ImagePicker from '../components/ImagePicker';
+import WordFormsDialog from '../components/WordFormsDialog';
 import { FrequencyDots } from '../components/FrequencyDots';
 import {
   getDictionaryWordGroups,
@@ -555,7 +556,15 @@ export default function Dictionary() {
                     {parseWordForms(selectedEntry.forms).length > 0 && (
                       <div>
                         <dt>Forms</dt>
-                        <dd>{parseWordForms(selectedEntry.forms).join(', ')}</dd>
+                        <dd>
+                          <WordFormsDialog
+                            word={selectedEntry.word}
+                            lemma={selectedEntry.lemma}
+                            targetLanguage={selectedEntry.target_language}
+                            partOfSpeech={selectedEntry.part_of_speech}
+                            forms={parseWordForms(selectedEntry.forms)}
+                          />
+                        </dd>
                       </div>
                     )}
                   </dl>
