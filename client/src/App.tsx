@@ -18,6 +18,14 @@ import { GroupCallProvider } from './contexts/GroupCallProvider';
 import FloatingCallTile from './components/FloatingCallTile';
 import FloatingGroupCallTile from './components/FloatingGroupCallTile';
 import { uiLanguage } from './i18n';
+import { emitFallbackDiagnostic } from './utils/fallbackDiagnostics';
+
+let flashcardPreloadModule: Promise<typeof import('./utils/flashcardPreload')> | null = null;
+
+function loadFlashcardPreloader() {
+  flashcardPreloadModule ??= import('./utils/flashcardPreload');
+  return flashcardPreloadModule;
+}
 
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
@@ -112,6 +120,36 @@ function AuthenticatedShell() {
     document.documentElement.lang = uiLanguage(user.native_language);
     return () => document.documentElement.classList.remove('sidebar-visible');
   }, [user, hideToolbar]);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) {
+      if (flashcardPreloadModule) {
+        void flashcardPreloadModule.then(({ resetFlashcardPreload }) => resetFlashcardPreload());
+      }
+      return undefined;
+    }
+
+    // Warm the route bundle, due-card response, and next-card audio shortly
+    // after authentication so clicking Flashcards reuses work already done.
+    const timer = window.setTimeout(() => {
+      void Promise.all([
+        import('./pages/Learn'),
+        loadFlashcardPreloader().then(({ prefetchFlashcards }) => prefetchFlashcards(userId)),
+      ])
+        .catch((error) => {
+          emitFallbackDiagnostic({
+            code: 'flashcard_route_background_preload_fallback',
+            severity: 'warning',
+            title: 'Flashcards background loading unavailable',
+            message: 'Polycast could not finish loading Flashcards in the background, so the page will load normally when opened.',
+            detail: error instanceof Error ? error.message : String(error),
+          }, { source: 'web.app-shell', operation: 'preload-flashcards' });
+        });
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [user?.id]);
 
   if (!user) return null;
 

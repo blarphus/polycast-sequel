@@ -23,33 +23,30 @@ import { useSavedWords } from '../hooks/useSavedWords';
 import WordPopup from '../components/WordPopup';
 import TappableFlashcardSentence from '../components/TappableFlashcardSentence';
 import DictionaryEntryEditor from '../components/DictionaryEntryEditor';
-import {
-  playAiSpeech,
-  stopAiSpeech,
-  preloadAiSpeech,
-  preloadCardAudio,
-  type PreloadedSpeech,
-} from '../utils/aiSpeech';
+import { playAiSpeech, stopAiSpeech } from '../utils/aiSpeech';
 import { playFlipSound, playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
 import { BookIcon, CheckCircleIcon, SpeakerIcon, TapIcon, CloseIcon, CheckIcon, MoreVerticalIcon } from '../components/icons';
 import { useI18n } from '../hooks/useI18n';
 import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
+import {
+  getPromptType,
+  spokenText,
+  type PromptType,
+} from '../utils/flashcardSpeech';
+
+let pageFlashcardPreloader: Promise<typeof import('../utils/flashcardPreload')> | null = null;
+
+function loadFlashcardPreloader() {
+  pageFlashcardPreloader ??= import('../utils/flashcardPreload');
+  return pageFlashcardPreloader;
+}
 
 // ---------------------------------------------------------------------------
 // Prompt type derivation
 // ---------------------------------------------------------------------------
 
-export type PromptType = 'meet-word' | 'sentence-meaning' | 'word-production' | 'sentence-production';
-
-export function getPromptType(card: SavedWord): PromptType {
-  const hasExample = !!card.example_sentence;
-  const hasSentenceTranslation = !!card.sentence_translation;
-  const stage = card.prompt_stage ?? 0;
-  if (stage === 0) return 'meet-word';
-  if (stage === 1) return hasExample && hasSentenceTranslation ? 'sentence-meaning' : 'word-production';
-  if (stage === 2) return 'word-production';
-  return hasExample && hasSentenceTranslation ? 'sentence-production' : 'word-production';
-}
+export { getPromptType };
+export type { PromptType };
 
 export function getInstructionText(promptType: PromptType, highlightedPhrase = ''): string {
   if (promptType === 'meet-word' || promptType === 'sentence-meaning') {
@@ -67,22 +64,6 @@ export function getHighlightedPrompt(card: Pick<SavedWord, 'word' | 'example_sen
 
 function isBlueGradient(promptType: PromptType): boolean {
   return promptType === 'meet-word';
-}
-
-function spokenText(card: SavedWord, promptType: PromptType, back: boolean): string | null {
-  const example = card.example_sentence ? stripTildes(card.example_sentence) : null;
-  if (!back) {
-    if (promptType === 'meet-word') return example || card.word;
-    if (promptType === 'sentence-meaning') return example;
-    return null;
-  }
-  if (promptType === 'word-production') return example ? `${card.word}. ${example}` : card.word;
-  if (promptType === 'sentence-production') return example || card.word;
-  return null;
-}
-
-function speechKey(card: SavedWord, text: string) {
-  return `${card.id}\u0000${card.target_language || ''}\u0000${text}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -149,71 +130,21 @@ export default function Learn() {
   // Audio played tracker (once per card)
   const audioPlayedRef = useRef<Set<string>>(new Set());
 
-  // Preloaded TTS audio: exact card-side speech -> audio URL and provider metadata
-  const preloadedAudioRef = useRef<Map<string, PreloadedSpeech>>(new Map());
-  const audioPreloadPromisesRef = useRef<Map<string, Promise<PreloadedSpeech>>>(new Map());
-  const audioMountedRef = useRef(true);
-  const preloadFailureReportedRef = useRef(false);
-
-  const ensureCardSpeech = useCallback((card: SavedWord, text: string) => {
-    const key = speechKey(card, text);
-    const ready = preloadedAudioRef.current.get(key);
-    if (ready) return Promise.resolve(ready);
-
-    const pending = audioPreloadPromisesRef.current.get(key);
-    if (pending) return pending;
-
-    const request = (text === card.word
-      ? preloadCardAudio(card.id)
-      : preloadAiSpeech(text, card.target_language || undefined))
-      .then((speech) => {
-        if (audioMountedRef.current) {
-          preloadedAudioRef.current.set(key, speech);
-        } else if (speech.url) {
-          URL.revokeObjectURL(speech.url);
-        }
-        return speech;
-      })
-      .finally(() => {
-        audioPreloadPromisesRef.current.delete(key);
-      });
-    audioPreloadPromisesRef.current.set(key, request);
-    return request;
-  }, []);
-
-  // Fetch due words, then fully prepare the first card's spoken sides before
-  // revealing it. This eliminates the initial-card race that the background
-  // lookahead preloader cannot solve by itself.
+  // Reuse the app-level card/audio preload. If it is still running, this waits
+  // on the same promises instead of starting duplicate requests.
   useEffect(() => {
-    getDueWords()
+    if (!user?.id) return undefined;
+    loadFlashcardPreloader()
+      .then(({ prepareFlashcardsForStudy }) => prepareFlashcardsForStudy(user.id))
       .then(async (data) => {
         setCards(data);
         if (data.length > 0) {
-          const firstCard = data[0];
-          const type = getPromptType(firstCard);
-          const firstCardSpeech = [spokenText(firstCard, type, false), spokenText(firstCard, type, true)]
-            .filter((text): text is string => Boolean(text));
-
-          await Promise.all([
-            createLearningSession('flashcards')
-              .then((created) => setLearningSessionId(created.session.id))
-              .catch((err) => {
-                setSessionDiagnostic(`Flashcard XP fallback used: ${err instanceof Error ? err.message : 'session tracking unavailable'}`);
-              }),
-            Promise.all(firstCardSpeech.map((text) => ensureCardSpeech(firstCard, text))),
-          ]).catch((err) => {
-            runtimeLog.error('Failed to prepare the first flashcard audio:', err);
-            if (!preloadFailureReportedRef.current) {
-              preloadFailureReportedRef.current = true;
-              emitFallbackDiagnostic({
-                code: 'initial_flashcard_audio_preload_fallback',
-                severity: 'warning',
-                title: 'First flashcard audio preload unavailable',
-                message: 'Polycast could not prepare the first pronunciation before showing the card, so it will request audio when played.',
-                detail: err instanceof Error ? err.message : String(err),
-              }, { source: 'web.flashcards', operation: 'preload-first-card-speech' });
-            }
-          });
+          try {
+            const created = await createLearningSession('flashcards');
+            setLearningSessionId(created.session.id);
+          } catch (err) {
+            setSessionDiagnostic(`Flashcard XP fallback used: ${err instanceof Error ? err.message : 'session tracking unavailable'}`);
+          }
         }
         setLoading(false);
       })
@@ -222,53 +153,14 @@ export default function Learn() {
         setError(err.message);
         setLoading(false);
       });
-  }, [ensureCardSpeech]);
+  }, [user?.id]);
 
-  // Preload the exact spoken text for both sides of the current and upcoming
-  // cards. The current card is queued first, and playback shares the same
-  // in-flight promise instead of launching a second request at reveal time.
+  // Continue the shared lookahead as the learner advances through the deck.
   useEffect(() => {
     if (cards.length === 0 || currentIndex >= cards.length) return;
-
-    const PRELOAD_LOOKAHEAD_CARDS = 8;
-    const queue = cards.slice(currentIndex, currentIndex + PRELOAD_LOOKAHEAD_CARDS).flatMap((card) => {
-      const type = getPromptType(card);
-      return [spokenText(card, type, false), spokenText(card, type, true)]
-        .filter((text): text is string => Boolean(text))
-        .map((text) => ({ card, text }))
-        .filter(({ card: queuedCard, text }) => {
-          const key = speechKey(queuedCard, text);
-          return !preloadedAudioRef.current.has(key) && !audioPreloadPromisesRef.current.has(key);
-        });
-    });
-    let next = 0;
-
-    const worker = async () => {
-      while (audioMountedRef.current && next < queue.length) {
-        const item = queue[next++];
-        try {
-          await ensureCardSpeech(item.card, item.text);
-        } catch (err) {
-          runtimeLog.error(`Failed to preload audio for ${item.card.id}:`, err);
-          if (!preloadFailureReportedRef.current) {
-            preloadFailureReportedRef.current = true;
-            emitFallbackDiagnostic({
-              code: 'flashcard_audio_preload_fallback',
-              severity: 'warning',
-              title: 'Flashcard audio preload unavailable',
-              message: 'Polycast could not prepare some upcoming pronunciation audio, so those cards will request it when played.',
-              detail: err instanceof Error ? err.message : String(err),
-            }, { source: 'web.flashcards', operation: 'preload-speech' });
-          }
-        }
-      }
-    };
-
-    const PRELOAD_CONCURRENCY = 4;
-    for (let i = 0; i < Math.min(PRELOAD_CONCURRENCY, queue.length); i++) {
-      void worker();
-    }
-  }, [cards, currentIndex, ensureCardSpeech]);
+    void loadFlashcardPreloader()
+      .then(({ warmFlashcardAudio }) => warmFlashcardAudio(cards, currentIndex));
+  }, [cards, currentIndex]);
 
   const currentCard = cards[currentIndex];
 
@@ -282,7 +174,8 @@ export default function Learn() {
     shouldPlay: () => boolean = () => true,
   ) => {
     try {
-      const preloaded = await ensureCardSpeech(card, text);
+      const { ensureFlashcardSpeech } = await loadFlashcardPreloader();
+      const preloaded = await ensureFlashcardSpeech(card, text);
       if (!shouldPlay()) return;
       await playAiSpeech(text, card.target_language || undefined, preloaded);
     } catch (error) {
@@ -297,7 +190,7 @@ export default function Learn() {
       }, { source: 'web.flashcards', operation: 'play-preloaded-speech' });
       await playAiSpeech(text, card.target_language || undefined);
     }
-  }, [ensureCardSpeech]);
+  }, []);
 
   const promptType: PromptType = currentCard ? getPromptType(currentCard) : 'meet-word';
 
@@ -329,18 +222,7 @@ export default function Learn() {
     }
   }, [currentIndex, cards.length, loading, checkingForMore, learningSessionId]);
 
-  useEffect(() => {
-    audioMountedRef.current = true;
-    return () => {
-      audioMountedRef.current = false;
-      stopAiSpeech();
-      // Revoke all preloaded object URLs
-      for (const speech of preloadedAudioRef.current.values()) {
-        if (speech.url) URL.revokeObjectURL(speech.url);
-      }
-      preloadedAudioRef.current.clear();
-    };
-  }, []);
+  useEffect(() => () => stopAiSpeech(), []);
 
   useEffect(() => {
     if (!cardMenuOpen) return undefined;
@@ -396,6 +278,8 @@ export default function Learn() {
     await new Promise((resolve) => window.setTimeout(resolve, 420));
 
     const updatedCard = await reviewPromise;
+    void loadFlashcardPreloader()
+      .then(({ invalidateFlashcardCards }) => invalidateFlashcardCards());
     setFeedback(null);
     setIsExiting(false);
     setIsFlipped(false);
@@ -858,12 +742,10 @@ export default function Learn() {
           onSave={async (data) => {
             const updated = await updateEntry(editingCard.id, data);
             setCards((previous) => previous.map((item) => (item.id === updated.id ? updated : item)));
-            for (const [key, speech] of preloadedAudioRef.current.entries()) {
-              if (key.startsWith(`${editingCard.id}\u0000`)) {
-                if (speech.url) URL.revokeObjectURL(speech.url);
-                preloadedAudioRef.current.delete(key);
-              }
-            }
+            void loadFlashcardPreloader().then((preloader) => {
+              preloader.invalidateFlashcardCards();
+              preloader.invalidateFlashcardSpeech(editingCard.id);
+            });
           }}
           onClose={() => setEditingCard(null)}
         />

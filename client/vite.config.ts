@@ -26,6 +26,23 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      output: {
+        // Keep React's runtime boundary stable when authenticated background
+        // preload entries are added. Without this, Rollup can move the runtime
+        // back into index.js and make every initial route pay for it again.
+        manualChunks(id) {
+          if (
+            id.includes('/node_modules/react/')
+            || id.includes('/node_modules/react-dom/')
+            || id.includes('/node_modules/scheduler/')
+          ) {
+            return 'react-vendor';
+          }
+          return undefined;
+        },
+      },
+    },
   },
   test: {
     environment: 'jsdom',

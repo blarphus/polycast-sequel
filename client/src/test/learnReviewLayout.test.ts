@@ -46,9 +46,9 @@ describe('flashcard review workspace', () => {
   });
 
   it('prepares exact front and back speech before cards are revealed', () => {
-    expect(source).toContain('Promise.all(firstCardSpeech.map((text) => ensureCardSpeech(firstCard, text)))');
-    expect(source).toContain('preloadAiSpeech(text, card.target_language || undefined)');
-    expect(source).toContain('cards.slice(currentIndex, currentIndex + PRELOAD_LOOKAHEAD_CARDS)');
+    expect(source).toContain('prepareFlashcardsForStudy(user.id)');
+    expect(source).toContain('warmFlashcardAudio(cards, currentIndex)');
+    expect(source).toContain('ensureFlashcardSpeech(card, text)');
     expect(source).toContain('if (loading || !currentCard) return');
   });
 

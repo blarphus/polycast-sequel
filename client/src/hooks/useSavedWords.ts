@@ -44,6 +44,13 @@ interface UseSavedWordsOptions {
   targetLanguage?: string | null;
 }
 
+function notifyFlashcardDictionaryMutation(cardId?: string, invalidateSpeech = false) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('polycast:dictionary-mutated', {
+    detail: { cardId, invalidateSpeech },
+  }));
+}
+
 export function useSavedWords(options: UseSavedWordsOptions = {}) {
   const [words, setWords] = useState<SavedWord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,6 +157,7 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
 
       const saved = await saveWord(data);
       if (saved._created) {
+        notifyFlashcardDictionaryMutation();
         if (saved.progression?.dailyGoal) applyAccountDailyGoal(saved.progression.dailyGoal);
         else recordDailyWordAdded();
         setWords((prev) => {
@@ -165,17 +173,20 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
   const removeWord = useCallback(async (id: string) => {
     await deleteSavedWord(id);
     setWords((prev) => prev.filter((w) => w.id !== id));
+    notifyFlashcardDictionaryMutation(id, true);
   }, []);
 
   const updateImage = useCallback(async (id: string, imageUrl: string) => {
     const updated = await updateWordImage(id, imageUrl);
     setWords((prev) => prev.map((w) => (w.id === id ? updated : w)));
+    notifyFlashcardDictionaryMutation(id);
     return updated;
   }, []);
 
   const updateEntry = useCallback(async (id: string, data: DictionaryEntryUpdate) => {
     const updated = await updateSavedWord(id, data);
     setWords((prev) => prev.map((word) => (word.id === id ? updated : word)));
+    notifyFlashcardDictionaryMutation(id, true);
     return updated;
   }, []);
 
@@ -192,6 +203,7 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
       setError('');
       try {
         await reorderQueue(items);
+        notifyFlashcardDictionaryMutation();
       } catch (err) {
         runtimeLog.error('Queue reorder failed:', err);
         setWords(previousWords);

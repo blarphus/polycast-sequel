@@ -1,11 +1,11 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 571,
-    "lines": 89958,
-    "declarations": 2446,
+    "files": 574,
+    "lines": 90193,
+    "declarations": 2461,
     "extractCandidates": 0,
-    "reviewedOversizedFiles": 38,
+    "reviewedOversizedFiles": 39,
     "zeroCallerCandidates": 5
   },
   "files": [
@@ -17,6 +17,7 @@
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
         "client/src/test/epub.test.ts",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/offlineDictionary.test.ts",
         "client/src/test/runtimeDiagnostics.test.ts",
@@ -324,20 +325,27 @@
     },
     {
       "file": "client/src/App.tsx",
-      "lines": 425,
+      "lines": 463,
       "responsibility": "application support",
       "sideEffects": [
         "UI"
       ],
       "testCoverage": [
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "ios/Polycast/UITests/PolycastUITests.swift",
         "ios/Polycast/UITests/ReaderPopupUITests.swift",
         "server/test/auth.integration.test.js",
         "server/test/correlation.test.js"
       ],
-      "disposition": "intentionally standalone",
-      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "disposition": "reviewed-retain",
+      "dispositionReason": "Cohesive application support owner with no duplicate authoritative invariant.",
       "symbols": [
+        {
+          "name": "loadFlashcardPreloader",
+          "callers": 7,
+          "testReferences": [],
+          "disposition": "retain"
+        },
         {
           "name": "ProtectedRoute",
           "callers": 57,
@@ -365,7 +373,9 @@
         {
           "name": "App",
           "callers": 12,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts"
+          ],
           "disposition": "retain"
         }
       ]
@@ -382,6 +392,7 @@
         "client/src/test/catalogProgress.test.tsx",
         "client/src/test/dictionaryEntryEditor.test.tsx",
         "client/src/test/dictionaryGroups.test.ts",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/offlineDictionary.test.ts",
@@ -411,6 +422,7 @@
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
         "client/src/test/epub.test.ts",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/offlineDictionary.test.ts",
         "client/src/test/runtimeDiagnostics.test.ts",
@@ -746,6 +758,7 @@
       ],
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "extension/test/popup-landscape-layout.test.mjs",
         "server/lib/gemini.test.js",
@@ -833,8 +846,9 @@
         },
         {
           "name": "request",
-          "callers": 371,
+          "callers": 372,
           "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
             "server/lib/gemini.test.js",
             "server/lib/learnerDefinitionPrompt.test.js",
@@ -863,6 +877,7 @@
         "client/src/test/dictionaryGroups.test.ts",
         "client/src/test/dictionaryImageLayout.test.ts",
         "client/src/test/dictionaryScrollbar.test.ts",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/i18n.test.ts",
         "client/src/test/learnReviewLayout.test.ts",
         "client/src/test/offlineDictionary.test.ts",
@@ -983,8 +998,10 @@
         },
         {
           "name": "getDueWords",
-          "callers": 7,
-          "testReferences": [],
+          "callers": 8,
+          "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts"
+          ],
           "disposition": "retain"
         },
         {
@@ -3733,7 +3750,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -3983,9 +4000,11 @@
     },
     {
       "file": "client/src/hooks/useSavedWords.ts",
-      "lines": 232,
+      "lines": 244,
       "responsibility": "application support",
-      "sideEffects": [],
+      "sideEffects": [
+        "events"
+      ],
       "testCoverage": [],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -3993,6 +4012,12 @@
         {
           "name": "parseWordForms",
           "callers": 11,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "notifyFlashcardDictionaryMutation",
+          "callers": 5,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -4392,6 +4417,7 @@
         "client/src/test/apiContract.test.ts",
         "client/src/test/callSignalContract.test.ts",
         "client/src/test/dictionaryEntryEditor.test.tsx",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/offlineDictionary.test.ts",
@@ -4763,13 +4789,14 @@
     },
     {
       "file": "client/src/pages/Learn.tsx",
-      "lines": 874,
+      "lines": 756,
       "responsibility": "web route UI",
       "sideEffects": [
         "network",
         "UI"
       ],
       "testCoverage": [
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/learnReviewLayout.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/srs.test.ts",
@@ -4779,11 +4806,9 @@
       "dispositionReason": "One stateful screen/component lifecycle; reusable domain, card, popup, and transport seams are extracted.",
       "symbols": [
         {
-          "name": "getPromptType",
-          "callers": 14,
-          "testReferences": [
-            "ios/Polycast/Tests/PolycastTests.swift"
-          ],
+          "name": "loadFlashcardPreloader",
+          "callers": 7,
+          "testReferences": [],
           "disposition": "retain"
         },
         {
@@ -4809,21 +4834,10 @@
           "disposition": "retain"
         },
         {
-          "name": "spokenText",
-          "callers": 12,
-          "testReferences": [],
-          "disposition": "retain"
-        },
-        {
-          "name": "speechKey",
-          "callers": 2,
-          "testReferences": [],
-          "disposition": "retain"
-        },
-        {
           "name": "Learn",
-          "callers": 8,
+          "callers": 9,
           "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts",
             "client/src/test/learnReviewLayout.test.ts"
           ],
           "disposition": "retain"
@@ -5066,7 +5080,7 @@
         },
         {
           "name": "next",
-          "callers": 265,
+          "callers": 267,
           "testReferences": [
             "client/src/test/srs.test.ts",
             "client/src/test/watchTranscript.test.ts",
@@ -5622,6 +5636,16 @@
       ]
     },
     {
+      "file": "client/src/test/flashcardBackgroundPreload.test.ts",
+      "lines": 72,
+      "responsibility": "test",
+      "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
       "file": "client/src/test/groupCallLifecycle.test.tsx",
       "lines": 144,
       "responsibility": "test",
@@ -5675,7 +5699,7 @@
         },
         {
           "name": "app",
-          "callers": 67,
+          "callers": 69,
           "testReferences": [
             "client/src/test/groupCallProvider.test.tsx",
             "extension/test/app-bridge.test.mjs",
@@ -5829,6 +5853,7 @@
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/learnReviewLayout.test.ts",
         "client/src/test/libraryCardLayout.test.ts",
         "client/src/test/srs.test.ts",
@@ -5842,8 +5867,9 @@
       "symbols": [
         {
           "name": "card",
-          "callers": 844,
+          "callers": 841,
           "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts",
             "client/src/test/learnReviewLayout.test.ts",
             "client/src/test/libraryCardLayout.test.ts",
             "client/src/test/srs.test.ts",
@@ -6012,7 +6038,7 @@
       ],
       "testCoverage": [
         "client/src/test/aiSpeech.test.ts",
-        "client/src/test/learnReviewLayout.test.ts"
+        "client/src/test/flashcardBackgroundPreload.test.ts"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -6078,14 +6104,16 @@
         {
           "name": "preloadCardAudio",
           "callers": 2,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts"
+          ],
           "disposition": "retain"
         },
         {
           "name": "preloadAiSpeech",
           "callers": 2,
           "testReferences": [
-            "client/src/test/learnReviewLayout.test.ts"
+            "client/src/test/flashcardBackgroundPreload.test.ts"
           ],
           "disposition": "retain"
         }
@@ -6867,7 +6895,137 @@
         },
         {
           "name": "emitFallbackDiagnostic",
-          "callers": 62,
+          "callers": 64,
+          "testReferences": [],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "client/src/utils/flashcardPreload.ts",
+      "lines": 196,
+      "responsibility": "application support",
+      "sideEffects": [],
+      "testCoverage": [
+        "client/src/test/flashcardBackgroundPreload.test.ts",
+        "client/src/test/learnReviewLayout.test.ts"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "speechKey",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "revokeSpeechCache",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "useUserScope",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "reportPreloadFallback",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "resetFlashcardPreload",
+          "callers": 2,
+          "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "invalidateFlashcardCards",
+          "callers": 4,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "invalidateFlashcardSpeech",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "ensureFlashcardSpeech",
+          "callers": 4,
+          "testReferences": [
+            "client/src/test/learnReviewLayout.test.ts"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "getPrefetchedFlashcards",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "warmFlashcardAudio",
+          "callers": 4,
+          "testReferences": [
+            "client/src/test/learnReviewLayout.test.ts"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "prefetchFlashcards",
+          "callers": 2,
+          "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "prepareFlashcardsForStudy",
+          "callers": 2,
+          "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts",
+            "client/src/test/learnReviewLayout.test.ts"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
+      "file": "client/src/utils/flashcardSpeech.ts",
+      "lines": 35,
+      "responsibility": "application support",
+      "sideEffects": [],
+      "testCoverage": [
+        "ios/Polycast/Tests/PolycastTests.swift"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "getPromptType",
+          "callers": 15,
+          "testReferences": [
+            "ios/Polycast/Tests/PolycastTests.swift"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "spokenText",
+          "callers": 11,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "cardSpeechTexts",
+          "callers": 3,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -7166,7 +7324,7 @@
         },
         {
           "name": "createScopedRuntimeLogger",
-          "callers": 132,
+          "callers": 134,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -7446,7 +7604,7 @@
         },
         {
           "name": "stripTildes",
-          "callers": 23,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -7682,6 +7840,7 @@
       "testCoverage": [
         "client/src/test/dailyGoal.test.ts",
         "client/src/test/dictionaryImageLayout.test.ts",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs",
         "extension/test/no-page-highlights.test.mjs"
@@ -9171,6 +9330,7 @@
         "events"
       ],
       "testCoverage": [
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/gemini.test.js",
@@ -9218,8 +9378,9 @@
         },
         {
           "name": "request",
-          "callers": 371,
+          "callers": 372,
           "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
             "server/lib/gemini.test.js",
             "server/lib/learnerDefinitionPrompt.test.js",
@@ -9872,6 +10033,7 @@
         "network"
       ],
       "testCoverage": [
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx"
       ],
@@ -9943,8 +10105,10 @@
         },
         {
           "name": "preload",
-          "callers": 13,
-          "testReferences": [],
+          "callers": 14,
+          "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts"
+          ],
           "disposition": "retain"
         },
         {
@@ -10110,7 +10274,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -10197,7 +10361,7 @@
         },
         {
           "name": "delete",
-          "callers": 93,
+          "callers": 95,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -10797,7 +10961,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -10806,7 +10970,7 @@
         },
         {
           "name": "clear",
-          "callers": 47,
+          "callers": 48,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -10822,7 +10986,7 @@
         },
         {
           "name": "delete",
-          "callers": 93,
+          "callers": 95,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -10896,7 +11060,7 @@
         },
         {
           "name": "data",
-          "callers": 905,
+          "callers": 904,
           "testReferences": [
             "client/src/test/groupCallLifecycle.test.tsx",
             "client/src/test/groupCallProvider.test.tsx",
@@ -10913,7 +11077,7 @@
         },
         {
           "name": "string",
-          "callers": 1943,
+          "callers": 1951,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
@@ -10968,6 +11132,7 @@
       "testCoverage": [
         "client/src/test/dictionaryEntryEditor.test.tsx",
         "client/src/test/dictionaryGroups.test.ts",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/offlineDictionary.test.ts",
         "client/src/test/srs.test.ts",
         "client/src/test/watchTranscript.test.ts",
@@ -11109,10 +11274,11 @@
         },
         {
           "name": "SavedWord",
-          "callers": 171,
+          "callers": 177,
           "testReferences": [
             "client/src/test/dictionaryEntryEditor.test.tsx",
             "client/src/test/dictionaryGroups.test.ts",
+            "client/src/test/flashcardBackgroundPreload.test.ts",
             "client/src/test/offlineDictionary.test.ts",
             "client/src/test/srs.test.ts",
             "ios/Polycast/Tests/PolycastTests.swift"
@@ -11348,13 +11514,13 @@
         },
         {
           "name": "PromptType",
-          "callers": 21,
+          "callers": 23,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "getPromptType",
-          "callers": 14,
+          "callers": 15,
           "testReferences": [
             "ios/Polycast/Tests/PolycastTests.swift"
           ],
@@ -11609,7 +11775,7 @@
         },
         {
           "name": "on",
-          "callers": 280,
+          "callers": 281,
           "testReferences": [
             "client/src/test/dictionaryEntryEditor.test.tsx",
             "client/src/test/groupCallLifecycle.test.tsx",
@@ -11724,7 +11890,7 @@
       "symbols": [
         {
           "name": "stripTildes",
-          "callers": 23,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -11931,7 +12097,7 @@
         },
         {
           "name": "provider",
-          "callers": 48,
+          "callers": 47,
           "testReferences": [
             "client/src/test/sessionExpiration.test.tsx"
           ],
@@ -12176,7 +12342,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12413,7 +12579,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12491,7 +12657,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -12967,7 +13133,7 @@
         },
         {
           "name": "delete",
-          "callers": 93,
+          "callers": 95,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -13160,7 +13326,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -13307,7 +13473,7 @@
       "symbols": [
         {
           "name": "spokenText",
-          "callers": 12,
+          "callers": 11,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -13405,7 +13571,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14239,7 +14405,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14287,7 +14453,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -14504,7 +14670,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -15145,7 +15311,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -15323,7 +15489,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -15597,7 +15763,7 @@
         },
         {
           "name": "load",
-          "callers": 140,
+          "callers": 142,
           "testReferences": [
             "client/src/test/runtimeDiagnostics.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift"
@@ -16301,6 +16467,7 @@
         "client/src/test/callSignalContract.test.ts",
         "client/src/test/dictionaryEntryEditor.test.tsx",
         "client/src/test/dictionaryGroups.test.ts",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/offlineDictionary.test.ts",
@@ -16412,10 +16579,11 @@
         },
         {
           "name": "SavedWord",
-          "callers": 171,
+          "callers": 177,
           "testReferences": [
             "client/src/test/dictionaryEntryEditor.test.tsx",
             "client/src/test/dictionaryGroups.test.ts",
+            "client/src/test/flashcardBackgroundPreload.test.ts",
             "client/src/test/offlineDictionary.test.ts",
             "client/src/test/srs.test.ts",
             "ios/Polycast/Tests/PolycastTests.swift"
@@ -17114,6 +17282,7 @@
         "client/src/test/cbz.test.ts",
         "client/src/test/dictionaryEntryEditor.test.tsx",
         "client/src/test/epub.test.ts",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/groupCallLifecycle.test.tsx",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/readerSelection.test.ts",
@@ -17164,6 +17333,7 @@
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
         "client/src/test/epub.test.ts",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/offlineDictionary.test.ts",
         "client/src/test/runtimeDiagnostics.test.ts",
@@ -19531,7 +19701,7 @@
         },
         {
           "name": "stripTildes",
-          "callers": 23,
+          "callers": 24,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -21121,6 +21291,7 @@
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
         "client/src/test/epub.test.ts",
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/offlineDictionary.test.ts",
         "client/src/test/runtimeDiagnostics.test.ts",
@@ -24363,6 +24534,7 @@
         "network"
       ],
       "testCoverage": [
+        "client/src/test/flashcardBackgroundPreload.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "server/lib/gemini.test.js",
         "server/lib/learnerDefinitionPrompt.test.js",
@@ -24391,8 +24563,9 @@
         },
         {
           "name": "request",
-          "callers": 371,
+          "callers": 372,
           "testReferences": [
+            "client/src/test/flashcardBackgroundPreload.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
             "server/lib/gemini.test.js",
             "server/lib/learnerDefinitionPrompt.test.js",
