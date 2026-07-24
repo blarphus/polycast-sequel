@@ -699,11 +699,26 @@
 
 /* Frequency ladder master-detail redesign */
 .dict-ladder-page {
+  display: flex;
+  height: 100dvh;
+  min-height: 0;
+  box-sizing: border-box;
+  flex-direction: column;
+  overflow: hidden;
   padding: 1.5rem;
+}
+
+.dict-ladder-page .dict-main,
+.dict-ladder-page .home-section {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
 }
 
 .dict-heading-row {
   display: flex;
+  flex: 0 0 auto;
   align-items: flex-end;
   justify-content: space-between;
   gap: 1.5rem;
@@ -751,6 +766,7 @@
 }
 
 .dict-ladder-controls {
+  flex: 0 0 auto;
   margin-bottom: 0.85rem;
 }
 
@@ -760,16 +776,18 @@
 
 .dict-ladder-loading {
   display: grid;
-  min-height: 50vh;
+  min-height: 0;
+  flex: 1 1 auto;
   place-items: center;
   color: var(--text-muted);
 }
 
 .dict-ladder-workspace {
   display: grid;
+  min-height: 0;
+  height: auto;
+  flex: 1 1 auto;
   grid-template-columns: minmax(330px, 0.82fr) minmax(460px, 1.45fr);
-  height: calc(100dvh - 225px);
-  min-height: 620px;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: calc(var(--radius-lg) + 2px);
@@ -1268,7 +1286,8 @@
     display: flex;
     height: auto;
     min-height: 0;
-    overflow: visible;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     flex-direction: column;
   }
 
