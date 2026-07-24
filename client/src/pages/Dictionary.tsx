@@ -129,6 +129,8 @@ export default function Dictionary() {
   const [imagePickerWord, setImagePickerWord] = useState<SavedWord | null>(null);
   const [audioLoadingId, setAudioLoadingId] = useState<string | null>(null);
   const [collapsedBands, setCollapsedBands] = useState<Set<string>>(new Set());
+  const [loadedImageKey, setLoadedImageKey] = useState<string | null>(null);
+  const [failedImageKey, setFailedImageKey] = useState<string | null>(null);
 
   const loadInitial = useCallback(async () => {
     setLoading(true);
@@ -181,7 +183,15 @@ export default function Dictionary() {
       ?? null,
     [selectedEntryId, selectedGroup],
   );
+  const selectedImageKey = selectedEntry?.image_url
+    ? `${selectedEntry.id}|${selectedEntry.image_url}`
+    : null;
   const frequencyGroups = useMemo(() => groupByFrequency(wordGroups), [wordGroups]);
+
+  useEffect(() => {
+    setLoadedImageKey(null);
+    setFailedImageKey(null);
+  }, [selectedImageKey]);
 
   useEffect(() => {
     if (selectedGroup && !selectedGroup.entries.some((entry) => entry.id === selectedEntryId)) {
@@ -438,11 +448,33 @@ export default function Dictionary() {
 
                   <div className="dict-hero-image">
                     {selectedEntry.image_url ? (
-                      <img
-                        src={proxyImageUrl(selectedEntry.image_url)!}
-                        alt={selectedEntry.word}
-                        onClick={() => setLightboxUrl(selectedEntry.image_url)}
-                      />
+                      <>
+                        <img
+                          className={loadedImageKey === selectedImageKey ? 'is-ready' : 'is-loading'}
+                          src={proxyImageUrl(selectedEntry.image_url)!}
+                          alt={selectedEntry.word}
+                          onLoad={() => {
+                            setLoadedImageKey(selectedImageKey);
+                            setFailedImageKey(null);
+                          }}
+                          onError={() => setFailedImageKey(selectedImageKey)}
+                          onClick={() => {
+                            if (loadedImageKey === selectedImageKey) setLightboxUrl(selectedEntry.image_url);
+                          }}
+                        />
+                        {loadedImageKey !== selectedImageKey && failedImageKey !== selectedImageKey && (
+                          <div className="dict-image-loading" role="status" aria-label={`Loading image for ${selectedEntry.word}`}>
+                            <span className="dict-image-spinner" />
+                            <span>Loading image…</span>
+                          </div>
+                        )}
+                        {failedImageKey === selectedImageKey && (
+                          <div className="dict-image-error" role="alert">
+                            <span>This image couldn’t load.</span>
+                            <button type="button" onClick={() => setImagePickerWord(selectedEntry)}>Choose another</button>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <button type="button" className="dict-image-placeholder" onClick={() => setImagePickerWord(selectedEntry)}>
                         <BookPlusIcon size={30} />
