@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 580,
-    "lines": 90506,
-    "declarations": 2454,
+    "files": 582,
+    "lines": 90790,
+    "declarations": 2455,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 39,
     "zeroCallerCandidates": 5
@@ -428,6 +428,7 @@
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/srs.test.ts",
         "client/src/test/studentDetailVocabulary.test.tsx",
+        "client/src/test/studentsWorkspace.test.ts",
         "client/src/test/watchTranscript.test.ts",
         "client/src/test/wordFormsDialog.test.tsx",
         "extension/test/background.test.mjs",
@@ -549,6 +550,7 @@
       "testCoverage": [
         "client/src/test/bottomToolbar.test.tsx",
         "client/src/test/studentDetailVocabulary.test.tsx",
+        "client/src/test/studentsWorkspace.test.ts",
         "server/services/classroomStudentStats.test.js",
         "server/test/auth.integration.test.js",
         "server/test/classBookService.test.js",
@@ -663,9 +665,10 @@
         },
         {
           "name": "getStudentStats",
-          "callers": 3,
+          "callers": 4,
           "testReferences": [
-            "client/src/test/studentDetailVocabulary.test.tsx"
+            "client/src/test/studentDetailVocabulary.test.tsx",
+            "client/src/test/studentsWorkspace.test.ts"
           ],
           "disposition": "retain"
         }
@@ -1471,7 +1474,8 @@
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/i18n.test.ts",
-        "client/src/test/practiceLocalization.test.ts"
+        "client/src/test/practiceLocalization.test.ts",
+        "server/test/wiktionaryGlossLocalization.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -1710,7 +1714,7 @@
       "symbols": [
         {
           "name": "Avatar",
-          "callers": 10,
+          "callers": 12,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -2817,7 +2821,7 @@
         },
         {
           "name": "BookOpenIcon",
-          "callers": 14,
+          "callers": 16,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -2901,19 +2905,19 @@
         },
         {
           "name": "CalendarIcon",
-          "callers": 8,
+          "callers": 11,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "SearchIcon",
-          "callers": 6,
+          "callers": 8,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "PlusIcon",
-          "callers": 17,
+          "callers": 18,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -2931,7 +2935,7 @@
         },
         {
           "name": "CheckCircleIcon",
-          "callers": 10,
+          "callers": 14,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -2943,13 +2947,13 @@
         },
         {
           "name": "ChevronRightIcon",
-          "callers": 14,
+          "callers": 18,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "ChevronLeftIcon",
-          "callers": 34,
+          "callers": 32,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -2985,7 +2989,7 @@
         },
         {
           "name": "ExternalLinkIcon",
-          "callers": 2,
+          "callers": 4,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -3057,13 +3061,13 @@
         },
         {
           "name": "TargetIcon",
-          "callers": 6,
+          "callers": 9,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "FlameIcon",
-          "callers": 2,
+          "callers": 4,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -3606,7 +3610,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -4143,7 +4147,7 @@
         },
         {
           "name": "translate",
-          "callers": 61,
+          "callers": 63,
           "testReferences": [
             "client/src/test/i18n.test.ts",
             "client/src/test/practiceLocalization.test.ts"
@@ -5178,7 +5182,7 @@
         },
         {
           "name": "StudentDetail",
-          "callers": 7,
+          "callers": 9,
           "testReferences": [
             "client/src/test/studentDetailVocabulary.test.tsx"
           ],
@@ -5188,11 +5192,12 @@
     },
     {
       "file": "client/src/pages/Students.tsx",
-      "lines": 264,
+      "lines": 486,
       "responsibility": "web route UI",
       "sideEffects": [],
       "testCoverage": [
-        "client/src/test/bottomToolbar.test.tsx"
+        "client/src/test/bottomToolbar.test.tsx",
+        "client/src/test/studentsWorkspace.test.ts"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -5201,7 +5206,8 @@
           "name": "Students",
           "callers": 18,
           "testReferences": [
-            "client/src/test/bottomToolbar.test.tsx"
+            "client/src/test/bottomToolbar.test.tsx",
+            "client/src/test/studentsWorkspace.test.ts"
           ],
           "disposition": "retain"
         }
@@ -5788,7 +5794,7 @@
       "symbols": [
         {
           "name": "card",
-          "callers": 843,
+          "callers": 850,
           "testReferences": [
             "client/src/test/flashcardBackgroundPreload.test.ts",
             "client/src/test/learnReviewLayout.test.ts",
@@ -5811,6 +5817,16 @@
         "events",
         "UI"
       ],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
+      "file": "client/src/test/studentsWorkspace.test.ts",
+      "lines": 17,
+      "responsibility": "test",
+      "sideEffects": [],
       "testCoverage": [],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -9740,6 +9756,7 @@
       "testCoverage": [
         "client/src/test/homeReviewFirst.test.ts",
         "client/src/test/studentDetailVocabulary.test.tsx",
+        "client/src/test/studentsWorkspace.test.ts",
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs",
         "extension/test/fallback-toast.test.mjs",
@@ -9858,9 +9875,10 @@
         },
         {
           "name": "getStudentStats",
-          "callers": 3,
+          "callers": 4,
           "testReferences": [
-            "client/src/test/studentDetailVocabulary.test.tsx"
+            "client/src/test/studentDetailVocabulary.test.tsx",
+            "client/src/test/studentsWorkspace.test.ts"
           ],
           "disposition": "retain"
         }
@@ -10349,7 +10367,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -11037,7 +11055,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -11153,7 +11171,7 @@
         },
         {
           "name": "string",
-          "callers": 1941,
+          "callers": 1942,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
@@ -11237,7 +11255,7 @@
         },
         {
           "name": "Classroom",
-          "callers": 43,
+          "callers": 42,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -11769,6 +11787,7 @@
         "client/src/test/localCbzStorage.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/settingsControls.test.ts",
+        "client/src/test/studentsWorkspace.test.ts",
         "client/src/test/ttsFallbackToast.test.tsx",
         "extension/test/activation.test.mjs",
         "extension/test/popup-anchor-callout.test.mjs",
@@ -11783,7 +11802,8 @@
         "server/test/dictionaryScheduleDiagnostic.test.js",
         "server/test/groupCallSocket.test.js",
         "server/test/scheduleTriggerMigration.test.js",
-        "server/test/userLibraryBookService.test.js"
+        "server/test/userLibraryBookService.test.js",
+        "server/test/wiktionaryGlossLocalization.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -11861,6 +11881,7 @@
             "client/src/test/localCbzStorage.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
             "client/src/test/settingsControls.test.ts",
+            "client/src/test/studentsWorkspace.test.ts",
             "client/src/test/ttsFallbackToast.test.tsx",
             "extension/test/activation.test.mjs",
             "server/lib/srsAlgorithm.test.js",
@@ -11869,7 +11890,8 @@
             "server/test/dictionaryScheduleDiagnostic.test.js",
             "server/test/groupCallSocket.test.js",
             "server/test/scheduleTriggerMigration.test.js",
-            "server/test/userLibraryBookService.test.js"
+            "server/test/userLibraryBookService.test.js",
+            "server/test/wiktionaryGlossLocalization.test.js"
           ],
           "disposition": "retain"
         },
@@ -12428,7 +12450,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -12462,7 +12484,7 @@
         },
         {
           "name": "remove",
-          "callers": 88,
+          "callers": 89,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -12674,7 +12696,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -12754,7 +12776,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -12841,7 +12863,7 @@
         },
         {
           "name": "remove",
-          "callers": 88,
+          "callers": 89,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -13075,7 +13097,7 @@
         },
         {
           "name": "search",
-          "callers": 149,
+          "callers": 152,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -13284,7 +13306,7 @@
         },
         {
           "name": "search",
-          "callers": 149,
+          "callers": 152,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -13422,7 +13444,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -13669,7 +13691,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -13903,7 +13925,7 @@
         },
         {
           "name": "translate",
-          "callers": 61,
+          "callers": 63,
           "testReferences": [
             "client/src/test/i18n.test.ts",
             "client/src/test/practiceLocalization.test.ts"
@@ -14122,7 +14144,7 @@
         },
         {
           "name": "section",
-          "callers": 101,
+          "callers": 100,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -14512,7 +14534,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -14562,7 +14584,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -14660,7 +14682,7 @@
         },
         {
           "name": "search",
-          "callers": 149,
+          "callers": 152,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -14781,7 +14803,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -15148,7 +15170,7 @@
         },
         {
           "name": "trim",
-          "callers": 315,
+          "callers": 319,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "server/lib/httpErrors.test.js"
@@ -15424,7 +15446,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -15606,7 +15628,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -15884,7 +15906,7 @@
         },
         {
           "name": "load",
-          "callers": 142,
+          "callers": 144,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -16616,7 +16638,7 @@
         },
         {
           "name": "placeholder",
-          "callers": 51,
+          "callers": 52,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -17139,7 +17161,7 @@
         },
         {
           "name": "main",
-          "callers": 77,
+          "callers": 78,
           "testReferences": [
             "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
@@ -17756,7 +17778,7 @@
       "symbols": [
         {
           "name": "main",
-          "callers": 77,
+          "callers": 78,
           "testReferences": [
             "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
@@ -18793,7 +18815,7 @@
       "symbols": [
         {
           "name": "translateText",
-          "callers": 6,
+          "callers": 7,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -20070,7 +20092,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20099,7 +20121,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20128,7 +20150,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20163,7 +20185,7 @@
         },
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20192,7 +20214,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20221,7 +20243,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20250,7 +20272,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20279,7 +20301,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20308,7 +20330,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20337,7 +20359,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20366,7 +20388,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20395,7 +20417,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20424,7 +20446,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20454,7 +20476,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20484,7 +20506,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20513,7 +20535,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20542,7 +20564,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20571,7 +20593,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20600,7 +20622,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20629,7 +20651,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20658,7 +20680,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20687,7 +20709,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20717,7 +20739,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20746,7 +20768,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20775,7 +20797,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20804,7 +20826,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20833,7 +20855,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20862,7 +20884,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20891,7 +20913,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20920,7 +20942,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20949,7 +20971,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -20978,7 +21000,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21007,7 +21029,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21036,7 +21058,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21065,7 +21087,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21094,7 +21116,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21123,7 +21145,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21152,7 +21174,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21181,7 +21203,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21210,7 +21232,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21245,7 +21267,7 @@
         },
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21274,7 +21296,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21303,7 +21325,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21332,7 +21354,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21361,7 +21383,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21390,7 +21412,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21419,7 +21441,7 @@
       "symbols": [
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21454,7 +21476,7 @@
         },
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -21489,7 +21511,7 @@
         },
         {
           "name": "up",
-          "callers": 118,
+          "callers": 119,
           "testReferences": [
             "client/src/test/localCbzStorage.test.ts",
             "ios/Polycast/UITests/PolycastUITests.swift",
@@ -22028,7 +22050,8 @@
       "sideEffects": [],
       "testCoverage": [
         "client/src/test/i18n.test.ts",
-        "client/src/test/practiceLocalization.test.ts"
+        "client/src/test/practiceLocalization.test.ts",
+        "server/test/wiktionaryGlossLocalization.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -22215,7 +22238,7 @@
         },
         {
           "name": "main",
-          "callers": 77,
+          "callers": 78,
           "testReferences": [
             "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
@@ -22322,7 +22345,7 @@
         },
         {
           "name": "main",
-          "callers": 77,
+          "callers": 78,
           "testReferences": [
             "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
@@ -22492,7 +22515,7 @@
         },
         {
           "name": "main",
-          "callers": 77,
+          "callers": 78,
           "testReferences": [
             "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
@@ -22546,7 +22569,7 @@
         },
         {
           "name": "main",
-          "callers": 77,
+          "callers": 78,
           "testReferences": [
             "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
@@ -22594,7 +22617,7 @@
         },
         {
           "name": "main",
-          "callers": 77,
+          "callers": 78,
           "testReferences": [
             "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
@@ -22652,7 +22675,7 @@
         },
         {
           "name": "main",
-          "callers": 77,
+          "callers": 78,
           "testReferences": [
             "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
@@ -24173,10 +24196,11 @@
     },
     {
       "file": "server/services/wordSemanticsService.js",
-      "lines": 635,
+      "lines": 646,
       "responsibility": "server domain/integration",
       "sideEffects": [],
       "testCoverage": [
+        "server/test/wiktionaryGlossLocalization.test.js",
         "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "reviewed-retain",
@@ -24200,6 +24224,14 @@
           "name": "translateWordInSentence",
           "callers": 1,
           "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "localizeWiktionaryGloss",
+          "callers": 2,
+          "testReferences": [
+            "server/test/wiktionaryGlossLocalization.test.js"
+          ],
           "disposition": "retain"
         },
         {
@@ -24436,6 +24468,7 @@
         "server/test/dictionaryQueries.test.js",
         "server/test/learningSessionService.test.js",
         "server/test/userLibraryBookService.test.js",
+        "server/test/wiktionaryGlossLocalization.test.js",
         "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -25165,6 +25198,16 @@
       "sideEffects": [
         "database"
       ],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
+      "file": "server/test/wiktionaryGlossLocalization.test.js",
+      "lines": 34,
+      "responsibility": "test",
+      "sideEffects": [],
       "testCoverage": [],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",

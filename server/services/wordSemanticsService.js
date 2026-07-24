@@ -55,6 +55,14 @@ async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
   return { translation: fallback.trim(), usedFallback: true };
 }
 
+export async function localizeWiktionaryGloss(gloss, nativeLang, translate = translateText) {
+  const definition = String(gloss || '').trim();
+  if (!definition) return '';
+  const language = String(nativeLang || '').trim().toLowerCase().split(/[-_]/)[0];
+  if (!language || language === 'en') return definition;
+  return (await translate(definition, 'en', nativeLang)).trim();
+}
+
 // pickBestSense — Gemini reads the sentence and candidate senses and, in ONE call, returns
 // (a) a PICK token — the INDEX number of the sense that states the meaning, the BASE word when the
 // best sense only points to another word (e.g. "plural of mão", "gerund of atenuar combined
@@ -237,17 +245,20 @@ export async function resolveDictionaryLookupFast({ word, sentence, nativeLang, 
   if (!resolved) return null; // no fitting sense / unresolvable base — escalate to full Gemini
   const translation = pick.translation;
   if (!translation) return null; // no usable translation — escalate to full Gemini
+  const localizedDefinition = resolved.is_existing
+    ? resolved.definition
+    : await localizeWiktionaryGloss(resolved.definition, nativeLang);
 
   return {
     word,
     target_word: word,
     valid: true,
     translation,
-    definition: resolved.definition,
+    definition: localizedDefinition,
     gemini_definition: null,
     part_of_speech: resolved.part_of_speech,
     sense_index: resolved.sense_index ?? null,
-    matched_gloss: resolved.definition,
+    matched_gloss: localizedDefinition,
     lemma: resolved.lemma,
     is_native: false,
     definition_source: resolved.is_existing ? 'user' : 'wiktionary',
@@ -467,7 +478,7 @@ ${senseInstruction}
     const idx = parsed.sense_index;
     if (Number.isInteger(idx) && idx >= 0 && idx < wiktSenses.length) {
       sense_index = idx;
-      matched_gloss = wiktSenses[idx].gloss;
+      matched_gloss = await localizeWiktionaryGloss(wiktSenses[idx].gloss, nativeLang);
     }
   }
 
