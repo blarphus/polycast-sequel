@@ -11,6 +11,7 @@ id = "f1b0aeb956644a4ea16e83f97de3f35c"
 
 [vars]
 ALLOWED_ORIGINS = "https://polycast-sequel.onrender.com"
+QUOTA_TTS = "60"
 
 [placement]
 mode = "smart"

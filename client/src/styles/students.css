@@ -1112,6 +1112,16 @@
   overflow-wrap: anywhere;
 }
 
+.sd-vocab-context-highlight {
+  padding: 0.03em 0.16em;
+  border-radius: 0.28em;
+  color: #765000;
+  background: #ffe27a;
+  box-shadow: 0 2px 0 #d9ad18;
+  font-weight: 750;
+  font-style: inherit;
+}
+
 .sd-vocab-stage-line {
   display: flex;
   align-items: center;

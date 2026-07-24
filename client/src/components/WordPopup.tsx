@@ -154,6 +154,7 @@ export default function WordPopup(props: WordPopupProps) {
             image_url: enriched.image_url,
             lemma: enriched.lemma || lemma || null,
             forms: enriched.forms || null,
+            surface_form: word,
             image_term: enriched.image_term,
             shared_entry_id: enriched.shared_entry_id || null,
             rank_version_id: enriched.rank_version_id || null,

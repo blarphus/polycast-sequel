@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authMiddleware } from '../auth.js';
 import { validate } from '../lib/validate.js';
+import { normalizeFallbackDiagnostic, setFallbackDiagnosticHeader } from '../lib/fallbackDiagnostics.js';
 import pool from '../db.js';
 import {
   completeVoicePracticeSession,
@@ -158,19 +159,37 @@ router.post('/api/practice/voice/sessions/:id/complete', authMiddleware, validat
 
 router.post('/api/practice/voice/speak', authMiddleware, validate({ body: speakBody }), async (req, res) => {
   try {
-    const { audioBuffer, usedFallback } = await synthesizeVoiceFeedback({
+    const { audioBuffer, usedFallback, fallbackReason } = await synthesizeVoiceFeedback({
       text: req.body.text,
       languageCode: req.body.languageCode,
       userId: req.userId,
       correlationId: req.id,
     });
-    if (usedFallback) res.setHeader('X-Polycast-TTS-Fallback', 'openai');
+    if (usedFallback) {
+      const reason = fallbackReason || 'provider-unavailable';
+      const diagnostic = normalizeFallbackDiagnostic({
+        code: 'tts_openai_fallback_used',
+        severity: 'warning',
+        title: 'Alternate speech voice used',
+        message: reason === 'unsupported-language'
+          ? 'Cloudflare does not support this speech language, so Polycast used the OpenAI voice.'
+          : 'Cloudflare speech was temporarily unavailable, so Polycast used the OpenAI voice.',
+        source: 'server.voice-practice',
+        operation: 'synthesize-speech',
+        correlationId: req.id,
+        detail: `reason=${reason}; language=${req.body.languageCode || 'unknown'}`,
+      });
+      req.log.warn({ fallback: diagnostic, userId: req.userId }, 'Voice TTS fallback used');
+      setFallbackDiagnosticHeader(res, diagnostic);
+      res.setHeader('X-Polycast-TTS-Fallback', 'openai');
+      res.setHeader('X-Polycast-TTS-Fallback-Reason', reason);
+    }
     res.setHeader('Content-Type', audioContentType(audioBuffer));
     res.setHeader('Cache-Control', 'no-store');
     return res.send(audioBuffer);
   } catch (err) {
     req.log.error({ err }, 'POST /api/practice/voice/speak error');
-    return res.status(500).json({ error: err.message || 'Failed to synthesize voice feedback' });
+    return res.status(err.status || 500).json({ error: err.message || 'Failed to synthesize voice feedback' });
   }
 });
 

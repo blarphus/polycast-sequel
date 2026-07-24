@@ -38,6 +38,8 @@ test('teacher student-word payload exposes scheduling and dictionary detail fiel
     part_of_speech: 'verb',
     image_url: 'https://example.com/hacer.png',
     sentence_context: 'Ella hace pan.',
+    surface_form: 'hace',
+    forms: '["hacer","hace"]',
     example_sentence: 'Hago la cena.',
     frequency: 10,
     frequency_count: 1234,
@@ -52,6 +54,8 @@ test('teacher student-word payload exposes scheduling and dictionary detail fiel
   });
 
   assert.equal(payload.definition, 'to do or make');
+  assert.equal(payload.surface_form, 'hace');
+  assert.equal(payload.forms, '["hacer","hace"]');
   assert.equal(payload.due_at, '2026-07-24T12:00:00Z');
   assert.equal(payload.frequency, 10);
   assert.equal(payload.correct_count, 4);

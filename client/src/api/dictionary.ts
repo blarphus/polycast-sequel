@@ -169,6 +169,7 @@ export interface SaveWordData {
   image_url?: string | null;
   lemma?: string | null;
   forms?: string | null;
+  surface_form?: string | null;
   image_term?: string | null;
   shared_entry_id?: string | null;
   rank_version_id?: string | null;
@@ -203,6 +204,7 @@ export interface SavedWord {
   image_url: string | null;
   lemma: string | null;
   forms: string | null;
+  surface_form?: string | null;
   prompt_stage: number;
   priority: boolean;
   image_term: string | null;

@@ -360,6 +360,8 @@ export function serializeStudentWord(word) {
     part_of_speech: word.part_of_speech,
     image_url: word.image_url || null,
     sentence_context: word.sentence_context || null,
+    surface_form: word.surface_form || null,
+    forms: word.forms || null,
     example_sentence: word.example_sentence || null,
     frequency: word.frequency ?? null,
     frequency_count: word.frequency_count ?? null,
@@ -413,7 +415,7 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
 
   const wordsResult = await pool.query(
     `SELECT id, word, translation, definition, part_of_speech, image_url,
-            sentence_context, example_sentence, frequency, frequency_count,
+            sentence_context, surface_form, forms, example_sentence, frequency, frequency_count,
             lemma_frequency_rank, srs_interval, due_at, last_reviewed_at,
             correct_count, incorrect_count, learning_step, created_at
      FROM saved_words

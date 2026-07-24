@@ -28,14 +28,18 @@ export default function FallbackToast() {
     };
 
     const handleTtsFallback = (event: Event) => {
-      const detail = (event as CustomEvent<Partial<FallbackDiagnostic>>).detail;
+      const detail = (event as CustomEvent<Partial<FallbackDiagnostic> & { fallbackReason?: string }>).detail;
       const language = languageName(detail?.languageCode);
+      const temporary = detail?.fallbackReason && detail.fallbackReason !== 'unsupported-language';
       showNotice(normalizeFallbackDiagnostic({
         code: 'tts_provider_fallback',
         severity: 'warning',
         title: 'Voice fallback used',
-        message: `Cloudflare does not support ${language} yet. Using the OpenAI voice fallback.`,
+        message: temporary
+          ? 'Cloudflare speech was temporarily unavailable. Using the OpenAI voice fallback.'
+          : `Cloudflare does not support ${language} yet. Using the OpenAI voice fallback.`,
         languageCode: detail?.languageCode,
+        detail: detail?.fallbackReason ? `reason=${detail.fallbackReason}` : undefined,
       }, { source: 'web.tts', operation: 'synthesize-speech' }));
     };
 

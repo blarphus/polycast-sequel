@@ -10,6 +10,8 @@ import type { StudentDetail as StudentDetailData, DailyActivity, RecentSession, 
 import { ChevronLeftIcon, CheckIcon } from '../components/icons';
 import { formatDate as formatShortDate } from '../utils/dateFormat';
 import { useAsyncData } from '../hooks/useAsyncData';
+import { renderSavedWordHighlight } from '../utils/tildeMarkup';
+import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -61,6 +63,26 @@ function localDateKey(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function sourceWordCandidates(word: StudentWord) {
+  const candidates = [word.surface_form, word.word];
+  if (!word.forms) return candidates;
+  if (!word.forms.startsWith('[')) return [...candidates, ...word.forms.split(',')];
+  try {
+    const parsed = JSON.parse(word.forms);
+    if (!Array.isArray(parsed)) throw new Error('Structured forms were not an array.');
+    return [...candidates, ...parsed.map(String)];
+  } catch (error) {
+    emitFallbackDiagnostic({
+      code: 'student_word_forms_display_fallback',
+      severity: 'warning',
+      title: 'Saved word forms unavailable',
+      message: 'This student entry has malformed structured forms, so Polycast used its legacy form list while highlighting the source sentence.',
+      detail: error instanceof Error ? error.message : String(error),
+    }, { source: 'web.teacher-dashboard', operation: 'highlight-saved-source' });
+    return [...candidates, ...word.forms.split(',')];
+  }
 }
 
 const SESSION_LABELS: Record<string, { label: string; color: string }> = {
@@ -434,7 +456,15 @@ function StudentVocabularyPanel({ words }: { words: StudentWord[] }) {
                 {selectedWord.sentence_context && (
                   <div className="sd-vocab-detail-card">
                     <span>Saved from</span>
-                    <p><i>{selectedWord.sentence_context}</i></p>
+                    <p>
+                      <i>
+                        {renderSavedWordHighlight(
+                          selectedWord.sentence_context,
+                          sourceWordCandidates(selectedWord),
+                          'sd-vocab-context-highlight',
+                        )}
+                      </i>
+                    </p>
                   </div>
                 )}
                 {selectedWord.example_sentence && (

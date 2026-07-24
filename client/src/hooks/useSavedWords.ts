@@ -142,6 +142,7 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
       image_url?: string | null;
       lemma?: string | null;
       forms?: string | null;
+      surface_form?: string | null;
     }) => {
       // Optimistically add word (and its forms) so it turns blue instantly
       setOptimisticWords((prev) => {

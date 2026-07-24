@@ -117,6 +117,8 @@ export interface StudentWord {
   part_of_speech: string | null;
   image_url: string | null;
   sentence_context: string | null;
+  surface_form: string | null;
+  forms: string | null;
   example_sentence: string | null;
   frequency: number | null;
   frequency_count: number | null;

@@ -8,6 +8,7 @@ export interface PreloadedSpeech {
   url: string;
   usedFallback: boolean;
   startOffsetSeconds: number;
+  fallbackReason?: string | null;
 }
 
 const SILENCE_FRAME_MS = 10;
@@ -17,9 +18,9 @@ const RMS_ACTIVITY_THRESHOLD = 0.004;
 const PEAK_ACTIVITY_THRESHOLD = 0.012;
 let silenceAnalysisFallbackReported = false;
 
-function warnAboutFallback(languageCode?: string) {
+function warnAboutFallback(languageCode?: string, fallbackReason?: string | null) {
   window.dispatchEvent(new CustomEvent('polycast:tts-fallback', {
-    detail: { languageCode },
+    detail: { languageCode, fallbackReason },
   }));
 }
 
@@ -103,7 +104,11 @@ function reportSilenceAnalysisFallback(error: unknown) {
   }, { source: 'web.speech', operation: 'analyze-leading-silence' });
 }
 
-async function prepareSpeechBlob(blob: Blob, usedFallback: boolean): Promise<PreloadedSpeech> {
+async function prepareSpeechBlob(
+  blob: Blob,
+  usedFallback: boolean,
+  fallbackReason?: string | null,
+): Promise<PreloadedSpeech> {
   let startOffsetSeconds = 0;
   try {
     const AudioContextClass = window.AudioContext;
@@ -125,6 +130,7 @@ async function prepareSpeechBlob(blob: Blob, usedFallback: boolean): Promise<Pre
     url: URL.createObjectURL(blob),
     usedFallback,
     startOffsetSeconds,
+    fallbackReason,
   };
 }
 
@@ -133,7 +139,7 @@ async function playPreparedSpeech(
   languageCode?: string,
   revokeWhenFinished = false,
 ) {
-  if (speech.usedFallback) warnAboutFallback(languageCode);
+  if (speech.usedFallback) warnAboutFallback(languageCode, speech.fallbackReason);
   const audio = new Audio(speech.url);
   activeAudio = audio;
   activeUrl = revokeWhenFinished ? speech.url : null;
@@ -197,7 +203,11 @@ export async function playAiSpeech(text: string, languageCode?: string, preloade
   }
 
   const blob = await res.blob();
-  const speech = await prepareSpeechBlob(blob, Boolean(res.headers.get('X-Polycast-TTS-Fallback')));
+  const speech = await prepareSpeechBlob(
+    blob,
+    Boolean(res.headers.get('X-Polycast-TTS-Fallback')),
+    res.headers.get('X-Polycast-TTS-Fallback-Reason'),
+  );
   await playPreparedSpeech(speech, languageCode, true);
 }
 
@@ -215,7 +225,11 @@ export async function preloadCardAudio(wordId: string): Promise<PreloadedSpeech>
   }
 
   const blob = await res.blob();
-  return prepareSpeechBlob(blob, Boolean(res.headers.get('X-Polycast-TTS-Fallback')));
+  return prepareSpeechBlob(
+    blob,
+    Boolean(res.headers.get('X-Polycast-TTS-Fallback')),
+    res.headers.get('X-Polycast-TTS-Fallback-Reason'),
+  );
 }
 
 /**
@@ -224,7 +238,7 @@ export async function preloadCardAudio(wordId: string): Promise<PreloadedSpeech>
  */
 export async function preloadAiSpeech(text: string, languageCode?: string): Promise<PreloadedSpeech> {
   const trimmed = String(text || '').trim();
-  if (!trimmed) return { url: '', usedFallback: false, startOffsetSeconds: 0 };
+  if (!trimmed) return { url: '', usedFallback: false, startOffsetSeconds: 0, fallbackReason: null };
 
   const res = await fetch('/api/practice/voice/speak', {
     method: 'POST',
@@ -236,11 +250,25 @@ export async function preloadAiSpeech(text: string, languageCode?: string): Prom
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to preload speech (${res.status})`);
+    let message = `Failed to preload speech (${res.status})`;
+    try {
+      const payload = await res.json();
+      if (payload?.error || payload?.message) message = String(payload.error || payload.message);
+    } catch (error) {
+      emitFallbackDiagnostic({
+        code: 'speech_preload_error_payload_fallback',
+        severity: 'warning',
+        title: 'Speech preload error details unavailable',
+        message: 'The speech preload failed and returned a non-JSON response, so Polycast is showing the HTTP status.',
+        detail: `status=${res.status}; reason=${error instanceof Error ? error.message : String(error)}`,
+      }, { source: 'web.speech', operation: 'parse-preload-speech-error' });
+    }
+    throw new Error(message);
   }
 
   return prepareSpeechBlob(
     await res.blob(),
     Boolean(res.headers.get('X-Polycast-TTS-Fallback')),
+    res.headers.get('X-Polycast-TTS-Fallback-Reason'),
   );
 }

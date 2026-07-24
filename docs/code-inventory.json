@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 582,
-    "lines": 90790,
-    "declarations": 2455,
+    "files": 583,
+    "lines": 91023,
+    "declarations": 2458,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 39,
     "zeroCallerCandidates": 5
@@ -542,7 +542,7 @@
     },
     {
       "file": "client/src/api/classroom.ts",
-      "lines": 336,
+      "lines": 338,
       "responsibility": "web API adapter",
       "sideEffects": [
         "network"
@@ -879,7 +879,7 @@
     },
     {
       "file": "client/src/api/dictionary.ts",
-      "lines": 379,
+      "lines": 381,
       "responsibility": "web API adapter",
       "sideEffects": [],
       "testCoverage": [
@@ -1903,7 +1903,7 @@
     },
     {
       "file": "client/src/components/FallbackToast.tsx",
-      "lines": 70,
+      "lines": 74,
       "responsibility": "web component UI",
       "sideEffects": [],
       "testCoverage": [
@@ -2272,7 +2272,7 @@
     },
     {
       "file": "client/src/components/WordPopup.tsx",
-      "lines": 235,
+      "lines": 236,
       "responsibility": "web component UI",
       "sideEffects": [
         "UI"
@@ -3861,7 +3861,7 @@
     },
     {
       "file": "client/src/hooks/useSavedWords.ts",
-      "lines": 244,
+      "lines": 245,
       "responsibility": "application support",
       "sideEffects": [
         "events"
@@ -5081,7 +5081,7 @@
     },
     {
       "file": "client/src/pages/StudentDetail.tsx",
-      "lines": 690,
+      "lines": 720,
       "responsibility": "web route UI",
       "sideEffects": [],
       "testCoverage": [
@@ -5129,6 +5129,12 @@
         {
           "name": "localDateKey",
           "callers": 17,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "sourceWordCandidates",
+          "callers": 1,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -5728,6 +5734,16 @@
       "symbols": []
     },
     {
+      "file": "client/src/test/savedWordHighlight.test.tsx",
+      "lines": 31,
+      "responsibility": "test",
+      "sideEffects": [],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
+    },
+    {
       "file": "client/src/test/sessionExpiration.test.tsx",
       "lines": 116,
       "responsibility": "test",
@@ -5811,7 +5827,7 @@
     },
     {
       "file": "client/src/test/studentDetailVocabulary.test.tsx",
-      "lines": 155,
+      "lines": 161,
       "responsibility": "test",
       "sideEffects": [
         "events",
@@ -5844,7 +5860,7 @@
     },
     {
       "file": "client/src/test/ttsFallbackToast.test.tsx",
-      "lines": 90,
+      "lines": 114,
       "responsibility": "test",
       "sideEffects": [
         "events",
@@ -5980,7 +5996,7 @@
     },
     {
       "file": "client/src/utils/aiSpeech.ts",
-      "lines": 247,
+      "lines": 275,
       "responsibility": "application support",
       "sideEffects": [
         "network",
@@ -6824,7 +6840,7 @@
       "symbols": [
         {
           "name": "correlationId",
-          "callers": 241,
+          "callers": 242,
           "testReferences": [
             "client/src/test/callSignalContract.test.ts",
             "client/src/test/groupCallLifecycle.test.tsx",
@@ -6847,13 +6863,13 @@
         },
         {
           "name": "normalizeFallbackDiagnostic",
-          "callers": 29,
+          "callers": 31,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "emitFallbackDiagnostic",
-          "callers": 58,
+          "callers": 61,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -7547,17 +7563,33 @@
     },
     {
       "file": "client/src/utils/tildeMarkup.tsx",
-      "lines": 29,
+      "lines": 59,
       "responsibility": "application support",
       "sideEffects": [],
-      "testCoverage": [],
+      "testCoverage": [
+        "client/src/test/savedWordHighlight.test.tsx"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "renderTildeHighlight",
-          "callers": 20,
+          "callers": 21,
           "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "escapePattern",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "renderSavedWordHighlight",
+          "callers": 2,
+          "testReferences": [
+            "client/src/test/savedWordHighlight.test.tsx"
+          ],
           "disposition": "retain"
         },
         {
@@ -8267,6 +8299,7 @@
       ],
       "testCoverage": [
         "client/src/test/readerSelection.test.ts",
+        "client/src/test/savedWordHighlight.test.tsx",
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs",
         "extension/test/no-page-highlights.test.mjs",
@@ -9170,6 +9203,7 @@
         "server/test/auth.integration.test.js",
         "server/test/classBookService.test.js",
         "server/test/correlation.test.js",
+        "server/test/ttsService.test.js",
         "server/test/userLibraryBookService.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -9192,6 +9226,7 @@
             "server/test/auth.integration.test.js",
             "server/test/classBookService.test.js",
             "server/test/correlation.test.js",
+            "server/test/ttsService.test.js",
             "server/test/userLibraryBookService.test.js"
           ],
           "disposition": "retain"
@@ -10195,7 +10230,7 @@
         },
         {
           "name": "preload",
-          "callers": 14,
+          "callers": 17,
           "testReferences": [
             "client/src/test/flashcardBackgroundPreload.test.ts"
           ],
@@ -11171,7 +11206,7 @@
         },
         {
           "name": "string",
-          "callers": 1942,
+          "callers": 1955,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
@@ -11513,7 +11548,7 @@
         },
         {
           "name": "StudentWord",
-          "callers": 12,
+          "callers": 13,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -12008,7 +12043,7 @@
         },
         {
           "name": "renderTildeHighlight",
-          "callers": 20,
+          "callers": 21,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -12119,7 +12154,9 @@
         "client/src/test/cbz.test.ts",
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/libraryCardLayout.test.ts",
-        "client/src/test/sessionExpiration.test.tsx"
+        "client/src/test/sessionExpiration.test.tsx",
+        "client/src/test/ttsFallbackToast.test.tsx",
+        "server/test/ttsService.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -12203,9 +12240,11 @@
         },
         {
           "name": "provider",
-          "callers": 47,
+          "callers": 49,
           "testReferences": [
-            "client/src/test/sessionExpiration.test.tsx"
+            "client/src/test/sessionExpiration.test.tsx",
+            "client/src/test/ttsFallbackToast.test.tsx",
+            "server/test/ttsService.test.js"
           ],
           "disposition": "retain"
         }
@@ -12583,7 +12622,7 @@
         },
         {
           "name": "body",
-          "callers": 679,
+          "callers": 680,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -15170,7 +15209,7 @@
         },
         {
           "name": "trim",
-          "callers": 319,
+          "callers": 320,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "server/lib/httpErrors.test.js"
@@ -15303,6 +15342,7 @@
         "client/src/test/libraryCardLayout.test.ts",
         "client/src/test/readerSelection.test.ts",
         "client/src/test/runtimeDiagnostics.test.ts",
+        "client/src/test/savedWordHighlight.test.tsx",
         "extension/test/activation.test.mjs",
         "extension/test/fallback-toast.test.mjs",
         "extension/test/localization.test.mjs",
@@ -15547,6 +15587,7 @@
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/epub.test.ts",
+            "client/src/test/savedWordHighlight.test.tsx",
             "extension/test/localization.test.mjs",
             "extension/test/page-highlights.test.mjs",
             "extension/test/popup-anchor-callout.test.mjs",
@@ -17455,6 +17496,7 @@
         "server/test/classBookService.test.js",
         "server/test/correlation.test.js",
         "server/test/learningSessionService.test.js",
+        "server/test/ttsService.test.js",
         "server/test/userLibraryBookService.test.js",
         "server/test/wordSemanticsSensePicker.test.js"
       ],
@@ -18387,7 +18429,7 @@
         },
         {
           "name": "normalizeFallbackDiagnostic",
-          "callers": 29,
+          "callers": 31,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -18405,7 +18447,7 @@
         },
         {
           "name": "setFallbackDiagnosticHeader",
-          "callers": 7,
+          "callers": 9,
           "testReferences": [
             "server/test/fallbackDiagnosticHeader.test.js"
           ],
@@ -22111,7 +22153,7 @@
     },
     {
       "file": "server/routes/voicePractice.js",
-      "lines": 193,
+      "lines": 212,
       "responsibility": "HTTP transport",
       "sideEffects": [
         "network"
@@ -22883,7 +22925,7 @@
     },
     {
       "file": "server/services/classroomService.js",
-      "lines": 692,
+      "lines": 694,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "database"
@@ -23033,7 +23075,7 @@
     },
     {
       "file": "server/services/classroomStudentStats.test.js",
-      "lines": 60,
+      "lines": 64,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
@@ -23246,7 +23288,9 @@
         "logging"
       ],
       "testCoverage": [
-        "server/test/learningSessionService.test.js"
+        "client/src/test/ttsFallbackToast.test.tsx",
+        "server/test/learningSessionService.test.js",
+        "server/test/ttsService.test.js"
       ],
       "disposition": "reviewed-retain",
       "dispositionReason": "One server domain pipeline; transport, persistence/query, provider, and diagnostic seams are already separated and tested.",
@@ -23293,9 +23337,11 @@
         },
         {
           "name": "fallbackReason",
-          "callers": 3,
+          "callers": 22,
           "testReferences": [
-            "server/test/learningSessionService.test.js"
+            "client/src/test/ttsFallbackToast.test.tsx",
+            "server/test/learningSessionService.test.js",
+            "server/test/ttsService.test.js"
           ],
           "disposition": "retain"
         },
@@ -23549,7 +23595,7 @@
     },
     {
       "file": "server/services/ttsService.js",
-      "lines": 56,
+      "lines": 64,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "network"
@@ -25181,7 +25227,7 @@
     },
     {
       "file": "server/test/ttsService.test.js",
-      "lines": 86,
+      "lines": 127,
       "responsibility": "test",
       "sideEffects": [
         "network"

@@ -1,6 +1,6 @@
 import { synthesizeWorkerSpeech } from './mediaWorkerService.js';
 
-async function synthesizeWithOpenAi({ text, languageCode }) {
+async function synthesizeWithOpenAi({ text, languageCode, fallbackReason }) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('No TTS provider supports this language');
 
@@ -31,6 +31,7 @@ async function synthesizeWithOpenAi({ text, languageCode }) {
   return {
     audioBuffer: Buffer.from(await response.arrayBuffer()),
     usedFallback: true,
+    fallbackReason,
   };
 }
 
@@ -47,9 +48,16 @@ export async function synthesizeVoiceFeedback({ text, languageCode, userId, corr
     return {
       audioBuffer: await synthesizeWorkerSpeech(text, languageCode, { userId, correlationId }),
       usedFallback: false,
+      fallbackReason: null,
     };
   } catch (error) {
-    if (error.upstreamStatus !== 422) throw error;
-    return synthesizeWithOpenAi({ text, languageCode });
+    const status = Number(error?.upstreamStatus);
+    if (status !== 422 && status !== 429 && !(status >= 500)) throw error;
+    const fallbackReason = status === 422
+      ? 'unsupported-language'
+      : status === 429
+        ? 'rate-limited'
+        : 'provider-unavailable';
+    return synthesizeWithOpenAi({ text, languageCode, fallbackReason });
   }
 }

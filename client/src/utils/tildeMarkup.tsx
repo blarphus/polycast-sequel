@@ -14,6 +14,36 @@ export function renderTildeHighlight(text: string, className: string) {
   );
 }
 
+function escapePattern(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Highlight a saved word in its source sentence. Explicit ~selection~ markup
+ * wins; otherwise surface and lemma candidates use Unicode token boundaries. */
+export function renderSavedWordHighlight(
+  text: string,
+  candidates: Array<string | null | undefined>,
+  className: string,
+) {
+  if (/~[^~]+~/.test(text)) return renderTildeHighlight(text, className);
+  const words = [...new Set(
+    candidates
+      .map((candidate) => String(candidate || '').trim())
+      .filter(Boolean),
+  )].sort((a, b) => b.length - a.length);
+  if (words.length === 0) return text;
+  const pattern = new RegExp(
+    `(?<![\\p{L}\\p{M}\\p{N}])(${words.map(escapePattern).join('|')})(?![\\p{L}\\p{M}\\p{N}])`,
+    'giu',
+  );
+  const parts = text.split(pattern);
+  return parts.map((part, index) => (
+    index % 2 === 1
+      ? <span key={index} className={className}>{part}</span>
+      : <span key={index}>{part}</span>
+  ));
+}
+
 /** Strip ~tildes~ from example sentence for TTS playback. */
 export function stripTildes(text: string): string {
   return text.replace(/~([^~]+)~/g, '$1');

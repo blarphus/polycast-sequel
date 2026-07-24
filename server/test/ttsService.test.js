@@ -72,6 +72,47 @@ test('synthesizeVoiceFeedback falls back to OpenAI for unsupported Cloudflare la
     const result = await synthesizeVoiceFeedback({ text: 'Bonjour', languageCode: 'fr-FR' });
     assert.deepEqual([...result.audioBuffer], [4, 5, 6]);
     assert.equal(result.usedFallback, true);
+    assert.equal(result.fallbackReason, 'unsupported-language');
+    assert.equal(callCount, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.CF_TRANSCRIPT_WORKER_URL;
+    else process.env.CF_TRANSCRIPT_WORKER_URL = originalUrl;
+    if (originalSecret === undefined) delete process.env.CF_TRANSCRIPT_WORKER_SECRET;
+    else process.env.CF_TRANSCRIPT_WORKER_SECRET = originalSecret;
+    if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalApiKey;
+  }
+});
+
+test('synthesizeVoiceFeedback visibly falls back when Cloudflare TTS is temporarily unavailable', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.CF_TRANSCRIPT_WORKER_URL;
+  const originalSecret = process.env.CF_TRANSCRIPT_WORKER_SECRET;
+  const originalApiKey = process.env.OPENAI_API_KEY;
+  process.env.CF_TRANSCRIPT_WORKER_URL = 'https://worker.example.test/transcripts';
+  process.env.CF_TRANSCRIPT_WORKER_SECRET = 'test-secret';
+  process.env.OPENAI_API_KEY = 'openai-test-key';
+  let callCount = 0;
+
+  globalThis.fetch = async (url) => {
+    callCount += 1;
+    if (callCount === 1) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Cloudflare speech provider failed',
+        fallback_notices: [{ code: 'tts_provider_failed' }],
+      }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+    assert.equal(url, 'https://api.openai.com/v1/audio/speech');
+    return new Response(Uint8Array.from([7, 8, 9]), { status: 200 });
+  };
+
+  try {
+    const result = await synthesizeVoiceFeedback({ text: 'Hola', languageCode: 'es' });
+    assert.deepEqual([...result.audioBuffer], [7, 8, 9]);
+    assert.equal(result.usedFallback, true);
+    assert.equal(result.fallbackReason, 'provider-unavailable');
     assert.equal(callCount, 2);
   } finally {
     globalThis.fetch = originalFetch;

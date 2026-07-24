@@ -61,6 +61,30 @@ describe('FallbackToast', () => {
     container.remove();
   });
 
+  it('describes a transient provider fallback accurately', () => {
+    vi.useFakeTimers();
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => root.render(<FallbackToast />));
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('polycast:tts-fallback', {
+        detail: { languageCode: 'es', fallbackReason: 'provider-unavailable' },
+      }));
+    });
+
+    expect(container.querySelector('[role="status"]')?.textContent).toContain(
+      'Cloudflare speech was temporarily unavailable. Using the OpenAI voice fallback.',
+    );
+    expect(container.querySelector('[role="status"]')?.textContent).toContain(
+      'reason=provider-unavailable',
+    );
+
+    act(() => root.unmount());
+    container.remove();
+  });
+
   it('does not replay the same server fallback correlation on navigation', () => {
     vi.useFakeTimers();
     const container = document.createElement('div');
