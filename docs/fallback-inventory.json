@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-24T15:45:50.894Z",
+  "generatedAt": "2026-07-24T16:20:26.525Z",
   "totals": {
-    "occurrences": 57,
-    "uniqueCodes": 53,
+    "occurrences": 58,
+    "uniqueCodes": 54,
     "incompleteOccurrences": 0
   },
   "entries": [
@@ -63,6 +63,14 @@
       "visible": true
     },
     {
+      "code": "context_explanation_completion_retry",
+      "file": "server/services/wordSemanticsService.js",
+      "line": 330,
+      "structured": true,
+      "logged": true,
+      "visible": true
+    },
+    {
       "code": "daily_goal_storage_repaired",
       "file": "client/src/utils/dailyGoal.ts",
       "line": 28,
@@ -105,7 +113,7 @@
     {
       "code": "extension_login_unavailable",
       "file": "extension/background.js",
-      "line": 492,
+      "line": 508,
       "structured": true,
       "logged": true,
       "visible": true
@@ -233,7 +241,7 @@
     {
       "code": "login_error_payload_fallback",
       "file": "extension/background.js",
-      "line": 508,
+      "line": 524,
       "structured": true,
       "logged": true,
       "visible": true

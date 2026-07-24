@@ -134,7 +134,7 @@ test('large saved dictionaries are indexed once and page matching stays bounded'
   assert.ok(matchMs < 50, `1200-token match took ${matchMs.toFixed(1)}ms`);
 });
 
-test('page broadcasts target only built-in subtitle content scripts', async () => {
+test('page broadcasts target all supported ordinary and subtitle pages', async () => {
   const generated = await readFile(new URL('../generated/messageContract.js', import.meta.url), 'utf8');
   const router = await readFile(new URL('../background/messageRouter.js', import.meta.url), 'utf8');
   const activation = await readFile(new URL('../background/activation.js', import.meta.url), 'utf8');
@@ -161,14 +161,14 @@ test('page broadcasts target only built-in subtitle content scripts', async () =
     },
   };
   const context = {
-    chrome, console, crypto, fetch, URLSearchParams, Intl, Date, setTimeout, clearTimeout, Map, Set,
+    chrome, console, crypto, fetch, URL, URLSearchParams, Intl, Date, setTimeout, clearTimeout, Map, Set,
   };
   vm.runInNewContext(source, context);
 
   await context.broadcastDailyGoalUpdated(context.buildDailyGoalSnapshot(5, 2));
 
   assert.deepEqual(JSON.parse(JSON.stringify(queried)), [{
-    url: ['*://*.youtube.com/*', 'https://*.netflix.com/*'],
+    url: ['http://*/*', 'https://*/*'],
   }]);
   assert.equal(tabMessages.length, 1);
   assert.equal(tabMessages[0].message.type, 'DAILY_GOAL_UPDATED');

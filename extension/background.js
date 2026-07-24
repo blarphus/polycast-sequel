@@ -9,7 +9,12 @@ const DAILY_GOAL_KEY = 'dailyWordGoal';
 const DAILY_PROGRESS_KEY = 'dailyWordProgress';
 const RECALL_CATALOG_KEY = 'wildRecallCatalog';
 const SELECTION_CONTEXT_MENU_ID = 'polycast-lookup-selection';
-const PAGE_CONTENT_TAB_PATTERNS = ['*://*.youtube.com/*', 'https://*.netflix.com/*'];
+const PAGE_CONTENT_TAB_PATTERNS = ['http://*/*', 'https://*/*'];
+const PAGE_CONTENT_EXCLUDED_HOSTS = new Set([
+  'polycast-sequel.onrender.com',
+  'localhost',
+  '127.0.0.1',
+]);
 const LEGACY_HIGHLIGHT_STORAGE_KEYS = ['siteHighlightOverrides', 'siteContentScriptIds', 'pageCueDate'];
 const RETIRED_STORAGE_KEYS = ['offlineMode', 'offlineDictionaryWords'];
 const SESSION_SCOPED_STORAGE_KEYS = [
@@ -200,7 +205,18 @@ async function sendTabMessageSafe(tabId, payload, operation) {
 }
 
 async function getPageContentTabs() {
-  return chrome.tabs.query({ url: PAGE_CONTENT_TAB_PATTERNS });
+  const tabs = await chrome.tabs.query({ url: PAGE_CONTENT_TAB_PATTERNS });
+  return tabs.filter((tab) => {
+    // tabs.query already applied the URL match. Chrome may omit `url` from a
+    // Tab object in restricted contexts, so retain it rather than dropping a
+    // valid content-script recipient merely because metadata was withheld.
+    if (!tab.url) return true;
+    try {
+      return !PAGE_CONTENT_EXCLUDED_HOSTS.has(new URL(tab.url).hostname);
+    } catch {
+      return false;
+    }
+  });
 }
 
 globalThis.PolycastActivationHandlers.create({

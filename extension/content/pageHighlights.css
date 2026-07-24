@@ -1,0 +1,29 @@
+.pc-page-saved-word {
+  display: inline;
+  margin: 0;
+  padding: 0 .05em;
+  border: 0;
+  border-bottom: 2px solid rgba(91, 156, 245, .82);
+  border-radius: .14em;
+  background: rgba(91, 156, 245, .18);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color .14s ease, border-color .14s ease, box-shadow .14s ease;
+}
+
+.pc-page-saved-word:hover {
+  border-bottom-color: #7c7bff;
+  background: rgba(124, 123, 255, .28);
+  box-shadow: 0 2px 8px rgba(91, 82, 223, .2);
+}
+
+/* The shared popup core applies this exact Books-style state to its anchor:
+   raised yellow selection plus the teardrop pointer from wordPopup.css. */
+.pc-page-saved-word.pc-popup-anchor-selected {
+  border-bottom-color: transparent !important;
+}

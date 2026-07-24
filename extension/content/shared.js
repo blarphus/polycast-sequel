@@ -662,5 +662,14 @@ globalThis.PolycastContent = {
   cleanCaptionText,
   isWordToken,
   openWordPopup,
+  rememberSavedTokens: (tokens) => {
+    for (const token of tokens || []) {
+      const normalized = String(token || '').trim().toLocaleLowerCase();
+      if (normalized) savedWordsSet.add(normalized);
+    }
+  },
+  setTargetLanguage: (value) => {
+    targetLanguage = value ? String(value).toLocaleLowerCase() : null;
+  },
   sendMessageAsync,
 };

@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 577,
-    "lines": 89846,
-    "declarations": 2429,
+    "files": 579,
+    "lines": 90359,
+    "declarations": 2450,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 5
@@ -208,6 +208,8 @@
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs",
         "extension/test/localization.test.mjs",
+        "extension/test/no-page-highlights.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/httpErrors.test.js",
         "server/lib/origins.test.js",
@@ -404,6 +406,7 @@
         "client/src/test/watchTranscript.test.ts",
         "client/src/test/wordFormsDialog.test.tsx",
         "extension/test/background.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/authResponse.test.js",
         "server/lib/sharedDictionaryEntries.test.js",
@@ -1248,6 +1251,7 @@
         "extension/test/fallback-toast.test.mjs",
         "extension/test/no-page-highlights.test.mjs",
         "extension/test/online-dictionary-only.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "server/test/groupCallSocket.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -1267,11 +1271,12 @@
         },
         {
           "name": "sendMessage",
-          "callers": 26,
+          "callers": 28,
           "testReferences": [
             "extension/test/activation.test.mjs",
             "extension/test/background.test.mjs",
-            "extension/test/fallback-toast.test.mjs"
+            "extension/test/fallback-toast.test.mjs",
+            "extension/test/page-highlights.test.mjs"
           ],
           "disposition": "retain"
         },
@@ -1873,6 +1878,7 @@
       "testCoverage": [
         "client/src/test/ttsFallbackToast.test.tsx",
         "extension/test/fallback-toast.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/selection.test.mjs"
       ],
       "disposition": "intentionally standalone",
@@ -2237,6 +2243,8 @@
         "UI"
       ],
       "testCoverage": [
+        "extension/test/no-page-highlights.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-anchor-callout.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "extension/test/popup-position-stability.test.mjs",
@@ -2685,6 +2693,7 @@
         "client/src/test/catalogProgress.test.tsx",
         "client/src/test/cbz.test.ts",
         "extension/test/background.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "server/test/ttsService.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -3298,6 +3307,7 @@
         "client/src/test/catalogProgress.test.tsx",
         "client/src/test/cbz.test.ts",
         "extension/test/background.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "server/test/ttsService.test.js"
       ],
       "disposition": "generated",
@@ -3565,7 +3575,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -4085,7 +4095,9 @@
         "client/src/test/i18n.test.ts",
         "client/src/test/practiceLocalization.test.ts",
         "extension/test/background.test.mjs",
-        "extension/test/localization.test.mjs"
+        "extension/test/localization.test.mjs",
+        "extension/test/no-page-highlights.test.mjs",
+        "extension/test/page-highlights.test.mjs"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -4143,6 +4155,7 @@
         "client/src/test/cbz.test.ts",
         "client/src/test/dailyGoal.test.ts",
         "extension/test/background.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/srsUpdate.test.js",
@@ -4235,6 +4248,7 @@
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/runtimeDiagnostics.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-position-stability.test.mjs",
         "extension/test/selection.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
@@ -5827,6 +5841,7 @@
       "testCoverage": [
         "client/src/test/transcriptContract.test.ts",
         "extension/test/fallback-toast.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/transcript-contract.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift"
@@ -5836,7 +5851,7 @@
       "symbols": [
         {
           "name": "tokenize",
-          "callers": 24,
+          "callers": 30,
           "testReferences": [
             "client/src/test/transcriptContract.test.ts",
             "extension/test/transcript-contract.test.mjs",
@@ -5846,7 +5861,7 @@
         },
         {
           "name": "isWordToken",
-          "callers": 13,
+          "callers": 19,
           "testReferences": [
             "client/src/test/transcriptContract.test.ts",
             "extension/test/selection.test.mjs",
@@ -6743,7 +6758,7 @@
       "symbols": [
         {
           "name": "correlationId",
-          "callers": 240,
+          "callers": 241,
           "testReferences": [
             "client/src/test/callSignalContract.test.ts",
             "client/src/test/groupCallLifecycle.test.tsx",
@@ -7706,7 +7721,7 @@
     },
     {
       "file": "extension/background.js",
-      "lines": 820,
+      "lines": 836,
       "responsibility": "extension runtime/UI",
       "sideEffects": [
         "network",
@@ -7929,8 +7944,7 @@
       "testCoverage": [
         "client/src/test/catalogProgress.test.tsx",
         "extension/test/activation.test.mjs",
-        "extension/test/background.test.mjs",
-        "extension/test/no-page-highlights.test.mjs"
+        "extension/test/background.test.mjs"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -8013,9 +8027,7 @@
         "events",
         "UI"
       ],
-      "testCoverage": [
-        "extension/test/background.test.mjs"
-      ],
+      "testCoverage": [],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
@@ -8040,6 +8052,147 @@
       ]
     },
     {
+      "file": "extension/content/pageHighlights.js",
+      "lines": 355,
+      "responsibility": "extension runtime/UI",
+      "sideEffects": [
+        "UI"
+      ],
+      "testCoverage": [
+        "extension/test/no-page-highlights.test.mjs",
+        "extension/test/page-highlights.test.mjs"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "helpers",
+          "callers": 27,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "normalizeLanguageCode",
+          "callers": 5,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "primaryDetectedLanguage",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "isPrimaryTargetLanguage",
+          "callers": 2,
+          "testReferences": [
+            "extension/test/no-page-highlights.test.mjs",
+            "extension/test/page-highlights.test.mjs"
+          ],
+          "disposition": "retain"
+        },
+        {
+          "name": "pageLanguageSample",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "detectLanguageWithChrome",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "reportDiagnostic",
+          "callers": 19,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "shouldSkipTextNode",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "textNodesUnder",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "uniqueUncheckedTokens",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "matchTokens",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "normalizeVisibleText",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "sentenceContextForElement",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "openSavedWord",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "highlightNodes",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "scanRoot",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "unwrapHighlights",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "scheduleRescan",
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "evaluatePageLanguage",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "boot",
+          "callers": 2,
+          "testReferences": [
+            "extension/test/page-highlights.test.mjs"
+          ],
+          "disposition": "retain"
+        }
+      ]
+    },
+    {
       "file": "extension/content/selection.js",
       "lines": 248,
       "responsibility": "extension runtime/UI",
@@ -8050,6 +8203,7 @@
         "client/src/test/readerSelection.test.ts",
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs",
+        "extension/test/no-page-highlights.test.mjs",
         "extension/test/selection.test.mjs",
         "server/test/wordSemanticsSensePicker.test.js"
       ],
@@ -8058,7 +8212,7 @@
       "symbols": [
         {
           "name": "helpers",
-          "callers": 20,
+          "callers": 27,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -8126,7 +8280,7 @@
     },
     {
       "file": "extension/content/shared.js",
-      "lines": 667,
+      "lines": 676,
       "responsibility": "extension runtime/UI",
       "sideEffects": [
         "UI",
@@ -8137,6 +8291,7 @@
         "extension/test/fallback-toast.test.mjs",
         "extension/test/localization.test.mjs",
         "extension/test/no-page-highlights.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-anchor-callout.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs",
         "extension/test/popup-performance.test.mjs",
@@ -8173,9 +8328,10 @@
         },
         {
           "name": "showFallbackToast",
-          "callers": 18,
+          "callers": 19,
           "testReferences": [
             "extension/test/fallback-toast.test.mjs",
+            "extension/test/page-highlights.test.mjs",
             "extension/test/selection.test.mjs"
           ],
           "disposition": "retain"
@@ -8288,8 +8444,10 @@
         },
         {
           "name": "openWordPopup",
-          "callers": 4,
+          "callers": 6,
           "testReferences": [
+            "extension/test/no-page-highlights.test.mjs",
+            "extension/test/page-highlights.test.mjs",
             "extension/test/selection.test.mjs"
           ],
           "disposition": "retain"
@@ -8420,6 +8578,7 @@
         "client/src/test/catalogProgress.test.tsx",
         "client/src/test/cbz.test.ts",
         "extension/test/background.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "server/test/ttsService.test.js"
       ],
       "disposition": "generated",
@@ -8467,6 +8626,7 @@
         "extension/test/background.test.mjs",
         "extension/test/localization.test.mjs",
         "extension/test/no-page-highlights.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-anchor-callout.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs",
         "extension/test/popup-performance.test.mjs",
@@ -8568,6 +8728,7 @@
       "testCoverage": [
         "client/src/test/transcriptContract.test.ts",
         "extension/test/fallback-toast.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/selection.test.mjs",
         "extension/test/transcript-contract.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift"
@@ -8577,7 +8738,7 @@
       "symbols": [
         {
           "name": "tokenize",
-          "callers": 24,
+          "callers": 30,
           "testReferences": [
             "client/src/test/transcriptContract.test.ts",
             "extension/test/transcript-contract.test.mjs",
@@ -8587,7 +8748,7 @@
         },
         {
           "name": "isWordToken",
-          "callers": 13,
+          "callers": 19,
           "testReferences": [
             "client/src/test/transcriptContract.test.ts",
             "extension/test/selection.test.mjs",
@@ -8611,6 +8772,7 @@
         "client/src/test/bottomToolbar.test.tsx",
         "client/src/test/dictionaryImageLayout.test.ts",
         "extension/test/localization.test.mjs",
+        "extension/test/no-page-highlights.test.mjs",
         "extension/test/popup-anchor-callout.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs",
         "extension/test/popup-performance.test.mjs",
@@ -8669,7 +8831,7 @@
         },
         {
           "name": "position",
-          "callers": 148,
+          "callers": 150,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dictionaryImageLayout.test.ts"
@@ -8785,7 +8947,7 @@
     },
     {
       "file": "extension/test/no-page-highlights.test.mjs",
-      "lines": 29,
+      "lines": 35,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
@@ -8802,6 +8964,29 @@
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": []
+    },
+    {
+      "file": "extension/test/page-highlights.test.mjs",
+      "lines": 127,
+      "responsibility": "test",
+      "sideEffects": [
+        "UI"
+      ],
+      "testCoverage": [
+        "extension/test/page-highlights.test.mjs"
+      ],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": [
+        {
+          "name": "makePage",
+          "callers": 0,
+          "testReferences": [
+            "extension/test/page-highlights.test.mjs"
+          ],
+          "disposition": "retain"
+        }
+      ]
     },
     {
       "file": "extension/test/popup-anchor-callout.test.mjs",
@@ -9506,6 +9691,7 @@
         "extension/test/fallback-toast.test.mjs",
         "extension/test/no-page-highlights.test.mjs",
         "extension/test/online-dictionary-only.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/test/groupCallSocket.test.js"
       ],
@@ -9524,17 +9710,19 @@
           "testReferences": [
             "extension/test/no-page-highlights.test.mjs",
             "extension/test/online-dictionary-only.test.mjs",
+            "extension/test/page-highlights.test.mjs",
             "server/test/groupCallSocket.test.js"
           ],
           "disposition": "retain"
         },
         {
           "name": "sendMessage",
-          "callers": 26,
+          "callers": 28,
           "testReferences": [
             "extension/test/activation.test.mjs",
             "extension/test/background.test.mjs",
-            "extension/test/fallback-toast.test.mjs"
+            "extension/test/fallback-toast.test.mjs",
+            "extension/test/page-highlights.test.mjs"
           ],
           "disposition": "retain"
         },
@@ -10105,7 +10293,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -10193,7 +10381,7 @@
         },
         {
           "name": "delete",
-          "callers": 95,
+          "callers": 96,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -10791,7 +10979,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -10801,7 +10989,7 @@
         },
         {
           "name": "clear",
-          "callers": 48,
+          "callers": 50,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -10816,7 +11004,7 @@
         },
         {
           "name": "delete",
-          "callers": 95,
+          "callers": 96,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -11607,7 +11795,7 @@
         },
         {
           "name": "on",
-          "callers": 286,
+          "callers": 287,
           "testReferences": [
             "client/src/test/dictionaryEntryEditor.test.tsx",
             "client/src/test/groupCallLifecycle.test.tsx",
@@ -12182,7 +12370,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -12265,6 +12453,7 @@
         "client/src/test/ttsFallbackToast.test.tsx",
         "client/src/test/wordFormsDialog.test.tsx",
         "extension/test/fallback-toast.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-anchor-callout.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "extension/test/popup-position-stability.test.mjs",
@@ -12314,7 +12503,7 @@
         },
         {
           "name": "body",
-          "callers": 672,
+          "callers": 679,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -12328,6 +12517,7 @@
             "client/src/test/ttsFallbackToast.test.tsx",
             "client/src/test/wordFormsDialog.test.tsx",
             "extension/test/fallback-toast.test.mjs",
+            "extension/test/page-highlights.test.mjs",
             "extension/test/popup-anchor-callout.test.mjs",
             "extension/test/popup-performance.test.mjs",
             "extension/test/popup-position-stability.test.mjs",
@@ -12426,7 +12616,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -12506,7 +12696,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -12984,7 +13174,7 @@
         },
         {
           "name": "delete",
-          "callers": 95,
+          "callers": 96,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dailyGoal.test.ts",
@@ -13117,7 +13307,7 @@
         },
         {
           "name": "lookup",
-          "callers": 195,
+          "callers": 196,
           "testReferences": [
             "extension/test/activation.test.mjs",
             "extension/test/background.test.mjs",
@@ -13174,7 +13364,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -13421,7 +13611,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -13874,7 +14064,7 @@
         },
         {
           "name": "section",
-          "callers": 98,
+          "callers": 99,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -14264,7 +14454,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -14314,7 +14504,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -14332,7 +14522,7 @@
         },
         {
           "name": "reject",
-          "callers": 60,
+          "callers": 63,
           "testReferences": [
             "server/lib/gemini.test.js",
             "server/test/correlation.test.js"
@@ -14533,7 +14723,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -14900,7 +15090,7 @@
         },
         {
           "name": "trim",
-          "callers": 310,
+          "callers": 315,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "server/lib/httpErrors.test.js"
@@ -14998,7 +15188,7 @@
         },
         {
           "name": "tokenize",
-          "callers": 24,
+          "callers": 30,
           "testReferences": [
             "client/src/test/transcriptContract.test.ts",
             "extension/test/transcript-contract.test.mjs",
@@ -15034,11 +15224,11 @@
         "client/src/test/readerSelection.test.ts",
         "client/src/test/runtimeDiagnostics.test.ts",
         "extension/test/activation.test.mjs",
-        "extension/test/background.test.mjs",
         "extension/test/fallback-toast.test.mjs",
         "extension/test/localization.test.mjs",
         "extension/test/no-page-highlights.test.mjs",
         "extension/test/online-dictionary-only.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-anchor-callout.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "extension/test/popup-position-stability.test.mjs",
@@ -15067,18 +15257,18 @@
         },
         {
           "name": "content",
-          "callers": 149,
+          "callers": 150,
           "testReferences": [
             "client/src/test/epub.test.ts",
             "client/src/test/groupCallProvider.test.tsx",
             "client/src/test/libraryCardLayout.test.ts",
             "client/src/test/readerSelection.test.ts",
             "extension/test/activation.test.mjs",
-            "extension/test/background.test.mjs",
             "extension/test/fallback-toast.test.mjs",
             "extension/test/localization.test.mjs",
             "extension/test/no-page-highlights.test.mjs",
             "extension/test/online-dictionary-only.test.mjs",
+            "extension/test/page-highlights.test.mjs",
             "extension/test/popup-position-stability.test.mjs",
             "extension/test/selection.test.mjs",
             "ios/Polycast/Tests/PolycastTests.swift",
@@ -15176,7 +15366,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -15278,7 +15468,7 @@
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/epub.test.ts",
             "extension/test/localization.test.mjs",
-            "extension/test/no-page-highlights.test.mjs",
+            "extension/test/page-highlights.test.mjs",
             "extension/test/popup-anchor-callout.test.mjs",
             "extension/test/popup-performance.test.mjs",
             "extension/test/popup-position-stability.test.mjs",
@@ -15358,7 +15548,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -15636,7 +15826,7 @@
         },
         {
           "name": "load",
-          "callers": 141,
+          "callers": 142,
           "testReferences": [
             "client/src/test/flashcardAutoplay.test.ts",
             "client/src/test/runtimeDiagnostics.test.ts",
@@ -16697,7 +16887,7 @@
         },
         {
           "name": "normalize",
-          "callers": 36,
+          "callers": 37,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -16868,6 +17058,7 @@
         "logging"
       ],
       "testCoverage": [
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs",
         "ios/Polycast/UITests/PolycastUITests.swift"
       ],
@@ -16890,8 +17081,9 @@
         },
         {
           "name": "main",
-          "callers": 75,
+          "callers": 77,
           "testReferences": [
+            "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
           ],
           "disposition": "retain"
@@ -17490,6 +17682,7 @@
         "client/src/test/cbz.test.ts",
         "client/src/test/localCbzStorage.test.ts",
         "extension/test/background.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs",
         "extension/test/popup-performance.test.mjs",
         "server/services/dictionaryStudyService.test.js",
@@ -17504,8 +17697,9 @@
       "symbols": [
         {
           "name": "main",
-          "callers": 75,
+          "callers": 77,
           "testReferences": [
+            "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
           ],
           "disposition": "retain"
@@ -17727,7 +17921,7 @@
         },
         {
           "name": "tokenize",
-          "callers": 24,
+          "callers": 30,
           "testReferences": [
             "client/src/test/transcriptContract.test.ts",
             "extension/test/transcript-contract.test.mjs",
@@ -18407,6 +18601,7 @@
         "client/src/test/catalogProgress.test.tsx",
         "client/src/test/cbz.test.ts",
         "extension/test/background.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "server/test/ttsService.test.js"
       ],
       "disposition": "generated",
@@ -21620,6 +21815,7 @@
       "testCoverage": [
         "extension/test/no-page-highlights.test.mjs",
         "extension/test/online-dictionary-only.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "server/test/groupCallSocket.test.js"
       ],
       "disposition": "intentionally standalone",
@@ -21888,6 +22084,7 @@
         "logging"
       ],
       "testCoverage": [
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs",
         "server/test/ttsService.test.js"
       ],
@@ -21958,8 +22155,9 @@
         },
         {
           "name": "main",
-          "callers": 75,
+          "callers": 77,
           "testReferences": [
+            "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
           ],
           "disposition": "retain"
@@ -21976,6 +22174,7 @@
       ],
       "testCoverage": [
         "client/src/test/learnReviewLayout.test.ts",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs"
       ],
       "disposition": "intentionally standalone",
@@ -22063,8 +22262,9 @@
         },
         {
           "name": "main",
-          "callers": 75,
+          "callers": 77,
           "testReferences": [
+            "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
           ],
           "disposition": "retain"
@@ -22149,6 +22349,7 @@
       ],
       "testCoverage": [
         "client/src/test/learnReviewLayout.test.ts",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs",
         "server/lib/gemini.test.js",
         "server/test/learningSessionService.test.js",
@@ -22231,8 +22432,9 @@
         },
         {
           "name": "main",
-          "callers": 75,
+          "callers": 77,
           "testReferences": [
+            "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
           ],
           "disposition": "retain"
@@ -22258,6 +22460,7 @@
         "logging"
       ],
       "testCoverage": [
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs"
       ],
       "disposition": "intentionally standalone",
@@ -22283,8 +22486,9 @@
         },
         {
           "name": "main",
-          "callers": 75,
+          "callers": 77,
           "testReferences": [
+            "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
           ],
           "disposition": "retain"
@@ -22310,6 +22514,7 @@
         "logging"
       ],
       "testCoverage": [
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs"
       ],
       "disposition": "intentionally standalone",
@@ -22329,8 +22534,9 @@
         },
         {
           "name": "main",
-          "callers": 75,
+          "callers": 77,
           "testReferences": [
+            "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
           ],
           "disposition": "retain"
@@ -22372,6 +22578,7 @@
         "logging"
       ],
       "testCoverage": [
+        "extension/test/page-highlights.test.mjs",
         "extension/test/popup-landscape-layout.test.mjs"
       ],
       "disposition": "intentionally standalone",
@@ -22385,8 +22592,9 @@
         },
         {
           "name": "main",
-          "callers": 75,
+          "callers": 77,
           "testReferences": [
+            "extension/test/page-highlights.test.mjs",
             "extension/test/popup-landscape-layout.test.mjs"
           ],
           "disposition": "retain"
@@ -22968,7 +23176,7 @@
         },
         {
           "name": "normalize",
-          "callers": 36,
+          "callers": 37,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -24606,6 +24814,7 @@
         "client/src/test/srs.test.ts",
         "client/src/test/transcriptContract.test.ts",
         "extension/test/activation.test.mjs",
+        "extension/test/page-highlights.test.mjs",
         "extension/test/transcript-contract.test.mjs",
         "ios/Polycast/Tests/PolycastTests.swift",
         "ios/Polycast/UITests/ReaderPopupUITests.swift",
@@ -24623,6 +24832,7 @@
             "client/src/test/srs.test.ts",
             "client/src/test/transcriptContract.test.ts",
             "extension/test/activation.test.mjs",
+            "extension/test/page-highlights.test.mjs",
             "extension/test/transcript-contract.test.mjs",
             "ios/Polycast/Tests/PolycastTests.swift",
             "ios/Polycast/UITests/ReaderPopupUITests.swift",

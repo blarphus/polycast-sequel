@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Polycast — Video Subtitle Word Saver",
-  "version": "1.3.0",
-  "description": "Click words in video subtitles to look them up and save to your Polycast dictionary. Works on YouTube and Netflix.",
+  "version": "1.4.0",
+  "description": "Recognize saved words on target-language websites and click words in pages or video subtitles to use your Polycast dictionary.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -10,6 +10,8 @@
   },
   "permissions": ["storage", "contextMenus", "activeTab", "scripting"],
   "host_permissions": [
+    "http://*/*",
+    "https://*/*",
     "*://*.youtube.com/*",
     "https://*.netflix.com/*",
     "http://localhost:5173/*",
@@ -33,6 +35,19 @@
       "matches": ["https://*.netflix.com/*"],
       "js": ["shared/textTokens.js", "shared/wordPopupCore.js", "content/shared.js", "content/netflix.js", "content/selection.js"],
       "css": ["shared/wordPopup.css", "overlay.css"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "exclude_matches": [
+        "*://*.youtube.com/*",
+        "https://*.netflix.com/*",
+        "https://polycast-sequel.onrender.com/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["shared/textTokens.js", "shared/wordPopupCore.js", "content/shared.js", "content/pageHighlights.js", "content/selection.js"],
+      "css": ["shared/wordPopup.css", "overlay.css", "content/pageHighlights.css"],
       "run_at": "document_idle"
     }
   ],
