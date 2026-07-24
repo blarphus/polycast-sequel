@@ -54,14 +54,9 @@
     };
     const notices = Array.isArray(result?.fallback_notices) ? result.fallback_notices : [];
     const hasGeminiNotice = notices.some((notice) => /gemini/i.test(notice?.title || ''));
-    const hasOfflineNotice = notices.some((notice) => /offline/i.test(notice?.title || ''));
     if (result && result.definition_source === 'gemini') {
       if (!hasGeminiNotice) {
         addPill('Gemini fallback', 'Gemini supplied the definition because the dictionary path could not.');
-      }
-    } else if (result && result.definition_source === 'offline') {
-      if (!hasOfflineNotice) {
-        addPill('Offline fallback', 'This result came from local offline data.');
       }
     }
     for (const notice of notices) {
@@ -69,9 +64,7 @@
       const detail = [notice?.message, notice?.detail].filter(Boolean).join(' ');
       addPill(label, detail);
     }
-    if (result?.offline) {
-      addPill('Offline fallback', result.warning || 'Saved locally because the online path was unavailable.');
-    } else if (result?.warning) {
+    if (result?.warning) {
       addPill('Fallback warning', result.warning);
     }
     return pills.join('');
@@ -82,12 +75,7 @@
     if (result?.definition_source === 'gemini' && !notices.some((notice) => /gemini/i.test(notice?.title || ''))) {
       notices.push({ title: 'Gemini fallback', message: 'Gemini supplied the definition because the dictionary path could not.' });
     }
-    if (result?.definition_source === 'offline' && !notices.some((notice) => /offline/i.test(notice?.title || ''))) {
-      notices.push({ title: 'Offline fallback', message: 'This result came from local offline data.' });
-    }
-    if (result?.offline && !notices.some((notice) => /offline/i.test(notice?.title || ''))) {
-      notices.push({ title: 'Offline fallback', message: result.warning || 'The online path was unavailable.' });
-    } else if (result?.warning) {
+    if (result?.warning) {
       notices.push({ title: 'Fallback warning', message: result.warning });
     }
     if (!notices.length) return '';
@@ -178,7 +166,10 @@
 
     popup.innerHTML = `
       <div class="pc-popup-header">
-        <span class="pc-popup-word">${escapeHtml(word)}</span>
+        <div class="pc-popup-title">
+          <span class="pc-popup-word">${escapeHtml(word)}</span>
+          <span class="pc-popup-pos pc-popup-header-pos" hidden></span>
+        </div>
         <div class="pc-popup-header-actions">
           <button class="pc-popup-speak" title="${escapeHtml(labels.playPronunciation)}" aria-label="${escapeHtml(labels.playPronunciation)}" hidden>${SPEAKER_SVG}</button>
           <button class="pc-popup-close" title="${escapeHtml(labels.close)}">&times;</button>
@@ -186,18 +177,47 @@
       </div>
       <div class="pc-popup-lemma" hidden></div>
       <div class="pc-popup-main">
-        <div class="pc-popup-body"><div class="pc-spinner"></div></div>
+        <div class="pc-popup-primary">
+          <div class="pc-popup-body"><div class="pc-spinner"></div></div>
+          <div class="pc-popup-context-actions">
+            <button class="pc-popup-explain" hidden>${EXPLAIN_SVG}${escapeHtml(labels.explainInContext)}</button>
+            <div class="pc-popup-explanation" hidden></div>
+          </div>
+        </div>
         <div class="pc-popup-side">
           <button class="pc-popup-save" hidden>${escapeHtml(labels.addToDictionary)}</button>
-          <button class="pc-popup-explain" hidden>${EXPLAIN_SVG}${escapeHtml(labels.explainInContext)}</button>
-          <div class="pc-popup-explanation" hidden></div>
         </div>
       </div>
     `;
 
     container.appendChild(popup);
 
+    // Keep the clicked token visibly connected to the popup for as long as the
+    // callout is open. Most Polycast readers wrap each word in its own element;
+    // the size check prevents accidentally raising an entire paragraph if a
+    // host page does not.
+    const anchorCenterX = anchorRect.left + anchorRect.width / 2;
+    const anchorCenterY = anchorRect.top + anchorRect.height / 2;
+    const hitElement = document.elementFromPoint?.(anchorCenterX, anchorCenterY);
+    const hitRect = hitElement?.getBoundingClientRect?.();
+    const anchorElement = hitElement instanceof HTMLElement
+      && hitElement !== popup
+      && !popup.contains(hitElement)
+      && hitRect
+      && hitRect.width <= Math.max(anchorRect.width + 12, 48)
+      && hitRect.height <= Math.max(anchorRect.height + 12, 48)
+      ? hitElement
+      : null;
+    anchorElement?.classList.add('pc-popup-anchor-selected');
+
+    const pointer = document.createElement('div');
+    pointer.className = 'pc-popup-pointer';
+    pointer.dataset.placement = '';
+    pointer.setAttribute('aria-hidden', 'true');
+    container.appendChild(pointer);
+
     const bodyEl = popup.querySelector('.pc-popup-body');
+    const headerPosEl = popup.querySelector('.pc-popup-header-pos');
     const explainBtn = popup.querySelector('.pc-popup-explain');
     const explainBox = popup.querySelector('.pc-popup-explanation');
     const saveBtn = popup.querySelector('.pc-popup-save');
@@ -211,23 +231,30 @@
     const availableBelow = Math.max(0, window.innerHeight - anchorRect.bottom - 16);
     const placement = availableAbove >= availableBelow ? 'above' : 'below';
     popup.dataset.placement = placement;
+    pointer.dataset.placement = placement;
     position();
     function position() {
+      const liveAnchorRect = anchorElement?.getBoundingClientRect?.() || anchorRect;
       const width = popup.offsetWidth || POPUP_WIDTH;
-      let left = anchorRect.left + anchorRect.width / 2 - width / 2;
+      const liveAnchorCenter = liveAnchorRect.left + liveAnchorRect.width / 2;
+      let left = liveAnchorCenter - width / 2;
       left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
       popup.style.left = `${left}px`;
+      const pointerCenter = Math.max(left + 24, Math.min(liveAnchorCenter, left + width - 24));
+      pointer.style.left = `${pointerCenter}px`;
 
       if (placement === 'above') {
         popup.style.top = '';
-        popup.style.bottom = `${Math.max(8, window.innerHeight - anchorRect.top + 8)}px`;
+        popup.style.bottom = `${Math.max(8, window.innerHeight - liveAnchorRect.top + 12)}px`;
         popup.style.setProperty('--pc-popup-available-height', `${Math.max(120, availableAbove)}px`);
         popup.style.maxHeight = `var(--pc-popup-available-height)`;
+        pointer.style.top = `${liveAnchorRect.top - 19}px`;
       } else {
-        popup.style.top = `${Math.max(8, anchorRect.bottom + 8)}px`;
+        popup.style.top = `${Math.max(8, liveAnchorRect.bottom + 12)}px`;
         popup.style.bottom = '';
         popup.style.setProperty('--pc-popup-available-height', `${Math.max(120, availableBelow)}px`);
         popup.style.maxHeight = `var(--pc-popup-available-height)`;
+        pointer.style.top = `${liveAnchorRect.bottom + 5}px`;
       }
     }
 
@@ -488,26 +515,26 @@
 
           if (mode === 'phrase') {
             lemmaEl.hidden = true;
+            headerPosEl.hidden = false;
+            headerPosEl.textContent = 'phrase';
             const pt = res.phrase_translation || '';
             const pd = res.phrase_definition || '';
             bodyEl.innerHTML = `${toggle}
               <div class="pc-popup-phrase">${escapeHtml(res.phrase)}</div>
               ${pt ? `<div class="pc-popup-translation">${escapeHtml(pt)}</div>` : ''}
-              <div class="pc-popup-pos">phrase</div>
               ${pd ? `<div class="pc-popup-definition">${escapeHtml(pd)}</div>` : ''}
               ${fallbackDetails}`;
           } else {
             lemmaEl.hidden = true;
+            headerPosEl.hidden = !res.part_of_speech;
+            headerPosEl.textContent = res.part_of_speech || '';
             const hasLemma = res.lemma && res.lemma.trim() && res.lemma.toLowerCase() !== word.toLowerCase();
             const lemmaBlock = hasLemma
               ? `<div><span class="pc-popup-meta-label">${escapeHtml(labels.savesAs)}</span><strong>${escapeHtml(res.lemma)}</strong></div>` : '';
             const definitionBlock = dictionaryDefinition
               ? `<div class="pc-popup-definition"><span class="pc-popup-definition-label">${definitionLabel}${definitionSourcePill}</span>${escapeHtml(dictionaryDefinition)}</div>` : '';
-            const posBlock = res.part_of_speech
-              ? `<div><span class="pc-popup-meta-label">${escapeHtml(labels.partOfSpeech)}</span><span class="pc-popup-pos">${escapeHtml(res.part_of_speech)}</span></div>` : '';
-            const metadata = lemmaBlock || definitionBlock || posBlock ? `<div class="pc-popup-meta">
-              <div>${lemmaBlock}${definitionBlock}</div>
-              <div>${posBlock}</div>
+            const metadata = lemmaBlock || definitionBlock ? `<div class="pc-popup-meta">
+              ${lemmaBlock}${definitionBlock}
             </div>` : '';
             bodyEl.innerHTML = `${toggle}
               ${translation ? `<div class="pc-popup-translation">${escapeHtml(translation)}${saveState === 'new-sense' ? `<span class="pc-popup-new-def-pill">${escapeHtml(labels.newDefinition)}</span>` : ''}</div>` : ''}
@@ -566,6 +593,8 @@
       destroyed = true;
       resizeObserver.disconnect();
       window.removeEventListener('resize', position);
+      anchorElement?.classList.remove('pc-popup-anchor-selected');
+      pointer.remove();
       popup.remove();
     }
 

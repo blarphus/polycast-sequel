@@ -23,6 +23,36 @@
   box-sizing: border-box;
 }
 
+.pc-popup-pointer {
+  position: fixed;
+  z-index: 2147483646;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  background: #1a1a2e;
+  border: 1px solid rgba(108, 99, 255, 0.35);
+  box-shadow: 4px 4px 9px rgba(0, 0, 0, 0.24);
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 2px 2px 5px 2px;
+  box-sizing: border-box;
+}
+
+.pc-popup-pointer[data-placement="below"] {
+  box-shadow: -4px -4px 9px rgba(0, 0, 0, 0.2);
+}
+
+.pc-popup-anchor-selected {
+  padding: 0 .08em !important;
+  border-radius: .18em !important;
+  background: linear-gradient(180deg, #fde68a, #facc15) !important;
+  color: #2b2200 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .68),
+    0 3px 0 #ca8a04,
+    0 8px 18px rgba(202, 138, 4, .34) !important;
+  text-shadow: none !important;
+}
+
 @keyframes pc-fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -33,6 +63,13 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0;
+}
+
+.pc-popup-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .pc-popup-word {
@@ -291,18 +328,19 @@
 }
 
 .pc-popup-meta {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
   margin: 10px 0 12px;
   padding: 10px 0;
   border-top: 1px solid rgba(255,255,255,.08);
   border-bottom: 1px solid rgba(255,255,255,.08);
 }
-.pc-popup-meta > div + div { padding-left: 12px; border-left: 1px solid rgba(255,255,255,.1); }
 .pc-popup-meta-label { display: block; margin-bottom: 6px; color: #a78bfa; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
 .pc-popup-meta strong { color: #f4f1ff; font-size: 17px; font-weight: 700; }
-.pc-popup-meta .pc-popup-pos { display: inline-block; margin: 0; }
+
+.pc-popup-header-pos {
+  flex: 0 0 auto;
+  margin: 0;
+  vertical-align: 0;
+}
 
 .pc-popup-explain {
   width: 100%;
@@ -334,9 +372,7 @@
 
 .pc-popup-explanation {
   min-height: 0;
-  max-height: 220px;
   margin-top: 0;
-  overflow-y: auto;
   font-size: 13px;
   color: #d0d0e0;
   line-height: 1.45;
@@ -352,6 +388,16 @@
 
 .pc-popup-body {
   min-height: 40px;
+}
+
+.pc-popup-primary {
+  min-width: 0;
+}
+
+.pc-popup-context-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .pc-popup-main {

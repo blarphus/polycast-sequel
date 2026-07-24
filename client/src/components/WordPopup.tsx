@@ -211,7 +211,7 @@ export default function WordPopup(props: WordPopupProps) {
       );
     };
     renderGoal(getDailyGoalSnapshot());
-    controls.el.querySelector('.pc-popup-explain')?.before(goalEl);
+    controls.el.querySelector('.pc-popup-save')?.after(goalEl);
     const onGoalChange = (event: Event) => {
       const detail = (event as CustomEvent<DailyGoalSnapshot & { justAdded?: boolean }>).detail;
       if (detail) renderGoal(detail, !!detail.justAdded);
