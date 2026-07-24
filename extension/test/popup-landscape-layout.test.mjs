@@ -16,5 +16,8 @@ test('word popup uses a landscape layout with definition-led context', async () 
   assert.match(css, /width: min\(680px, calc\(100vw - 16px\)\)/);
   assert.match(css, /\.pc-popup-main[\s\S]*grid-template-columns:/);
   assert.doesNotMatch(css, /\.pc-popup-explanation[\s\S]*max-height:/);
+  assert.match(css, /\.pc-popup[\s\S]*overflow-y: scroll;/);
+  assert.match(css, /\.pc-popup[\s\S]*scrollbar-gutter: stable;/);
+  assert.match(core, /explainBox\.scrollIntoView/);
   assert.match(css, /@media \(max-width: 560px\)/);
 });

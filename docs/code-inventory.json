@@ -2,7 +2,7 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 577,
-    "lines": 89691,
+    "lines": 89740,
     "declarations": 2428,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
@@ -932,7 +932,7 @@
         },
         {
           "name": "proxyImageUrl",
-          "callers": 22,
+          "callers": 23,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -8597,7 +8597,7 @@
     },
     {
       "file": "extension/shared/wordPopupCore.js",
-      "lines": 655,
+      "lines": 664,
       "responsibility": "extension runtime/UI",
       "sideEffects": [
         "network",
@@ -8667,7 +8667,7 @@
         },
         {
           "name": "position",
-          "callers": 147,
+          "callers": 148,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/dictionaryImageLayout.test.ts"
@@ -8828,7 +8828,7 @@
     },
     {
       "file": "extension/test/popup-landscape-layout.test.mjs",
-      "lines": 21,
+      "lines": 24,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
@@ -13639,7 +13639,8 @@
       "testCoverage": [
         "client/src/test/i18n.test.ts",
         "client/src/test/practiceLocalization.test.ts",
-        "extension/test/popup-anchor-callout.test.mjs"
+        "extension/test/popup-anchor-callout.test.mjs",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -13663,7 +13664,8 @@
           "name": "explain",
           "callers": 43,
           "testReferences": [
-            "extension/test/popup-anchor-callout.test.mjs"
+            "extension/test/popup-anchor-callout.test.mjs",
+            "server/test/wordSemanticsSensePicker.test.js"
           ],
           "disposition": "retain"
         }
@@ -15298,7 +15300,8 @@
         "client/src/test/runtimeDiagnostics.test.ts",
         "extension/test/popup-anchor-callout.test.mjs",
         "ios/Polycast/UITests/PolycastUITests.swift",
-        "server/services/dictionaryWordService.test.js"
+        "server/services/dictionaryWordService.test.js",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "reviewed-retain",
       "dispositionReason": "One stateful screen/component lifecycle; reusable domain, card, popup, and transport seams are extracted.",
@@ -15371,7 +15374,8 @@
           "name": "explain",
           "callers": 43,
           "testReferences": [
-            "extension/test/popup-anchor-callout.test.mjs"
+            "extension/test/popup-anchor-callout.test.mjs",
+            "server/test/wordSemanticsSensePicker.test.js"
           ],
           "disposition": "retain"
         },
@@ -23895,7 +23899,7 @@
     },
     {
       "file": "server/services/wordSemanticsService.js",
-      "lines": 578,
+      "lines": 587,
       "responsibility": "server domain/integration",
       "sideEffects": [],
       "testCoverage": [
@@ -23913,7 +23917,9 @@
         {
           "name": "markSelectedWord",
           "callers": 2,
-          "testReferences": [],
+          "testReferences": [
+            "server/test/wordSemanticsSensePicker.test.js"
+          ],
           "disposition": "retain"
         },
         {
@@ -23965,7 +23971,9 @@
         {
           "name": "buildExplainWordPrompt",
           "callers": 1,
-          "testReferences": [],
+          "testReferences": [
+            "server/test/wordSemanticsSensePicker.test.js"
+          ],
           "disposition": "retain"
         },
         {
@@ -24876,7 +24884,7 @@
     },
     {
       "file": "server/test/wordSemanticsSensePicker.test.js",
-      "lines": 57,
+      "lines": 85,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],

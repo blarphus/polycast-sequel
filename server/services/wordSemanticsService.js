@@ -25,10 +25,19 @@ function makeContextError(message, context = {}) {
   return error;
 }
 
-function markSelectedWord(sentence, word) {
-  if (sentence.includes('~')) return sentence;
+export function markSelectedWord(sentence, word) {
+  if (sentence.includes(`~${word}~`)) return sentence;
   const escaped = String(word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return sentence.replace(new RegExp(`\\b${escaped}\\b`, 'iu'), `~${word}~`);
+  // JavaScript's \b boundary is ASCII-based, even with the Unicode flag. It
+  // therefore fails for selected words that begin or end with accented
+  // characters (for example "últimas"), leaving Gemini unable to tell which
+  // token the learner clicked. Match boundaries using Unicode letter, mark,
+  // and number categories instead.
+  const tokenPattern = new RegExp(
+    `(?<![\\p{L}\\p{M}\\p{N}])${escaped}(?![\\p{L}\\p{M}\\p{N}])`,
+    'iu',
+  );
+  return sentence.replace(tokenPattern, (matched) => `~${matched}~`);
 }
 
 async function translateWordInSentence(word, sentence, sourceLang, targetLang) {
@@ -263,9 +272,9 @@ export function buildExplainWordPrompt({ word, sentence, nativeLang, targetLang,
   const passage = (context && context.trim()) ? context.trim() : sentence;
   const markedPassage = markSelectedWord(passage, word);
   return `Wider passage (for context): "${markedPassage}"
-The learner clicked the text wrapped in tildes in this ${targetLang || 'target-language'} sentence: "${markedSentence}"
+The selected token is "${word}". The learner clicked that exact text, wrapped in tildes, in this ${targetLang || 'target-language'} sentence: "${markedSentence}"
 
-In ${nativeLang} and in easy to understand and casual speech, explain what that word specifically means in "${markedSentence}". Again, explain in the context of that particular sentence. Explain in one or two sentences. While you should explain what a turn of phrase literally means, do not extend into textual analysis.
+In ${nativeLang} and in easy to understand and casual speech, explain only what "${word}" specifically means in "${markedSentence}". Do not explain or switch to any other word from the wider passage. Explain in the context of that particular sentence in one or two complete sentences. While you should explain what a turn of phrase literally means, do not extend into textual analysis.
 
 Do NOT add a preamble, markdown, bullets, or extra lines. Do not repeat the ${targetLang || 'target-language'} sentence.`;
 }

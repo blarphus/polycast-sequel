@@ -9,7 +9,10 @@
   width: min(680px, calc(100vw - 16px));
   min-height: 0;
   max-height: var(--pc-popup-available-height, calc(100vh - 16px));
-  overflow-y: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(167, 139, 250, 0.72) rgba(255, 255, 255, 0.08);
   overscroll-behavior: contain;
   background: #1a1a2e;
   border: 1px solid rgba(108, 99, 255, 0.35);
@@ -383,8 +386,9 @@
   color: #d0d0e0;
   line-height: 1.45;
   white-space: pre-line;
+  overflow-wrap: anywhere;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 8px;
+  padding: 8px 0 4px;
 }
 
 .pc-popup-explanation-highlight {

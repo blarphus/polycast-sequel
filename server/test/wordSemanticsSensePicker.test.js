@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildBestSensePrompt,
+  buildExplainWordPrompt,
+  markSelectedWord,
   parseBestSenseReply,
 } from '../services/wordSemanticsService.js';
 
@@ -52,5 +54,31 @@ test('sense selection rejects the retired generated-definition response shape', 
       senseCount: 2,
     }),
     /exactly PICK and TRANSLATION/,
+  );
+});
+
+test('context explanation marks a selected word with accented Unicode boundaries', () => {
+  const sentence = 'Fiambres describen sus últimas horas de vida.';
+
+  assert.equal(
+    markSelectedWord(sentence, 'últimas'),
+    'Fiambres describen sus ~últimas~ horas de vida.',
+  );
+
+  const prompt = buildExplainWordPrompt({
+    word: 'últimas',
+    sentence,
+    nativeLang: 'English',
+    targetLang: 'Spanish',
+  });
+  assert.match(prompt, /The selected token is "últimas"/);
+  assert.match(prompt, /sus ~últimas~ horas/);
+  assert.match(prompt, /explain only what "últimas" specifically means/);
+});
+
+test('context explanation adds the current selection when another token is already marked', () => {
+  assert.equal(
+    markSelectedWord('~Fiambres~ describen sus últimas horas.', 'últimas'),
+    '~Fiambres~ describen sus ~últimas~ horas.',
   );
 });

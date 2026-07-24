@@ -396,6 +396,15 @@
             (res && res.explanation) || 'No explanation available',
             'pc-popup-explanation-highlight',
           );
+          position();
+          // The popup is bounded by the available viewport around its anchor.
+          // When an explanation makes it taller than that space, bring the
+          // newly revealed answer into view instead of leaving its final lines
+          // below the popup's scrollport.
+          globalThis.requestAnimationFrame?.(() => {
+            if (destroyed) return;
+            explainBox.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+          });
         })
         .catch((err) => {
           if (destroyed) return;
