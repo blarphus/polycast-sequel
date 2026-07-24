@@ -9,7 +9,7 @@ export function uiLanguage(nativeLanguage?: string | null): UiLanguage {
 const messages = {
   en: {
     'nav.expand': 'Expand sidebar', 'nav.collapse': 'Collapse sidebar',
-    'nav.dictionary': 'Dictionary', 'nav.flashcards': 'Flashcards', 'nav.practice': 'Practice',
+    'nav.dictionary': 'Dictionary', 'nav.flashcards': 'Flashcards', 'nav.practice': 'Practice', 'nav.students': 'Students',
     'nav.books': 'Books', 'nav.inProgress': 'In progress', 'nav.home': 'Home', 'nav.social': 'Social',
     'nav.classwork': 'Classwork', 'nav.watch': 'Watch', 'nav.local': 'Local',
     'nav.profiles': 'Profiles', 'nav.settings': 'Settings',
@@ -81,7 +81,7 @@ const messages = {
   },
   es: {
     'nav.expand': 'Expandir barra lateral', 'nav.collapse': 'Contraer barra lateral',
-    'nav.dictionary': 'Diccionario', 'nav.flashcards': 'Tarjetas', 'nav.practice': 'Práctica',
+    'nav.dictionary': 'Diccionario', 'nav.flashcards': 'Tarjetas', 'nav.practice': 'Práctica', 'nav.students': 'Estudiantes',
     'nav.books': 'Libros', 'nav.inProgress': 'En desarrollo', 'nav.home': 'Inicio', 'nav.social': 'Social',
     'nav.classwork': 'Trabajo de clase', 'nav.watch': 'Ver', 'nav.local': 'Local',
     'nav.profiles': 'Perfiles', 'nav.settings': 'Configuración',

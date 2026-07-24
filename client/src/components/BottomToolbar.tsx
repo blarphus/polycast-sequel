@@ -89,6 +89,7 @@ export default function BottomToolbar() {
 
   const isHome = isTeacher ? location.pathname === '/classes' : location.pathname === '/home';
   const isDictionary = location.pathname === '/' || location.pathname === '/dictionary';
+  const isStudents = isTeacher && (location.pathname === '/students' || location.pathname.startsWith('/students/'));
   const isFlashcards = location.pathname === '/learn' || location.pathname.startsWith('/learn/');
   const isPractice = location.pathname === '/practice' || location.pathname.startsWith('/practice/');
   const isSocial = location.pathname === '/chats';
@@ -139,13 +140,23 @@ export default function BottomToolbar() {
           <span className="toolbar-label">{t('nav.home')}</span>
         </button>
       )}
-      <button
-        className={`toolbar-tab toolbar-tab--red${isDictionary ? ' active' : ''}`}
-        onClick={() => navigate('/dictionary')}
-      >
-        <BookIcon size={22} />
-        <span className="toolbar-label">{t('nav.dictionary')}</span>
-      </button>
+      {isTeacher ? (
+        <button
+          className={`toolbar-tab toolbar-tab--red${isStudents ? ' active' : ''}`}
+          onClick={() => navigate('/students')}
+        >
+          <PeopleIcon size={22} />
+          <span className="toolbar-label">{t('nav.students')}</span>
+        </button>
+      ) : (
+        <button
+          className={`toolbar-tab toolbar-tab--red${isDictionary ? ' active' : ''}`}
+          onClick={() => navigate('/dictionary')}
+        >
+          <BookIcon size={22} />
+          <span className="toolbar-label">{t('nav.dictionary')}</span>
+        </button>
+      )}
       <button
         className={`toolbar-tab toolbar-tab--yellow${isFlashcards ? ' active' : ''}`}
         onClick={() => navigate('/learn')}
@@ -153,13 +164,15 @@ export default function BottomToolbar() {
         <BoltIcon size={22} />
         <span className="toolbar-label">{t('nav.flashcards')}</span>
       </button>
-      <button
-        className={`toolbar-tab toolbar-tab--yellow${isPractice ? ' active' : ''}`}
-        onClick={() => navigate('/practice')}
-      >
-        <TargetIcon size={22} />
-        <span className="toolbar-label">{t('nav.practice')}</span>
-      </button>
+      {!isTeacher && (
+        <button
+          className={`toolbar-tab toolbar-tab--yellow${isPractice ? ' active' : ''}`}
+          onClick={() => navigate('/practice')}
+        >
+          <TargetIcon size={22} />
+          <span className="toolbar-label">{t('nav.practice')}</span>
+        </button>
+      )}
       <button
         className={`toolbar-tab toolbar-tab--indigo${isBooks ? ' active' : ''}`}
         onClick={() => navigate('/books')}

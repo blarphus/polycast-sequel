@@ -351,6 +351,28 @@ export function classifyStudentWordStage(word) {
   return 'review';
 }
 
+export function serializeStudentWord(word) {
+  return {
+    id: word.id,
+    word: word.word,
+    translation: word.translation,
+    definition: word.definition || '',
+    part_of_speech: word.part_of_speech,
+    image_url: word.image_url || null,
+    sentence_context: word.sentence_context || null,
+    example_sentence: word.example_sentence || null,
+    frequency: word.frequency ?? null,
+    frequency_count: word.frequency_count ?? null,
+    lemma_frequency_rank: word.lemma_frequency_rank ?? null,
+    due_at: word.due_at || null,
+    last_reviewed_at: word.last_reviewed_at || null,
+    created_at: word.created_at,
+    correct_count: word.correct_count || 0,
+    incorrect_count: word.incorrect_count || 0,
+    srs_stage: classifyStudentWordStage(word),
+  };
+}
+
 function localDay(date, timeZone) {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone,
@@ -390,8 +412,10 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
   const student = studentResult.rows[0];
 
   const wordsResult = await pool.query(
-    `SELECT id, word, translation, part_of_speech, srs_interval, due_at,
-            last_reviewed_at, correct_count, incorrect_count, learning_step, created_at
+    `SELECT id, word, translation, definition, part_of_speech, image_url,
+            sentence_context, example_sentence, frequency, frequency_count,
+            lemma_frequency_rank, srs_interval, due_at, last_reviewed_at,
+            correct_count, incorrect_count, learning_step, created_at
      FROM saved_words
      WHERE user_id = $1
        AND target_language = (SELECT target_language FROM users WHERE id = $1)
@@ -608,13 +632,7 @@ export async function getClassroomStudentStats(classroomId, studentId, actorTeac
       completed: wl.completed,
       completed_at: wl.completed_at,
     })),
-    words: words.map((word) => ({
-      id: word.id,
-      word: word.word,
-      translation: word.translation,
-      part_of_speech: word.part_of_speech,
-      srs_stage: classifyStudentWordStage(word),
-    })),
+    words: words.map(serializeStudentWord),
   };
 }
 

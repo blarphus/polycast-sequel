@@ -292,9 +292,9 @@ export default function App() {
         <Route
           path="/dictionary"
           element={
-            <ProtectedRoute>
+            <StudentRoute>
               <Dictionary />
-            </ProtectedRoute>
+            </StudentRoute>
           }
         />
         <Route

@@ -113,7 +113,19 @@ export interface StudentWord {
   id: string;
   word: string;
   translation: string;
+  definition: string;
   part_of_speech: string | null;
+  image_url: string | null;
+  sentence_context: string | null;
+  example_sentence: string | null;
+  frequency: number | null;
+  frequency_count: number | null;
+  lemma_frequency_rank: number | null;
+  due_at: string | null;
+  last_reviewed_at: string | null;
+  created_at: string;
+  correct_count: number;
+  incorrect_count: number;
   srs_stage: 'new' | 'learning' | 'review' | 'mastered';
 }
 

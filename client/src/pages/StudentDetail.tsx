@@ -3,10 +3,10 @@
 // ---------------------------------------------------------------------------
 
 import '../styles/students.css';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import * as api from '../api';
-import type { StudentDetail as StudentDetailData, DailyActivity, RecentSession } from '../api';
+import type { StudentDetail as StudentDetailData, DailyActivity, RecentSession, StudentWord } from '../api';
 import { ChevronLeftIcon, CheckIcon } from '../components/icons';
 import { formatDate as formatShortDate } from '../utils/dateFormat';
 import { useAsyncData } from '../hooks/useAsyncData';
@@ -34,6 +34,26 @@ function relativeTime(dateStr: string) {
   if (days === 1) return 'yesterday';
   if (days < 7) return `${days}d ago`;
   return formatShortDate(dateStr);
+}
+
+function isDueNow(word: StudentWord) {
+  return !!word.due_at && new Date(word.due_at).getTime() <= Date.now();
+}
+
+function isDueToday(word: StudentWord) {
+  if (!word.due_at) return false;
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  return new Date(word.due_at).getTime() <= endOfToday.getTime();
+}
+
+function reviewLabel(word: StudentWord) {
+  if (!word.due_at) return 'Unscheduled';
+  if (isDueNow(word)) return 'Due now';
+  const due = new Date(word.due_at);
+  const today = new Date();
+  if (localDateKey(due) === localDateKey(today)) return `Later today · ${due.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  return `Due ${formatShortDate(word.due_at)}`;
 }
 
 function localDateKey(date: Date) {
@@ -239,6 +259,193 @@ function SrsProgressBar({ words }: { words: StudentDetailData['words'] }) {
   );
 }
 
+const STUDENT_WORD_BATCH = 100;
+
+function StudentVocabularyPanel({ words }: { words: StudentWord[] }) {
+  const [view, setView] = useState<'due' | 'all'>('due');
+  const [search, setSearch] = useState('');
+  const [visibleCount, setVisibleCount] = useState(STUDENT_WORD_BATCH);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const dueCount = useMemo(() => words.filter(isDueToday).length, [words]);
+  const filteredWords = useMemo(() => {
+    const needle = search.trim().toLocaleLowerCase();
+    return words
+      .filter((word) => view === 'all' || isDueToday(word))
+      .filter((word) => !needle
+        || word.word.toLocaleLowerCase().includes(needle)
+        || (word.translation || '').toLocaleLowerCase().includes(needle))
+      .sort((a, b) => {
+        if (view === 'due') {
+          return new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime()
+            || a.word.localeCompare(b.word);
+        }
+        return a.word.localeCompare(b.word);
+      });
+  }, [search, view, words]);
+
+  useEffect(() => {
+    setVisibleCount(STUDENT_WORD_BATCH);
+  }, [search, view]);
+
+  useEffect(() => {
+    if (!filteredWords.some((word) => word.id === selectedId)) {
+      setSelectedId(filteredWords[0]?.id || null);
+    }
+  }, [filteredWords, selectedId]);
+
+  const visibleWords = filteredWords.slice(0, visibleCount);
+  const selectedWord = words.find((word) => word.id === selectedId) || null;
+  const totalAnswers = selectedWord
+    ? selectedWord.correct_count + selectedWord.incorrect_count
+    : 0;
+  const accuracy = selectedWord && totalAnswers > 0
+    ? Math.round((selectedWord.correct_count / totalAnswers) * 100)
+    : null;
+
+  return (
+    <section className="sd-vocab-shell" aria-label="Student vocabulary">
+      <div className="sd-vocab-toolbar">
+        <div>
+          <h2 className="sd-vocab-title">Vocabulary cards</h2>
+          <p className="sd-vocab-subtitle">Inspect what this student can review now or browse their complete dictionary.</p>
+        </div>
+        <div className="sd-vocab-toggle" role="group" aria-label="Vocabulary view">
+          <button
+            className={view === 'due' ? 'active' : ''}
+            onClick={() => setView('due')}
+          >
+            Due today <span>{dueCount}</span>
+          </button>
+          <button
+            className={view === 'all' ? 'active' : ''}
+            onClick={() => setView('all')}
+          >
+            All words <span>{words.length}</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="sd-vocab-search-row">
+        <label className="sd-vocab-search">
+          <span aria-hidden="true">⌕</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search this student's words…"
+          />
+        </label>
+        <span className="sd-vocab-count">{filteredWords.length} {filteredWords.length === 1 ? 'word' : 'words'}</span>
+      </div>
+
+      <SrsProgressBar words={words} />
+
+      {filteredWords.length === 0 ? (
+        <div className="sd-vocab-empty">
+          {search.trim()
+            ? 'No words match that search.'
+            : view === 'due'
+              ? 'No cards are due right now.'
+              : 'This student has not saved any words yet.'}
+        </div>
+      ) : (
+        <div className="sd-vocab-workspace">
+          <div className="sd-vocab-list" role="listbox" aria-label={`${view === 'due' ? 'Due' : 'All'} student words`}>
+            {visibleWords.map((word) => (
+              <button
+                key={word.id}
+                className={`sd-vocab-row${selectedId === word.id ? ' active' : ''}`}
+                onClick={() => setSelectedId(word.id)}
+                role="option"
+                aria-selected={selectedId === word.id}
+              >
+                <span className="sd-vocab-row-copy">
+                  <strong>{word.word}</strong>
+                  <small>{word.translation || 'No translation'}</small>
+                </span>
+                {word.part_of_speech && <span className="sd-vocab-pos">{word.part_of_speech}</span>}
+                <span className={`sd-vocab-due${isDueNow(word) ? ' due' : ''}`}>{reviewLabel(word)}</span>
+              </button>
+            ))}
+            {visibleCount < filteredWords.length && (
+              <button
+                className="sd-vocab-show-more"
+                onClick={() => setVisibleCount((count) => count + STUDENT_WORD_BATCH)}
+              >
+                Show 100 more
+              </button>
+            )}
+          </div>
+
+          {selectedWord && (
+            <article className="sd-vocab-detail">
+              <div className="sd-vocab-detail-header">
+                <div>
+                  <div className="sd-vocab-heading-row">
+                    <h3>{selectedWord.word}</h3>
+                    {selectedWord.part_of_speech && <span className="sd-vocab-pos">{selectedWord.part_of_speech}</span>}
+                  </div>
+                  <p>{selectedWord.translation || 'No translation'}</p>
+                </div>
+                <span className={`sd-vocab-due sd-vocab-due--large${isDueNow(selectedWord) ? ' due' : ''}`}>
+                  {reviewLabel(selectedWord)}
+                </span>
+              </div>
+
+              {selectedWord.image_url && (
+                <div className="sd-vocab-image">
+                  <img src={api.proxyImageUrl(selectedWord.image_url) ?? undefined} alt="" />
+                </div>
+              )}
+
+              <div className="sd-vocab-detail-grid">
+                <div className="sd-vocab-detail-card">
+                  <span>Definition</span>
+                  <p>{selectedWord.definition || selectedWord.translation || 'No definition saved.'}</p>
+                </div>
+                <div className="sd-vocab-detail-card">
+                  <span>Study progress</span>
+                  <p className="sd-vocab-stage-line">
+                    <b className={`sd-word-stage sd-word-stage--${selectedWord.srs_stage}`}>{selectedWord.srs_stage}</b>
+                    {accuracy === null ? 'Not reviewed yet' : `${accuracy}% accuracy · ${totalAnswers} answers`}
+                  </p>
+                </div>
+                {selectedWord.sentence_context && (
+                  <div className="sd-vocab-detail-card">
+                    <span>Saved from</span>
+                    <p><i>{selectedWord.sentence_context}</i></p>
+                  </div>
+                )}
+                {selectedWord.example_sentence && (
+                  <div className="sd-vocab-detail-card">
+                    <span>Example</span>
+                    <p><i>{selectedWord.example_sentence}</i></p>
+                  </div>
+                )}
+                <div className="sd-vocab-detail-card">
+                  <span>Frequency</span>
+                  <p>
+                    {selectedWord.frequency == null ? 'Unranked' : `${selectedWord.frequency}/10`}
+                    {selectedWord.lemma_frequency_rank ? ` · corpus rank #${selectedWord.lemma_frequency_rank.toLocaleString()}` : ''}
+                  </p>
+                </div>
+                <div className="sd-vocab-detail-card">
+                  <span>History</span>
+                  <p>
+                    Added {formatShortDate(selectedWord.created_at)}
+                    {selectedWord.last_reviewed_at ? ` · reviewed ${relativeTime(selectedWord.last_reviewed_at)}` : ''}
+                  </p>
+                </div>
+              </div>
+            </article>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Recent sessions timeline
 // ---------------------------------------------------------------------------
@@ -279,6 +486,7 @@ export default function StudentDetail() {
   const classroomId = searchParams.get('classroomId');
 
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [dashboardView, setDashboardView] = useState<'words' | 'progress'>('words');
 
   const { data, loading, error } = useAsyncData<StudentDetailData>(
     () => {
@@ -354,8 +562,30 @@ export default function StudentDetail() {
         </div>
       )}
 
-      {/* Two-column layout */}
-      <div className="sd-grid">
+      <div className="sd-dashboard-tabs" role="tablist" aria-label="Student dashboard section">
+        <button
+          role="tab"
+          aria-selected={dashboardView === 'words'}
+          className={dashboardView === 'words' ? 'active' : ''}
+          onClick={() => setDashboardView('words')}
+        >
+          Words
+          <span>{words.filter(isDueToday).length} due today</span>
+        </button>
+        <button
+          role="tab"
+          aria-selected={dashboardView === 'progress'}
+          className={dashboardView === 'progress' ? 'active' : ''}
+          onClick={() => setDashboardView('progress')}
+        >
+          Progress
+        </button>
+      </div>
+
+      {dashboardView === 'words' ? (
+        <StudentVocabularyPanel words={words} />
+      ) : (
+      <div className="sd-grid" role="tabpanel" aria-label="Student progress">
         {/* Left column */}
         <div className="sd-col">
           {/* 30-day calendar */}
@@ -365,34 +595,6 @@ export default function StudentDetail() {
             {selectedDay && <DayOverlay day={selectedDay} activity={activity} onClose={() => setSelectedDay(null)} />}
           </div>
 
-          {/* Vocabulary */}
-          <div className="sd-card">
-            <h2 className="sd-card-title">Vocabulary ({words.length})</h2>
-            {words.length === 0 ? (
-              <p className="sd-empty">No words saved yet.</p>
-            ) : (
-              <>
-                <SrsProgressBar words={words} />
-                <div className="sd-word-table">
-                  <div className="sd-word-table-header">
-                    <span>Word</span>
-                    <span>Translation</span>
-                    <span>Stage</span>
-                  </div>
-                  {words.slice(0, 20).map((w) => (
-                    <div key={w.id} className="sd-word-row">
-                      <span className="sd-word-term">{w.word}</span>
-                      <span className="sd-word-translation">{w.translation}</span>
-                      <span className={`sd-word-stage sd-word-stage--${w.srs_stage}`}>{w.srs_stage}</span>
-                    </div>
-                  ))}
-                  {words.length > 20 && (
-                    <div className="sd-word-row sd-word-more">+{words.length - 20} more words</div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
         </div>
 
         {/* Right column */}
@@ -461,6 +663,7 @@ export default function StudentDetail() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

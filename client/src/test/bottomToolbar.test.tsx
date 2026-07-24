@@ -101,7 +101,26 @@ describe('BottomToolbar', () => {
       container.querySelectorAll(':scope > nav > button .toolbar-label'),
     ).map((label) => label.textContent?.trim());
     expect(destinationLabels[0]).toBe('Home');
+    expect(destinationLabels).toContain('Students');
+    expect(destinationLabels).not.toContain('Dictionary');
+    expect(destinationLabels).not.toContain('Practice');
     expect(container.querySelector('nav > button.active .toolbar-label')?.textContent).toBe('Home');
+  });
+
+  it('marks Students active throughout the teacher student panel', () => {
+    authState.accountType = 'teacher';
+    act(() => {
+      root?.render(
+        <MemoryRouter
+          initialEntries={['/students/student-1?classroomId=class-1']}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <BottomToolbar />
+        </MemoryRouter>,
+      );
+    });
+
+    expect(container.querySelector('nav > button.active .toolbar-label')?.textContent).toBe('Students');
   });
 });
 

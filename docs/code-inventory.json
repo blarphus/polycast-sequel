@@ -1,9 +1,9 @@
 {
   "generatedAt": "deterministic-from-worktree",
   "totals": {
-    "files": 576,
-    "lines": 89268,
-    "declarations": 2423,
+    "files": 577,
+    "lines": 89691,
+    "declarations": 2428,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 5
@@ -211,6 +211,7 @@
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/httpErrors.test.js",
         "server/lib/origins.test.js",
+        "server/services/classroomStudentStats.test.js",
         "server/services/dictionaryMediaService.test.js",
         "server/test/apnsVoip.test.js",
         "server/test/auth.integration.test.js",
@@ -348,13 +349,13 @@
         },
         {
           "name": "ProtectedRoute",
-          "callers": 57,
+          "callers": 55,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "StudentRoute",
-          "callers": 12,
+          "callers": 14,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -399,6 +400,7 @@
         "client/src/test/runtimeDiagnostics.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/srs.test.ts",
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "client/src/test/watchTranscript.test.ts",
         "client/src/test/wordFormsDialog.test.tsx",
         "extension/test/background.test.mjs",
@@ -511,12 +513,14 @@
     },
     {
       "file": "client/src/api/classroom.ts",
-      "lines": 324,
+      "lines": 336,
       "responsibility": "web API adapter",
       "sideEffects": [
         "network"
       ],
       "testCoverage": [
+        "client/src/test/bottomToolbar.test.tsx",
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "server/services/classroomStudentStats.test.js",
         "server/test/auth.integration.test.js",
         "server/test/classBookService.test.js",
@@ -632,7 +636,9 @@
         {
           "name": "getStudentStats",
           "callers": 3,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/studentDetailVocabulary.test.tsx"
+          ],
           "disposition": "retain"
         }
       ]
@@ -857,6 +863,7 @@
         "client/src/test/onlineDictionaryOnly.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/srs.test.ts",
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "client/src/test/ttsFallbackToast.test.tsx",
         "client/src/test/wordFormsDialog.test.tsx",
         "extension/test/background.test.mjs",
@@ -866,6 +873,7 @@
         "server/lib/gemini.test.js",
         "server/lib/learnerDefinitionPrompt.test.js",
         "server/lib/sharedDictionaryEntries.test.js",
+        "server/services/classroomStudentStats.test.js",
         "server/services/dictionaryMediaService.test.js",
         "server/services/dictionaryStudyService.test.js",
         "server/services/dictionaryWordService.test.js",
@@ -1678,7 +1686,7 @@
     },
     {
       "file": "client/src/components/BottomToolbar.tsx",
-      "lines": 307,
+      "lines": 320,
       "responsibility": "web component UI",
       "sideEffects": [
         "network",
@@ -2781,7 +2789,7 @@
         },
         {
           "name": "PeopleIcon",
-          "callers": 6,
+          "callers": 7,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -4481,7 +4489,7 @@
         },
         {
           "name": "reviewLabel",
-          "callers": 1,
+          "callers": 4,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -4605,6 +4613,7 @@
         "client/src/test/learnReviewLayout.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/srs.test.ts",
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "ios/Polycast/Tests/PolycastTests.swift"
       ],
       "disposition": "reviewed-retain",
@@ -5021,10 +5030,12 @@
     },
     {
       "file": "client/src/pages/StudentDetail.tsx",
-      "lines": 467,
+      "lines": 670,
       "responsibility": "web route UI",
       "sideEffects": [],
-      "testCoverage": [],
+      "testCoverage": [
+        "client/src/test/studentDetailVocabulary.test.tsx"
+      ],
       "disposition": "reviewed-retain",
       "dispositionReason": "One stateful screen/component lifecycle; reusable domain, card, popup, and transport seams are extracted.",
       "symbols": [
@@ -5042,13 +5053,31 @@
         },
         {
           "name": "relativeTime",
-          "callers": 1,
+          "callers": 2,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "isDueNow",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "isDueToday",
+          "callers": 3,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
+          "name": "reviewLabel",
+          "callers": 4,
           "testReferences": [],
           "disposition": "retain"
         },
         {
           "name": "localDateKey",
-          "callers": 15,
+          "callers": 17,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -5083,6 +5112,12 @@
           "disposition": "retain"
         },
         {
+          "name": "StudentVocabularyPanel",
+          "callers": 1,
+          "testReferences": [],
+          "disposition": "retain"
+        },
+        {
           "name": "SessionTimeline",
           "callers": 1,
           "testReferences": [],
@@ -5091,7 +5126,9 @@
         {
           "name": "StudentDetail",
           "callers": 7,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/studentDetailVocabulary.test.tsx"
+          ],
           "disposition": "retain"
         }
       ]
@@ -5101,14 +5138,18 @@
       "lines": 264,
       "responsibility": "web route UI",
       "sideEffects": [],
-      "testCoverage": [],
+      "testCoverage": [
+        "client/src/test/bottomToolbar.test.tsx"
+      ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "Students",
-          "callers": 17,
-          "testReferences": [],
+          "callers": 18,
+          "testReferences": [
+            "client/src/test/bottomToolbar.test.tsx"
+          ],
           "disposition": "retain"
         }
       ]
@@ -5306,7 +5347,7 @@
     },
     {
       "file": "client/src/test/bottomToolbar.test.tsx",
-      "lines": 122,
+      "lines": 141,
       "responsibility": "test",
       "sideEffects": [
         "persistence",
@@ -5684,7 +5725,7 @@
       "symbols": [
         {
           "name": "card",
-          "callers": 839,
+          "callers": 843,
           "testReferences": [
             "client/src/test/flashcardBackgroundPreload.test.ts",
             "client/src/test/learnReviewLayout.test.ts",
@@ -5698,6 +5739,18 @@
           "disposition": "retain"
         }
       ]
+    },
+    {
+      "file": "client/src/test/studentDetailVocabulary.test.tsx",
+      "lines": 128,
+      "responsibility": "test",
+      "sideEffects": [
+        "UI"
+      ],
+      "testCoverage": [],
+      "disposition": "intentionally standalone",
+      "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
+      "symbols": []
     },
     {
       "file": "client/src/test/transcriptContract.test.ts",
@@ -7267,6 +7320,7 @@
         "client/src/test/dictionaryEntryEditor.test.tsx",
         "client/src/test/dictionaryGroups.test.ts",
         "client/src/test/srs.test.ts",
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "ios/Polycast/Tests/PolycastTests.swift",
         "server/lib/srsAlgorithm.test.js",
         "server/lib/srsUpdate.test.js",
@@ -7338,7 +7392,7 @@
         },
         {
           "name": "localDateKey",
-          "callers": 15,
+          "callers": 17,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -7749,7 +7803,7 @@
         },
         {
           "name": "localDateKey",
-          "callers": 15,
+          "callers": 17,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -8934,7 +8988,7 @@
         },
         {
           "name": "show",
-          "callers": 23,
+          "callers": 24,
           "testReferences": [
             "ios/Polycast/Tests/PolycastTests.swift"
           ],
@@ -9444,6 +9498,7 @@
       "responsibility": "iOS core/runtime",
       "sideEffects": [],
       "testCoverage": [
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "extension/test/activation.test.mjs",
         "extension/test/background.test.mjs",
         "extension/test/fallback-toast.test.mjs",
@@ -9558,7 +9613,9 @@
         {
           "name": "getStudentStats",
           "callers": 3,
-          "testReferences": [],
+          "testReferences": [
+            "client/src/test/studentDetailVocabulary.test.tsx"
+          ],
           "disposition": "retain"
         }
       ]
@@ -9728,7 +9785,7 @@
         },
         {
           "name": "Word",
-          "callers": 58,
+          "callers": 57,
           "testReferences": [
             "client/src/test/dictionaryEntryEditor.test.tsx"
           ],
@@ -10165,7 +10222,7 @@
         },
         {
           "name": "progress",
-          "callers": 231,
+          "callers": 237,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/catalogProgress.test.tsx",
@@ -10848,7 +10905,7 @@
         },
         {
           "name": "string",
-          "callers": 1933,
+          "callers": 1941,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "client/src/test/cbz.test.ts",
@@ -11190,7 +11247,7 @@
         },
         {
           "name": "StudentWord",
-          "callers": 5,
+          "callers": 10,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -11333,7 +11390,7 @@
         },
         {
           "name": "localDateKey",
-          "callers": 15,
+          "callers": 17,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -12094,6 +12151,7 @@
         "client/src/test/readerSelection.test.ts",
         "client/src/test/runtimeDiagnostics.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "client/src/test/ttsFallbackToast.test.tsx",
         "client/src/test/wordFormsDialog.test.tsx",
         "extension/test/activation.test.mjs",
@@ -12165,6 +12223,7 @@
             "client/src/test/groupCallProvider.test.tsx",
             "client/src/test/readerSelection.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
+            "client/src/test/studentDetailVocabulary.test.tsx",
             "client/src/test/ttsFallbackToast.test.tsx",
             "client/src/test/wordFormsDialog.test.tsx",
             "extension/test/activation.test.mjs",
@@ -12200,6 +12259,7 @@
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/readerSelection.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "client/src/test/ttsFallbackToast.test.tsx",
         "client/src/test/wordFormsDialog.test.tsx",
         "extension/test/fallback-toast.test.mjs",
@@ -12262,6 +12322,7 @@
             "client/src/test/groupCallProvider.test.tsx",
             "client/src/test/readerSelection.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
+            "client/src/test/studentDetailVocabulary.test.tsx",
             "client/src/test/ttsFallbackToast.test.tsx",
             "client/src/test/wordFormsDialog.test.tsx",
             "extension/test/fallback-toast.test.mjs",
@@ -12481,6 +12542,7 @@
         "client/src/test/groupCallProvider.test.tsx",
         "client/src/test/readerSelection.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "client/src/test/ttsFallbackToast.test.tsx",
         "client/src/test/wordFormsDialog.test.tsx",
         "extension/test/activation.test.mjs",
@@ -12538,6 +12600,7 @@
             "client/src/test/groupCallProvider.test.tsx",
             "client/src/test/readerSelection.test.ts",
             "client/src/test/sessionExpiration.test.tsx",
+            "client/src/test/studentDetailVocabulary.test.tsx",
             "client/src/test/ttsFallbackToast.test.tsx",
             "client/src/test/wordFormsDialog.test.tsx",
             "extension/test/activation.test.mjs",
@@ -12762,7 +12825,7 @@
         },
         {
           "name": "search",
-          "callers": 139,
+          "callers": 149,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -12883,7 +12946,7 @@
         },
         {
           "name": "localDateKey",
-          "callers": 15,
+          "callers": 17,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -12971,7 +13034,7 @@
         },
         {
           "name": "search",
-          "callers": 139,
+          "callers": 149,
           "testReferences": [],
           "disposition": "retain"
         }
@@ -13807,7 +13870,7 @@
         },
         {
           "name": "section",
-          "callers": 95,
+          "callers": 98,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -14345,7 +14408,7 @@
         },
         {
           "name": "search",
-          "callers": 139,
+          "callers": 149,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -14536,7 +14599,7 @@
         },
         {
           "name": "formatShortDate",
-          "callers": 8,
+          "callers": 10,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -14833,7 +14896,7 @@
         },
         {
           "name": "trim",
-          "callers": 306,
+          "callers": 308,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "server/lib/httpErrors.test.js"
@@ -15157,7 +15220,7 @@
         },
         {
           "name": "Progress",
-          "callers": 12,
+          "callers": 13,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -16299,7 +16362,7 @@
         },
         {
           "name": "placeholder",
-          "callers": 50,
+          "callers": 51,
           "testReferences": [],
           "disposition": "retain"
         },
@@ -17096,6 +17159,7 @@
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/settingsControls.test.ts",
         "client/src/test/srs.test.ts",
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "client/src/test/ttsFallbackToast.test.tsx",
         "client/src/test/wordFormsDialog.test.tsx",
         "extension/test/background.test.mjs",
@@ -21240,6 +21304,8 @@
       "responsibility": "HTTP transport",
       "sideEffects": [],
       "testCoverage": [
+        "client/src/test/bottomToolbar.test.tsx",
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "server/services/classroomStudentStats.test.js",
         "server/test/auth.integration.test.js",
         "server/test/classBookService.test.js",
@@ -21290,6 +21356,7 @@
         "client/src/test/onlineDictionaryOnly.test.ts",
         "client/src/test/sessionExpiration.test.tsx",
         "client/src/test/srs.test.ts",
+        "client/src/test/studentDetailVocabulary.test.tsx",
         "client/src/test/ttsFallbackToast.test.tsx",
         "extension/test/background.test.mjs",
         "extension/test/online-dictionary-only.test.mjs",
@@ -21298,6 +21365,7 @@
         "server/lib/gemini.test.js",
         "server/lib/learnerDefinitionPrompt.test.js",
         "server/lib/sharedDictionaryEntries.test.js",
+        "server/services/classroomStudentStats.test.js",
         "server/services/dictionaryMediaService.test.js",
         "server/services/dictionaryStudyService.test.js",
         "server/services/dictionaryWordService.test.js",
@@ -22514,7 +22582,7 @@
     },
     {
       "file": "server/services/classroomService.js",
-      "lines": 674,
+      "lines": 692,
       "responsibility": "server domain/integration",
       "sideEffects": [
         "database"
@@ -22609,6 +22677,14 @@
           "disposition": "retain"
         },
         {
+          "name": "serializeStudentWord",
+          "callers": 3,
+          "testReferences": [
+            "server/services/classroomStudentStats.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
           "name": "localDay",
           "callers": 1,
           "testReferences": [],
@@ -22656,7 +22732,7 @@
     },
     {
       "file": "server/services/classroomStudentStats.test.js",
-      "lines": 30,
+      "lines": 60,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],
