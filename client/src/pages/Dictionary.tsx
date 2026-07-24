@@ -23,6 +23,7 @@ import {
   BookPlusIcon,
   TrashIcon,
   SpeakerIcon,
+  ChevronDownIcon,
 } from '../components/icons';
 import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 import { useI18n } from '../hooks/useI18n';
@@ -127,6 +128,7 @@ export default function Dictionary() {
   const [lookupInitialQuery, setLookupInitialQuery] = useState('');
   const [imagePickerWord, setImagePickerWord] = useState<SavedWord | null>(null);
   const [audioLoadingId, setAudioLoadingId] = useState<string | null>(null);
+  const [collapsedBands, setCollapsedBands] = useState<Set<string>>(new Set());
 
   const loadInitial = useCallback(async () => {
     setLoading(true);
@@ -320,46 +322,64 @@ export default function Dictionary() {
                 <div className="dict-ladder-list-scroll">
                   {frequencyGroups.map(([score, groups]) => (
                     <section className="dict-frequency-section" key={score ?? 'unranked'}>
-                      <div className="dict-frequency-heading">
-                        <span>{frequencyBand(score)}</span>
+                      <button
+                        type="button"
+                        className="dict-frequency-heading"
+                        aria-expanded={!collapsedBands.has(String(score ?? 'unranked'))}
+                        onClick={() => {
+                          const bandKey = String(score ?? 'unranked');
+                          setCollapsedBands((current) => {
+                            const next = new Set(current);
+                            if (next.has(bandKey)) next.delete(bandKey);
+                            else next.add(bandKey);
+                            return next;
+                          });
+                        }}
+                      >
+                        <span className="dict-frequency-heading-title">
+                          <ChevronDownIcon size={16} className="dict-frequency-caret" />
+                          {frequencyBand(score)}
+                        </span>
                         {score != null && (
                           <span className="dict-frequency-heading-score">
                             <FrequencyDots frequency={score} />
                             {score}/10
                           </span>
                         )}
-                      </div>
-                      <div className="dict-frequency-rows">
-                        {groups.map((group) => {
-                          const active = group.key === selectedGroup?.key;
-                          return (
-                            <button
-                              type="button"
-                              className={`dict-ladder-row${active ? ' active' : ''}`}
-                              key={group.key}
-                              onClick={() => {
-                                setSelectedKey(group.key);
-                                setSelectedEntryId(group.primaryEntry.id);
-                              }}
-                              aria-current={active ? 'true' : undefined}
-                            >
-                              <span className="dict-ladder-word-copy">
-                                <strong>{group.word}</strong>
-                                <small>{group.primaryEntry.translation}</small>
-                              </span>
-                              {group.primaryEntry.part_of_speech && (
-                                <span className={`dict-pos-badge pos-${group.primaryEntry.part_of_speech.toLowerCase()}`}>
-                                  {group.primaryEntry.part_of_speech}
+                      </button>
+                      {!collapsedBands.has(String(score ?? 'unranked')) && (
+                        <div className="dict-frequency-rows">
+                          {groups.map((group) => {
+                            const active = group.key === selectedGroup?.key;
+                            return (
+                              <button
+                                type="button"
+                                className={`dict-ladder-row${active ? ' active' : ''}`}
+                                key={group.key}
+                                onClick={() => {
+                                  setSelectedKey(group.key);
+                                  setSelectedEntryId(group.primaryEntry.id);
+                                }}
+                                aria-current={active ? 'true' : undefined}
+                              >
+                                <span className="dict-ladder-word-copy">
+                                  <strong>{group.word}</strong>
+                                  <small>{group.primaryEntry.translation}</small>
                                 </span>
-                              )}
-                              <span className="dict-ladder-frequency">
-                                <FrequencyDots frequency={group.maxFrequency} />
-                                <span>{group.maxFrequency == null ? '—' : `${group.maxFrequency}/10`}</span>
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                                {group.primaryEntry.part_of_speech && (
+                                  <span className={`dict-pos-badge pos-${group.primaryEntry.part_of_speech.toLowerCase()}`}>
+                                    {group.primaryEntry.part_of_speech}
+                                  </span>
+                                )}
+                                <span className="dict-ladder-frequency">
+                                  <FrequencyDots frequency={group.maxFrequency} />
+                                  <span>{group.maxFrequency == null ? '—' : `${group.maxFrequency}/10`}</span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </section>
                   ))}
                 </div>

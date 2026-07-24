@@ -819,12 +819,37 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  width: 100%;
   padding: 0 0.35rem 0.5rem;
+  border: 0;
+  background: transparent;
   color: var(--text-secondary);
+  font-family: var(--font);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.065em;
+  text-align: left;
   text-transform: uppercase;
+  cursor: pointer;
+}
+
+.dict-frequency-heading:hover {
+  color: var(--accent);
+}
+
+.dict-frequency-heading-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.dict-frequency-caret {
+  flex: 0 0 auto;
+  transition: transform var(--transition);
+}
+
+.dict-frequency-heading[aria-expanded="false"] .dict-frequency-caret {
+  transform: rotate(-90deg);
 }
 
 .dict-frequency-heading-score {
