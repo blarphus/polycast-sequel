@@ -346,10 +346,49 @@
    Theme Toggle (Settings page)
    ========================================================================== */
 
-.theme-toggle-row {
-  display: flex;
+.settings-card {
+  max-width: 520px;
+}
+
+.settings-back-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.3rem;
+  margin: 0 0 1rem;
+  padding: 0.42rem 0.65rem 0.42rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 0.85rem;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: color var(--transition), background var(--transition), border-color var(--transition);
+}
+
+.settings-back-btn:hover {
+  border-color: var(--border);
+  background: var(--bg-primary);
+  color: var(--accent);
+}
+
+.settings-back-btn:focus-visible,
+.theme-toggle-option:focus-visible,
+.texture-toggle-option:focus-visible,
+.daily-limit-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.theme-toggle-row {
+  display: grid;
+  grid-template-columns: minmax(135px, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: 1.25rem;
 }
 
@@ -372,6 +411,8 @@
   cursor: pointer;
   transition: background var(--transition), color var(--transition);
   border-radius: 999px;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .theme-toggle-option.active {
@@ -470,14 +511,17 @@
 /* ---- Texture toggle (Settings page) ------------------------------------- */
 
 .texture-toggle-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(135px, 1fr) minmax(0, 320px);
   align-items: center;
-  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 1.25rem;
 }
 
 .texture-toggle {
   display: flex;
+  width: 100%;
+  min-width: 0;
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -485,7 +529,9 @@
 }
 
 .texture-toggle-option {
-  padding: 0.4rem 0.75rem;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
   font-size: 0.8rem;
   font-weight: 600;
   font-family: var(--font);
@@ -495,9 +541,96 @@
   cursor: pointer;
   transition: background var(--transition), color var(--transition);
   border-radius: 999px;
+  white-space: nowrap;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .texture-toggle-option.active {
   background: var(--accent);
   color: #fff;
+}
+
+/* These controls are owned by Settings. Keeping their styles here prevents
+   route-level CSS splitting from exposing native browser button chrome. */
+.daily-limit-row {
+  display: grid;
+  grid-template-columns: minmax(135px, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.daily-limit-stepper {
+  display: grid;
+  grid-template-columns: 38px 46px 38px;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-primary);
+}
+
+.daily-limit-btn {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: color var(--transition), background var(--transition);
+}
+
+.daily-limit-btn:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--accent);
+}
+
+.daily-limit-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.daily-limit-value {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  border-inline: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .settings-card {
+    padding-inline: 1.25rem;
+  }
+
+  .theme-toggle-row,
+  .texture-toggle-row,
+  .daily-limit-row {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .theme-toggle,
+  .daily-limit-stepper {
+    justify-self: start;
+  }
+
+  .texture-toggle {
+    max-width: none;
+  }
 }

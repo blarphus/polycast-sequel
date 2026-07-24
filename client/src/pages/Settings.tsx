@@ -51,8 +51,8 @@ export default function Settings() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card">
-        <button className="channel-back-btn" onClick={() => navigate(-1)}>
+      <div className="auth-card settings-card">
+        <button type="button" className="channel-back-btn settings-back-btn" onClick={() => navigate(-1)}>
           <ChevronLeftIcon size={18} />
           {t('settings.back')}
         </button>
@@ -63,12 +63,14 @@ export default function Settings() {
           <span className="form-label" style={{ marginBottom: 0 }}>{t('settings.theme')}</span>
           <div className="theme-toggle">
             <button
+              type="button"
               className={`theme-toggle-option${theme === 'light' ? ' active' : ''}`}
               onClick={() => theme !== 'light' && toggleTheme()}
             >
               {t('settings.light')}
             </button>
             <button
+              type="button"
               className={`theme-toggle-option${theme === 'dark' ? ' active' : ''}`}
               onClick={() => theme !== 'dark' && toggleTheme()}
             >
@@ -82,6 +84,7 @@ export default function Settings() {
           <div className="texture-toggle">
             {(['none', 'dots', 'lines', 'noise', 'grid'] as const).map((texture) => (
               <button
+                type="button"
                 key={texture}
                 className={`texture-toggle-option${bgTexture === texture ? ' active' : ''}`}
                 onClick={() => setBgTexture(texture)}
@@ -96,15 +99,19 @@ export default function Settings() {
           <span className="form-label" style={{ marginBottom: 0 }}>{t('settings.dailyWords')}</span>
           <div className="daily-limit-stepper">
             <button
+              type="button"
               className="daily-limit-btn"
+              aria-label="Decrease daily new words"
               onClick={() => setDailyNewLimit((v) => Math.max(1, v - 1))}
               disabled={dailyNewLimit <= 1}
             >
               &minus;
             </button>
-            <span className="daily-limit-value">{dailyNewLimit}</span>
+            <span className="daily-limit-value" aria-live="polite">{dailyNewLimit}</span>
             <button
+              type="button"
               className="daily-limit-btn"
+              aria-label="Increase daily new words"
               onClick={() => setDailyNewLimit((v) => Math.min(50, v + 1))}
               disabled={dailyNewLimit >= 50}
             >
