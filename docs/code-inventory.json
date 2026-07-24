@@ -2,8 +2,8 @@
   "generatedAt": "deterministic-from-worktree",
   "totals": {
     "files": 577,
-    "lines": 89740,
-    "declarations": 2428,
+    "lines": 89846,
+    "declarations": 2429,
     "extractCandidates": 0,
     "reviewedOversizedFiles": 38,
     "zeroCallerCandidates": 5
@@ -6735,14 +6735,15 @@
         "server/test/correlation.test.js",
         "server/test/dictionaryScheduleDiagnostic.test.js",
         "server/test/fallbackDiagnosticHeader.test.js",
-        "server/test/groupCallSocket.test.js"
+        "server/test/groupCallSocket.test.js",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
       "symbols": [
         {
           "name": "correlationId",
-          "callers": 237,
+          "callers": 240,
           "testReferences": [
             "client/src/test/callSignalContract.test.ts",
             "client/src/test/groupCallLifecycle.test.tsx",
@@ -6758,7 +6759,8 @@
             "server/test/correlation.test.js",
             "server/test/dictionaryScheduleDiagnostic.test.js",
             "server/test/fallbackDiagnosticHeader.test.js",
-            "server/test/groupCallSocket.test.js"
+            "server/test/groupCallSocket.test.js",
+            "server/test/wordSemanticsSensePicker.test.js"
           ],
           "disposition": "retain"
         },
@@ -13662,7 +13664,7 @@
         },
         {
           "name": "explain",
-          "callers": 43,
+          "callers": 44,
           "testReferences": [
             "extension/test/popup-anchor-callout.test.mjs",
             "server/test/wordSemanticsSensePicker.test.js"
@@ -14898,7 +14900,7 @@
         },
         {
           "name": "trim",
-          "callers": 308,
+          "callers": 310,
           "testReferences": [
             "client/src/test/bottomToolbar.test.tsx",
             "server/lib/httpErrors.test.js"
@@ -15372,7 +15374,7 @@
         },
         {
           "name": "explain",
-          "callers": 43,
+          "callers": 44,
           "testReferences": [
             "extension/test/popup-anchor-callout.test.mjs",
             "server/test/wordSemanticsSensePicker.test.js"
@@ -17181,7 +17183,8 @@
         "server/test/classBookService.test.js",
         "server/test/correlation.test.js",
         "server/test/learningSessionService.test.js",
-        "server/test/userLibraryBookService.test.js"
+        "server/test/userLibraryBookService.test.js",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -18216,7 +18219,8 @@
         "server/lib/gemini.test.js",
         "server/lib/srsUpdate.test.js",
         "server/test/dictionaryFallbackNotice.test.js",
-        "server/test/learningSessionService.test.js"
+        "server/test/learningSessionService.test.js",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -18302,7 +18306,7 @@
         },
         {
           "name": "GEMINI_DICTIONARY_MODEL",
-          "callers": 9,
+          "callers": 11,
           "testReferences": [
             "server/lib/gemini.test.js"
           ],
@@ -18325,7 +18329,7 @@
         },
         {
           "name": "GEMINI_DICTIONARY_THINKING_LEVEL",
-          "callers": 8,
+          "callers": 9,
           "testReferences": [
             "server/lib/gemini.test.js"
           ],
@@ -21436,7 +21440,7 @@
     },
     {
       "file": "server/routes/dictionary/semanticRoutes.js",
-      "lines": 137,
+      "lines": 144,
       "responsibility": "HTTP transport",
       "sideEffects": [],
       "testCoverage": [
@@ -22147,7 +22151,8 @@
         "client/src/test/learnReviewLayout.test.ts",
         "extension/test/popup-landscape-layout.test.mjs",
         "server/lib/gemini.test.js",
-        "server/test/learningSessionService.test.js"
+        "server/test/learningSessionService.test.js",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -22163,7 +22168,8 @@
           "callers": 33,
           "testReferences": [
             "server/lib/gemini.test.js",
-            "server/test/learningSessionService.test.js"
+            "server/test/learningSessionService.test.js",
+            "server/test/wordSemanticsSensePicker.test.js"
           ],
           "disposition": "retain"
         },
@@ -23899,7 +23905,7 @@
     },
     {
       "file": "server/services/wordSemanticsService.js",
-      "lines": 587,
+      "lines": 635,
       "responsibility": "server domain/integration",
       "sideEffects": [],
       "testCoverage": [
@@ -23977,9 +23983,19 @@
           "disposition": "retain"
         },
         {
+          "name": "isCompleteContextExplanation",
+          "callers": 2,
+          "testReferences": [
+            "server/test/wordSemanticsSensePicker.test.js"
+          ],
+          "disposition": "retain"
+        },
+        {
           "name": "explainWordInContext",
           "callers": 3,
-          "testReferences": [],
+          "testReferences": [
+            "server/test/wordSemanticsSensePicker.test.js"
+          ],
           "disposition": "retain"
         },
         {
@@ -24151,7 +24167,8 @@
         "server/test/classroomEnrollment.test.js",
         "server/test/dictionaryQueries.test.js",
         "server/test/learningSessionService.test.js",
-        "server/test/userLibraryBookService.test.js"
+        "server/test/userLibraryBookService.test.js",
+        "server/test/wordSemanticsSensePicker.test.js"
       ],
       "disposition": "intentionally standalone",
       "dispositionReason": "One bounded responsibility below the mixed-ownership size threshold.",
@@ -24884,7 +24901,7 @@
     },
     {
       "file": "server/test/wordSemanticsSensePicker.test.js",
-      "lines": 85,
+      "lines": 136,
       "responsibility": "test",
       "sideEffects": [],
       "testCoverage": [],

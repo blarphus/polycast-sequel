@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
   buildBestSensePrompt,
   buildExplainWordPrompt,
+  explainWordInContext,
+  isCompleteContextExplanation,
   markSelectedWord,
   parseBestSenseReply,
 } from '../services/wordSemanticsService.js';
@@ -80,5 +82,54 @@ test('context explanation adds the current selection when another token is alrea
   assert.equal(
     markSelectedWord('~Fiambres~ describen sus últimas horas.', 'últimas'),
     '~Fiambres~ describen sus ~últimas~ horas.',
+  );
+});
+
+test('context explanation accepts only complete sentences', () => {
+  assert.equal(isCompleteContextExplanation('"Morir" means "to die."'), true);
+  assert.equal(isCompleteContextExplanation('It means to die!'), true);
+  assert.equal(isCompleteContextExplanation('"Morir" literally means "to die." Depending'), false);
+  assert.equal(isCompleteContextExplanation(''), false);
+});
+
+test('context explanation retries a token-capped response with a larger limit and visible notice', async () => {
+  const calls = [];
+  const result = await explainWordInContext({
+    word: 'morir',
+    sentence: 'Siempre he tenido miedo a morir.',
+    nativeLang: 'English',
+    targetLang: 'Spanish',
+    correlationId: 'explain-correlation-1',
+  }, {
+    generate: async (prompt, config, model) => {
+      calls.push({ prompt, config, model });
+      return calls.length === 1
+        ? '"Morir" literally means "to die." Depending'
+        : 'Here, "morir" means to die or cease living.';
+    },
+  });
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].config.maxOutputTokens, 900);
+  assert.equal(calls[0].config.thinkingConfig.thinkingLevel, 'MINIMAL');
+  assert.equal(calls[0].model, 'gemini-3.5-flash');
+  assert.equal(calls[1].config.maxOutputTokens, 1400);
+  assert.match(calls[1].prompt, /previous response ended before completing its sentence/);
+  assert.equal(result.explanation, 'Here, "morir" means to die or cease living.');
+  assert.equal(result.fallback_notices[0].code, 'context_explanation_completion_retry');
+  assert.equal(result.fallback_notices[0].correlationId, 'explain-correlation-1');
+});
+
+test('context explanation refuses to display a second incomplete response', async () => {
+  await assert.rejects(
+    () => explainWordInContext({
+      word: 'morir',
+      sentence: 'Siempre he tenido miedo a morir.',
+      nativeLang: 'English',
+      targetLang: 'Spanish',
+    }, {
+      generate: async () => 'This response still ends without punctuation',
+    }),
+    /incomplete context explanation twice/,
   );
 });

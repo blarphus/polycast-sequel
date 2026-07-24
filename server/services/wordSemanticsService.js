@@ -279,19 +279,67 @@ In ${nativeLang} and in easy to understand and casual speech, explain only what 
 Do NOT add a preamble, markdown, bullets, or extra lines. Do not repeat the ${targetLang || 'target-language'} sentence.`;
 }
 
+export function isCompleteContextExplanation(value) {
+  const explanation = String(value || '').trim();
+  return explanation.length > 0 && /[.!?…]["'”’)]*$/u.test(explanation);
+}
+
 // explainWordInContext — on-demand: ask Gemini to translate the full sentence and explain
 // what a word means specifically in that sentence, written in the learner's native language.
 // Used by the popup's "Explain in context" button.
-export async function explainWordInContext({ word, sentence, nativeLang, targetLang, context }) {
-  const raw = await callGemini(
-    buildExplainWordPrompt({ word, sentence, nativeLang, targetLang, context }),
-    { thinkingConfig: { thinkingLevel: 'LOW' }, maxOutputTokens: 300 },
+export async function explainWordInContext(
+  { word, sentence, nativeLang, targetLang, context, correlationId },
+  { generate = callGemini } = {},
+) {
+  const prompt = buildExplainWordPrompt({ word, sentence, nativeLang, targetLang, context });
+  const generationConfig = {
+    thinkingConfig: { thinkingLevel: GEMINI_DICTIONARY_THINKING_LEVEL },
+    maxOutputTokens: 900,
+  };
+  const raw = await generate(
+    prompt,
+    generationConfig,
+    GEMINI_DICTIONARY_MODEL,
   );
-  const explanation = raw.trim();
-  if (!explanation) {
-    throw makeContextError('Gemini returned an empty explanation', { word, sentence, targetLang });
+  const explanation = String(raw || '').trim();
+  if (isCompleteContextExplanation(explanation)) {
+    return { word, explanation };
   }
-  return { word, explanation };
+
+  const retryRaw = await generate(
+    `${prompt}
+
+Retry: the previous response ended before completing its sentence. Return one concise, complete sentence and end it with punctuation.`,
+    { ...generationConfig, maxOutputTokens: 1400 },
+    GEMINI_DICTIONARY_MODEL,
+  );
+  const retryExplanation = String(retryRaw || '').trim();
+  if (!isCompleteContextExplanation(retryExplanation)) {
+    throw makeContextError('Gemini returned an incomplete context explanation twice', {
+      word,
+      sentence,
+      targetLang,
+      firstResponse: explanation,
+      retryResponse: retryExplanation,
+    });
+  }
+  return {
+    word,
+    explanation: retryExplanation,
+    fallback_notices: [{
+      code: 'context_explanation_completion_retry',
+      severity: 'warning',
+      title: 'Context explanation retried',
+      message: 'The first explanation ended early, so Polycast requested a complete replacement.',
+      source: 'server.dictionary',
+      operation: 'explain-word-in-context',
+      pipeline: 'context_explanation',
+      stage: 'completion-validation',
+      selectedAction: 'retry-with-larger-output-limit',
+      correlationId,
+      detail: `word=${word}`,
+    }],
+  };
 }
 
 // explainSelectionInContext — explain a learner-selected phrase or sentence using the

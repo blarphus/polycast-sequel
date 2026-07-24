@@ -101,7 +101,14 @@ export function createDictionarySemanticRoutes({
 
   router.get('/api/dictionary/explain', authMiddleware, validate({ query: lookupQuery }), asyncHandler(async (req, res) => {
     const { word, sentence, nativeLang, targetLang, context } = req.query;
-    return res.json(await explainWord({ word, sentence, nativeLang, targetLang, context }));
+    return res.json(await explainWord({
+      word,
+      sentence,
+      nativeLang,
+      targetLang,
+      context,
+      correlationId: req.id,
+    }));
   }));
 
   router.post('/api/dictionary/explain-selection', authMiddleware, validate({ body: explainSelectionBody }), asyncHandler(async (req, res) => {
