@@ -116,11 +116,11 @@ export function createDictionaryStudyService({
         `WITH ranked AS (
            SELECT id,
                   ROW_NUMBER() OVER (
-                    PARTITION BY target_language
-                    ORDER BY priority DESC,
-                             frequency_count DESC NULLS LAST,
-                             frequency DESC NULLS LAST,
+                   PARTITION BY target_language
+                   ORDER BY priority DESC,
                              lemma_frequency_rank ASC NULLS LAST,
+                             frequency DESC NULLS LAST,
+                             frequency_count DESC NULLS LAST,
                              sense_rank ASC NULLS LAST,
                              created_at, id
                   ) - 1 AS position

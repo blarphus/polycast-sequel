@@ -81,16 +81,18 @@ describe('dictionaryGroups', () => {
     expect(groups.map((group) => group.word)).toEqual(['early', 'middle', 'late', 'review']);
   });
 
-  it('sorts frequency views by raw corpus count before the rounded badge', () => {
+  it('sorts frequency views by the visible band and uses corpus count as a tie-breaker', () => {
     const words = [
       makeWord({ id: 'middle', word: 'middle', frequency: 3, frequency_count: 600, queue_position: 1 }),
       makeWord({ id: 'high', word: 'high', frequency: 3, frequency_count: 900, queue_position: 0 }),
       makeWord({ id: 'unknown', word: 'unknown', frequency: 3, frequency_count: null, queue_position: 2 }),
       makeWord({ id: 'unknown-later', word: 'unknown-later', frequency: 3, frequency_count: null, queue_position: 4 }),
       makeWord({ id: 'low-badge', word: 'low-badge', frequency: 2, frequency_count: null, queue_position: 3 }),
+      makeWord({ id: 'high-badge', word: 'high-badge', frequency: 10, frequency_count: 10, queue_position: 5 }),
     ];
 
     expect(buildDictionaryGroups(words, '', 'freq-high').map((group) => group.word)).toEqual([
+      'high-badge',
       'high',
       'middle',
       'unknown',
@@ -103,6 +105,7 @@ describe('dictionaryGroups', () => {
       'unknown-later',
       'middle',
       'high',
+      'high-badge',
     ]);
   });
 });

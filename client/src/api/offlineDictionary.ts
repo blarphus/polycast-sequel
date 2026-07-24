@@ -135,13 +135,13 @@ function compareNewEntries(a: SavedWord, b: SavedWord): number {
   const bPriority = b.priority ? 0 : 1;
   if (aPriority !== bPriority) return aPriority - bPriority;
 
-  const aFrequencyCount = a.frequency_count ?? 0;
-  const bFrequencyCount = b.frequency_count ?? 0;
-  if (aFrequencyCount !== bFrequencyCount) return bFrequencyCount - aFrequencyCount;
-
   const aFrequency = a.frequency ?? 0;
   const bFrequency = b.frequency ?? 0;
   if (aFrequency !== bFrequency) return bFrequency - aFrequency;
+
+  const aFrequencyCount = a.frequency_count ?? 0;
+  const bFrequencyCount = b.frequency_count ?? 0;
+  if (aFrequencyCount !== bFrequencyCount) return bFrequencyCount - aFrequencyCount;
 
   const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
   const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
@@ -158,13 +158,13 @@ function compareNewQueuePosition(a: SavedWord, b: SavedWord): number {
   const bPriority = b.priority ? 0 : 1;
   if (aPriority !== bPriority) return aPriority - bPriority;
 
-  const aFrequencyCount = a.frequency_count ?? 0;
-  const bFrequencyCount = b.frequency_count ?? 0;
-  if (aFrequencyCount !== bFrequencyCount) return bFrequencyCount - aFrequencyCount;
-
   const aFrequency = a.frequency ?? 0;
   const bFrequency = b.frequency ?? 0;
   if (aFrequency !== bFrequency) return bFrequency - aFrequency;
+
+  const aFrequencyCount = a.frequency_count ?? 0;
+  const bFrequencyCount = b.frequency_count ?? 0;
+  if (aFrequencyCount !== bFrequencyCount) return bFrequencyCount - aFrequencyCount;
 
   const createdDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   if (createdDiff !== 0) return createdDiff;

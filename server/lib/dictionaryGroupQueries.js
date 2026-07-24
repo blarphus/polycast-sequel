@@ -66,13 +66,13 @@ function compareNewEntries(a, b) {
   const bDueTime = getProjectedNewTime(b);
   if (aDueTime !== bDueTime) return aDueTime - bDueTime;
 
-  const aFreqCount = a.frequency_count ?? 0;
-  const bFreqCount = b.frequency_count ?? 0;
-  if (aFreqCount !== bFreqCount) return bFreqCount - aFreqCount;
-
   const aFrequency = a.frequency ?? 0;
   const bFrequency = b.frequency ?? 0;
   if (aFrequency !== bFrequency) return bFrequency - aFrequency;
+
+  const aFreqCount = a.frequency_count ?? 0;
+  const bFreqCount = b.frequency_count ?? 0;
+  if (aFreqCount !== bFreqCount) return bFreqCount - aFreqCount;
 
   const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
   const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
@@ -140,13 +140,13 @@ function compareReviewEntries(a, b) {
 
 function compareFrequencyGroups(a, b, direction) {
   const multiplier = direction === 'low' ? 1 : -1;
-  const aFreqCount = a.maxFrequencyCount ?? 0;
-  const bFreqCount = b.maxFrequencyCount ?? 0;
-  if (aFreqCount !== bFreqCount) return (aFreqCount - bFreqCount) * multiplier;
-
   const aFrequency = a.maxFrequency ?? 0;
   const bFrequency = b.maxFrequency ?? 0;
   if (aFrequency !== bFrequency) return (aFrequency - bFrequency) * multiplier;
+
+  const aFreqCount = a.maxFrequencyCount ?? 0;
+  const bFreqCount = b.maxFrequencyCount ?? 0;
+  if (aFreqCount !== bFreqCount) return (aFreqCount - bFreqCount) * multiplier;
 
   const aQueue = a.bestQueuePosition ?? Number.POSITIVE_INFINITY;
   const bQueue = b.bestQueuePosition ?? Number.POSITIVE_INFINITY;
@@ -310,24 +310,24 @@ function dictionaryCursorPlan(sort, cursor, startParameter = 5) {
       predicate: `word > ${p(0, 'text')}`,
     },
     'freq-high': {
-      select: `COALESCE(max_frequency_count, -1) AS cursor_a,
-               COALESCE(max_frequency, -1) AS cursor_b,
+      select: `COALESCE(max_frequency, -1) AS cursor_a,
+               COALESCE(max_frequency_count, -1) AS cursor_b,
                COALESCE(new_queue, 2147483647) AS cursor_c`,
-      values: (row) => [String(row.cursor_a), Number(row.cursor_b), String(row.cursor_c), row.word],
-      predicate: `(COALESCE(max_frequency_count, -1) < ${p(0, 'bigint')}
-        OR (COALESCE(max_frequency_count, -1) = ${p(0, 'bigint')} AND COALESCE(max_frequency, -1) < ${p(1, 'numeric')})
-        OR (COALESCE(max_frequency_count, -1) = ${p(0, 'bigint')} AND COALESCE(max_frequency, -1) = ${p(1, 'numeric')} AND COALESCE(new_queue, 2147483647) > ${p(2, 'bigint')})
-        OR (COALESCE(max_frequency_count, -1) = ${p(0, 'bigint')} AND COALESCE(max_frequency, -1) = ${p(1, 'numeric')} AND COALESCE(new_queue, 2147483647) = ${p(2, 'bigint')} AND word > ${p(3, 'text')}))`,
+      values: (row) => [Number(row.cursor_a), String(row.cursor_b), String(row.cursor_c), row.word],
+      predicate: `(COALESCE(max_frequency, -1) < ${p(0, 'numeric')}
+        OR (COALESCE(max_frequency, -1) = ${p(0, 'numeric')} AND COALESCE(max_frequency_count, -1) < ${p(1, 'bigint')})
+        OR (COALESCE(max_frequency, -1) = ${p(0, 'numeric')} AND COALESCE(max_frequency_count, -1) = ${p(1, 'bigint')} AND COALESCE(new_queue, 2147483647) > ${p(2, 'bigint')})
+        OR (COALESCE(max_frequency, -1) = ${p(0, 'numeric')} AND COALESCE(max_frequency_count, -1) = ${p(1, 'bigint')} AND COALESCE(new_queue, 2147483647) = ${p(2, 'bigint')} AND word > ${p(3, 'text')}))`,
     },
     'freq-low': {
-      select: `COALESCE(max_frequency_count, 9223372036854775807) AS cursor_a,
-               COALESCE(max_frequency, 2147483647) AS cursor_b,
+      select: `COALESCE(max_frequency, 2147483647) AS cursor_a,
+               COALESCE(max_frequency_count, 9223372036854775807) AS cursor_b,
                COALESCE(new_queue, 2147483647) AS cursor_c`,
-      values: (row) => [String(row.cursor_a), Number(row.cursor_b), String(row.cursor_c), row.word],
-      predicate: `(COALESCE(max_frequency_count, 9223372036854775807) > ${p(0, 'bigint')}
-        OR (COALESCE(max_frequency_count, 9223372036854775807) = ${p(0, 'bigint')} AND COALESCE(max_frequency, 2147483647) > ${p(1, 'numeric')})
-        OR (COALESCE(max_frequency_count, 9223372036854775807) = ${p(0, 'bigint')} AND COALESCE(max_frequency, 2147483647) = ${p(1, 'numeric')} AND COALESCE(new_queue, 2147483647) > ${p(2, 'bigint')})
-        OR (COALESCE(max_frequency_count, 9223372036854775807) = ${p(0, 'bigint')} AND COALESCE(max_frequency, 2147483647) = ${p(1, 'numeric')} AND COALESCE(new_queue, 2147483647) = ${p(2, 'bigint')} AND word > ${p(3, 'text')}))`,
+      values: (row) => [Number(row.cursor_a), String(row.cursor_b), String(row.cursor_c), row.word],
+      predicate: `(COALESCE(max_frequency, 2147483647) > ${p(0, 'numeric')}
+        OR (COALESCE(max_frequency, 2147483647) = ${p(0, 'numeric')} AND COALESCE(max_frequency_count, 9223372036854775807) > ${p(1, 'bigint')})
+        OR (COALESCE(max_frequency, 2147483647) = ${p(0, 'numeric')} AND COALESCE(max_frequency_count, 9223372036854775807) = ${p(1, 'bigint')} AND COALESCE(new_queue, 2147483647) > ${p(2, 'bigint')})
+        OR (COALESCE(max_frequency, 2147483647) = ${p(0, 'numeric')} AND COALESCE(max_frequency_count, 9223372036854775807) = ${p(1, 'bigint')} AND COALESCE(new_queue, 2147483647) = ${p(2, 'bigint')} AND word > ${p(3, 'text')}))`,
     },
     due: {
       select: `COALESCE(review_due, 'infinity'::timestamptz)::text AS cursor_a,
@@ -392,8 +392,8 @@ export async function listDictionaryGroupPage(db, userId, { page = 0, cursor = n
   const orderBy = {
     queue: 'has_new DESC, new_queue ASC NULLS LAST, review_due ASC NULLS LAST, word ASC',
     az: 'word ASC',
-    'freq-high': 'max_frequency_count DESC NULLS LAST, max_frequency DESC NULLS LAST, new_queue ASC NULLS LAST, word ASC',
-    'freq-low': 'max_frequency_count ASC NULLS LAST, max_frequency ASC NULLS LAST, new_queue ASC NULLS LAST, word ASC',
+    'freq-high': 'max_frequency DESC NULLS LAST, max_frequency_count DESC NULLS LAST, new_queue ASC NULLS LAST, word ASC',
+    'freq-low': 'max_frequency ASC NULLS LAST, max_frequency_count ASC NULLS LAST, new_queue ASC NULLS LAST, word ASC',
     due: 'review_due ASC NULLS LAST, has_new DESC, new_queue ASC NULLS LAST, word ASC',
     date: 'latest_created DESC, word ASC',
   }[sort] || 'latest_created DESC, word ASC';

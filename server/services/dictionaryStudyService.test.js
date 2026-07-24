@@ -35,8 +35,9 @@ test('frequency rebuild ranks active new cards by visible frequency before legac
 
   assert.match(calls[0].text, /frequency_count DESC NULLS LAST/);
   assert.match(calls[0].text, /frequency DESC NULLS LAST/);
+  assert.match(calls[0].text, /lemma_frequency_rank ASC NULLS LAST/);
   assert.match(calls[0].text, /srs_interval = 0/);
-  assert.ok(calls[0].text.indexOf('frequency DESC') < calls[0].text.indexOf('sense_rank ASC'));
+  assert.ok(calls[0].text.indexOf('lemma_frequency_rank ASC') < calls[0].text.indexOf('frequency DESC'));
 });
 
 test('study queue reorder rolls back and exposes a missing word', async () => {

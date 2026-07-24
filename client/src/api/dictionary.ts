@@ -1,4 +1,4 @@
-import { request } from './core';
+import { request, requestBlob } from './core';
 
 export interface EnrichedWord {
   word: string;
@@ -287,6 +287,10 @@ export type SrsAnswer = 'again' | 'good';
 export function getDueWords() {
   const params = new URLSearchParams({ timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
   return request<SavedWord[]>(`/dictionary/due?${params}`, { cacheTtlMs: 10_000 });
+}
+
+export function getWordAudio(id: string) {
+  return requestBlob(`/dictionary/words/${id}/audio`);
 }
 
 export function reviewWord(id: string, answer: SrsAnswer, learningSessionId?: string) {

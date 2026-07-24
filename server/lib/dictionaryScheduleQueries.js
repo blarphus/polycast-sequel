@@ -9,9 +9,9 @@ export async function ensureCardsScheduled(db, userId, timeZone = 'UTC') {
        SELECT sw.id,
               ROW_NUMBER() OVER (
                 ORDER BY sw.priority DESC,
-                         sw.frequency_count DESC NULLS LAST,
-                         sw.frequency DESC NULLS LAST,
                          sw.lemma_frequency_rank ASC NULLS LAST,
+                         sw.frequency DESC NULLS LAST,
+                         sw.frequency_count DESC NULLS LAST,
                          sw.sense_rank ASC NULLS LAST,
                          sw.created_at ASC,
                          sw.id

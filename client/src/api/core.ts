@@ -43,7 +43,7 @@ function emitServerFallbackNotices(payload: unknown) {
   }
 }
 
-function emitServerFallbackHeaders(response: Response) {
+export function emitServerFallbackHeaders(response: Response) {
   const encoded = response.headers.get('X-Polycast-Fallback-Diagnostics');
   if (!encoded) return;
   try {
@@ -63,6 +63,19 @@ function emitServerFallbackHeaders(response: Response) {
       detail: error instanceof Error ? error.message : String(error),
     }, { source: 'web.api', operation: 'parse-response-header' });
   }
+}
+
+export async function requestBlob(path: string): Promise<Blob> {
+  const correlationId = globalThis.crypto?.randomUUID?.() || `web-${Date.now()}`;
+  const response = await fetch(`${BASE}${path}`, {
+    credentials: 'include',
+    headers: { 'X-Correlation-ID': correlationId },
+  });
+  emitServerFallbackHeaders(response);
+  if (!response.ok) {
+    throw new Error(`GET ${path} failed (${response.status} ${response.statusText})`);
+  }
+  return response.blob();
 }
 
 function emitOfflineFallback(path: string, reason: string) {

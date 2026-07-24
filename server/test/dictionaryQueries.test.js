@@ -63,6 +63,7 @@ test('dictionary preview is a pure ordered read', async () => {
   assert.deepEqual(db.calls[0].values, ['user-1', 7]);
   assert.match(db.calls[0].text, /frequency_count DESC NULLS LAST/);
   assert.match(db.calls[0].text, /frequency DESC NULLS LAST/);
+  assert.ok(db.calls[0].text.indexOf('frequency DESC') < db.calls[0].text.indexOf('frequency_count DESC'));
   assert.match(db.calls[0].text, /queue_position ASC NULLS LAST/);
   assert.doesNotMatch(db.calls[0].text, /UPDATE|INSERT|DELETE/i);
 });
@@ -179,7 +180,7 @@ test('group pagination fetches only page keys/entries and projects new-card date
   assert.ok(db.calls.every((call) => !/UPDATE|INSERT|DELETE/i.test(call.text)));
 });
 
-test('group pagination delegates frequency ordering to SQL using raw counts first', async () => {
+test('group pagination orders by the visible frequency band before the corpus tie-breaker', async () => {
   const rows = [
     { ...newRow('high', 0), frequency: 3, frequency_count: 900 },
     { ...newRow('middle', 1), frequency: 3, frequency_count: 600 },
@@ -190,7 +191,7 @@ test('group pagination delegates frequency ordering to SQL using raw counts firs
   const result = await listDictionaryGroupPage(db, 'user-1', { limit: 10, sort: 'freq-high' });
   assert.deepEqual(result.groups.map((group) => group.word), ['high', 'middle', 'low']);
   const pageQuery = db.calls.find((call) => /SELECT word, target_language,/.test(call.text));
-  assert.match(pageQuery.text, /max_frequency_count DESC NULLS LAST, max_frequency DESC NULLS LAST/);
+  assert.match(pageQuery.text, /max_frequency DESC NULLS LAST, max_frequency_count DESC NULLS LAST/);
 });
 
 test('explicit mutation scheduling retains bounded repair/rollover behavior', async () => {

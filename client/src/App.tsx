@@ -85,6 +85,11 @@ function StudentRoute({ children }: { children: React.ReactNode }) {
   return <ProtectedRoute>{children}</ProtectedRoute>;
 }
 
+function RootRedirect() {
+  const { user } = useAuth();
+  return <Navigate to={user?.account_type === 'teacher' ? '/classes' : '/learn'} replace />;
+}
+
 // ---------------------------------------------------------------------------
 // AuthenticatedShell -- renders the IncomingCall modal globally, but only
 // when the user is logged in (so we don't listen for socket events on the
@@ -154,7 +159,7 @@ export default function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Navigate to={user.account_type === 'teacher' ? '/classes' : '/learn'} replace />
+              <RootRedirect />
             </ProtectedRoute>
           }
         />

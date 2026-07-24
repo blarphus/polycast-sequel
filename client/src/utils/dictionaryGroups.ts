@@ -60,13 +60,13 @@ function compareNewEntries(a: SavedWord, b: SavedWord): number {
   const bPriority = b.priority ? 0 : 1;
   if (aPriority !== bPriority) return aPriority - bPriority;
 
-  const aFrequencyCount = a.frequency_count ?? 0;
-  const bFrequencyCount = b.frequency_count ?? 0;
-  if (aFrequencyCount !== bFrequencyCount) return bFrequencyCount - aFrequencyCount;
-
   const aFrequency = a.frequency ?? 0;
   const bFrequency = b.frequency ?? 0;
   if (aFrequency !== bFrequency) return bFrequency - aFrequency;
+
+  const aFrequencyCount = a.frequency_count ?? 0;
+  const bFrequencyCount = b.frequency_count ?? 0;
+  if (aFrequencyCount !== bFrequencyCount) return bFrequencyCount - aFrequencyCount;
 
   const createdDiff = getCreatedTime(a) - getCreatedTime(b);
   if (createdDiff !== 0) return createdDiff;
@@ -105,13 +105,13 @@ function compareQueueGroups(a: DictionaryWordGroup, b: DictionaryWordGroup): num
 
 function compareFrequencyGroups(a: DictionaryWordGroup, b: DictionaryWordGroup, direction: 'high' | 'low'): number {
   const multiplier = direction === 'low' ? 1 : -1;
-  const aFrequencyCount = a.maxFrequencyCount ?? 0;
-  const bFrequencyCount = b.maxFrequencyCount ?? 0;
-  if (aFrequencyCount !== bFrequencyCount) return (aFrequencyCount - bFrequencyCount) * multiplier;
-
   const aFrequency = a.maxFrequency ?? 0;
   const bFrequency = b.maxFrequency ?? 0;
   if (aFrequency !== bFrequency) return (aFrequency - bFrequency) * multiplier;
+
+  const aFrequencyCount = a.maxFrequencyCount ?? 0;
+  const bFrequencyCount = b.maxFrequencyCount ?? 0;
+  if (aFrequencyCount !== bFrequencyCount) return (aFrequencyCount - bFrequencyCount) * multiplier;
 
   const aQueue = a.bestQueuePosition ?? Number.POSITIVE_INFINITY;
   const bQueue = b.bestQueuePosition ?? Number.POSITIVE_INFINITY;
