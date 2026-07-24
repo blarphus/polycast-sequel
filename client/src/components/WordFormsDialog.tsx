@@ -81,6 +81,21 @@ export default function WordFormsDialog({
 }: Props) {
   const canConjugate = isSpanishVerb(targetLanguage, partOfSpeech);
   const conjugationLemma = (lemma || word).trim().toLowerCase();
+  const otherForms = useMemo(() => {
+    const excluded = new Set(
+      [word, lemma]
+        .filter((value): value is string => Boolean(value))
+        .map((value) => value.trim().toLocaleLowerCase()),
+    );
+    const seen = new Set<string>();
+    return forms.filter((form) => {
+      const normalized = form.trim().toLocaleLowerCase();
+      if (!normalized || normalized === '-' || excluded.has(normalized) || seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
+  }, [forms, lemma, word]);
+  const visibleSavedForms = canConjugate ? forms : otherForms;
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ConjugationResult[]>([]);
@@ -95,9 +110,9 @@ export default function WordFormsDialog({
       ? (['Indicativo', 'Impersonal', 'Subjuntivo', 'Imperativo'] as const)
           .filter((key) => Object.keys(result.conjugation[key] ?? {}).length > 0)
       : [];
-    if (forms.length > 0) moods.push('Saved');
+    if (visibleSavedForms.length > 0) moods.push('Saved');
     return moods;
-  }, [forms.length, result]);
+  }, [result, visibleSavedForms.length]);
 
   const closeOnEscape = useCallback(() => {
     if (open) setOpen(false);
@@ -167,8 +182,11 @@ export default function WordFormsDialog({
         aria-haspopup="dialog"
       >
         <span>
-          <strong>{canConjugate ? 'View conjugations' : 'View word forms'}</strong>
-          <small>{forms.length.toLocaleString()} saved {forms.length === 1 ? 'form' : 'forms'}</small>
+          <strong>{canConjugate ? 'View conjugations' : 'View other forms'}</strong>
+          <small>
+            {visibleSavedForms.length.toLocaleString()} {canConjugate ? 'saved ' : 'other '}
+            {visibleSavedForms.length === 1 ? 'form' : 'forms'}
+          </small>
         </span>
         <ChevronDownIcon size={17} />
       </button>
@@ -238,29 +256,33 @@ export default function WordFormsDialog({
                   </label>
                 )}
 
-                <nav className="dict-conjugation-moods" aria-label="Conjugation moods">
-                  {availableMoods.map((item) => (
-                    <button
-                      type="button"
-                      key={item}
-                      className={mood === item ? 'active' : ''}
-                      aria-pressed={mood === item}
-                      onClick={() => selectMood(item)}
-                    >
-                      {MOOD_LABELS[item]}
-                    </button>
-                  ))}
-                </nav>
+                {canConjugate && (
+                  <nav className="dict-conjugation-moods" aria-label="Conjugation moods">
+                    {availableMoods.map((item) => (
+                      <button
+                        type="button"
+                        key={item}
+                        className={mood === item ? 'active' : ''}
+                        aria-pressed={mood === item}
+                        onClick={() => selectMood(item)}
+                      >
+                        {MOOD_LABELS[item]}
+                      </button>
+                    ))}
+                  </nav>
+                )}
 
                 <div className="dict-conjugation-body">
                   {mood === 'Saved' ? (
                     <div className="dict-saved-forms">
                       <div>
-                        <h4>Additional saved forms</h4>
-                        <p>Regional, alternate, and attached-pronoun forms supplied by the dictionary source.</p>
+                        <h4>{canConjugate ? 'Additional saved forms' : 'Other forms'}</h4>
+                        {canConjugate && (
+                          <p>Regional, alternate, and attached-pronoun forms supplied by the dictionary source.</p>
+                        )}
                       </div>
                       <div className="dict-form-chips">
-                        {forms.map((form, index) => (
+                        {visibleSavedForms.map((form, index) => (
                           <span key={`${form}-${index}`}>{displayForm(form)}</span>
                         ))}
                       </div>

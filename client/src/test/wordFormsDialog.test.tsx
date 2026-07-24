@@ -110,4 +110,32 @@ describe('WordFormsDialog', () => {
     expect(modal?.textContent).toContain('Regional, alternate, and attached-pronoun forms');
     expect(modal?.textContent).toContain('sacando');
   });
+
+  it('shows only deduplicated other forms for nouns without conjugation navigation', () => {
+    act(() => {
+      root?.render(
+        <WordFormsDialog
+          word="medio"
+          lemma="medio"
+          targetLanguage="es"
+          partOfSpeech="noun"
+          forms={['medio', 'media', 'medios', 'medias', 'medio']}
+        />,
+      );
+    });
+
+    expect(container.textContent).toContain('View other forms');
+    expect(container.textContent).toContain('3 other forms');
+
+    act(() => {
+      container.querySelector<HTMLButtonElement>('.dict-forms-trigger')?.click();
+    });
+
+    expect(container.querySelector('.dict-conjugation-moods')).toBeNull();
+    expect(container.textContent).toContain('Other forms');
+    expect(container.textContent).toContain('media');
+    expect(container.textContent).toContain('medios');
+    expect(container.textContent).toContain('medias');
+    expect(container.textContent).not.toContain('Additional saved forms');
+  });
 });
