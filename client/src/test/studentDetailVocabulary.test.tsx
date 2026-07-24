@@ -48,6 +48,25 @@ const words = [
     incorrect_count: 1,
     srs_stage: 'review' as const,
   },
+  {
+    id: 'alphabetical-word',
+    word: 'abeja',
+    translation: 'bee',
+    definition: 'a bee',
+    part_of_speech: 'noun',
+    image_url: null,
+    sentence_context: null,
+    example_sentence: null,
+    frequency: 3,
+    frequency_count: 20,
+    lemma_frequency_rank: 12_000,
+    due_at: dueTomorrow.toISOString(),
+    last_reviewed_at: null,
+    created_at: '2026-07-18T12:00:00Z',
+    correct_count: 0,
+    incorrect_count: 0,
+    srs_stage: 'new' as const,
+  },
 ];
 
 vi.mock('../api', () => ({
@@ -59,7 +78,7 @@ vi.mock('../api', () => ({
       created_at: '2026-07-01T12:00:00Z',
     },
     stats: {
-      totalWords: 2,
+      totalWords: 3,
       wordsLearned: 1,
       wordsDue: 0,
       wordsNew: 1,
@@ -121,7 +140,15 @@ describe('teacher student vocabulary panel', () => {
     expect(allWords).toBeDefined();
     act(() => allWords?.click());
 
-    expect(container.querySelectorAll('.sd-vocab-row')).toHaveLength(2);
+    expect(container.querySelectorAll('.sd-vocab-row')).toHaveLength(3);
     expect(container.textContent).toContain('zapato');
+
+    const sort = container.querySelector<HTMLSelectElement>('.sd-vocab-sort select');
+    expect(sort).not.toBeNull();
+    act(() => {
+      sort!.value = 'alphabetical';
+      sort!.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(container.querySelector('.sd-vocab-row strong')?.textContent).toBe('abeja');
   });
 });

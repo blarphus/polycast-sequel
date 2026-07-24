@@ -260,33 +260,45 @@ function SrsProgressBar({ words }: { words: StudentDetailData['words'] }) {
 }
 
 const STUDENT_WORD_BATCH = 100;
+type StudentWordSort = 'frequency' | 'due' | 'alphabetical';
+
+export function sortStudentWords(words: StudentWord[], sort: StudentWordSort): StudentWord[] {
+  return [...words].sort((a, b) => {
+    if (sort === 'frequency') {
+      return (b.frequency ?? -1) - (a.frequency ?? -1)
+        || (a.lemma_frequency_rank ?? Number.MAX_SAFE_INTEGER) - (b.lemma_frequency_rank ?? Number.MAX_SAFE_INTEGER)
+        || a.word.localeCompare(b.word);
+    }
+    if (sort === 'due') {
+      return (a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER)
+        - (b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER)
+        || a.word.localeCompare(b.word);
+    }
+    return a.word.localeCompare(b.word);
+  });
+}
 
 function StudentVocabularyPanel({ words }: { words: StudentWord[] }) {
   const [view, setView] = useState<'due' | 'all'>('due');
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<StudentWordSort>('frequency');
   const [visibleCount, setVisibleCount] = useState(STUDENT_WORD_BATCH);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const dueCount = useMemo(() => words.filter(isDueToday).length, [words]);
   const filteredWords = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase();
-    return words
+    const matching = words
       .filter((word) => view === 'all' || isDueToday(word))
       .filter((word) => !needle
         || word.word.toLocaleLowerCase().includes(needle)
-        || (word.translation || '').toLocaleLowerCase().includes(needle))
-      .sort((a, b) => {
-        if (view === 'due') {
-          return new Date(a.due_at || 0).getTime() - new Date(b.due_at || 0).getTime()
-            || a.word.localeCompare(b.word);
-        }
-        return a.word.localeCompare(b.word);
-      });
-  }, [search, view, words]);
+        || (word.translation || '').toLocaleLowerCase().includes(needle));
+    return sortStudentWords(matching, sort);
+  }, [search, sort, view, words]);
 
   useEffect(() => {
     setVisibleCount(STUDENT_WORD_BATCH);
-  }, [search, view]);
+  }, [search, sort, view]);
 
   useEffect(() => {
     if (!filteredWords.some((word) => word.id === selectedId)) {
@@ -335,6 +347,14 @@ function StudentVocabularyPanel({ words }: { words: StudentWord[] }) {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search this student's words…"
           />
+        </label>
+        <label className="sd-vocab-sort">
+          <span>Sort</span>
+          <select value={sort} onChange={(event) => setSort(event.target.value as StudentWordSort)}>
+            <option value="frequency">Frequency order</option>
+            <option value="due">Due date</option>
+            <option value="alphabetical">A–Z</option>
+          </select>
         </label>
         <span className="sd-vocab-count">{filteredWords.length} {filteredWords.length === 1 ? 'word' : 'words'}</span>
       </div>

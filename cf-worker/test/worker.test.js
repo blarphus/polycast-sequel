@@ -151,6 +151,58 @@ test('rejects malformed and oversized playability batches before provider work',
   assert.equal(oversized.status, 400);
 });
 
+test('playability retries a provider timeout with a bounded alternate client before falling back', async () => {
+  const originalFetch = globalThis.fetch;
+  const requestBodies = [];
+  globalThis.fetch = async (_url, options) => {
+    requestBodies.push(JSON.parse(options.body));
+    if (requestBodies.length === 1) throw new DOMException('provider deadline exceeded', 'TimeoutError');
+    return Response.json({
+      playabilityStatus: { status: 'OK' },
+      streamingData: { adaptiveFormats: [{ width: 1280, height: 720 }] },
+    });
+  };
+  try {
+    const response = await worker.fetch(authorizedRequest(
+      'https://worker.example.test/?action=check',
+      token('check'),
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoIds: ['abcdefghijk'] }) },
+    ), makeEnv());
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.deepEqual(body.results.abcdefghijk, { status: 'OK', isShort: false });
+    assert.equal(requestBodies.length, 2);
+    assert.equal(requestBodies[0].context.client.clientName, 'IOS');
+    assert.equal(requestBodies[1].context.client.clientName, 'ANDROID');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('playability keeps a repeated timeout visible after the bounded retry is exhausted', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    throw new DOMException('provider deadline exceeded', 'TimeoutError');
+  };
+  try {
+    const response = await worker.fetch(authorizedRequest(
+      'https://worker.example.test/?action=check',
+      token('check'),
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoIds: ['abcdefghijk'] }) },
+    ), makeEnv());
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(calls, 2);
+    assert.equal(body.results.abcdefghijk.status, 'ERROR');
+    assert.equal(body.results.abcdefghijk.diagnostic.code, 'playability_provider_timeout');
+    assert.match(body.results.abcdefghijk.diagnostic.detail, /attempts=2/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('uses the first caption track only with a detailed visible alternate-language diagnostic', async () => {
   const originalFetch = globalThis.fetch;
   let calls = 0;
