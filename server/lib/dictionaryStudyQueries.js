@@ -1,8 +1,10 @@
 const NEW_TODAY_ORDER_BY = `
-  sw.queue_position ASC NULLS LAST,
   sw.priority DESC,
-  sw.sense_rank ASC NULLS LAST,
+  sw.frequency_count DESC NULLS LAST,
+  sw.frequency DESC NULLS LAST,
   sw.lemma_frequency_rank ASC NULLS LAST,
+  sw.sense_rank ASC NULLS LAST,
+  sw.queue_position ASC NULLS LAST,
   sw.created_at ASC,
   sw.id ASC
 `;

@@ -58,16 +58,13 @@ function getProjectedNewTime(word) {
 }
 
 function compareNewEntries(a, b) {
-  const dueDiff = getProjectedNewTime(a) - getProjectedNewTime(b);
-  if (dueDiff !== 0) return dueDiff;
-
-  const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
-  const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
-  if (aQueue !== bQueue) return aQueue - bQueue;
-
   const aPriority = a.priority ? 0 : 1;
   const bPriority = b.priority ? 0 : 1;
   if (aPriority !== bPriority) return aPriority - bPriority;
+
+  const aDueTime = getProjectedNewTime(a);
+  const bDueTime = getProjectedNewTime(b);
+  if (aDueTime !== bDueTime) return aDueTime - bDueTime;
 
   const aFreqCount = a.frequency_count ?? 0;
   const bFreqCount = b.frequency_count ?? 0;
@@ -77,10 +74,14 @@ function compareNewEntries(a, b) {
   const bFrequency = b.frequency ?? 0;
   if (aFrequency !== bFrequency) return bFrequency - aFrequency;
 
+  const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
+  const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
+  if (aQueue !== bQueue) return aQueue - bQueue;
+
   const createdDiff = getCreatedTime(a) - getCreatedTime(b);
   if (createdDiff !== 0) return createdDiff;
 
-  return aQueue - bQueue;
+  return String(a.id).localeCompare(String(b.id));
 }
 
 export function interleaveStudyQueueRows(rows) {

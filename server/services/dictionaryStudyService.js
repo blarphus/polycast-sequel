@@ -108,11 +108,19 @@ export function createDictionaryStudyService({
         `WITH ranked AS (
            SELECT id,
                   ROW_NUMBER() OVER (
-                    ORDER BY priority DESC, sense_rank ASC NULLS LAST,
-                             lemma_frequency_rank ASC NULLS LAST, created_at, id
+                    PARTITION BY target_language
+                    ORDER BY priority DESC,
+                             frequency_count DESC NULLS LAST,
+                             frequency DESC NULLS LAST,
+                             lemma_frequency_rank ASC NULLS LAST,
+                             sense_rank ASC NULLS LAST,
+                             created_at, id
                   ) - 1 AS position
              FROM saved_words
             WHERE user_id = $1
+              AND srs_interval = 0
+              AND learning_step IS NULL
+              AND last_reviewed_at IS NULL
          )
          UPDATE saved_words sw
             SET queue_position = ranked.position

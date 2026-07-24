@@ -131,10 +131,6 @@ function localDateTimeAtStartOfDay(date: Date) {
 }
 
 function compareNewEntries(a: SavedWord, b: SavedWord): number {
-  const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
-  const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
-  if (aQueue !== bQueue) return aQueue - bQueue;
-
   const aPriority = a.priority ? 0 : 1;
   const bPriority = b.priority ? 0 : 1;
   if (aPriority !== bPriority) return aPriority - bPriority;
@@ -146,6 +142,10 @@ function compareNewEntries(a: SavedWord, b: SavedWord): number {
   const aFrequency = a.frequency ?? 0;
   const bFrequency = b.frequency ?? 0;
   if (aFrequency !== bFrequency) return bFrequency - aFrequency;
+
+  const aQueue = a.queue_position ?? Number.POSITIVE_INFINITY;
+  const bQueue = b.queue_position ?? Number.POSITIVE_INFINITY;
+  if (aQueue !== bQueue) return aQueue - bQueue;
 
   const createdDiff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   if (createdDiff !== 0) return createdDiff;

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import '../styles/dictionary.css';
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
@@ -12,10 +12,9 @@ import { formatDate } from '../utils/dateFormat';
 import { renderTildeHighlight } from '../utils/tildeMarkup';
 import WordLookupModal from '../components/WordLookupModal';
 import ImagePicker from '../components/ImagePicker';
-import { getDictionaryWordGroups, proxyImageUrl, rebuildFrequencyQueue } from '../api';
+import { getDictionaryWordGroups, proxyImageUrl } from '../api';
 import type { DictionarySortMode, DictionaryWordGroup, SavedWord } from '../api';
-import { SearchIcon, SearchMinusIcon, BookPlusIcon, ChevronDownIcon, TrashIcon, GripVerticalIcon } from '../components/icons';
-import { FrequencyDots, FREQUENCY_DOT_COLORS } from '../components/FrequencyDots';
+import { SearchIcon, SearchMinusIcon, BookPlusIcon, ChevronDownIcon, TrashIcon } from '../components/icons';
 import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 import { useI18n } from '../hooks/useI18n';
 
@@ -121,39 +120,6 @@ function parseWordForms(forms: string | null | undefined): string[] {
   return forms.split(',').map((form) => form.trim()).filter(Boolean);
 }
 
-function buildQueueTintStyles(
-  hue: number,
-  intensity: number,
-  darkness: number,
-  shadowStrength: number,
-  shadowSize: number,
-) {
-  const alpha = 0.03 + (intensity / 100) * 0.2;
-  const headerAlpha = alpha * 0.72;
-  const hoverAlpha = alpha * 1.35;
-  const borderAlpha = 0.06 + (intensity / 100) * 0.18;
-  const shadowAlpha = 0.08 + (shadowStrength / 100) * 0.34;
-  const baseLightness = 92 - (darkness / 100) * 44;
-  const borderLightness = Math.max(24, baseLightness - 18);
-  const shadowLightness = Math.max(14, baseLightness - 40 - (shadowStrength / 100) * 8);
-  const shadowBlur = 10 + (shadowSize / 100) * 34;
-  const shadowSpread = -14 + (shadowSize / 100) * 10;
-  const shadowOffsetY = 6 + (shadowSize / 100) * 16;
-
-  return {
-    '--queue-tint': `hsla(${hue} 88% ${baseLightness}% / ${alpha.toFixed(3)})`,
-    '--queue-tint-header': `hsla(${hue} 88% ${baseLightness}% / ${headerAlpha.toFixed(3)})`,
-    '--queue-tint-hover': `hsla(${hue} 88% ${baseLightness}% / ${hoverAlpha.toFixed(3)})`,
-    '--queue-tint-border': `hsla(${hue} 78% ${borderLightness}% / ${borderAlpha.toFixed(3)})`,
-    '--queue-tint-shadow': `hsla(${hue} 78% ${shadowLightness}% / ${shadowAlpha.toFixed(3)})`,
-    '--queue-shadow-y': `${shadowOffsetY.toFixed(1)}px`,
-    '--queue-shadow-blur': `${shadowBlur.toFixed(1)}px`,
-    '--queue-shadow-spread': `${shadowSpread.toFixed(1)}px`,
-  } as React.CSSProperties;
-}
-
-const QUEUE_TINT_STYLES = buildQueueTintStyles(220, 38, 29, 35, 44);
-
 export default function Dictionary() {
   const { t } = useI18n();
   const { user } = useAuth();
@@ -165,7 +131,6 @@ export default function Dictionary() {
     addOptimistic,
     updateImage,
     isDefinitionSaved,
-    reorderQueueWords,
     loadWords,
   } = useSavedWords({ skipInitialLoad: true });
 
@@ -186,14 +151,6 @@ export default function Dictionary() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalGroups, setTotalGroups] = useState(0);
   const WORDS_PER_PAGE = 60;
-
-  // DnD state
-  const [dragItem, setDragItem] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-
-  // Bracket height measurement
-  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const [bracketHeight, setBracketHeight] = useState(0);
 
   const toggle = (key: string) => {
     setExpandedKeys((prev) => {
@@ -280,86 +237,10 @@ export default function Dictionary() {
     [dueNextGroupKeys, page, pageGroups, sort],
   );
 
-  // Measure bracket height after render
-  useEffect(() => {
-    if (dueNextPageKeys.length === 0) { setBracketHeight(0); return; }
-    let height = 0;
-    for (let i = 0; i < dueNextPageKeys.length; i++) {
-      const el = itemRefs.current.get(dueNextPageKeys[i]);
-      if (el) {
-        height += el.offsetHeight;
-        if (i < dueNextPageKeys.length - 1) height += 8; // gap (0.5rem)
-      }
-    }
-    setBracketHeight(height);
-  }, [dueNextPageKeys, expandedKeys]);
-
-  const setItemRef = useCallback((key: string, el: HTMLDivElement | null) => {
-    if (el) itemRefs.current.set(key, el);
-    else itemRefs.current.delete(key);
-  }, []);
-
-  // DnD handlers
-  const handleDragStart = (e: React.DragEvent, groupKey: string) => {
-    setDragItem(groupKey);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragOver = (e: React.DragEvent, groupKey: string) => {
-    e.preventDefault();
-    if (dragItem && dragItem !== groupKey) setDragOverId(groupKey);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetKey: string) => {
-    e.preventDefault();
-    if (!dragItem || dragItem === targetKey) {
-      setDragItem(null);
-      setDragOverId(null);
-      return;
-    }
-
-    // Only reorder among new-card groups on the current page
-    const newGroups = wordGroups.filter((group) => dueNextGroupKeys.has(group.key));
-    const dragIndex = newGroups.findIndex((g) => g.key === dragItem);
-    const targetIndex = newGroups.findIndex((g) => g.key === targetKey);
-    if (dragIndex === -1 || targetIndex === -1) {
-      setDragItem(null);
-      setDragOverId(null);
-      return;
-    }
-
-    const reordered = [...newGroups];
-    const [moved] = reordered.splice(dragIndex, 1);
-    reordered.splice(targetIndex, 0, moved);
-
-    // Build position updates for all entries in reordered new-card groups
-    const items: Array<{ id: string; queue_position: number }> = [];
-    reordered.forEach((g, gi) => {
-      for (const entry of g.entries) {
-        items.push({ id: entry.id, queue_position: gi });
-      }
-    });
-
-    void reorderQueueWords(items).then(() => loadPage());
-    setDragItem(null);
-    setDragOverId(null);
-  };
-
-  const handleDragEnd = () => {
-    setDragItem(null);
-    setDragOverId(null);
-  };
-
   const isQueueMode = sort === 'queue';
 
-  const rebuildQueue = async () => {
-    if (!window.confirm(t('dictionary.rebuildConfirm'))) return;
-    await rebuildFrequencyQueue();
-    await loadPage();
-  };
-
   return (
-    <div className="dict-page" style={QUEUE_TINT_STYLES}>
+    <div className="dict-page">
       <main className="dict-main">
         <section className="home-section">
           <h2 className="section-title">{t('dictionary.title')}</h2>
@@ -381,7 +262,7 @@ export default function Dictionary() {
               value={sort}
               onChange={(e) => { setSort(e.target.value as DictionarySortMode); setPage(0); setPageCursors([null]); }}
             >
-              <option value="queue">{t('dictionary.queue')}</option>
+              <option value="queue">{t('dictionary.studyOrder')}</option>
               <option value="date">{t('dictionary.recent')}</option>
               <option value="az">A-Z</option>
               <option value="freq-high">{t('dictionary.frequencyHigh')}</option>
@@ -389,9 +270,7 @@ export default function Dictionary() {
               <option value="due">{t('dictionary.dueSoon')}</option>
             </select>
             <span className="dict-count">{t('dictionary.count', { count: totalGroups, countLabel: t(totalGroups === 1 ? 'dictionary.word' : 'dictionary.words') })}</span>
-            <button className="dict-frequency-order-btn" onClick={() => { void rebuildQueue(); }} title={t('dictionary.rebuildTitle')}>
-              {t('dictionary.frequencyOrder')}
-            </button>
+            {isQueueMode && <span className="dict-order-rule">{t('dictionary.frequencyRuleShort')}</span>}
             {user?.native_language && user?.target_language && (
               <button
                 className="dict-lookup-btn"
@@ -405,6 +284,20 @@ export default function Dictionary() {
               </button>
             )}
           </div>
+
+          {isQueueMode && page === 0 && !search && (
+            <section className="dict-study-summary" aria-label={t('dictionary.studySummary')}>
+              <div>
+                <span className="dict-study-summary-label">{t('dictionary.upNext')}</span>
+                <strong>{t('dictionary.newCardsCount', { count: dueNextPageKeys.length })}</strong>
+              </div>
+              <div>
+                <span className="dict-study-summary-label">{t('dictionary.library')}</span>
+                <strong>{t('dictionary.count', { count: totalGroups, countLabel: t(totalGroups === 1 ? 'dictionary.word' : 'dictionary.words') })}</strong>
+              </div>
+              <p>{t('dictionary.frequencyRule')}</p>
+            </section>
+          )}
 
           {loading ? (
             <p className="text-muted">{t('dictionary.loading')}</p>
@@ -430,47 +323,25 @@ export default function Dictionary() {
             <>
               <div className="dict-container">
                 <div className={`dict-list${isQueueMode ? ' dict-list--queue-view' : ''}`}>
-                {/* Bracket rail */}
-                {isQueueMode && page === 0 && dueNextPageKeys.length > 0 && bracketHeight > 0 && (
-                  <div className="dict-queue-bracket" style={{ height: bracketHeight }}>
-                    <span className="dict-queue-bracket-label">{t('dictionary.dueNext')}</span>
-                  </div>
-                )}
                 {pageGroups.map((group) => {
                   const open = expandedKeys.has(group.key);
                   const maxFreq = group.maxFrequency;
-                  const freqColor = maxFreq != null ? FREQUENCY_DOT_COLORS[Math.ceil(maxFreq / 2) - 1] || FREQUENCY_DOT_COLORS[0] : undefined;
                   const inBracket = isQueueMode && page === 0 && dueNextGroupKeys.has(group.key);
-                  const isDraggable = isQueueMode && dueNextGroupKeys.has(group.key);
-                  const isDragOver = dragOverId === group.key;
+                  const studyPosition = inBracket ? dueNextPageKeys.indexOf(group.key) + 1 : null;
                   return (
                     <div
                       key={group.key}
-                      ref={(el) => setItemRef(group.key, el)}
                       className={
                         `dict-item${open ? ' open' : ''}` +
-                        `${inBracket ? ' dict-item--in-bracket' : ''}` +
-                        `${isDragOver ? ' dict-item--drag-over' : ''}`
+                        `${inBracket ? ' dict-item--in-bracket' : ''}`
                       }
-                      style={freqColor ? { borderLeftColor: freqColor } : undefined}
-                      draggable={isDraggable}
-                      onDragStart={isDraggable ? (e) => handleDragStart(e, group.key) : undefined}
-                      onDragOver={isDraggable ? (e) => handleDragOver(e, group.key) : undefined}
-                      onDrop={isDraggable ? (e) => handleDrop(e, group.key) : undefined}
-                      onDragEnd={isDraggable ? handleDragEnd : undefined}
                     >
                       <button className="dict-item-header" onClick={() => toggle(group.key)}>
-                        {isDraggable && (
-                          <span
-                            className="dict-drag-handle"
-                            onMouseDown={(e) => e.stopPropagation()}
-                          >
-                            <GripVerticalIcon size={16} />
-                          </span>
-                        )}
-                        <span className="dict-word">{group.word}</span>
-                        <FrequencyDots frequency={maxFreq} />
-                        {maxFreq != null && <span className="dict-freq-number">{maxFreq}/10</span>}
+                        {studyPosition != null && <span className="dict-study-position">{studyPosition}</span>}
+                        <span className="dict-word-copy">
+                          <span className="dict-word">{group.word}</span>
+                          <span className="dict-word-meaning">{group.primaryEntry.translation}</span>
+                        </span>
                         {group.primaryEntry.part_of_speech && (
                           <span className={`dict-pos-badge pos-${group.primaryEntry.part_of_speech.toLowerCase()}`}>{group.primaryEntry.part_of_speech}</span>
                         )}
@@ -479,6 +350,12 @@ export default function Dictionary() {
                         )}
                         {group.entries.length > 1 && (
                           <span className="dict-def-count">{group.entries.length}</span>
+                        )}
+                        {maxFreq != null && (
+                          <span className="dict-frequency-label">
+                            <small>{t('dictionary.frequency')}</small>
+                            <strong>{maxFreq}/10</strong>
+                          </span>
                         )}
                         <DueStatusBadge word={group.primaryEntry} />
                         <ChevronDownIcon size={18} className="dict-chevron" />

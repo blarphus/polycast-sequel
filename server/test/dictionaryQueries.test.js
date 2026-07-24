@@ -61,6 +61,8 @@ test('dictionary preview is a pure ordered read', async () => {
   assert.deepEqual(result.rows, [{ id: 'word-1' }]);
   assert.equal(db.calls.length, 1);
   assert.deepEqual(db.calls[0].values, ['user-1', 7]);
+  assert.match(db.calls[0].text, /frequency_count DESC NULLS LAST/);
+  assert.match(db.calls[0].text, /frequency DESC NULLS LAST/);
   assert.match(db.calls[0].text, /queue_position ASC NULLS LAST/);
   assert.doesNotMatch(db.calls[0].text, /UPDATE|INSERT|DELETE/i);
 });
@@ -80,6 +82,18 @@ test('due queue uses the saved daily limit when override is absent', async () =>
   const db = recordingDatabase();
   await listDueWords(db, 'user-1');
   assert.deepEqual(db.calls[0].values, ['user-1', 'UTC', null]);
+});
+
+test('new-card study order is frequency-first even when stored positions are stale', async () => {
+  const lowerFrequency = { ...newRow('lower-frequency', 0), frequency: 8, frequency_count: 800 };
+  const higherFrequency = { ...newRow('higher-frequency', 1), frequency: 10, frequency_count: 1200 };
+  const db = recordingDatabase([lowerFrequency, higherFrequency]);
+
+  const result = await listDueWords(db, 'user-1', 'America/Chicago', 2);
+
+  assert.deepEqual(result.rows.map((row) => row.id), ['higher-frequency', 'lower-frequency']);
+  assert.match(db.calls[0].text, /frequency_count DESC NULLS LAST/);
+  assert.match(db.calls[0].text, /frequency DESC NULLS LAST/);
 });
 
 test('due queue spaces new cards through reviews and paginates after interleaving', async () => {

@@ -21,6 +21,24 @@ test('study queue reorder is one transaction and releases its connection', async
   assert.equal(released, true);
 });
 
+test('frequency rebuild ranks active new cards by visible frequency before legacy ranks', async () => {
+  const calls = [];
+  const db = {
+    async query(text, values) {
+      calls.push({ text, values });
+      return { rowCount: 3 };
+    },
+  };
+  const service = createDictionaryStudyService({ db });
+
+  await service.rebuildFrequencyOrder('user-1');
+
+  assert.match(calls[0].text, /frequency_count DESC NULLS LAST/);
+  assert.match(calls[0].text, /frequency DESC NULLS LAST/);
+  assert.match(calls[0].text, /srs_interval = 0/);
+  assert.ok(calls[0].text.indexOf('frequency DESC') < calls[0].text.indexOf('sense_rank ASC'));
+});
+
 test('study queue reorder rolls back and exposes a missing word', async () => {
   const statements = [];
   const client = {
