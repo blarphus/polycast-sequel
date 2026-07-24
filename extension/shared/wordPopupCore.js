@@ -440,9 +440,11 @@
         }
 
         const translation = res.translation || res.definition || '';
-        // `definition` is localized for the learner. `matched_gloss` retains the
-        // source-language Wiktionary wording for sense identity and dedup only.
-        const dictionaryDefinition = res.definition || res.matched_gloss || '';
+        // The popup should show the actual dictionary sense that was selected,
+        // not the context-tailored explanation generated while choosing it.
+        // When Wiktionary has no usable sense, retain the normal lookup output
+        // as the visible, explicitly diagnosed fallback.
+        const dictionaryDefinition = res.matched_gloss || res.translation || res.definition || '';
         const definitionLabel = labels.definition;
         const definitionSourcePill = fallbackNoticePills(res);
         const fallbackDetails = fallbackNoticeDetails(res);
@@ -530,14 +532,17 @@
             headerPosEl.textContent = res.part_of_speech || '';
             const hasLemma = res.lemma && res.lemma.trim() && res.lemma.toLowerCase() !== word.toLowerCase();
             const lemmaBlock = hasLemma
-              ? `<div><span class="pc-popup-meta-label">${escapeHtml(labels.savesAs)}</span><strong>${escapeHtml(res.lemma)}</strong></div>` : '';
+              ? `<div class="pc-popup-saves-as"><span class="pc-popup-meta-label">${escapeHtml(labels.savesAs)}</span><strong>${escapeHtml(res.lemma)}</strong></div>` : '';
             const definitionBlock = dictionaryDefinition
-              ? `<div class="pc-popup-definition"><span class="pc-popup-definition-label">${definitionLabel}${definitionSourcePill}</span>${escapeHtml(dictionaryDefinition)}</div>` : '';
+              ? `<div class="pc-popup-definition pc-popup-definition--primary">
+                  <span class="pc-popup-definition-label">${definitionLabel}${definitionSourcePill}</span>
+                  <span class="pc-popup-definition-text">${escapeHtml(dictionaryDefinition)}</span>
+                  ${saveState === 'new-sense' ? `<span class="pc-popup-new-def-pill">${escapeHtml(labels.newDefinition)}</span>` : ''}
+                </div>` : '';
             const metadata = lemmaBlock || definitionBlock ? `<div class="pc-popup-meta">
-              ${lemmaBlock}${definitionBlock}
+              ${definitionBlock}${lemmaBlock}
             </div>` : '';
             bodyEl.innerHTML = `${toggle}
-              ${translation ? `<div class="pc-popup-translation">${escapeHtml(translation)}${saveState === 'new-sense' ? `<span class="pc-popup-new-def-pill">${escapeHtml(labels.newDefinition)}</span>` : ''}</div>` : ''}
               ${metadata}
               ${autoExplanationHtml()}
               ${fallbackDetails}`;

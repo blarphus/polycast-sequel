@@ -45,15 +45,17 @@ test('popup points to and raises the selected word until destroyed', () => {
 test('part of speech is in the header and explain controls follow the definition', async () => {
   const { dom, word } = makeDom();
   const popup = dom.window.PolycastWordPopup.createWordPopup({
-    word: 'centenar',
-    sentence: 'Un centenar de pensamientos.',
+    word: 'centenares',
+    sentence: 'Varios centenares de pensamientos.',
     anchorRect: word.getBoundingClientRect(),
     handlers: {
       lookup: () => Promise.resolve({
         valid: true,
         translation: 'hundred',
-        definition: 'A group of one hundred people or things.',
+        definition: 'A context-specific generated explanation.',
+        matched_gloss: 'A group of one hundred people or things.',
         part_of_speech: 'noun',
+        lemma: 'centenar',
       }),
       explain: () => Promise.resolve({ explanation: 'Used as a collective quantity.' }),
     },
@@ -70,6 +72,12 @@ test('part of speech is in the header and explain controls follow the definition
   assert.equal(primary.contains(explain), true);
   assert.equal(body.nextElementSibling.contains(explain), true);
   assert.match(body.textContent, /A group of one hundred people or things/);
+  assert.doesNotMatch(body.textContent, /context-specific generated explanation/);
+  const definition = body.querySelector('.pc-popup-definition--primary');
+  const savesAs = body.querySelector('.pc-popup-saves-as');
+  assert.ok(definition);
+  assert.ok(savesAs);
+  assert.ok(definition.compareDocumentPosition(savesAs) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
 
   popup.destroy();
 });

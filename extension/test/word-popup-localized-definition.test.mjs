@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
 
-test('word popup displays the learner-language definition instead of the source gloss', async () => {
+test('word popup displays the matched Wiktionary gloss instead of the generated contextual definition', async () => {
   const source = await readFile(new URL('../shared/wordPopupCore.js', import.meta.url), 'utf8');
   const dom = new JSDOM('<!doctype html><body></body>', { runScripts: 'outside-only', pretendToBeVisual: true });
   dom.window.ResizeObserver = class {
@@ -30,8 +30,8 @@ test('word popup displays the learner-language definition instead of the source 
 
   await new Promise((resolve) => setTimeout(resolve, 0));
   const text = popup.el.textContent;
-  assert.match(text, /madre/i);
-  assert.match(text, /Mujer que tiene o cría hijos\./);
-  assert.doesNotMatch(text, /A female parent/);
+  assert.match(text, /A female parent, especially of a human\./);
+  assert.doesNotMatch(text, /Mujer que tiene o cría hijos\./);
+  assert.equal(popup.el.querySelector('.pc-popup-translation'), null);
   popup.destroy();
 });
