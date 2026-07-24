@@ -297,6 +297,22 @@ export function deleteSavedWord(id: string) {
   return request<void>(`/dictionary/words/${id}?${params}`, { method: 'DELETE' });
 }
 
+export interface DictionaryEntryUpdate {
+  word?: string;
+  translation?: string;
+  definition?: string;
+  example_sentence?: string | null;
+  sentence_translation?: string | null;
+  part_of_speech?: string | null;
+}
+
+export function updateSavedWord(id: string, data: DictionaryEntryUpdate) {
+  return request<SavedWord>(`/dictionary/words/${id}`, {
+    method: 'PATCH',
+    body: data,
+  });
+}
+
 export function searchImages(query: string) {
   return request<{ images: string[] }>(`/dictionary/image-search?q=${encodeURIComponent(query)}`);
 }

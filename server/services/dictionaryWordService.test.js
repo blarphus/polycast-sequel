@@ -82,6 +82,17 @@ test('dictionary word update rejects an empty patch before querying', async () =
   assert.equal(db.calls.length, 0);
 });
 
+test('dictionary headword edits invalidate the cached pronunciation', async () => {
+  const db = scriptedDb([{ rows: [{ id: 'word-1', word: 'sacar' }] }]);
+  const service = createDictionaryWordService({ db });
+
+  const updated = await service.update('user-1', 'word-1', { word: 'sacar' });
+
+  assert.equal(updated.word, 'sacar');
+  assert.match(db.calls[0].text, /word = \$3/);
+  assert.match(db.calls[0].text, /tts_audio = NULL/);
+});
+
 test('dictionary word deletion reports a typed not-found error', async () => {
   const db = scriptedDb([{ rowCount: 0 }]);
   const service = createDictionaryWordService({

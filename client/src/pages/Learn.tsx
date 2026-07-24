@@ -22,10 +22,18 @@ import { useAuth } from '../hooks/useAuth';
 import { useSavedWords } from '../hooks/useSavedWords';
 import WordPopup from '../components/WordPopup';
 import TappableFlashcardSentence from '../components/TappableFlashcardSentence';
-import { playAiSpeech, stopAiSpeech, preloadCardAudio, type PreloadedSpeech } from '../utils/aiSpeech';
+import DictionaryEntryEditor from '../components/DictionaryEntryEditor';
+import {
+  playAiSpeech,
+  stopAiSpeech,
+  preloadAiSpeech,
+  preloadCardAudio,
+  type PreloadedSpeech,
+} from '../utils/aiSpeech';
 import { playFlipSound, playCorrectSound, playIncorrectSound, playCompleteSound } from '../utils/sounds';
-import { BookIcon, CheckCircleIcon, SpeakerIcon, TapIcon, CloseIcon, CheckIcon } from '../components/icons';
+import { BookIcon, CheckCircleIcon, SpeakerIcon, TapIcon, CloseIcon, CheckIcon, MoreVerticalIcon } from '../components/icons';
 import { useI18n } from '../hooks/useI18n';
+import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
 
 // ---------------------------------------------------------------------------
 // Prompt type derivation
@@ -73,6 +81,10 @@ function spokenText(card: SavedWord, promptType: PromptType, back: boolean): str
   return null;
 }
 
+function speechKey(card: SavedWord, text: string) {
+  return `${card.id}\u0000${card.target_language || ''}\u0000${text}`;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -83,8 +95,19 @@ export default function Learn() {
 
   // Card queue
   const { user } = useAuth();
-  const { savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord } = useSavedWords();
+  const {
+    savedWordsSet,
+    isWordSaved,
+    isDefinitionSaved,
+    addWord,
+    addOptimistic,
+    removeWord,
+    updateEntry,
+  } = useSavedWords();
   const [popup, setPopup] = useState<{ word: string; sentence: string; rect: DOMRect } | null>(null);
+  const [cardMenuOpen, setCardMenuOpen] = useState(false);
+  const [editingCard, setEditingCard] = useState<SavedWord | null>(null);
+  const cardMenuRef = useRef<HTMLDivElement>(null);
 
   // Tap a target-language word on the card to add it to the dictionary. Stop
   // propagation so it never flips the card.
@@ -126,21 +149,71 @@ export default function Learn() {
   // Audio played tracker (once per card)
   const audioPlayedRef = useRef<Set<string>>(new Set());
 
-  // Preloaded TTS audio: word ID -> audio URL and provider metadata
+  // Preloaded TTS audio: exact card-side speech -> audio URL and provider metadata
   const preloadedAudioRef = useRef<Map<string, PreloadedSpeech>>(new Map());
+  const audioPreloadPromisesRef = useRef<Map<string, Promise<PreloadedSpeech>>>(new Map());
+  const audioMountedRef = useRef(true);
+  const preloadFailureReportedRef = useRef(false);
 
-  // Fetch due words
+  const ensureCardSpeech = useCallback((card: SavedWord, text: string) => {
+    const key = speechKey(card, text);
+    const ready = preloadedAudioRef.current.get(key);
+    if (ready) return Promise.resolve(ready);
+
+    const pending = audioPreloadPromisesRef.current.get(key);
+    if (pending) return pending;
+
+    const request = (text === card.word
+      ? preloadCardAudio(card.id)
+      : preloadAiSpeech(text, card.target_language || undefined))
+      .then((speech) => {
+        if (audioMountedRef.current) {
+          preloadedAudioRef.current.set(key, speech);
+        } else if (speech.url) {
+          URL.revokeObjectURL(speech.url);
+        }
+        return speech;
+      })
+      .finally(() => {
+        audioPreloadPromisesRef.current.delete(key);
+      });
+    audioPreloadPromisesRef.current.set(key, request);
+    return request;
+  }, []);
+
+  // Fetch due words, then fully prepare the first card's spoken sides before
+  // revealing it. This eliminates the initial-card race that the background
+  // lookahead preloader cannot solve by itself.
   useEffect(() => {
     getDueWords()
       .then(async (data) => {
         setCards(data);
         if (data.length > 0) {
-          try {
-            const created = await createLearningSession('flashcards');
-            setLearningSessionId(created.session.id);
-          } catch (err) {
-            setSessionDiagnostic(`Flashcard XP fallback used: ${err instanceof Error ? err.message : 'session tracking unavailable'}`);
-          }
+          const firstCard = data[0];
+          const type = getPromptType(firstCard);
+          const firstCardSpeech = [spokenText(firstCard, type, false), spokenText(firstCard, type, true)]
+            .filter((text): text is string => Boolean(text));
+
+          await Promise.all([
+            createLearningSession('flashcards')
+              .then((created) => setLearningSessionId(created.session.id))
+              .catch((err) => {
+                setSessionDiagnostic(`Flashcard XP fallback used: ${err instanceof Error ? err.message : 'session tracking unavailable'}`);
+              }),
+            Promise.all(firstCardSpeech.map((text) => ensureCardSpeech(firstCard, text))),
+          ]).catch((err) => {
+            runtimeLog.error('Failed to prepare the first flashcard audio:', err);
+            if (!preloadFailureReportedRef.current) {
+              preloadFailureReportedRef.current = true;
+              emitFallbackDiagnostic({
+                code: 'initial_flashcard_audio_preload_fallback',
+                severity: 'warning',
+                title: 'First flashcard audio preload unavailable',
+                message: 'Polycast could not prepare the first pronunciation before showing the card, so it will request audio when played.',
+                detail: err instanceof Error ? err.message : String(err),
+              }, { source: 'web.flashcards', operation: 'preload-first-card-speech' });
+            }
+          });
         }
         setLoading(false);
       })
@@ -149,36 +222,53 @@ export default function Learn() {
         setError(err.message);
         setLoading(false);
       });
-  }, []);
+  }, [ensureCardSpeech]);
 
-  // Preload TTS audio for all cards with bounded concurrency (a few in flight
-  // at once instead of strictly one-at-a-time, so the deck warms up faster).
+  // Preload the exact spoken text for both sides of the current and upcoming
+  // cards. The current card is queued first, and playback shares the same
+  // in-flight promise instead of launching a second request at reveal time.
   useEffect(() => {
-    if (cards.length === 0) return;
+    if (cards.length === 0 || currentIndex >= cards.length) return;
 
-    let cancelled = false;
-    const queue = cards.filter((card) => !preloadedAudioRef.current.has(card.id));
+    const PRELOAD_LOOKAHEAD_CARDS = 8;
+    const queue = cards.slice(currentIndex, currentIndex + PRELOAD_LOOKAHEAD_CARDS).flatMap((card) => {
+      const type = getPromptType(card);
+      return [spokenText(card, type, false), spokenText(card, type, true)]
+        .filter((text): text is string => Boolean(text))
+        .map((text) => ({ card, text }))
+        .filter(({ card: queuedCard, text }) => {
+          const key = speechKey(queuedCard, text);
+          return !preloadedAudioRef.current.has(key) && !audioPreloadPromisesRef.current.has(key);
+        });
+    });
     let next = 0;
 
     const worker = async () => {
-      while (!cancelled && next < queue.length) {
-        const card = queue[next++];
+      while (audioMountedRef.current && next < queue.length) {
+        const item = queue[next++];
         try {
-          const speech = await preloadCardAudio(card.id);
-          if (!cancelled) preloadedAudioRef.current.set(card.id, speech);
+          await ensureCardSpeech(item.card, item.text);
         } catch (err) {
-          runtimeLog.error(`Failed to preload audio for ${card.id}:`, err);
+          runtimeLog.error(`Failed to preload audio for ${item.card.id}:`, err);
+          if (!preloadFailureReportedRef.current) {
+            preloadFailureReportedRef.current = true;
+            emitFallbackDiagnostic({
+              code: 'flashcard_audio_preload_fallback',
+              severity: 'warning',
+              title: 'Flashcard audio preload unavailable',
+              message: 'Polycast could not prepare some upcoming pronunciation audio, so those cards will request it when played.',
+              detail: err instanceof Error ? err.message : String(err),
+            }, { source: 'web.flashcards', operation: 'preload-speech' });
+          }
         }
       }
     };
 
     const PRELOAD_CONCURRENCY = 4;
     for (let i = 0; i < Math.min(PRELOAD_CONCURRENCY, queue.length); i++) {
-      worker();
+      void worker();
     }
-
-    return () => { cancelled = true; };
-  }, [cards]);
+  }, [cards, currentIndex, ensureCardSpeech]);
 
   const currentCard = cards[currentIndex];
 
@@ -186,16 +276,35 @@ export default function Learn() {
   // Audio playback (OpenAI TTS)
   // ---------------------------------------------------------------------------
 
-  const playAudio = useCallback((text: string, lang?: string | null, wordId?: string) => {
-    const preloaded = wordId ? preloadedAudioRef.current.get(wordId) : undefined;
-    void playAiSpeech(text, lang || undefined, preloaded);
-  }, []);
+  const playCardAudio = useCallback(async (
+    card: SavedWord,
+    text: string,
+    shouldPlay: () => boolean = () => true,
+  ) => {
+    try {
+      const preloaded = await ensureCardSpeech(card, text);
+      if (!shouldPlay()) return;
+      await playAiSpeech(text, card.target_language || undefined, preloaded);
+    } catch (error) {
+      if (!shouldPlay()) return;
+      runtimeLog.error(`Prepared audio playback failed for ${card.id}:`, error);
+      emitFallbackDiagnostic({
+        code: 'flashcard_prepared_audio_playback_fallback',
+        severity: 'warning',
+        title: 'Prepared flashcard audio unavailable',
+        message: 'Polycast could not use the prepared pronunciation and is requesting a fresh copy now.',
+        detail: error instanceof Error ? error.message : String(error),
+      }, { source: 'web.flashcards', operation: 'play-preloaded-speech' });
+      await playAiSpeech(text, card.target_language || undefined);
+    }
+  }, [ensureCardSpeech]);
 
   const promptType: PromptType = currentCard ? getPromptType(currentCard) : 'meet-word';
 
   // Auto-play TTS based on prompt type
   useEffect(() => {
-    if (!currentCard) return;
+    if (loading || !currentCard) return;
+    let cancelled = false;
     const pt = getPromptType(currentCard);
     const back = isFlipped;
     const key = `${currentIndex}-${back ? 'back' : 'front'}`;
@@ -203,8 +312,9 @@ export default function Learn() {
     const text = spokenText(currentCard, pt, back);
     if (!text) return;
     audioPlayedRef.current.add(key);
-    playAudio(text, currentCard.target_language, text === currentCard.word ? currentCard.id : undefined);
-  }, [isFlipped, currentIndex, currentCard, playAudio]);
+    void playCardAudio(currentCard, text, () => !cancelled);
+    return () => { cancelled = true; };
+  }, [isFlipped, currentIndex, currentCard, loading, playCardAudio]);
 
   // Play celebratory sound when session is complete
   useEffect(() => {
@@ -219,14 +329,31 @@ export default function Learn() {
     }
   }, [currentIndex, cards.length, loading, checkingForMore, learningSessionId]);
 
-  useEffect(() => () => {
-    stopAiSpeech();
-    // Revoke all preloaded object URLs
-    for (const speech of preloadedAudioRef.current.values()) {
-      URL.revokeObjectURL(speech.url);
-    }
-    preloadedAudioRef.current.clear();
+  useEffect(() => {
+    audioMountedRef.current = true;
+    return () => {
+      audioMountedRef.current = false;
+      stopAiSpeech();
+      // Revoke all preloaded object URLs
+      for (const speech of preloadedAudioRef.current.values()) {
+        if (speech.url) URL.revokeObjectURL(speech.url);
+      }
+      preloadedAudioRef.current.clear();
+    };
   }, []);
+
+  useEffect(() => {
+    if (!cardMenuOpen) return undefined;
+    const closeOutside = (event: MouseEvent) => {
+      if (!cardMenuRef.current?.contains(event.target as Node)) setCardMenuOpen(false);
+    };
+    document.addEventListener('mousedown', closeOutside);
+    return () => document.removeEventListener('mousedown', closeOutside);
+  }, [cardMenuOpen]);
+
+  useEffect(() => {
+    setCardMenuOpen(false);
+  }, [currentIndex]);
 
   // ---------------------------------------------------------------------------
   // Answer handling
@@ -517,9 +644,37 @@ export default function Learn() {
           <div><i style={{ width: `${Math.max(6, ((currentIndex + 1) / Math.max(cards.length, 1)) * 100)}%` }} /></div>
           <span>{cards.length}</span>
         </div>
-        <button className="learn-test-stages-btn" onClick={() => navigate('/learn/preview')}>
-          {t('learn.testStages')}
-        </button>
+        <div className="learn-review-header-actions">
+          <button className="learn-test-stages-btn" onClick={() => navigate('/learn/preview')}>
+            {t('learn.testStages')}
+          </button>
+          <div className="flashcard-card-menu-anchor" ref={cardMenuRef}>
+            <button
+              type="button"
+              className="flashcard-card-menu-button"
+              aria-label="Card menu"
+              aria-haspopup="menu"
+              aria-expanded={cardMenuOpen}
+              onClick={() => setCardMenuOpen((open) => !open)}
+            >
+              <MoreVerticalIcon size={20} />
+            </button>
+            {cardMenuOpen && (
+              <div className="flashcard-card-menu" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setEditingCard(card);
+                    setCardMenuOpen(false);
+                  }}
+                >
+                  Edit dictionary entry
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </header>
 
       <div
@@ -610,7 +765,7 @@ export default function Learn() {
                     onClick={(event) => {
                       event.stopPropagation();
                       const text = spokenText(card, promptType, true)!;
-                      playAudio(text, card.target_language, text === card.word ? card.id : undefined);
+                      void playCardAudio(card, text);
                     }}
                   >
                     <SpeakerIcon size={20} />
@@ -693,6 +848,24 @@ export default function Learn() {
           onSaveWord={addWord}
           onRemoveWord={removeWord}
           onOptimisticSave={addOptimistic}
+        />
+      )}
+
+      {editingCard && (
+        <DictionaryEntryEditor
+          key={editingCard.id}
+          entry={editingCard}
+          onSave={async (data) => {
+            const updated = await updateEntry(editingCard.id, data);
+            setCards((previous) => previous.map((item) => (item.id === updated.id ? updated : item)));
+            for (const [key, speech] of preloadedAudioRef.current.entries()) {
+              if (key.startsWith(`${editingCard.id}\u0000`)) {
+                if (speech.url) URL.revokeObjectURL(speech.url);
+                preloadedAudioRef.current.delete(key);
+              }
+            }
+          }}
+          onClose={() => setEditingCard(null)}
         />
       )}
     </div>

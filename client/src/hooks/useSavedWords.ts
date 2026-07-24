@@ -5,7 +5,16 @@ const runtimeLog = createScopedRuntimeLogger('web.hooks.usesavedwords');
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { getSavedWords, saveWord, deleteSavedWord, updateWordImage, reorderQueue, SavedWord } from '../api';
+import {
+  getSavedWords,
+  saveWord,
+  deleteSavedWord,
+  updateSavedWord,
+  updateWordImage,
+  reorderQueue,
+  SavedWord,
+  type DictionaryEntryUpdate,
+} from '../api';
 import { toErrorMessage } from '../utils/errors';
 import { applyAccountDailyGoal, recordDailyWordAdded } from '../utils/dailyGoal';
 import { emitFallbackDiagnostic } from '../utils/fallbackDiagnostics';
@@ -164,6 +173,12 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
     return updated;
   }, []);
 
+  const updateEntry = useCallback(async (id: string, data: DictionaryEntryUpdate) => {
+    const updated = await updateSavedWord(id, data);
+    setWords((prev) => prev.map((word) => (word.id === id ? updated : word)));
+    return updated;
+  }, []);
+
   const reorderQueueWords = useCallback(
     async (items: Array<{ id: string; queue_position: number }>) => {
       const previousWords = words;
@@ -198,5 +213,19 @@ export function useSavedWords(options: UseSavedWordsOptions = {}) {
     });
   }, []);
 
-  return { words, loading, error, savedWordsSet, isWordSaved, isDefinitionSaved, addWord, addOptimistic, removeWord, updateImage, reorderQueueWords, loadWords };
+  return {
+    words,
+    loading,
+    error,
+    savedWordsSet,
+    isWordSaved,
+    isDefinitionSaved,
+    addWord,
+    addOptimistic,
+    removeWord,
+    updateEntry,
+    updateImage,
+    reorderQueueWords,
+    loadWords,
+  };
 }

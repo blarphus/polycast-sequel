@@ -165,6 +165,9 @@ export function createDictionaryWordService({
           sets.push(`${field} = $${values.length}`);
         }
       }
+      // The cached clip contains the previous headword. Never let an entry edit
+      // keep serving that stale pronunciation.
+      if (input.word !== undefined) sets.push('tts_audio = NULL');
       if (!sets.length) throw new ValidationError([{ path: 'body', message: 'No fields to update' }]);
       const { rows } = await db.query(`UPDATE saved_words SET ${sets.join(', ')} WHERE id = $1 AND user_id = $2 RETURNING *`, values);
       if (!rows.length) throw new NotFoundError('Word not found', { code: 'dictionary_word_not_found' });

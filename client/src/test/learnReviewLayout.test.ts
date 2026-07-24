@@ -44,4 +44,17 @@ describe('flashcard review workspace', () => {
     expect(source).toContain("event.key === '1'");
     expect(source).toContain("event.key === '2'");
   });
+
+  it('prepares exact front and back speech before cards are revealed', () => {
+    expect(source).toContain('Promise.all(firstCardSpeech.map((text) => ensureCardSpeech(firstCard, text)))');
+    expect(source).toContain('preloadAiSpeech(text, card.target_language || undefined)');
+    expect(source).toContain('cards.slice(currentIndex, currentIndex + PRELOAD_LOOKAHEAD_CARDS)');
+    expect(source).toContain('if (loading || !currentCard) return');
+  });
+
+  it('offers a dictionary-entry editor from the card menu', () => {
+    expect(source).toContain('aria-label="Card menu"');
+    expect(source).toContain('Edit dictionary entry');
+    expect(source).toContain('<DictionaryEntryEditor');
+  });
 });
