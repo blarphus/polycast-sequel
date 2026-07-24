@@ -23,6 +23,7 @@ import {
   updateCatalogBuildProgress,
 } from '../lib/catalogBuildProgress.js';
 import { ensureScheduleCurrent } from '../lib/dictionaryQueries.js';
+import { rankSpanishFrequencyFamily } from '../lib/spanishFrequencyFamilies.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 dotenv.config({ path: path.join(root, '.env') });
@@ -192,6 +193,58 @@ const FREQUENCY_BATCH_SIZE = 2_000;
 const INVENTORY_BATCH_SIZE = 10_000;
 const LEMMA_BATCH_SIZE = 10_000;
 const SENSE_LEMMA_BATCH_SIZE = 2_000;
+
+async function applyFamilyRankings(client, table) {
+  const { rows } = await client.query(
+    `SELECT id,
+            COALESCE(NULLIF(BTRIM(lemma), ''), BTRIM(word)) AS lemma,
+            word AS surface_form,
+            forms,
+            part_of_speech
+       FROM ${table}
+      WHERE LOWER(SPLIT_PART(COALESCE(target_language, ''), '-', 1)) = 'es'
+      ORDER BY id`,
+  );
+  const ranked = [];
+  for (const row of rows) {
+    const ranking = rankSpanishFrequencyFamily({
+      lemma: row.lemma,
+      surfaceForm: row.surface_form,
+      forms: row.forms,
+      partOfSpeech: row.part_of_speech,
+    });
+    if (!ranking) continue;
+    ranked.push({ id: row.id, ...ranking });
+  }
+  let updated = 0;
+  const batchSize = 500;
+  for (let offset = 0; offset < ranked.length; offset += batchSize) {
+    const batch = ranked.slice(offset, offset + batchSize);
+    const { rowCount } = await client.query(
+      `UPDATE ${table}
+          SET lemma_frequency_rank = incoming.lemma_rank,
+              lemma_occurrences_per_billion = incoming.occurrences,
+              frequency_count = incoming.occurrences,
+              frequency = incoming.frequency_band,
+              frequency_confidence = incoming.confidence,
+              frequency_sources = incoming.sources
+         FROM UNNEST(
+           $1::uuid[], $2::int[], $3::bigint[], $4::int[], $5::text[], $6::jsonb[]
+         ) AS incoming(id, lemma_rank, occurrences, frequency_band, confidence, sources)
+        WHERE ${table}.id = incoming.id`,
+      [
+        batch.map((row) => row.id),
+        batch.map((row) => row.lemma_rank),
+        batch.map((row) => row.occurrences_per_billion),
+        batch.map((row) => row.frequency_band),
+        batch.map((row) => row.confidence),
+        batch.map((row) => JSON.stringify(row.sources)),
+      ],
+    );
+    updated += rowCount || 0;
+  }
+  return updated;
+}
 
 if (dryRun) {
   const scores = loadLanguageScores(BUILD_LANGUAGE);
@@ -735,10 +788,15 @@ try {
       FROM mapped
      WHERE sw.id = mapped.id
   `, [catalog.id, maxSenseRank]);
+  const savedFamilyUpdated = await applyFamilyRankings(client, 'saved_words');
   await reportProgress({
     phase: 'saved_backfill', completed: savedUpdated || 0, total: savedTotal,
     message: `Backfilled ${savedUpdated || 0} of ${savedTotal} existing Spanish saved words.`,
-    counts: { savedWords: savedTotal, savedWordsBackfilled: savedUpdated || 0 },
+    counts: {
+      savedWords: savedTotal,
+      savedWordsBackfilled: savedUpdated || 0,
+      savedWordsFamilyRanked: savedFamilyUpdated,
+    },
     phaseTotals: {
       frequency_sources: scoreCount, source_inventory: sourceTotal,
       lemma_ranking: lemmaTotal, sense_ranking: senseTotal,
@@ -806,10 +864,15 @@ try {
       FROM mapped
      WHERE shared.id = mapped.id
   `, [catalog.id, maxSenseRank]);
+  const sharedFamilyUpdated = await applyFamilyRankings(client, 'shared_dictionary_entries');
   await reportProgress({
     phase: 'shared_backfill', completed: sharedUpdated || 0, total: sharedTotal,
     message: `Backfilled ${sharedUpdated || 0} of ${sharedTotal} shared Spanish entries.`,
-    counts: { sharedEntries: sharedTotal, sharedEntriesBackfilled: sharedUpdated || 0 },
+    counts: {
+      sharedEntries: sharedTotal,
+      sharedEntriesBackfilled: sharedUpdated || 0,
+      sharedEntriesFamilyRanked: sharedFamilyUpdated,
+    },
     phaseTotals: {
       frequency_sources: scoreCount, source_inventory: sourceTotal,
       lemma_ranking: lemmaTotal, sense_ranking: senseTotal,

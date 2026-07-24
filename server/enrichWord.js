@@ -5,6 +5,7 @@
  */
 
 import { catalogEntryToWordFields, lookupFrequencyCatalog, persistProvisionalSense } from './lib/frequencyCatalog.js';
+import { applySpanishFamilyRanking } from './lib/spanishFrequencyFamilies.js';
 import { normalizeLemma, normalizeForms } from './lib/normalizeWordFields.js';
 import {
   callGemini,
@@ -691,6 +692,17 @@ ${learnerDefinitionRules(nativeLang, { field: 'DEFINITION', translationField: 'T
     });
     fallback_notices.push(...provisional.diagnostics);
     if (provisional.entry) catalogLookup = provisional;
+  }
+  if (String(targetLang || '').toLocaleLowerCase().split('-')[0] === 'es') {
+    catalogLookup = {
+      ...catalogLookup,
+      entry: applySpanishFamilyRanking(catalogLookup.entry, {
+        lemma: lemma || word,
+        forms,
+        surfaceForm: word,
+        partOfSpeech: part_of_speech,
+      }),
+    };
   }
   const ranking = catalogEntryToWordFields(catalogLookup.entry);
   frequency = ranking.frequency ?? null;

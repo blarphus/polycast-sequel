@@ -1,6 +1,7 @@
 import pool from '../db.js';
 import { mergeForm, normalizeLemma } from '../lib/normalizeWordFields.js';
 import { catalogEntryToWordFields, lookupFrequencyCatalog, persistProvisionalSense } from '../lib/frequencyCatalog.js';
+import { applySpanishFamilyRanking } from '../lib/spanishFrequencyFamilies.js';
 import { awardWordSaveXp } from '../lib/progression.js';
 import { NotFoundError, ValidationError } from '../lib/httpErrors.js';
 import { runDictionaryScheduleMutation } from './dictionaryScheduleService.js';
@@ -54,6 +55,14 @@ export function createDictionaryWordService({
           });
           diagnostics.push(...provisional.diagnostics);
           catalogEntry = provisional.entry || catalogEntry;
+        }
+        if (String(target_language).toLocaleLowerCase().split('-')[0] === 'es') {
+          catalogEntry = applySpanishFamilyRanking(catalogEntry, {
+            lemma: canonicalWord,
+            forms: mergedForms,
+            surfaceForm: surface_form || word,
+            partOfSpeech: part_of_speech,
+          });
         }
         if (catalogEntry) catalogFields = { ...catalogFields, ...catalogEntryToWordFields(catalogEntry) };
       }
