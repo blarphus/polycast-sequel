@@ -11,6 +11,6 @@
     "check": "npm test && wrangler deploy --dry-run --outdir /tmp/polycast-worker-check"
   },
   "devDependencies": {
-    "wrangler": "^4.110.0"
+    "wrangler": "^4.114.0"
   }
 }
